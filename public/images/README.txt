@@ -1,0 +1,1 @@
+Place bg.jpg (brain background) and logo.png (Deus X logo) in this folder.
