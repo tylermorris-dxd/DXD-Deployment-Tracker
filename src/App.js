@@ -1771,7 +1771,7 @@ async function generateQuotePDF({ win, project, quantities, margin, customItems,
     </div>
   </div>
   </div>
-  <script>window.addEventListener("load",function(){setTimeout(window.print,800)});<\/script>
+  <script>window.addEventListener("load",function(){setTimeout(window.print,800)});</script>
 </body>
 </html>`;
 
@@ -3223,7 +3223,7 @@ const styles = {
 
 // ─── EQUIPMENT TRACKER ────────────────────────────────────────────────────
 function EquipmentTracker({ equipment, setEquipment, projects, teamMembers, onBack }) {
-  const [view, setView] = useState("all");
+  const [_view, _setView] = useState("all"); // eslint-disable-line no-unused-vars
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState(null);
@@ -3260,7 +3260,7 @@ function EquipmentTracker({ equipment, setEquipment, projects, teamMembers, onBa
         const tracking = task.orderTracking[i] || {};
         const isSelected = task.subtaskStatus?.[i];
         if (isSelected || tracking.ordered) {
-          const cleanName = subtaskName.replace(/\s*[–\-]\s*.+$/, "").trim();
+          const cleanName = subtaskName.replace(/\s*[–-]\s*.+$/, "").trim();
           const autoId = `auto-${proj.id}-${task.id}-${i}`;
           if (!equipment.some(e => e.autoId === autoId)) {
             autoProcured.push({

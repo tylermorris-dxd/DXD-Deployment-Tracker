@@ -185,7 +185,7 @@ export default function AirspaceIntel({ defaultLocation, cachedData, onCacheUpda
   const airspaceType = pointGrid?.properties?.AIRSPACE_1?.replace(/Class\s*/i, "").trim().charAt(0).toUpperCase();
   const airspaceInfo = airspaceType ? AIRSPACE_INFO[airspaceType] : null;
   const isClassG = !pointGrid || (coords && !gridData?.features?.length);
-  const laancEnabled = pointGrid?.properties?.APT1_LAANC === 1;
+  // const laancEnabled = pointGrid?.properties?.APT1_LAANC === 1;
 
   return (
     <div style={{ marginBottom: 24 }}>

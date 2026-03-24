@@ -21,7 +21,7 @@ function injectLeaflet() {
 }
 
 /* ─── Tile layers ─────────────────────────────────────────────────────────── */
-const ESRI_LABEL      = "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}";
+// const ESRI_LABEL = "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}";
 const ESRI_STREET     = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}";
 // Google Maps tiles
 const GOOGLE_HYBRID   = "https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"; // satellite + street names
@@ -236,7 +236,7 @@ function makeVertexIcon(L) {
   return L.divIcon({ html: svg, className: "", iconSize: [10, 10], iconAnchor: [5, 5] });
 }
 
-/** Site address teardrop pin */
+/** Site address teardrop pin */ // eslint-disable-next-line no-unused-vars
 function makeSitePinIcon(L) {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="24" viewBox="0 0 18 24">
     <path d="M9 0C4.03 0 0 4.03 0 9C0 15.75 9 24 9 24C9 24 18 15.75 18 9C18 4.03 13.97 0 9 0Z"
@@ -1201,7 +1201,7 @@ export default function SiteMapper({ project, cachedData, onCacheUpdate }) {
         {/* ── Legend overlay ── */}
         {(dockCount > 0 || areaAcres != null || lr.measurePins.length === 2) && (
           <div style={S.legend}>
-            <div style={S.legendTitle}>// SITE LEGEND</div>
+            <div style={S.legendTitle}>SITE LEGEND</div>
 
             {lr.dockMarkers.map((d) => {
               const dc = d.ringColor || dockColor(d.num);
