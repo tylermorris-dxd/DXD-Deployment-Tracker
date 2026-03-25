@@ -90,7 +90,7 @@ const DEPLOYMENT_TEMPLATE = [
   {
     id: "phase-2",
     phase: "Phase 2",
-    title: "Deployment",
+    title: "Delivery",
     color: "#F87171",
     owner: "",
     description: "Procure all hardware, software, and supporting equipment; prepare for site installation.",
@@ -948,6 +948,135 @@ function ProjectCard({ project, index, onSelect, onDelete, completed: isComplete
 }
 
 // ─── PROJECT DETAIL VIEW ──────────────────────────────────────────────────
+function ProjectSettingsView({ project, onUpdate }) {
+  const [name, setName] = React.useState(project.name || "");
+  const [client, setClient] = React.useState(project.client || "");
+  const [site, setSite] = React.useState(project.site || "");
+  const [saved, setSaved] = React.useState(false);
+  const inputStyle = { width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "10px 14px", color: "#E8ECF4", fontSize: 14, outline: "none", fontFamily: "'IBM Plex Mono', monospace", boxSizing: "border-box" };
+  const labelStyle = { display: "block", fontFamily: "'Chakra Petch', sans-serif", fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color: "rgba(255,255,255,0.35)", marginBottom: 6, textTransform: "uppercase" };
+  const save = () => {
+    onUpdate(p => ({ ...p, name: name.trim() || p.name, client: client.trim(), site: site.trim() }));
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+  return (
+    <div style={{ padding: "32px 0", maxWidth: 560 }}>
+      <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: 2, color: "#C41E3A", marginBottom: 24, textTransform: "uppercase" }}>Project Settings</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+        <div>
+          <label style={labelStyle}>Project Name *</label>
+          <input style={inputStyle} value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Southside Industrial Complex" />
+        </div>
+        <div>
+          <label style={labelStyle}>Client / Company</label>
+          <input style={inputStyle} value={client} onChange={e => setClient(e.target.value)} placeholder="e.g. Acme Security Corp" />
+        </div>
+        <div>
+          <label style={labelStyle}>Site Address</label>
+          <input style={inputStyle} value={site} onChange={e => setSite(e.target.value)} placeholder="e.g. 5623 Two Notch Rd, Columbia, SC 29223" />
+        </div>
+        <div style={{ paddingTop: 8 }}>
+          <button onClick={save} style={{ background: "linear-gradient(135deg, #E53935, #C62828)", border: "none", borderRadius: 8, color: "#fff", fontFamily: "'Chakra Petch', sans-serif", fontSize: 12, fontWeight: 700, letterSpacing: 2, padding: "12px 28px", cursor: "pointer" }}>
+            {saved ? "SAVED ✓" : "SAVE CHANGES"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StakeholdersView({ project, onUpdate }) {
+  const stakeholders = project.stakeholders || [];
+  const empty = { name: "", title: "", company: "", email: "", phone: "" };
+  const [form, setForm] = React.useState(empty);
+  const [editId, setEditId] = React.useState(null);
+  const [showForm, setShowForm] = React.useState(false);
+  const inputStyle = { width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, padding: "8px 12px", color: "#E8ECF4", fontSize: 12, outline: "none", fontFamily: "'IBM Plex Mono', monospace", boxSizing: "border-box" };
+  const labelStyle = { display: "block", fontFamily: "'Chakra Petch', sans-serif", fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color: "rgba(255,255,255,0.35)", marginBottom: 5, textTransform: "uppercase" };
+
+  const save = () => {
+    if (!form.name.trim()) return;
+    if (editId) {
+      onUpdate(p => ({ ...p, stakeholders: (p.stakeholders || []).map(s => s.id === editId ? { ...form, id: editId } : s) }));
+    } else {
+      onUpdate(p => ({ ...p, stakeholders: [...(p.stakeholders || []), { ...form, id: `sh-${Date.now()}` }] }));
+    }
+    setForm(empty); setEditId(null); setShowForm(false);
+  };
+  const remove = (id) => onUpdate(p => ({ ...p, stakeholders: (p.stakeholders || []).filter(s => s.id !== id) }));
+  const edit = (s) => { setForm({ name: s.name, title: s.title, company: s.company, email: s.email, phone: s.phone }); setEditId(s.id); setShowForm(true); };
+
+  return (
+    <div style={{ padding: "24px 0", maxWidth: 760 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
+        <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: 2, color: "#C41E3A", textTransform: "uppercase" }}>Stakeholder Contacts</div>
+        <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.05)", padding: "2px 10px", borderRadius: 10 }}>{stakeholders.length}</span>
+        <button onClick={() => { setForm(empty); setEditId(null); setShowForm(true); }} style={{ marginLeft: "auto", background: "linear-gradient(135deg, #E53935, #C62828)", border: "none", borderRadius: 6, color: "#fff", fontFamily: "'Chakra Petch', sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: 1.5, padding: "7px 16px", cursor: "pointer" }}>+ ADD CONTACT</button>
+      </div>
+
+      {showForm && (
+        <div style={{ background: "rgba(20,20,24,0.98)", border: "1px solid rgba(196,30,58,0.35)", borderRadius: 12, padding: "20px 24px", marginBottom: 24 }}>
+          <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 10, color: "#C41E3A", letterSpacing: 1.5, marginBottom: 16 }}>{editId ? "EDIT CONTACT" : "NEW CONTACT"}</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
+            <div>
+              <label style={labelStyle}>Full Name *</label>
+              <input style={inputStyle} placeholder="e.g. John Smith" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+            </div>
+            <div>
+              <label style={labelStyle}>Title / Role</label>
+              <input style={inputStyle} placeholder="e.g. Director of Security" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
+            </div>
+            <div>
+              <label style={labelStyle}>Company</label>
+              <input style={inputStyle} placeholder="e.g. Acme Corp" value={form.company} onChange={e => setForm(f => ({ ...f, company: e.target.value }))} />
+            </div>
+            <div>
+              <label style={labelStyle}>Email</label>
+              <input style={inputStyle} placeholder="e.g. john@acme.com" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
+            </div>
+            <div>
+              <label style={labelStyle}>Phone</label>
+              <input style={inputStyle} placeholder="e.g. (555) 123-4567" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
+            <button onClick={save} style={{ background: "linear-gradient(135deg, #E53935, #C62828)", border: "none", borderRadius: 6, color: "#fff", fontFamily: "'Chakra Petch', sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: 1.5, padding: "8px 20px", cursor: "pointer", opacity: form.name.trim() ? 1 : 0.4 }}>{editId ? "SAVE CHANGES" : "ADD CONTACT"}</button>
+            <button onClick={() => { setShowForm(false); setForm(empty); setEditId(null); }} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 6, color: "rgba(255,255,255,0.5)", fontFamily: "'Chakra Petch', sans-serif", fontSize: 11, fontWeight: 600, letterSpacing: 1.5, padding: "8px 20px", cursor: "pointer" }}>CANCEL</button>
+          </div>
+        </div>
+      )}
+
+      {stakeholders.length === 0 && !showForm ? (
+        <div style={{ background: "rgba(255,255,255,0.02)", border: "1px dashed rgba(255,255,255,0.07)", borderRadius: 10, padding: "32px 24px", textAlign: "center", fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: "rgba(255,255,255,0.2)" }}>
+          No contacts yet — click "+ ADD CONTACT" to add a stakeholder.
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {stakeholders.map(s => (
+            <div key={s.id} style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "16px 20px", display: "grid", gridTemplateColumns: "2fr 1.5fr 1.5fr 1fr auto", gap: 12, alignItems: "center" }}
+              onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.04)"}
+              onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.02)"}
+            >
+              <div>
+                <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 13, fontWeight: 700, color: "#E8ECF4", letterSpacing: 0.3 }}>{s.name}</div>
+                {s.company && <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>{s.company}</div>}
+              </div>
+              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: "#C41E3A" }}>{s.title || "—"}</div>
+              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: "rgba(255,255,255,0.5)" }}>{s.email || "—"}</div>
+              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: "rgba(255,255,255,0.4)" }}>{s.phone || "—"}</div>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button onClick={() => edit(s)} style={{ background: "none", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 4, cursor: "pointer", color: "rgba(255,255,255,0.4)", padding: "4px 8px", display: "flex", alignItems: "center" }}><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M8.5 1.5L10.5 3.5L4 10H2V8L8.5 1.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
+                <button onClick={() => remove(s.id)} style={{ background: "none", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 4, cursor: "pointer", color: "rgba(255,100,100,0.5)", padding: "4px 8px", display: "flex", alignItems: "center" }}>{Icons.trash}</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ProjectView({ project, onBack, onUpdate, teamMembers = [] }) {
   const [expandedPhase, setExpandedPhase] = useState(null);
   const [expandedTask, setExpandedTask] = useState(null);
@@ -1244,6 +1373,14 @@ function ProjectView({ project, onBack, onUpdate, teamMembers = [] }) {
             </svg>
             <span>Network</span>
           </button>
+          <button onClick={() => setViewMode("stakeholders")} style={{ ...styles.viewToggleBtn, ...(viewMode === "stakeholders" ? styles.viewToggleActive : {}) }}>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="5" cy="4" r="2.5" stroke="currentColor" strokeWidth="1.2"/><path d="M1 12c0-2 1.8-3.5 4-3.5s4 1.5 4 3.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/><circle cx="11" cy="4.5" r="1.8" stroke="currentColor" strokeWidth="1.1"/><path d="M11 8.5c1.8 0 3 1 3 2.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/></svg>
+            <span>Contacts</span>
+          </button>
+          <button onClick={() => setViewMode("settings")} style={{ ...styles.viewToggleBtn, ...(viewMode === "settings" ? styles.viewToggleActive : {}) }}>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="2" stroke="currentColor" strokeWidth="1.2"/><path d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M2.9 2.9l1.1 1.1M10 10l1.1 1.1M10 4L8.9 5.1M4 10L2.9 11.1" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/></svg>
+            <span>Settings</span>
+          </button>
         </div>
       </div>
       {/* Project Info */}
@@ -1315,6 +1452,10 @@ function ProjectView({ project, onBack, onUpdate, teamMembers = [] }) {
         />
       ) : viewMode === "pricing" ? (
         <PricingView quantities={quantities} setQuantities={setQuantities} project={project} equipSelections={equipSelections} />
+      ) : viewMode === "settings" ? (
+        <ProjectSettingsView project={project} onUpdate={onUpdate} />
+      ) : viewMode === "stakeholders" ? (
+        <StakeholdersView project={project} onUpdate={onUpdate} />
       ) : viewMode === "kanban" ? (
         <KanbanView project={project} isPhaseUnlocked={isPhaseUnlocked} />
       ) : (
@@ -3819,12 +3960,9 @@ function EquipmentTracker({ equipment, setEquipment, projects, teamMembers, onBa
 
           {/* ── SECTION 2: Per-Project Sections ── */}
           {(() => {
-            // Build list of all projects that have equipment, plus an "Unassigned" bucket
-            const projectIds = [...new Set(filtered.map(e => e.assignedProjectId || "__none__"))];
-            const orderedProjects = [
-              ...projects.filter(p => projectIds.includes(p.id)),
-              ...(projectIds.includes("__none__") ? [{ id: "__none__", name: "No Project Assigned", client: "", site: "" }] : []),
-            ];
+            // Build list of all projects that have equipment (exclude unassigned)
+            const projectIds = [...new Set(filtered.filter(e => e.assignedProjectId).map(e => e.assignedProjectId))];
+            const orderedProjects = projects.filter(p => projectIds.includes(p.id));
             if (orderedProjects.length === 0) return null;
             return (
               <div>
@@ -3835,9 +3973,8 @@ function EquipmentTracker({ equipment, setEquipment, projects, teamMembers, onBa
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                   {orderedProjects.map(proj => {
-                    const projItems = filtered.filter(e => (e.assignedProjectId || "__none__") === proj.id);
+                    const projItems = filtered.filter(e => e.assignedProjectId === proj.id);
                     if (projItems.length === 0) return null;
-                    const isNone = proj.id === "__none__";
                     const isCollapsed = !!collapsedProjects[proj.id];
                     return (
                       <div key={proj.id} style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, overflow: "hidden" }}>
@@ -3846,13 +3983,12 @@ function EquipmentTracker({ equipment, setEquipment, projects, teamMembers, onBa
                           onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.055)"}
                           onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.03)"}
                         >
-                          {/* Chevron */}
                           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0, transition: "transform 0.2s", transform: isCollapsed ? "rotate(-90deg)" : "rotate(0deg)", color: "rgba(255,255,255,0.35)" }}>
                             <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
                           </svg>
-                          <span style={{ width: 9, height: 9, borderRadius: "50%", background: isNone ? "rgba(255,255,255,0.2)" : "#C41E3A", boxShadow: isNone ? "none" : "0 0 7px #C41E3A88", flexShrink: 0, display: "inline-block" }} />
+                          <span style={{ width: 9, height: 9, borderRadius: "50%", background: "#C41E3A", boxShadow: "0 0 7px #C41E3A88", flexShrink: 0, display: "inline-block" }} />
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 14, fontWeight: 700, color: isNone ? "rgba(255,255,255,0.4)" : "#E8ECF4", letterSpacing: 0.3 }}>{proj.name}</div>
+                            <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 14, fontWeight: 700, color: "#E8ECF4", letterSpacing: 0.3 }}>{proj.name}</div>
                             {(proj.client || proj.site) && (
                               <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.25)", marginTop: 2 }}>
                                 {[proj.client, proj.site].filter(Boolean).join(" · ")}
@@ -3860,7 +3996,7 @@ function EquipmentTracker({ equipment, setEquipment, projects, teamMembers, onBa
                             )}
                           </div>
                           <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.25)", background: "rgba(255,255,255,0.06)", padding: "2px 10px", borderRadius: 10, flexShrink: 0 }}>{projItems.length} ITEM{projItems.length !== 1 ? "S" : ""}</span>
-                          <button onClick={e => { e.stopPropagation(); setForm({ ...emptyForm, assignedProjectId: proj.id === "__none__" ? "" : proj.id }); setEditId(null); setShowForm(true); }} style={{ background: "rgba(196,30,58,0.15)", border: "1px solid rgba(196,30,58,0.3)", borderRadius: 6, cursor: "pointer", color: "#C41E3A", padding: "4px 10px", fontSize: 11, fontFamily: "'Chakra Petch', sans-serif", letterSpacing: 0.5, flexShrink: 0 }}>+ Add</button>
+                          <button onClick={e => { e.stopPropagation(); setForm({ ...emptyForm, assignedProjectId: proj.id }); setEditId(null); setShowForm(true); }} style={{ background: "rgba(196,30,58,0.15)", border: "1px solid rgba(196,30,58,0.3)", borderRadius: 6, cursor: "pointer", color: "#C41E3A", padding: "4px 10px", fontSize: 11, fontFamily: "'Chakra Petch', sans-serif", letterSpacing: 0.5, flexShrink: 0 }}>+ Add</button>
                         </div>
                         {/* Collapsible body */}
                         {!isCollapsed && (() => {
