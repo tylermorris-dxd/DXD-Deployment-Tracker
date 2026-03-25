@@ -15,116 +15,249 @@ const DEPLOYMENT_TEMPLATE = [
   {
     id: "phase-1",
     phase: "Phase 1",
-    title: "Scoping",
+    title: "Scoping & Solutions",
     color: "#EF4444",
     owner: "",
-    description: "Coordinate all applications with the project lead on the Ops Team before a contract is signed.",
+    description: "Define customer needs, assess property, and architect the security solution.",
     tasks: [
-      { id: "1-1", title: "Conduct Airspace Evaluation", eitherOr: [0, 1], gate: true, subtasks: ["Class G Airspace = Good to Go", "Controlled Airspace = Site Approval through FAA (30 days)", "Determine approved altitude in the site approval"] },
-      { id: "1-2", title: "Drone Selection", eitherOr: [0, 1, 2], gate: true, subtasks: ["DJI Dock 3 w/ Matrice 4TD", "Skydio X10 w/ Dock", "Sunflower Labs BeeHive"] },
-      { id: "1-3", title: "DAA Selection", eitherOr: [0, 1], subtasks: ["Casia G for 0\u2019\u2013400\u2019", "DroneTag for 0\u2019\u2013200\u2019"] },
-      { id: "1-4", title: "Discuss Lead Times", subtasks: ["Discuss lead times on hardware/software with sales lead for contractual timelines"] }
+      { id: "1-1", title: "Customer Problem & Outcome Definition", subtasks: [
+        "Clarify customer's problem statement and desired security outcome",
+        "Confirm customer success criteria and acceptance criteria",
+        "Discuss lead times on hardware/software with sales lead for contractual timelines"
+      ]},
+      { id: "1-2", title: "Site Assessment & Security Analysis", subtasks: [
+        "Assess key site characteristics (size, scope, perimeter, area, boundaries)",
+        "Identify security gaps and existing risks",
+        "Evaluate airspace considerations (Class G vs. Controlled Airspace)",
+        "Document weather considerations for flight operations",
+        "Assess power availability and connectivity options at deployment sites",
+        "Identify site layout, infrastructure, and environmental hazards (towers, buildings, trees)",
+        "Confirm client will provide: power (110V acceptable), network (40 Mbps minimum), Ethernet connection"
+      ]},
+      { id: "1-3", title: "Airspace & Regulatory Evaluation", gate: true, subtasks: [
+        "Conduct airspace evaluation and determine approval pathway",
+        "Class G Airspace = Proceed to operations planning",
+        "Controlled Airspace = Initiate FAA Site Approval request (expect 30-day processing)",
+        "Document approved altitude limits from site approval",
+        "Discuss regulatory lead times and FAA waiver status with client"
+      ]},
+      { id: "1-4", title: "Drone & Equipment Selection", gate: true, equipmentPicker: true, subtasks: [] },
+      { id: "1-5", title: "Coverage Architecture & SLA Definition", subtasks: [
+        "Define coverage model (Centralized, De-Centralized, Hybrid, Static, Dynamic)",
+        "Determine dock placement locations and response time projections",
+        "Document coverage zones and flight characteristics (altitude, noise, visual profile)",
+        "Define discretion/deterrence approach",
+        "Establish Response Time SLAs",
+        "Set System Uptime and Availability Targets",
+        "Document Redundancy Requirements",
+        "Define Support Escalation & Incident Management procedures",
+        "Establish Maintenance Windows"
+      ]},
+      { id: "1-6", title: "Integration & Regulatory Scope", subtasks: [
+        "Identify connectivity requirements to existing security systems",
+        "Plan integration with local police departments and emergency services",
+        "Establish FAA waiver status and airspace authorization pathway",
+        "Define data security, privacy controls, and retention policies",
+        "Clarify liability and insurance coverage responsibilities",
+        "Document compliance/regulatory requirements specific to client site"
+      ]},
+      { id: "1-7", title: "Proposal & Solution Documentation", subtasks: [
+        "Develop Proposed Solution and Coverage Architecture",
+        "Create Proposal Options/Bundles for client review",
+        "Document Equipment Stack specifications",
+        "Define Performance Commitments and Service Level Agreements (SLAs)",
+        "Include security and non-security use cases",
+        "Document surge coverage options for special events",
+        "Outline future expansion options",
+        "Provide case studies and proof of performance examples",
+        "Include Cost/ROI/Cost-Benefit Analysis",
+        "Create high-level implementation timeline",
+        "Document customer responsibilities and acceptance criteria"
+      ]},
+      { id: "1-8", title: "Contract & Resource Planning", gate: true, subtasks: [
+        "Review contract and SOW for completeness and mission set",
+        "Resolve any discrepancies and request clarification",
+        "Validate deployment details and confirm resource readiness",
+        "Confirm SOC capacity for the project",
+        "If SOC capacity is limited \u2014 Tempe GSOC: Contact Jeff Ventrella",
+        "If SOC capacity is limited \u2014 Dallas RSOC: Contact Tyler Morris or James Nguyen",
+        "Schedule project planning and sync meeting with all DXD parties involved",
+        "Identify customer stakeholders and Points of Contact (POCs)",
+        "Schedule check-in meetings with stakeholders during project lifecycle"
+      ]}
     ]
   },
   {
     id: "phase-2",
     phase: "Phase 2",
-    title: "Contract",
+    title: "Deployment",
     color: "#F87171",
     owner: "",
-    description: "Review and finalize contract, validate resources, and align all stakeholders.",
+    description: "Procure all hardware, software, and supporting equipment; prepare for site installation.",
     tasks: [
-      { id: "2-1", title: "Review Contract", gate: true, subtasks: ["Review the contract and SOW for completeness and mission set"] },
-      { id: "2-2", title: "Resolve Discrepancies", subtasks: ["If there are any discrepancies, request clarification"] },
-      { id: "2-3", title: "Resource Check", subtasks: ["Validate deployment details and confirm resources readiness"] },
-      { id: "2-4", title: "SOC Capacity", eitherOr: [1, 2], eitherOrLabel: "If No", subtasks: ["Confirm SOC staffing can meet the project\u2019s operational needs", "Contact Tempe GSOC \u2013 Jeff Ventrella", "Contact Dallas RSOC \u2013 Tyler Morris / James Nguyen"] },
-      { id: "2-5", title: "Meeting Setup", subtasks: ["Schedule the project plan and sync with all DXD parties involved"] },
-      { id: "2-6", title: "Identify Stakeholders & POCs", stakeholders: true, subtasks: ["Schedule meeting with stakeholders for check-ins during project"] }
+      { id: "2-1", title: "Hardware Procurement", trackDates: true, subtasks: [
+        "DJI Dock 3 w/ Matrice 4TD \u2192 Genpac (Jon Beal)",
+        "AVSS Parachute Recovery Systems \u2192 Genpac (Jon Beal)",
+        "DJI Spotlights (AL1) \u2192 Genpac (Jon Beal)",
+        "DJI Speakers (AS1) \u2192 Genpac (Jon Beal)",
+        "Sunflower Labs BeeHive w/ Thermal Payload \u2192 Kenton Matthaei (Sunflower)",
+        "Skydio X10 Dock with X10 Drone \u2192 Tyler Bayne (Skydio/Post-Sales)",
+        "Casia G (DAA) \u2192 Uavionix",
+        "DroneTag (DAA) \u2192 Genpac (Jon Beal)",
+        "Axis P3275-LVE Dome Camera (required by FAA waiver)",
+        "CCTV camera pole/mount",
+        "DJI D-RTK 3 Relay Fixed Deployment units",
+        "DJI Matrice 4D Series batteries",
+        "Annual Class 2 Dock Licenses",
+        "ProCare Maintenance subscriptions",
+        "Casia G-as-a-Service licenses (if applicable)",
+        "Alpha Z Licenses for advanced analytics"
+      ]},
+      { id: "2-2", title: "Shipping & Logistics", subtasks: [
+        "Coordinate shipping method with each vendor to project site",
+        "Confirm shipping address and primary contact for delivery",
+        "Schedule delivery coordination and confirm ETAs with Site POC",
+        "Confirm client will accept delivery and store hardware securely",
+        "Create equipment receiving checklist to validate completeness",
+        "Establish inventory tracking with serial numbers and warranties"
+      ]},
+      { id: "2-3", title: "Site Survey & Infrastructure Assessment", gate: true, subtasks: [
+        "Conduct Initial Site Visit to understand deployment needs",
+        "Perform Location Mapping for dock placement and availability assessment",
+        "Identify environmental and structural hazards",
+        "Customer provides: Power to Dock (110V acceptable)",
+        "Customer provides: Network to Dock (Ethernet, min 40 Mbps, Starlink acceptable)",
+        "Confirm dock securing method (concrete pads, pavers, or platform)",
+        "Confirm pole/tower requirements for DAA equipment",
+        "Confirm customer completed all required infrastructure setup",
+        "Create Site Survey Document (required by FAA waiver)"
+      ]},
+      { id: "2-4", title: "Installation Planning & Coordination", subtasks: [
+        "Schedule Hardware Installation Coordination",
+        "DJI Dock: DroneSense ($8,000) or DXD (if trained)",
+        "Sunflower BeeHive: Sunflower Labs installs",
+        "Skydio: Confirm installation provider",
+        "Casia G: Uavionix installs",
+        "DroneTag: DXD installs",
+        "Schedule all dock installations and training",
+        "Schedule Casia G Installation and training",
+        "Establish field maintenance program for drone assets"
+      ]},
+      { id: "2-5", title: "Perimeter Security & Compliance", gate: true, subtasks: [
+        "Install CCTV cameras at dock sites (required by FAA waiver)",
+        "Install 'Monitored by Deus X Defense Drones' signage (required by FAA waiver)",
+        "Verify all safety and compliance markings are in place"
+      ]}
     ]
   },
   {
     id: "phase-3",
     phase: "Phase 3",
-    title: "Site Survey & Prep",
+    title: "Execution",
     color: "#DC2626",
     owner: "",
-    description: "Conduct site visits, map locations, identify hazards, and ensure infrastructure readiness.",
+    description: "Configure systems, conduct testing, and transition to live operations.",
     tasks: [
-      { id: "3-1", title: "Initial Site Visit", gate: true, subtasks: ["Conduct an in-person visit to understand deployment needs and site readiness"] },
-      { id: "3-2", title: "Location Mapping", subtasks: ["Determine exact dock locations; assess network/power availability"] },
-      { id: "3-3", title: "Hazard Identification", subtasks: ["Check for towers, skyscrapers, large trees, environmental & structural hazards"] },
-      { id: "3-4", title: "Infrastructure Prep (Customer Responsibilities)", subtasks: ["Power to Dock and DAA Site (110V acceptable)", "Network to Dock and DAA Site (Ethernet, min 40 Mbps, Starlink OK)", "Dock securing method (concrete pads/pavers or elevated metal platform)", "Pole/tower for Casia G or DroneTag"] },
-      { id: "3-5", title: "Create Site Survey Document", gate: true, subtasks: ["Document site details and deployment information (required by waiver)"] }
+      { id: "3-1", title: "Command & Control (C2) System Setup", subtasks: [
+        "Draw automated patrol paths into C2 system",
+        "Verify patrol points align with customer requirements",
+        "Configure routine patrol times and schedules",
+        "Set Up Custom Reporting for customer dashboard",
+        "Add new users to customer dashboard for live monitoring",
+        "Set up distribution lists for report delivery",
+        "Configure piloting schedules in Belfry \u2014 Tempe GSOC: Jeff Ventrella",
+        "Configure piloting schedules in Belfry \u2014 Dallas RSOC: Tyler Morris or James Nguyen"
+      ]},
+      { id: "3-2", title: "Integration Testing & Validation", subtasks: [
+        "Conduct Real-World Application flight tests",
+        "Execute Fail-Safe Testing (power/internet loss simulation)",
+        "Verify drone reroutes and lands at Alternate Landing Site",
+        "Verify end-to-end data flow to command center and customer systems",
+        "Test alarm routing and customer notification workflows",
+        "Validate all integration points with customer's security systems"
+      ]},
+      { id: "3-3", title: "Customer Walkthrough & Documentation", subtasks: [
+        "Demonstrate automated drone deployment and launch sequence",
+        "Show live video feed from drone(s)",
+        "Walk through dashboard reporting and analytics",
+        "Review response protocols and escalation procedures",
+        "Provide customer with weekly inspection checklist (required by FAA waiver)",
+        "Document inspection and maintenance requirements",
+        "Deliver Service Documentation (SOPs, protocols, response times, procedures)"
+      ]},
+      { id: "3-4", title: "Safety & Compliance Validation", subtasks: [
+        "Conduct cybersecurity readiness review (all hardware/software)",
+        "Verify compliance with all FAA waiver requirements",
+        "Confirm all safety documentation is current and accessible",
+        "Validate operator training completion and certifications",
+        "Complete final cross-functional review of all operational requirements"
+      ]},
+      { id: "3-5", title: "Adjustments & Final Sign-Off", gate: true, subtasks: [
+        "Make Final Revisions based on testing feedback",
+        "Obtain formal customer sign-off and acceptance",
+        "Conduct after-action review for process improvements",
+        "Finalize all documentation and compliance records"
+      ]}
     ]
   },
   {
     id: "phase-4",
     phase: "Phase 4",
-    title: "Procurement",
+    title: "Customer Success",
     color: "#B91C1C",
     owner: "",
-    description: "Order all UAS, dock, accessory, DAA, and CCTV hardware; coordinate shipping and storage.",
+    description: "Transition to sustained operations, provide ongoing support, and optimize performance.",
     tasks: [
-      { id: "4-1", title: "Submit UAS, Dock & Accessory Orders", eitherOr: [0, 1, 2, 3, 4, 5], trackDates: true, subtasks: ["DJI Dock 3 w/ Matrice 4TD \u2013 Genpac", "AVSS Parachute \u2013 Genpac", "Spotlights \u2013 Genpac", "Speakers \u2013 Genpac", "Sunflower Labs BeeHive", "Skydio X10 Dock w/ X10 Drone"] },
-      { id: "4-2", title: "DAA Procurement", eitherOr: [0, 1], trackDates: true, subtasks: ["Casia G \u2013 Uavionix", "DroneTag \u2013 Genpac"] },
-      { id: "4-3", title: "CCTV Procurement", eitherOr: [0, 1], trackDates: true, subtasks: ["Axis P3275-LVE Dome Camera (required by waiver)", "CCTV camera pole/mount"] },
-      { id: "4-4", title: "Shipping Logistics", subtasks: ["Coordinate shipping method with vendor to project site", "Secure Storage \u2013 Confirm client will store hardware in a safe/secure space until installation", "Schedule Delivery \u2013 Coordinate with Site POC on ETAs"] }
-    ]
-  },
-  {
-    id: "phase-5",
-    phase: "Phase 5",
-    title: "Installation",
-    color: "#FF6B6B",
-    owner: "",
-    description: "Install all hardware \u2014 drones, docks, DAA sensors, and perimeter CCTV.",
-    tasks: [
-      { id: "5-1", title: "Hardware Installation Coordination", eitherOr: [1, 2, 3, 4, 5], subtasks: ["Confirm customer completed power/network/infrastructure requirements", "DJI \u2013 DroneSense ($8K) or DXD", "Sunflower \u2013 Sunflower does own install (requires mapping flight prior)", "Skydio \u2013 TBD installer", "Casia G \u2013 Uavionix", "DroneTag \u2013 DXD"] },
-      { id: "5-2", title: "Perimeter Security", gate: true, subtasks: ["Install CCTV cameras at dock sites (required by waiver)", "Install \u2018Monitored by Deus X Defense Drones\u2019 signs (required by waiver)"] }
-    ]
-  },
-  {
-    id: "phase-6",
-    phase: "Phase 6",
-    title: "Systems Setup",
-    color: "#FCA5A5",
-    owner: "",
-    description: "Configure patrol routes, reporting, user access, distribution lists, and scheduling.",
-    tasks: [
-      { id: "6-1", title: "Patrol Routes", subtasks: ["Draw automated patrol paths into C2"] },
-      { id: "6-2", title: "Path Verification", subtasks: ["Verify patrol points align with customer requirements"] },
-      { id: "6-3", title: "Routine Patrol Times", subtasks: ["Verify timing of routine patrols"] },
-      { id: "6-4", title: "Systems Setup", subtasks: ["Set up Custom Reporting for customer"] },
-      { id: "6-5", title: "User Access", subtasks: ["Add new users to the customer dashboard for live monitoring"] },
-      { id: "6-6", title: "Distro Lists", subtasks: ["Set up distribution list for reports"] },
-      { id: "6-7", title: "Scheduling", subtasks: ["Set up piloting schedules/locations in Belfry scheduling app (Tyler Morris or James Nguyen)"] }
-    ]
-  },
-  {
-    id: "phase-7",
-    phase: "Phase 7",
-    title: "Flight Testing & Customer Walk-Through",
-    color: "#991B1B",
-    owner: "",
-    description: "Conduct real-world flight tests, fail-safe simulations, and customer review.",
-    tasks: [
-      { id: "7-1", title: "Real-World Application", subtasks: ["Conduct flight tests for real-world applications to ensure proper function"] },
-      { id: "7-2", title: "Fail-Safe Testing", subtasks: ["Simulate power/internet loss; verify drone reroutes and lands safely at Alternate Landing Site"] },
-      { id: "7-3", title: "Client Review", subtasks: ["Demonstrate automated deployment, live video feed, and reporting dashboard"] },
-      { id: "7-4", title: "Maintenance Handoff", subtasks: ["Provide client/site POC with weekly inspection checklist (required by waiver)"] },
-      { id: "7-5", title: "Final Revisions", gate: true, subtasks: ["Adjust where needed; confirm final sign-off"] }
-    ]
-  },
-  {
-    id: "phase-8",
-    phase: "Phase 8",
-    title: "Go-Live",
-    color: "#F43F5E",
-    owner: "",
-    description: "Launch operations and hand over to post-sales.",
-    tasks: [
-      { id: "8-1", title: "Go-Live LFG!", gate: true, subtasks: ["Activate live drone operations"] },
-      { id: "8-2", title: "Handover to TB for Post Sales", subtasks: ["Complete post-sales transition"] }
+      { id: "4-1", title: "Go-Live & Handover", gate: true, subtasks: [
+        "Execute Go-Live Acceptance Checklist",
+        "Finalize Client Acceptance Checklist",
+        "Handover to Post-Sales team (Tyler Bayne or designated lead)",
+        "Document all as-built configurations and system settings",
+        "Provide customer with passwords and administrative access securely"
+      ]},
+      { id: "4-2", title: "Operational Support & Incident Response", subtasks: [
+        "Establish incident management processes and logging system",
+        "Document alarm response procedures",
+        "Document escalation protocols",
+        "Document law enforcement coordination procedures",
+        "Document emergency communication protocols",
+        "Implement equipment failure response SOP with vendor coordination",
+        "Develop asset downtime tracking process for service level monitoring",
+        "Create cyber incident response playbook",
+        "Document system failure playbooks (C2, VMS, network)"
+      ]},
+      { id: "4-3", title: "Maintenance & Vendor Coordination", subtasks: [
+        "Establish field maintenance program with operator guides",
+        "Document battery management and equipment rotation SOP",
+        "Create vendor escalation playbook for repairs and warranty claims",
+        "Finalize SLAs and support contracts with all vendors",
+        "Implement preventive maintenance schedule",
+        "Track equipment status, maintenance history, and warranties"
+      ]},
+      { id: "4-4", title: "Performance Monitoring & Optimization", subtasks: [
+        "Monitor system performance against established SLAs",
+        "Track response times and incident resolution metrics",
+        "Collect customer feedback on performance and user experience",
+        "Document lessons learned and improvement opportunities",
+        "Conduct quarterly performance reviews with customer",
+        "Identify expansion and upsell opportunities"
+      ]},
+      { id: "4-5", title: "Compliance & Documentation", subtasks: [
+        "Maintain current FAA waiver compliance documentation",
+        "Update insurance certificates as required",
+        "Conduct quarterly compliance audits against waiver requirements",
+        "Document all incidents and safety events for regulatory reporting",
+        "Maintain up-to-date emergency contact procedures",
+        "Ensure all operator certifications remain current (FAA Part 107)"
+      ]},
+      { id: "4-6", title: "Continuous Improvement & Team Training", subtasks: [
+        "Conduct operator recertification training annually",
+        "Hold quarterly safety and procedure refresher trainings",
+        "Run periodic live system drills (simulated incidents)",
+        "Update Standard Operating Procedures based on experience",
+        "Share best practices across RSOC teams",
+        "Conduct management training on new features and updates"
+      ]}
     ]
   }
 ];
@@ -304,6 +437,7 @@ function App() {
           subtaskStatus: t.subtasks.map(() => false),
           ...(t.stakeholders ? { stakeholderContacts: Array.from({ length: 5 }, () => ({ name: "", email: "", phone: "" })) } : {}),
           ...(t.trackDates ? { orderTracking: t.subtasks.map(() => ({ ordered: "", shipped: "", eta: "", delivered: "", receivedBy: "" })) } : {}),
+          ...(t.equipmentPicker ? { equipmentSelections: {} } : {}),
         })),
       })),
     };
@@ -819,7 +953,16 @@ function ProjectView({ project, onBack, onUpdate, teamMembers = [] }) {
   const [expandedTask, setExpandedTask] = useState(null);
   const [filterText, setFilterText] = useState("");
   const [viewMode, setViewMode] = useState("list");
-  const [quantities, setQuantities] = useState(() => PRICING_CATALOG.map(() => 0));
+  const equipPickerTask = project.phases.flatMap(ph => ph.tasks).find(t => t.equipmentPicker);
+  const equipSelections = equipPickerTask?.equipmentSelections || {};
+  const [quantities, setQuantities] = useState(() => {
+    const sels = equipPickerTask?.equipmentSelections || {};
+    return PRICING_CATALOG.map(item => sels[item.name] || 0);
+  });
+  useEffect(() => {
+    setQuantities(PRICING_CATALOG.map(item => equipSelections[item.name] || 0));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(equipSelections)]);
   // Add task state
   const [addingTaskToPhase, setAddingTaskToPhase] = useState(null);
   const [newTaskTitle, setNewTaskTitle] = useState("");
@@ -858,6 +1001,7 @@ function ProjectView({ project, onBack, onUpdate, teamMembers = [] }) {
   };
 
   const isTaskDone = (task) => {
+    if (task.equipmentPicker) return Object.values(task.equipmentSelections || {}).some(q => q > 0);
     if (task.eitherOr) {
       const eitherOrDone = task.eitherOr.some((i) => task.subtaskStatus[i]);
       const othersDone = task.subtaskStatus.every((v, i) => task.eitherOr.includes(i) || v);
@@ -867,6 +1011,7 @@ function ProjectView({ project, onBack, onUpdate, teamMembers = [] }) {
   };
 
   const getEffectiveSubDone = (task) => {
+    if (task.equipmentPicker) return Object.values(task.equipmentSelections || {}).filter(q => q > 0).length;
     if (task.eitherOr) {
       const eitherOrDone = task.eitherOr.some((i) => task.subtaskStatus[i]) ? 1 : 0;
       const othersCount = task.subtaskStatus.filter((v, i) => !task.eitherOr.includes(i) && v).length;
@@ -876,8 +1021,20 @@ function ProjectView({ project, onBack, onUpdate, teamMembers = [] }) {
   };
 
   const getEffectiveSubTotal = (task) => {
+    if (task.equipmentPicker) return PRICING_CATALOG.filter(i => i.category !== "Installation & Services").length;
     if (task.eitherOr) return task.subtasks.length - task.eitherOr.length + 1;
     return task.subtasks.length;
+  };
+
+  const updateEquipmentSelection = (phaseIdx, taskIdx, itemName, qty) => {
+    onUpdate((p) => {
+      const np = JSON.parse(JSON.stringify(p));
+      const task = np.phases[phaseIdx].tasks[taskIdx];
+      if (!task.equipmentSelections) task.equipmentSelections = {};
+      if (qty <= 0) delete task.equipmentSelections[itemName];
+      else task.equipmentSelections[itemName] = qty;
+      return np;
+    });
   };
 
   const toggleTask = (phaseIdx, taskIdx) => {
@@ -1157,7 +1314,7 @@ function ProjectView({ project, onBack, onUpdate, teamMembers = [] }) {
           onCacheUpdate={(data) => onUpdate((p) => ({ ...p, weatherCache: data }))}
         />
       ) : viewMode === "pricing" ? (
-        <PricingView quantities={quantities} setQuantities={setQuantities} project={project} />
+        <PricingView quantities={quantities} setQuantities={setQuantities} project={project} equipSelections={equipSelections} />
       ) : viewMode === "kanban" ? (
         <KanbanView project={project} isPhaseUnlocked={isPhaseUnlocked} />
       ) : (
@@ -1172,8 +1329,6 @@ function ProjectView({ project, onBack, onUpdate, teamMembers = [] }) {
             const locked = !isPhaseUnlocked(pIdx);
             const status = getPhaseStatus(pIdx);
             const isSelected = expandedPhase === phase.id;
-            const gateCount = phase.tasks.filter((t) => t.gate).length;
-            const gatesDone = phase.tasks.filter((t) => t.gate && t.completed).length;
             const accent = status === "complete" ? "#22C55E" : phase.color;
             return (
               <div key={phase.id}
@@ -1199,7 +1354,6 @@ function ProjectView({ project, onBack, onUpdate, teamMembers = [] }) {
                 {/* Stats */}
                 <div style={{ display: "flex", gap: 10, fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: "rgba(255,255,255,0.28)" }}>
                   <span>{pDone}/{pTotal} tasks</span>
-                  {gateCount > 0 && <span style={{ color: gatesDone === gateCount ? "#22C55E" : "#F59E0B" }}>{gatesDone}/{gateCount} gates</span>}
                 </div>
               </div>
             );
@@ -1271,8 +1425,6 @@ function ProjectView({ project, onBack, onUpdate, teamMembers = [] }) {
                             </button>
                           </>
                         )}
-                        {task.gate && !task.completed && <span style={{ marginLeft: 4, fontSize: 9, fontWeight: 700, letterSpacing: 0.8, color: "#F59E0B", background: "rgba(245,158,11,0.12)", padding: "2px 6px", borderRadius: 4, verticalAlign: "middle", flexShrink: 0 }}>GATE</span>}
-                        {task.gate && task.completed && <span style={{ marginLeft: 4, fontSize: 9, fontWeight: 700, letterSpacing: 0.8, color: "#22C55E", background: "rgba(34,197,94,0.12)", padding: "2px 6px", borderRadius: 4, verticalAlign: "middle", flexShrink: 0 }}>GATE ✓</span>}
                       </div>
                       <div style={styles.taskBadges}>
                         <span style={styles.subtaskBadge}>{subDone}/{getEffectiveSubTotal(task)} items</span>
@@ -1288,8 +1440,48 @@ function ProjectView({ project, onBack, onUpdate, teamMembers = [] }) {
                   </div>
                   {isExpanded && (
                     <div style={styles.taskExpanded}>
+                      {task.equipmentPicker && (() => {
+                        const categories = [...new Set(PRICING_CATALOG.filter(i => i.category !== "Installation & Services").map(i => i.category))];
+                        const sels = task.equipmentSelections || {};
+                        return (
+                          <div>
+                            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 12, letterSpacing: 0.5 }}>SELECT EQUIPMENT &amp; QUANTITIES — no pricing shown here, use Pricing Tool for quotes</div>
+                            {categories.map(cat => {
+                              const items = PRICING_CATALOG.filter(i => i.category === cat);
+                              return (
+                                <div key={cat} style={{ marginBottom: 14 }}>
+                                  <div style={{ fontSize: 10, fontWeight: 700, color: phase.color, letterSpacing: 1, textTransform: "uppercase", marginBottom: 6, paddingBottom: 4, borderBottom: `1px solid ${phase.color}33` }}>{cat}</div>
+                                  {items.map(item => {
+                                    const qty = sels[item.name] || 0;
+                                    return (
+                                      <div key={item.name} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "5px 0", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                                        <span style={{ fontSize: 12, color: qty > 0 ? "#fff" : "rgba(255,255,255,0.55)", flex: 1 }}>{item.name}</span>
+                                        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+                                          <button onClick={() => updateEquipmentSelection(pIdx, realIdx, item.name, qty - 1)} style={{ width: 22, height: 22, borderRadius: 4, border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.06)", color: "#fff", cursor: "pointer", fontSize: 14, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
+                                          <span style={{ fontSize: 13, fontWeight: 600, color: qty > 0 ? phase.color : "rgba(255,255,255,0.3)", minWidth: 20, textAlign: "center" }}>{qty}</span>
+                                          <button onClick={() => updateEquipmentSelection(pIdx, realIdx, item.name, qty + 1)} style={{ width: 22, height: 22, borderRadius: 4, border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.06)", color: "#fff", cursor: "pointer", fontSize: 14, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            })}
+                            {Object.keys(sels).length > 0 && (
+                              <div style={{ marginTop: 10, padding: "8px 10px", background: "rgba(255,255,255,0.04)", borderRadius: 6, border: "1px solid rgba(255,255,255,0.08)" }}>
+                                <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.4)", letterSpacing: 1, marginBottom: 6 }}>SELECTED</div>
+                                {Object.entries(sels).filter(([,q]) => q > 0).map(([name, qty]) => (
+                                  <div key={name} style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", display: "flex", justifyContent: "space-between", padding: "2px 0" }}>
+                                    <span>{name}</span><span style={{ color: phase.color, fontWeight: 700 }}>×{qty}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                       <div style={styles.subtaskList}>
-                        {task.subtasks.map((sub, sIdx) => (
+                        {!task.equipmentPicker && task.subtasks.map((sub, sIdx) => (
                           <React.Fragment key={sIdx}>
                             {task.eitherOr && sIdx === task.eitherOr[0] && task.eitherOrLabel && (
                               <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0 2px 12px" }}>
@@ -1349,7 +1541,7 @@ function ProjectView({ project, onBack, onUpdate, teamMembers = [] }) {
                           </React.Fragment>
                         ))}
                       </div>
-                      {task.stakeholders && (
+                      {task.stakeholders && !task.equipmentPicker && (
                         <div style={{ marginTop: 12 }}>
                           <label style={{ ...styles.fieldLabelSm, marginBottom: 8, display: "block" }}>STAKEHOLDER CONTACTS</label>
                           {(task.stakeholderContacts || Array.from({ length: 5 }, () => ({ name: "", email: "", phone: "" }))).map((contact, cIdx) => (
@@ -1362,7 +1554,7 @@ function ProjectView({ project, onBack, onUpdate, teamMembers = [] }) {
                         </div>
                       )}
                       {/* Add Subtask */}
-                      <div style={{ marginTop: 8, marginBottom: 4 }}>
+                      {!task.equipmentPicker && <div style={{ marginTop: 8, marginBottom: 4 }}>
                         {addingSubtaskTo === task.id ? (
                           <div style={{ display: "flex", gap: 6, alignItems: "center", padding: "6px 0" }}>
                             <input autoFocus style={{ ...styles.fieldInput, flex: 1 }} placeholder="New subtask..." value={newSubtaskText} onChange={(e) => setNewSubtaskText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addSubtask(pIdx, realIdx); if (e.key === "Escape") { setAddingSubtaskTo(null); setNewSubtaskText(""); } }} />
@@ -1372,7 +1564,7 @@ function ProjectView({ project, onBack, onUpdate, teamMembers = [] }) {
                         ) : (
                           <button style={{ background: "none", border: "1px dashed rgba(255,255,255,0.15)", borderRadius: 6, color: "rgba(255,255,255,0.35)", fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, padding: "5px 12px", cursor: "pointer", width: "100%", textAlign: "left" }} onClick={() => { setAddingSubtaskTo(task.id); setNewSubtaskText(""); }}>+ Add subtask</button>
                         )}
-                      </div>
+                      </div>}
                       <div style={styles.taskFields}>
                         <div style={styles.fieldRow}>
                           <label style={styles.fieldLabelSm}>ASSIGNEE</label>
@@ -1782,7 +1974,7 @@ async function generateQuotePDF({ win, project, quantities, margin, customItems,
 
 
 // ─── PRICING VIEW ─────────────────────────────────────────────────────────
-function PricingView({ quantities, setQuantities, project }) {
+function PricingView({ quantities, setQuantities, project, equipSelections = {} }) {
   const [contactName,   setContactName]   = React.useState("");
   const [contactPhone,  setContactPhone]  = React.useState("");
   const [contactEmail,  setContactEmail]  = React.useState("");
@@ -1917,7 +2109,7 @@ function PricingView({ quantities, setQuantities, project }) {
       <div style={styles.pricingHeader}>
         <div>
           <h2 style={styles.pricingTitle}>Deployment Quote Builder</h2>
-          <p style={styles.pricingSubtitle}>Set quantities to calculate total deployment cost</p>
+          <p style={styles.pricingSubtitle}>Set quantities to calculate total deployment cost{Object.values(equipSelections || {}).some(q => q > 0) ? <span style={{ color: "#22c55e", marginLeft: 8, fontSize: 11 }}>● synced from Equipment Selection</span> : ""}</p>
         </div>
         <div style={styles.pricingTotal}>
           <span style={styles.pricingTotalLabel}>{payMonths ? `PER MONTH (${payMonths} MO)` : "CUSTOMER TOTAL"}</span>
@@ -3229,7 +3421,10 @@ function EquipmentTracker({ equipment, setEquipment, projects, teamMembers, onBa
   const [editId, setEditId] = useState(null);
   const [collapsedProjects, setCollapsedProjects] = useState({});
   const toggleProject = (id) => setCollapsedProjects(prev => ({ ...prev, [id]: !prev[id] }));
-  const emptyForm = { name: "", serialNumber: "", faaRegNumber: "", assignedOperator: "", assignedProjectId: "", dateOrdered: "", dateReceived: "", status: "ordered", notes: "" };
+  const [groups, setGroups] = useState([]); // custom group names
+  const [newGroupName, setNewGroupName] = useState("");
+  const [addingGroup, setAddingGroup] = useState(false);
+  const emptyForm = { name: "", serialNumber: "", faaRegNumber: "", assignedOperator: "", assignedProjectId: "", group: "", dateOrdered: "", dateReceived: "", status: "ordered", notes: "" };
   const [form, setForm] = useState(emptyForm);
 
   const statusColors = {
@@ -3242,40 +3437,64 @@ function EquipmentTracker({ equipment, setEquipment, projects, teamMembers, onBa
   };
   const statusLabels = {
     ordered: "ORDERED",
-    "in-transit": "IN TRANSIT",
-    received: "RECEIVED",
-    deployed: "DEPLOYED",
-    maintenance: "MAINTENANCE",
+    "in-transit": "SHIPPED",
+    received: "DELIVERED",
+    deployed: "OPERATIONAL",
+    maintenance: "MAINTENANCE REQ.",
     decommissioned: "DECOMMISSIONED",
   };
+  const [inlineEdit, setInlineEdit] = useState(null); // { id, field }
+  const [inlineVal, setInlineVal] = useState("");
 
-  // Derive auto-populated entries from projects' Phase 4 procurement tasks
+  // Derive auto-populated entries from equipment picker (Phase 1 task 1-4) and Phase 2 procurement tasks
   const autoProcured = [];
   for (const proj of projects) {
-    const phase4 = proj.phases.find(ph => ph.id === "phase-4");
-    if (!phase4) continue;
-    for (const task of phase4.tasks) {
+    // ── From equipment picker (task 1-4) ──
+    const pickerTask = proj.phases.flatMap(ph => ph.tasks).find(t => t.equipmentPicker);
+    if (pickerTask?.equipmentSelections) {
+      Object.entries(pickerTask.equipmentSelections).forEach(([itemName, qty]) => {
+        if (!qty || qty <= 0) return;
+        const cat = PRICING_CATALOG.find(i => i.name === itemName)?.category || "";
+        for (let unit = 1; unit <= qty; unit++) {
+          const autoId = `auto-picker-${proj.id}-${itemName}-${unit}`;
+          if (!equipment.some(e => e.autoId === autoId)) {
+            autoProcured.push({
+              id: autoId, autoId,
+              name: qty > 1 ? `${itemName} #${unit}` : itemName,
+              serialNumber: "", faaRegNumber: "", assignedOperator: "",
+              assignedProjectId: proj.id,
+              group: cat,
+              dateOrdered: "", dateReceived: "",
+              status: "ordered",
+              notes: "", isAuto: true,
+              projectName: proj.name,
+            });
+          }
+        }
+      });
+    }
+    // ── From Phase 2 procurement trackDates tasks ──
+    const phase2 = proj.phases.find(ph => ph.id === "phase-2");
+    if (!phase2) continue;
+    for (const task of phase2.tasks) {
       if (!task.trackDates || !task.orderTracking) continue;
       task.subtasks.forEach((subtaskName, i) => {
         const tracking = task.orderTracking[i] || {};
         const isSelected = task.subtaskStatus?.[i];
         if (isSelected || tracking.ordered) {
-          const cleanName = subtaskName.replace(/\s*[–-]\s*.+$/, "").trim();
+          const cleanName = subtaskName.replace(/\s*[→–-]\s*.+$/, "").trim();
           const autoId = `auto-${proj.id}-${task.id}-${i}`;
           if (!equipment.some(e => e.autoId === autoId)) {
             autoProcured.push({
-              id: autoId,
-              autoId: autoId,
+              id: autoId, autoId,
               name: cleanName,
-              serialNumber: "",
-              faaRegNumber: "",
-              assignedOperator: "",
+              serialNumber: "", faaRegNumber: "", assignedOperator: "",
               assignedProjectId: proj.id,
+              group: "",
               dateOrdered: tracking.ordered || "",
               dateReceived: tracking.delivered || "",
               status: tracking.delivered ? "received" : tracking.shipped ? "in-transit" : "ordered",
-              notes: "",
-              isAuto: true,
+              notes: "", isAuto: true,
               projectName: proj.name,
             });
           }
@@ -3284,7 +3503,8 @@ function EquipmentTracker({ equipment, setEquipment, projects, teamMembers, onBa
     }
   }
 
-  const merged = [...equipment, ...autoProcured];
+  const deletedAutoIds = new Set(equipment.filter(e => e._deleted).map(e => e.autoId).filter(Boolean));
+  const merged = [...equipment.filter(e => !e._deleted), ...autoProcured.filter(a => !deletedAutoIds.has(a.autoId))];
 
   const filtered = merged.filter(e => {
     if (search) {
@@ -3303,6 +3523,7 @@ function EquipmentTracker({ equipment, setEquipment, projects, teamMembers, onBa
       faaRegNumber: item.faaRegNumber || "",
       assignedOperator: item.assignedOperator || "",
       assignedProjectId: item.assignedProjectId || "",
+      group: item.group || "",
       dateOrdered: item.dateOrdered || "",
       dateReceived: item.dateReceived || "",
       status: item.status || "ordered",
@@ -3332,9 +3553,30 @@ function EquipmentTracker({ equipment, setEquipment, projects, teamMembers, onBa
   };
 
   const deleteItem = (item) => {
-    if (item.isAuto) return; // Can't delete auto items directly
-    setEquipment(equipment.filter(e => e.id !== item.id));
+    if (item.isAuto) {
+      // Convert auto item to a "deleted" manual override so it doesn't reappear
+      setEquipment([...equipment, { ...item, id: "eq-del-" + Date.now(), _deleted: true, isAuto: false }]);
+    } else {
+      setEquipment(equipment.filter(e => e.id !== item.id));
+    }
   };
+
+  const startInline = (item, field) => {
+    setInlineEdit({ id: item.id || item.autoId, field });
+    setInlineVal(item[field] || "");
+  };
+  const commitInline = (item) => {
+    if (!inlineEdit) return;
+    const updates = { [inlineEdit.field]: inlineVal };
+    if (item.isAuto) {
+      setEquipment([...equipment, { ...item, id: "eq-" + Date.now(), isAuto: false, ...updates }]);
+    } else {
+      setEquipment(equipment.map(e => e.id === item.id ? { ...e, ...updates } : e));
+    }
+    setInlineEdit(null);
+    setInlineVal("");
+  };
+  const isEditing = (item, field) => inlineEdit?.id === (item.id || item.autoId) && inlineEdit?.field === field;
 
   // Stats
   const totalItems = merged.length;
@@ -3353,19 +3595,95 @@ function EquipmentTracker({ equipment, setEquipment, projects, teamMembers, onBa
     );
   };
 
-  // Group helpers
-  const groupBy = (arr, keyFn) => {
-    const map = {};
-    arr.forEach(item => {
-      const k = keyFn(item) || "Unassigned";
-      if (!map[k]) map[k] = [];
-      map[k].push(item);
-    });
-    return map;
-  };
-
   const inputSm = { width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, padding: "8px 12px", color: "#E8ECF4", fontSize: 12, outline: "none", fontFamily: "'IBM Plex Mono', monospace" };
   const labelSm = { display: "block", fontFamily: "'Chakra Petch', sans-serif", fontSize: 9, fontWeight: 600, letterSpacing: 1.5, color: "rgba(255,255,255,0.35)", marginBottom: 5, textTransform: "uppercase" };
+  const inlineCellStyle = { fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: "rgba(255,255,255,0.35)", cursor: "text", borderRadius: 4, padding: "2px 4px", transition: "background 0.15s" };
+  const inlineInputStyle = { background: "rgba(255,255,255,0.08)", border: "1px solid rgba(196,30,58,0.5)", borderRadius: 4, padding: "2px 6px", color: "#E8ECF4", fontSize: 11, outline: "none", fontFamily: "'IBM Plex Mono', monospace", width: "100%" };
+
+  const EquipRow = ({ item, showProject }) => (
+    <div style={{ display: "grid", gridTemplateColumns: showProject ? "2fr 1fr 1fr 1fr 1fr 1fr auto" : "2fr 1fr 1fr 1fr 1fr auto", gap: 0, padding: "11px 18px", borderBottom: "1px solid rgba(255,255,255,0.04)", alignItems: "center", transition: "background 0.15s" }}
+      onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.02)"}
+      onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+    >
+      {/* Name */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 12, fontWeight: 600, color: "#E8ECF4" }}>{item.name}</span>
+        {item.isAuto && <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 8, fontWeight: 700, color: "#F59E0B", background: "rgba(245,158,11,0.15)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: 3, padding: "1px 5px" }}>AUTO</span>}
+      </div>
+      {/* Project (optional column) */}
+      {showProject && <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: "rgba(255,255,255,0.4)" }}>{getProjName(item)}</div>}
+      {/* Serial # — inline editable */}
+      <div onClick={() => { startInline(item, "serialNumber"); }}>
+        {isEditing(item, "serialNumber") ? (
+          <input autoFocus style={inlineInputStyle} value={inlineVal} onChange={e => setInlineVal(e.target.value)}
+            onBlur={() => commitInline(item)}
+            onKeyDown={e => { if (e.key === "Enter") commitInline(item); if (e.key === "Escape") { setInlineEdit(null); } }}
+          />
+        ) : (
+          <span style={{ ...inlineCellStyle, color: item.serialNumber ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.2)" }}
+            onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.06)"}
+            onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+            title="Click to edit">{item.serialNumber || "click to add"}</span>
+        )}
+      </div>
+      {/* FAA Reg # — inline editable */}
+      <div onClick={() => startInline(item, "faaRegNumber")}>
+        {isEditing(item, "faaRegNumber") ? (
+          <input autoFocus style={inlineInputStyle} value={inlineVal} onChange={e => setInlineVal(e.target.value)}
+            onBlur={() => commitInline(item)}
+            onKeyDown={e => { if (e.key === "Enter") commitInline(item); if (e.key === "Escape") setInlineEdit(null); }}
+          />
+        ) : (
+          <span style={{ ...inlineCellStyle, color: item.faaRegNumber ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.2)" }}
+            onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.06)"}
+            onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+            title="Click to edit">{item.faaRegNumber || "click to add"}</span>
+        )}
+      </div>
+      {/* Operator — inline dropdown */}
+      <div>
+        {isEditing(item, "assignedOperator") ? (
+          <select autoFocus style={{ ...inlineInputStyle, padding: "2px 4px" }} value={inlineVal} onChange={e => setInlineVal(e.target.value)}
+            onBlur={() => commitInline(item)}
+            onKeyDown={e => { if (e.key === "Escape") setInlineEdit(null); }}
+          >
+            <option value="">— Unassigned —</option>
+            {teamMembers.map(m => <option key={m.id} value={m.name}>{m.name}{m.role ? ` (${m.role})` : ""}</option>)}
+          </select>
+        ) : (
+          <span style={{ ...inlineCellStyle, color: item.assignedOperator ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.2)" }}
+            onClick={() => startInline(item, "assignedOperator")}
+            onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.06)"}
+            onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+            title="Click to assign operator">{item.assignedOperator || "unassigned"}</span>
+        )}
+      </div>
+      {/* Status — inline dropdown */}
+      <div>
+        {isEditing(item, "status") ? (
+          <select autoFocus style={{ ...inlineInputStyle, padding: "2px 4px", color: statusColors[inlineVal] || "#E8ECF4" }} value={inlineVal} onChange={e => setInlineVal(e.target.value)}
+            onBlur={() => commitInline(item)}
+            onKeyDown={e => { if (e.key === "Escape") setInlineEdit(null); }}
+          >
+            {Object.entries(statusLabels).map(([val, lbl]) => <option key={val} value={val}>{lbl}</option>)}
+          </select>
+        ) : (
+          <span onClick={() => startInline(item, "status")} title="Click to change status" style={{ cursor: "pointer" }}>
+            <StatusBadge status={item.status} />
+          </span>
+        )}
+      </div>
+      {/* Actions */}
+      <div style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}>
+        <button onClick={() => openEdit(item)} style={{ background: "none", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 4, cursor: "pointer", color: "rgba(255,255,255,0.4)", padding: "4px 8px", display: "flex", alignItems: "center" }} title="Edit all fields">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M8.5 1.5L10.5 3.5L4 10H2V8L8.5 1.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        </button>
+        <button onClick={() => deleteItem(item)} style={{ background: "none", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 4, cursor: "pointer", color: "rgba(255,100,100,0.5)", padding: "4px 8px", display: "flex", alignItems: "center" }} title={item.isAuto ? "Remove from tracker" : "Delete"}>
+          {Icons.trash}
+        </button>
+      </div>
+    </div>
+  );
 
   return (
     <div style={styles.container}>
@@ -3379,7 +3697,10 @@ function EquipmentTracker({ equipment, setEquipment, projects, teamMembers, onBa
             <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.35)", letterSpacing: 1.5, marginTop: 2 }}>DEUS X DEFENSE</div>
           </div>
         </div>
-        <button style={styles.primaryBtn} onClick={openAdd}>{Icons.plus}<span>ADD EQUIPMENT</span></button>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button style={{ ...styles.ghostBtn, borderColor: "rgba(139,92,246,0.3)", color: "#8B5CF6" }} onClick={() => setAddingGroup(true)}>{Icons.plus}<span>NEW GROUP</span></button>
+          <button style={styles.primaryBtn} onClick={openAdd}>{Icons.plus}<span>ADD EQUIPMENT</span></button>
+        </div>
       </div>
 
       {/* Stats Row */}
@@ -3418,9 +3739,21 @@ function EquipmentTracker({ equipment, setEquipment, projects, teamMembers, onBa
         <div style={{ background: "rgba(20,20,24,0.98)", border: "1px solid rgba(196,30,58,0.35)", borderRadius: 14, padding: "20px 24px", marginBottom: 24, animation: "fadeSlideIn 0.25s ease" }}>
           <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 11, color: "#C41E3A", letterSpacing: 1.5, marginBottom: 16 }}>{editId ? "EDIT EQUIPMENT" : "ADD EQUIPMENT"}</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
-            <div style={{ gridColumn: "1 / -1" }}>
+            <div>
               <label style={labelSm}>Equipment Name *</label>
               <input style={inputSm} placeholder="e.g. DJI Dock 3" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+            </div>
+            <div style={{ gridColumn: "2 / -1" }}>
+              <label style={labelSm}>Group / Category</label>
+              {groups.length > 0 ? (
+                <select style={{ ...inputSm, color: form.group ? "#E8ECF4" : "rgba(255,255,255,0.3)" }} value={form.group} onChange={e => setForm(f => ({ ...f, group: e.target.value === "__new__" ? "" : e.target.value }))}>
+                  <option value="">— No group —</option>
+                  {groups.map(g => <option key={g} value={g}>{g}</option>)}
+                  <option value="__new__">+ Create new group...</option>
+                </select>
+              ) : (
+                <input style={inputSm} placeholder="e.g. DJI Dock 3, DAA, Accessories..." value={form.group} onChange={e => setForm(f => ({ ...f, group: e.target.value }))} />
+              )}
             </div>
             <div>
               <label style={labelSm}>Serial Number</label>
@@ -3484,70 +3817,6 @@ function EquipmentTracker({ equipment, setEquipment, projects, teamMembers, onBa
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
 
-          {/* ── SECTION 1: Operator Assigned Equipment ── */}
-          {(() => {
-            const assigned = filtered.filter(e => e.assignedOperator && e.assignedOperator.trim());
-            const byOp = groupBy(assigned, e => e.assignedOperator);
-            return (
-              <div>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-                  <div style={{ width: 3, height: 18, background: "#C41E3A", borderRadius: 2 }} />
-                  <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: 2, color: "rgba(255,255,255,0.5)", textTransform: "uppercase" }}>Operator Assigned Equipment</span>
-                  <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.05)", padding: "2px 10px", borderRadius: 10 }}>{assigned.length}</span>
-                </div>
-                {assigned.length === 0 ? (
-                  <div style={{ background: "rgba(255,255,255,0.02)", border: "1px dashed rgba(255,255,255,0.07)", borderRadius: 10, padding: "20px 24px", fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: "rgba(255,255,255,0.2)", textAlign: "center" }}>
-                    No equipment assigned to operators yet — edit an item to assign it.
-                  </div>
-                ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                    {Object.entries(byOp).map(([opName, items]) => (
-                      <div key={opName} style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, overflow: "hidden" }}>
-                        {/* Operator header */}
-                        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 18px", background: "rgba(255,255,255,0.03)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                          <div style={{ width: 30, height: 30, borderRadius: "50%", background: "linear-gradient(135deg, #C41E3A, #7a1224)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Chakra Petch', sans-serif", fontSize: 11, fontWeight: 700, color: "#fff", flexShrink: 0 }}>
-                            {opName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
-                          </div>
-                          <div>
-                            <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 13, fontWeight: 700, color: "#E8ECF4", letterSpacing: 0.5 }}>{opName}</div>
-                            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, color: "rgba(255,255,255,0.3)", marginTop: 1 }}>{items.length} ITEM{items.length !== 1 ? "S" : ""} ASSIGNED</div>
-                          </div>
-                          <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
-                            {["deployed","in-transit","received","ordered"].map(s => {
-                              const cnt = items.filter(i => i.status === s).length;
-                              if (!cnt) return null;
-                              return <span key={s} style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, color: statusColors[s], background: `${statusColors[s]}18`, border: `1px solid ${statusColors[s]}33`, borderRadius: 4, padding: "2px 8px" }}>{cnt} {statusLabels[s]}</span>;
-                            })}
-                          </div>
-                        </div>
-                        {/* Equipment rows */}
-                        {items.map((item, idx) => (
-                          <div key={item.id} style={{ display: "grid", gridTemplateColumns: "2fr 1.2fr 1fr 1fr 1fr auto", gap: 0, padding: "11px 18px", borderBottom: idx < items.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none", alignItems: "center" }}
-                            onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.02)"}
-                            onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-                          >
-                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                              <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 12, fontWeight: 600, color: "#E8ECF4" }}>{item.name}</span>
-                              {item.isAuto && <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 8, fontWeight: 700, color: "#F59E0B", background: "rgba(245,158,11,0.15)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: 3, padding: "1px 5px" }}>AUTO</span>}
-                            </div>
-                            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: "rgba(255,255,255,0.4)" }}>{getProjName(item)}</div>
-                            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: "rgba(255,255,255,0.35)" }}>{item.serialNumber || "—"}</div>
-                            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: "rgba(255,255,255,0.35)" }}>{item.faaRegNumber || "—"}</div>
-                            <div><StatusBadge status={item.status} /></div>
-                            <div style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}>
-                              <button onClick={() => openEdit(item)} style={{ background: "none", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 4, cursor: "pointer", color: "rgba(255,255,255,0.4)", padding: "4px 8px", display: "flex", alignItems: "center" }} title="Edit"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M8.5 1.5L10.5 3.5L4 10H2V8L8.5 1.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
-                              {!item.isAuto && <button onClick={() => deleteItem(item)} style={{ background: "none", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 4, cursor: "pointer", color: "rgba(255,100,100,0.5)", padding: "4px 8px", display: "flex", alignItems: "center" }}>{Icons.trash}</button>}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })()}
-
           {/* ── SECTION 2: Per-Project Sections ── */}
           {(() => {
             // Build list of all projects that have equipment, plus an "Unassigned" bucket
@@ -3591,36 +3860,31 @@ function EquipmentTracker({ equipment, setEquipment, projects, teamMembers, onBa
                             )}
                           </div>
                           <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.25)", background: "rgba(255,255,255,0.06)", padding: "2px 10px", borderRadius: 10, flexShrink: 0 }}>{projItems.length} ITEM{projItems.length !== 1 ? "S" : ""}</span>
+                          <button onClick={e => { e.stopPropagation(); setForm({ ...emptyForm, assignedProjectId: proj.id === "__none__" ? "" : proj.id }); setEditId(null); setShowForm(true); }} style={{ background: "rgba(196,30,58,0.15)", border: "1px solid rgba(196,30,58,0.3)", borderRadius: 6, cursor: "pointer", color: "#C41E3A", padding: "4px 10px", fontSize: 11, fontFamily: "'Chakra Petch', sans-serif", letterSpacing: 0.5, flexShrink: 0 }}>+ Add</button>
                         </div>
                         {/* Collapsible body */}
-                        {!isCollapsed && <>
-                        {/* Column headers */}
-                        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr auto", gap: 0, padding: "7px 18px", background: "rgba(0,0,0,0.15)", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                          {["NAME", "SERIAL #", "FAA REG #", "OPERATOR", "STATUS", ""].map((h, i) => (
-                            <div key={i} style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color: "rgba(255,255,255,0.25)" }}>{h}</div>
-                          ))}
-                        </div>
-                        {/* Equipment rows */}
-                        {projItems.map((item, idx) => (
-                          <div key={item.id} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr auto", gap: 0, padding: "11px 18px", borderBottom: idx < projItems.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none", alignItems: "center", transition: "background 0.15s" }}
-                            onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.02)"}
-                            onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-                          >
-                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                              <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 12, fontWeight: 600, color: "#E8ECF4" }}>{item.name}</span>
-                              {item.isAuto && <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 8, fontWeight: 700, color: "#F59E0B", background: "rgba(245,158,11,0.15)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: 3, padding: "1px 5px" }}>AUTO</span>}
+                        {!isCollapsed && (() => {
+                          const subGroups = [...new Set(projItems.map(i => i.group || ""))];
+                          const hasGroups = subGroups.some(g => g);
+                          return (
+                            <>
+                            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr auto", gap: 0, padding: "7px 18px", background: "rgba(0,0,0,0.15)", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                              {["NAME", "SERIAL #", "FAA REG #", "OPERATOR", "STATUS", ""].map((h, i) => (
+                                <div key={i} style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color: "rgba(255,255,255,0.25)" }}>{h}</div>
+                              ))}
                             </div>
-                            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: "rgba(255,255,255,0.35)" }}>{item.serialNumber || "—"}</div>
-                            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: "rgba(255,255,255,0.35)" }}>{item.faaRegNumber || "—"}</div>
-                            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: "rgba(255,255,255,0.4)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.assignedOperator || "—"}</div>
-                            <div><StatusBadge status={item.status} /></div>
-                            <div style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}>
-                              <button onClick={() => openEdit(item)} style={{ background: "none", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 4, cursor: "pointer", color: "rgba(255,255,255,0.4)", padding: "4px 8px", display: "flex", alignItems: "center" }} title="Edit"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M8.5 1.5L10.5 3.5L4 10H2V8L8.5 1.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
-                              {!item.isAuto && <button onClick={() => deleteItem(item)} style={{ background: "none", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 4, cursor: "pointer", color: "rgba(255,100,100,0.5)", padding: "4px 8px", display: "flex", alignItems: "center" }}>{Icons.trash}</button>}
-                            </div>
-                          </div>
-                        ))}
-                        </>}
+                            {hasGroups ? subGroups.map(grp => {
+                              const grpItems = projItems.filter(i => (i.group || "") === grp);
+                              return (
+                                <div key={grp || "__nogrp__"}>
+                                  {grp && <div style={{ padding: "5px 18px", fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color: "#C41E3A", background: "rgba(196,30,58,0.06)", borderBottom: "1px solid rgba(196,30,58,0.1)", textTransform: "uppercase", fontFamily: "'Chakra Petch', sans-serif" }}>{grp}</div>}
+                                  {grpItems.map(item => <EquipRow key={item.id || item.autoId} item={item} />)}
+                                </div>
+                              );
+                            }) : projItems.map(item => <EquipRow key={item.id || item.autoId} item={item} />)}
+                            </>
+                          );
+                        })()}
                       </div>
                     );
                   })}
@@ -3628,6 +3892,62 @@ function EquipmentTracker({ equipment, setEquipment, projects, teamMembers, onBa
               </div>
             );
           })()}
+
+          {/* ── SECTION 3: Custom Groups ── */}
+          {(addingGroup || groups.length > 0) && (
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+                <div style={{ width: 3, height: 18, background: "#8B5CF6", borderRadius: 2 }} />
+                <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: 2, color: "rgba(255,255,255,0.5)", textTransform: "uppercase" }}>Custom Groups</span>
+                <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.05)", padding: "2px 10px", borderRadius: 10 }}>{groups.length} GROUP{groups.length !== 1 ? "S" : ""}</span>
+              </div>
+              {addingGroup && (
+                <div style={{ display: "flex", gap: 8, marginBottom: 14, alignItems: "center" }}>
+                  <input autoFocus style={{ ...inputSm, flex: 1 }} placeholder="Group name (e.g. Site A Equipment, Spare Parts...)" value={newGroupName} onChange={e => setNewGroupName(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === "Enter" && newGroupName.trim()) { setGroups(g => [newGroupName.trim(), ...g]); setNewGroupName(""); setAddingGroup(false); }
+                      if (e.key === "Escape") { setAddingGroup(false); setNewGroupName(""); }
+                    }} />
+                  <button style={styles.primaryBtn} onClick={() => { if (newGroupName.trim()) { setGroups(g => [newGroupName.trim(), ...g]); setNewGroupName(""); setAddingGroup(false); } }}>CREATE</button>
+                  <button style={styles.ghostBtn} onClick={() => { setAddingGroup(false); setNewGroupName(""); }}>✕</button>
+                </div>
+              )}
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                {groups.map(grpName => {
+                  const grpItems = filtered.filter(e => e.group === grpName);
+                  const isCollapsed = !!collapsedProjects[`grp-${grpName}`];
+                  return (
+                    <div key={grpName} style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, overflow: "hidden" }}>
+                      {/* Group header — same layout as project header */}
+                      <div onClick={() => toggleProject(`grp-${grpName}`)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 18px", background: "rgba(255,255,255,0.03)", borderBottom: isCollapsed ? "none" : "1px solid rgba(255,255,255,0.05)", cursor: "pointer", userSelect: "none", transition: "background 0.15s" }}
+                        onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.055)"}
+                        onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.03)"}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0, transition: "transform 0.2s", transform: isCollapsed ? "rotate(-90deg)" : "rotate(0deg)", color: "rgba(255,255,255,0.35)" }}><path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        <span style={{ width: 9, height: 9, borderRadius: "50%", background: "#8B5CF6", boxShadow: "0 0 7px #8B5CF688", flexShrink: 0, display: "inline-block" }} />
+                        <div style={{ flex: 1, fontFamily: "'Chakra Petch', sans-serif", fontSize: 14, fontWeight: 700, color: "#E8ECF4", letterSpacing: 0.3 }}>{grpName}</div>
+                        <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.25)", background: "rgba(255,255,255,0.06)", padding: "2px 10px", borderRadius: 10, flexShrink: 0 }}>{grpItems.length} ITEM{grpItems.length !== 1 ? "S" : ""}</span>
+                        <button onClick={e => { e.stopPropagation(); setForm({ ...emptyForm, group: grpName }); setEditId(null); setShowForm(true); }} style={{ background: "rgba(196,30,58,0.15)", border: "1px solid rgba(196,30,58,0.3)", borderRadius: 6, cursor: "pointer", color: "#C41E3A", padding: "4px 10px", fontSize: 11, fontFamily: "'Chakra Petch', sans-serif", letterSpacing: 0.5, flexShrink: 0 }}>+ Add</button>
+                        <button onClick={e => { e.stopPropagation(); setGroups(g => g.filter(n => n !== grpName)); }} style={{ background: "none", border: "1px solid rgba(255,100,100,0.2)", borderRadius: 4, cursor: "pointer", color: "rgba(255,100,100,0.4)", padding: "4px 8px", fontSize: 11, flexShrink: 0 }} title="Delete group">✕</button>
+                      </div>
+                      {!isCollapsed && (
+                        grpItems.length === 0 ? (
+                          <div style={{ padding: "20px 18px", fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: "rgba(255,255,255,0.2)", textAlign: "center" }}>No items yet — click "+ Add" to add equipment to this group.</div>
+                        ) : (
+                          <>
+                          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr auto", gap: 0, padding: "7px 18px", background: "rgba(0,0,0,0.15)", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                            {["NAME", "SERIAL #", "FAA REG #", "OPERATOR", "STATUS", ""].map((h, i) => <div key={i} style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color: "rgba(255,255,255,0.25)" }}>{h}</div>)}
+                          </div>
+                          {grpItems.map(item => <EquipRow key={item.id || item.autoId} item={item} />)}
+                          </>
+                        )
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
         </div>
       )}
