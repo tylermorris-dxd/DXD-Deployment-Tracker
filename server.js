@@ -4,9 +4,10 @@ const envVars = result.parsed || {};
 
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
 
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 const API_KEY = envVars.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY;
 
 app.use(cors({ origin: "http://localhost:3000" }));
@@ -76,7 +77,15 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok", hasKey: !!API_KEY && API_KEY !== "your-key-here" });
 });
 
+// Serve React build in production
+if (process.env.NODE_ENV === "production") {
+  app.use(express.static(path.join(__dirname, "build")));
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(__dirname, "build", "index.html"));
+  });
+}
+
 app.listen(PORT, () => {
-  console.log(`\n  DXD Proxy Server running on http://localhost:${PORT}`);
+  console.log(`\n  DXD Server running on port ${PORT}`);
   console.log(`  API Key: ${API_KEY && API_KEY !== "your-key-here" ? "configured" : "NOT SET -- edit .env file"}\n`);
 });
