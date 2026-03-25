@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/DXD-Deployment-Tracker/static/css/main.a6519519.css",
+    "main.js": "/DXD-Deployment-Tracker/static/js/main.da7edf3f.js",
+    "static/js/453.1c7476f7.chunk.js": "/DXD-Deployment-Tracker/static/js/453.1c7476f7.chunk.js",
+    "index.html": "/DXD-Deployment-Tracker/index.html",
+    "main.a6519519.css.map": "/DXD-Deployment-Tracker/static/css/main.a6519519.css.map",
+    "main.da7edf3f.js.map": "/DXD-Deployment-Tracker/static/js/main.da7edf3f.js.map",
+    "453.1c7476f7.chunk.js.map": "/DXD-Deployment-Tracker/static/js/453.1c7476f7.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.a6519519.css",
+    "static/js/main.da7edf3f.js"
+  ]
+}
