@@ -1104,16 +1104,14 @@ function ProjectView({ project, onBack, onUpdate, teamMembers = [] }) {
   const [editingTaskTitle, setEditingTaskTitle] = useState("");
   const [editingSubtask, setEditingSubtask] = useState(null); // { taskId, sIdx }
   const [editingSubtaskText, setEditingSubtaskText] = useState("");
+  const [openSubtaskNote, setOpenSubtaskNote] = useState(null); // { taskId, sIdx }
+  const [dragOverTask, setDragOverTask] = useState(null); // { pIdx, taskIdx }
 
   const totalTasks = project.phases.reduce((a, ph) => a + ph.tasks.length, 0);
   const doneTasks = project.phases.reduce((a, ph) => a + ph.tasks.filter((t) => t.completed).length, 0);
   const overallPct = totalTasks ? Math.round((doneTasks / totalTasks) * 100) : 0;
 
-  const isPhaseUnlocked = (pIdx) => {
-    if (pIdx === 0) return true;
-    const prev = project.phases[pIdx - 1];
-    return prev && prev.tasks.every((t) => t.completed);
-  };
+  const isPhaseUnlocked = (pIdx) => true;
 
   const getPhaseStatus = (pIdx) => {
     const phase = project.phases[pIdx];
@@ -1194,6 +1192,33 @@ function ProjectView({ project, onBack, onUpdate, teamMembers = [] }) {
     onUpdate((p) => { const np = JSON.parse(JSON.stringify(p)); np.phases[phaseIdx].tasks[taskIdx].subtasks[subIdx] = value; return np; });
   };
 
+  const updateSubtaskNote = (phaseIdx, taskIdx, subIdx, value) => {
+    onUpdate((p) => {
+      const np = JSON.parse(JSON.stringify(p));
+      const task = np.phases[phaseIdx].tasks[taskIdx];
+      if (!task.subtaskNotes) task.subtaskNotes = task.subtasks.map(() => "");
+      task.subtaskNotes[subIdx] = value;
+      return np;
+    });
+  };
+
+  const attachFile = (phaseIdx, taskIdx, file) => {
+    if (!file) return;
+    if (file.size > 20 * 1024 * 1024) { alert("File too large. Maximum size is 20MB."); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const attachment = { id: `att-${Date.now()}`, name: file.name, type: file.type, size: file.size, data: reader.result, addedAt: new Date().toISOString() };
+      onUpdate((p) => {
+        const np = JSON.parse(JSON.stringify(p));
+        const task = np.phases[phaseIdx].tasks[taskIdx];
+        if (!task.attachments) task.attachments = [];
+        task.attachments.push(attachment);
+        return np;
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
   const commitTaskTitle = (phaseIdx, taskIdx) => {
     if (editingTaskTitle.trim()) updateTaskField(phaseIdx, taskIdx, "title", editingTaskTitle.trim());
     setEditingTaskId(null);
@@ -1272,19 +1297,7 @@ function ProjectView({ project, onBack, onUpdate, teamMembers = [] }) {
     const file = e.target.files[0];
     if (!file || !pendingAttach) return;
     const { phaseIdx, taskIdx } = pendingAttach;
-    if (file.size > 5 * 1024 * 1024) { alert("File too large. Maximum size is 5MB."); return; }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const attachment = { id: `att-${Date.now()}`, name: file.name, type: file.type, size: file.size, data: reader.result, addedAt: new Date().toISOString() };
-      onUpdate((p) => {
-        const np = JSON.parse(JSON.stringify(p));
-        const task = np.phases[phaseIdx].tasks[taskIdx];
-        if (!task.attachments) task.attachments = [];
-        task.attachments.push(attachment);
-        return np;
-      });
-    };
-    reader.readAsDataURL(file);
+    attachFile(phaseIdx, taskIdx, file);
     setPendingAttach(null);
   };
 
@@ -1658,10 +1671,24 @@ function ProjectView({ project, onBack, onUpdate, teamMembers = [] }) {
                                   <button onClick={(e) => { e.stopPropagation(); setEditingSubtask({ taskId: task.id, sIdx }); setEditingSubtaskText(sub); }} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.18)", padding: "0 3px", lineHeight: 1, flexShrink: 0 }} title="Edit subtask">
                                     <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M8.5 1.5l2 2-7 7H1.5v-2l7-7z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
                                   </button>
+                                  <button onClick={(e) => { e.stopPropagation(); setOpenSubtaskNote(openSubtaskNote?.taskId === task.id && openSubtaskNote?.sIdx === sIdx ? null : { taskId: task.id, sIdx }); }} style={{ background: "none", border: "none", cursor: "pointer", color: (task.subtaskNotes || [])[sIdx] ? phase.color : "rgba(255,255,255,0.18)", padding: "0 3px", lineHeight: 1, flexShrink: 0 }} title="Add note">
+                                    <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2 2h8v7H7l-2 2V9H2V2z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                  </button>
                                 </>
                               )}
                               {task.custom && editingSubtask?.taskId !== task.id && <button onClick={(e) => { e.stopPropagation(); deleteSubtask(pIdx, realIdx, sIdx); }} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.2)", padding: "0 4px", fontSize: 10, lineHeight: 1 }} title="Remove subtask">✕</button>}
                             </div>
+                            {openSubtaskNote?.taskId === task.id && openSubtaskNote?.sIdx === sIdx && (
+                              <div style={{ marginLeft: 28, marginBottom: 6, marginTop: 2 }} onClick={(e) => e.stopPropagation()}>
+                                <textarea
+                                  autoFocus
+                                  placeholder="Add a note for this subtask..."
+                                  value={(task.subtaskNotes || [])[sIdx] || ""}
+                                  onChange={(e) => updateSubtaskNote(pIdx, realIdx, sIdx, e.target.value)}
+                                  style={{ ...styles.fieldInput, width: "100%", minHeight: 52, resize: "vertical", fontSize: 11, color: "rgba(255,255,255,0.7)", boxSizing: "border-box" }}
+                                />
+                              </div>
+                            )}
                             {task.trackDates && task.subtaskStatus[sIdx] && (() => {
                               const tracking = (task.orderTracking || [])[sIdx] || { ordered: "", shipped: "", eta: "", delivered: "", receivedBy: "" };
                               return (
@@ -1732,8 +1759,14 @@ function ProjectView({ project, onBack, onUpdate, teamMembers = [] }) {
                           <label style={styles.fieldLabelSm}>ATTACHMENTS</label>
                           <button style={styles.attachBtn} onClick={() => handleAttachClick(pIdx, realIdx)}>{Icons.paperclip}<span>Attach File</span></button>
                         </div>
+                        <div
+                          onDragOver={(e) => { e.preventDefault(); setDragOverTask(pIdx + "-" + realIdx); }}
+                          onDragLeave={() => setDragOverTask(null)}
+                          onDrop={(e) => { e.preventDefault(); setDragOverTask(null); Array.from(e.dataTransfer.files).forEach(f => attachFile(pIdx, realIdx, f)); }}
+                          style={{ border: "2px dashed " + (dragOverTask === pIdx + "-" + realIdx ? phase.color : "rgba(255,255,255,0.08)"), borderRadius: 6, padding: "8px 10px", minHeight: 36, transition: "border-color 0.15s", background: dragOverTask === pIdx + "-" + realIdx ? phase.color + "10" : "transparent" }}
+                        >
                         {(task.attachments || []).length === 0 ? (
-                          <div style={styles.attachEmpty}>No files attached.</div>
+                          <div style={{ ...styles.attachEmpty, textAlign: "center", padding: "6px 0" }}>Drop files here or click Attach File</div>
                         ) : (
                           <div style={styles.attachList}>
                             {task.attachments.map((att) => (
@@ -1751,6 +1784,7 @@ function ProjectView({ project, onBack, onUpdate, teamMembers = [] }) {
                             ))}
                           </div>
                         )}
+                        </div>
                       </div>
                     </div>
                   )}
