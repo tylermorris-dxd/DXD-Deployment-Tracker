@@ -2,7 +2,7 @@
   "name": "dxd-deployment-tracker",
   "version": "0.1.0",
   "private": true,
-  "homepage": "https://tylermorris-dxd.github.io/DXD-Deployment-Tracker",
+  "homepage": "/",
   "dependencies": {
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
