@@ -32,7 +32,7 @@ async fn create_task(
     )
     .fetch_one(&state.pool)
     .await?
-    .unwrap_or(-1);
+    .unwrap_or(-1) as i64;
 
     let task_id = format!("ctask-{}", &Uuid::new_v4().to_string().replace('-', "")[..16]);
     let assignee = body.assignee.unwrap_or_default();
@@ -139,7 +139,7 @@ async fn create_subtask(
     )
     .fetch_one(&state.pool)
     .await?
-    .unwrap_or(-1);
+    .unwrap_or(-1) as i64;
 
     let sort_index = max_idx + 1;
 
@@ -153,7 +153,7 @@ async fn create_subtask(
     Ok((StatusCode::CREATED, Json(SubtaskRow {
         id,
         task_id,
-        sort_index,
+        sort_index: sort_index as i32,
         text: body.text,
         is_done: false,
         note: String::new(),

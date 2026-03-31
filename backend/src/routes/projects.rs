@@ -267,7 +267,7 @@ async fn get_project(
                         track_dates: t.track_dates,
                         has_stakeholders: t.has_stakeholders,
                         has_equipment_picker: t.has_equipment_picker,
-                        sort_order: t.sort_order,
+                        sort_order: t.sort_order as i64,
                         subtasks,
                         stakeholder_contacts,
                         attachments,
