@@ -6,13 +6,13 @@ use axum::{
 };
 use serde::Deserialize;
 use serde_json::{json, Value};
-use sqlx::SqlitePool;
+use sqlx::PgPool;
 
 use crate::error::AppError;
 
 #[derive(Clone)]
 pub struct AppState {
-    pub pool: SqlitePool,
+    pub pool: PgPool,
     pub http: reqwest::Client,
 }
 

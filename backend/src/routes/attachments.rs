@@ -3,7 +3,7 @@ use axum::{
     extract::{Multipart, Path, State},
     http::{header, StatusCode},
     response::Response,
-    routing::{delete, get, post},
+    routing::{get, post, delete},
     Json, Router,
 };
 use uuid::Uuid;
@@ -23,7 +23,7 @@ async fn upload(
     Path(task_id): Path<String>,
     mut multipart: Multipart,
 ) -> Result<(StatusCode, Json<AttachmentMeta>), AppError> {
-    let project_id = sqlx::query_scalar!("SELECT project_id FROM tasks WHERE id = ?", task_id)
+    let project_id = sqlx::query_scalar!("SELECT project_id FROM tasks WHERE id = $1", task_id)
         .fetch_optional(&state.pool)
         .await?
         .ok_or(AppError::NotFound)?;
@@ -33,19 +33,10 @@ async fn upload(
             continue;
         }
 
-        let filename = field
-            .file_name()
-            .unwrap_or("upload")
-            .to_string();
-        let mime = field
-            .content_type()
-            .unwrap_or("application/octet-stream")
-            .to_string();
+        let filename = field.file_name().unwrap_or("upload").to_string();
+        let mime = field.content_type().unwrap_or("application/octet-stream").to_string();
 
-        let bytes = field
-            .bytes()
-            .await
-            .map_err(|e| AppError::BadRequest(e.to_string()))?;
+        let bytes = field.bytes().await.map_err(|e| AppError::BadRequest(e.to_string()))?;
 
         if bytes.len() > MAX_SIZE {
             return Err(AppError::PayloadTooLarge);
@@ -57,7 +48,7 @@ async fn upload(
         let data = bytes.to_vec();
 
         sqlx::query!(
-            "INSERT INTO attachments (id, task_id, project_id, name, mime_type, size_bytes, data, added_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO attachments (id, task_id, project_id, name, mime_type, size_bytes, data, added_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
             id, task_id, project_id, filename, mime, size, data, added_at
         )
         .execute(&state.pool)
@@ -82,7 +73,7 @@ async fn download(
     Path(att_id): Path<String>,
 ) -> Result<Response, AppError> {
     let row = sqlx::query!(
-        "SELECT name, mime_type, data FROM attachments WHERE id = ?",
+        "SELECT name, mime_type, data FROM attachments WHERE id = $1",
         att_id
     )
     .fetch_optional(&state.pool)
@@ -104,7 +95,7 @@ async fn remove(
     State(state): State<AppState>,
     Path(att_id): Path<String>,
 ) -> Result<StatusCode, AppError> {
-    let res = sqlx::query!("DELETE FROM attachments WHERE id = ?", att_id)
+    let res = sqlx::query!("DELETE FROM attachments WHERE id = $1", att_id)
         .execute(&state.pool)
         .await?;
     if res.rows_affected() == 0 {

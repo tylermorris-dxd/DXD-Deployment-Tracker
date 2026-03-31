@@ -26,9 +26,8 @@ async fn create_task(
         return Err(AppError::BadRequest("Task title is required".into()));
     }
 
-    // Get current max sort_order in this phase
     let max_order: i64 = sqlx::query_scalar!(
-        "SELECT COALESCE(MAX(sort_order), -1) FROM tasks WHERE phase_id = ?",
+        "SELECT COALESCE(MAX(sort_order), -1) FROM tasks WHERE phase_id = $1",
         phase_id
     )
     .fetch_one(&state.pool)
@@ -40,8 +39,8 @@ async fn create_task(
     let sort_order = max_order + 1;
 
     sqlx::query!(
-        "INSERT INTO tasks (id, phase_id, project_id, title, assignee, is_custom, sort_order) VALUES (?, ?, ?, ?, ?, 1, ?)",
-        task_id, phase_id, project_id, body.title, assignee, sort_order
+        "INSERT INTO tasks (id, phase_id, project_id, title, assignee, is_custom, sort_order) VALUES ($1, $2, $3, $4, $5, TRUE, $6)",
+        task_id, phase_id, project_id, body.title, assignee, sort_order as i32
     )
     .execute(&state.pool)
     .await?;
@@ -73,28 +72,27 @@ async fn update_task(
     Json(body): Json<UpdateTask>,
 ) -> Result<StatusCode, AppError> {
     if let Some(title) = &body.title {
-        sqlx::query!("UPDATE tasks SET title = ? WHERE id = ?", title, task_id)
+        sqlx::query!("UPDATE tasks SET title = $1 WHERE id = $2", title, task_id)
             .execute(&state.pool)
             .await?;
     }
     if let Some(completed) = body.completed {
-        let v: i64 = if completed { 1 } else { 0 };
-        sqlx::query!("UPDATE tasks SET completed = ? WHERE id = ?", v, task_id)
+        sqlx::query!("UPDATE tasks SET completed = $1 WHERE id = $2", completed, task_id)
             .execute(&state.pool)
             .await?;
     }
     if let Some(notes) = &body.notes {
-        sqlx::query!("UPDATE tasks SET notes = ? WHERE id = ?", notes, task_id)
+        sqlx::query!("UPDATE tasks SET notes = $1 WHERE id = $2", notes, task_id)
             .execute(&state.pool)
             .await?;
     }
     if let Some(due_date) = &body.due_date {
-        sqlx::query!("UPDATE tasks SET due_date = ? WHERE id = ?", due_date, task_id)
+        sqlx::query!("UPDATE tasks SET due_date = $1 WHERE id = $2", due_date, task_id)
             .execute(&state.pool)
             .await?;
     }
     if let Some(assignee) = &body.assignee {
-        sqlx::query!("UPDATE tasks SET assignee = ? WHERE id = ?", assignee, task_id)
+        sqlx::query!("UPDATE tasks SET assignee = $1 WHERE id = $2", assignee, task_id)
             .execute(&state.pool)
             .await?;
     }
@@ -105,16 +103,16 @@ async fn delete_task(
     State(state): State<AppState>,
     Path(task_id): Path<String>,
 ) -> Result<StatusCode, AppError> {
-    let task = sqlx::query!("SELECT is_custom FROM tasks WHERE id = ?", task_id)
+    let task = sqlx::query!("SELECT is_custom FROM tasks WHERE id = $1", task_id)
         .fetch_optional(&state.pool)
         .await?
         .ok_or(AppError::NotFound)?;
 
-    if task.is_custom == 0 {
+    if !task.is_custom {
         return Err(AppError::BadRequest("Only custom tasks can be deleted".into()));
     }
 
-    sqlx::query!("DELETE FROM tasks WHERE id = ?", task_id)
+    sqlx::query!("DELETE FROM tasks WHERE id = $1", task_id)
         .execute(&state.pool)
         .await?;
 
@@ -130,13 +128,13 @@ async fn create_subtask(
         return Err(AppError::BadRequest("Subtask text is required".into()));
     }
 
-    let project_id = sqlx::query_scalar!("SELECT project_id FROM tasks WHERE id = ?", task_id)
+    let project_id = sqlx::query_scalar!("SELECT project_id FROM tasks WHERE id = $1", task_id)
         .fetch_optional(&state.pool)
         .await?
         .ok_or(AppError::NotFound)?;
 
     let max_idx: i64 = sqlx::query_scalar!(
-        "SELECT COALESCE(MAX(sort_index), -1) FROM subtasks WHERE task_id = ?",
+        "SELECT COALESCE(MAX(sort_index), -1) FROM subtasks WHERE task_id = $1",
         task_id
     )
     .fetch_one(&state.pool)
@@ -145,14 +143,12 @@ async fn create_subtask(
 
     let sort_index = max_idx + 1;
 
-    let result = sqlx::query!(
-        "INSERT INTO subtasks (task_id, project_id, sort_index, text) VALUES (?, ?, ?, ?)",
-        task_id, project_id, sort_index, body.text
+    let id: i64 = sqlx::query_scalar!(
+        "INSERT INTO subtasks (task_id, project_id, sort_index, text) VALUES ($1, $2, $3, $4) RETURNING id",
+        task_id, project_id, sort_index as i32, body.text
     )
-    .execute(&state.pool)
+    .fetch_one(&state.pool)
     .await?;
-
-    let id = result.last_insert_rowid();
 
     Ok((StatusCode::CREATED, Json(SubtaskRow {
         id,
@@ -175,43 +171,42 @@ async fn update_subtask(
     Json(body): Json<UpdateSubtask>,
 ) -> Result<StatusCode, AppError> {
     if let Some(text) = &body.text {
-        sqlx::query!("UPDATE subtasks SET text = ? WHERE id = ?", text, subtask_id)
+        sqlx::query!("UPDATE subtasks SET text = $1 WHERE id = $2", text, subtask_id)
             .execute(&state.pool)
             .await?;
     }
     if let Some(is_done) = body.is_done {
-        let v: i64 = if is_done { 1 } else { 0 };
-        sqlx::query!("UPDATE subtasks SET is_done = ? WHERE id = ?", v, subtask_id)
+        sqlx::query!("UPDATE subtasks SET is_done = $1 WHERE id = $2", is_done, subtask_id)
             .execute(&state.pool)
             .await?;
     }
     if let Some(note) = &body.note {
-        sqlx::query!("UPDATE subtasks SET note = ? WHERE id = ?", note, subtask_id)
+        sqlx::query!("UPDATE subtasks SET note = $1 WHERE id = $2", note, subtask_id)
             .execute(&state.pool)
             .await?;
     }
     if let Some(v) = &body.ot_ordered {
-        sqlx::query!("UPDATE subtasks SET ot_ordered = ? WHERE id = ?", v, subtask_id)
+        sqlx::query!("UPDATE subtasks SET ot_ordered = $1 WHERE id = $2", v, subtask_id)
             .execute(&state.pool)
             .await?;
     }
     if let Some(v) = &body.ot_shipped {
-        sqlx::query!("UPDATE subtasks SET ot_shipped = ? WHERE id = ?", v, subtask_id)
+        sqlx::query!("UPDATE subtasks SET ot_shipped = $1 WHERE id = $2", v, subtask_id)
             .execute(&state.pool)
             .await?;
     }
     if let Some(v) = &body.ot_eta {
-        sqlx::query!("UPDATE subtasks SET ot_eta = ? WHERE id = ?", v, subtask_id)
+        sqlx::query!("UPDATE subtasks SET ot_eta = $1 WHERE id = $2", v, subtask_id)
             .execute(&state.pool)
             .await?;
     }
     if let Some(v) = &body.ot_delivered {
-        sqlx::query!("UPDATE subtasks SET ot_delivered = ? WHERE id = ?", v, subtask_id)
+        sqlx::query!("UPDATE subtasks SET ot_delivered = $1 WHERE id = $2", v, subtask_id)
             .execute(&state.pool)
             .await?;
     }
     if let Some(v) = &body.ot_received_by {
-        sqlx::query!("UPDATE subtasks SET ot_received_by = ? WHERE id = ?", v, subtask_id)
+        sqlx::query!("UPDATE subtasks SET ot_received_by = $1 WHERE id = $2", v, subtask_id)
             .execute(&state.pool)
             .await?;
     }
@@ -222,7 +217,7 @@ async fn delete_subtask(
     State(state): State<AppState>,
     Path(subtask_id): Path<i64>,
 ) -> Result<StatusCode, AppError> {
-    sqlx::query!("DELETE FROM subtasks WHERE id = ?", subtask_id)
+    sqlx::query!("DELETE FROM subtasks WHERE id = $1", subtask_id)
         .execute(&state.pool)
         .await?;
     Ok(StatusCode::NO_CONTENT)
@@ -230,17 +225,16 @@ async fn delete_subtask(
 
 async fn update_contact(
     State(state): State<AppState>,
-    Path((task_id, slot_index)): Path<(String, i64)>,
+    Path((task_id, slot_index)): Path<(String, i32)>,
     Json(body): Json<UpdateContact>,
 ) -> Result<StatusCode, AppError> {
-    let project_id = sqlx::query_scalar!("SELECT project_id FROM tasks WHERE id = ?", task_id)
+    let project_id = sqlx::query_scalar!("SELECT project_id FROM tasks WHERE id = $1", task_id)
         .fetch_optional(&state.pool)
         .await?
         .ok_or(AppError::NotFound)?;
 
-    // Upsert: insert if not exists, update if exists
     sqlx::query!(
-        "INSERT INTO stakeholder_contacts (task_id, project_id, slot_index, name, email, phone) VALUES (?, ?, ?, '', '', '') ON CONFLICT(task_id, slot_index) DO NOTHING",
+        "INSERT INTO stakeholder_contacts (task_id, project_id, slot_index, name, email, phone) VALUES ($1, $2, $3, '', '', '') ON CONFLICT(task_id, slot_index) DO NOTHING",
         task_id, project_id, slot_index
     )
     .execute(&state.pool)
@@ -248,7 +242,7 @@ async fn update_contact(
 
     if let Some(name) = &body.name {
         sqlx::query!(
-            "UPDATE stakeholder_contacts SET name = ? WHERE task_id = ? AND slot_index = ?",
+            "UPDATE stakeholder_contacts SET name = $1 WHERE task_id = $2 AND slot_index = $3",
             name, task_id, slot_index
         )
         .execute(&state.pool)
@@ -256,7 +250,7 @@ async fn update_contact(
     }
     if let Some(email) = &body.email {
         sqlx::query!(
-            "UPDATE stakeholder_contacts SET email = ? WHERE task_id = ? AND slot_index = ?",
+            "UPDATE stakeholder_contacts SET email = $1 WHERE task_id = $2 AND slot_index = $3",
             email, task_id, slot_index
         )
         .execute(&state.pool)
@@ -264,7 +258,7 @@ async fn update_contact(
     }
     if let Some(phone) = &body.phone {
         sqlx::query!(
-            "UPDATE stakeholder_contacts SET phone = ? WHERE task_id = ? AND slot_index = ?",
+            "UPDATE stakeholder_contacts SET phone = $1 WHERE task_id = $2 AND slot_index = $3",
             phone, task_id, slot_index
         )
         .execute(&state.pool)

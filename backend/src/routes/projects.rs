@@ -1,7 +1,7 @@
 use axum::{
     extract::{Path, State},
     http::StatusCode,
-    routing::{delete, get, patch, post},
+    routing::{get, patch, post, delete},
     Json, Router,
 };
 use uuid::Uuid;
@@ -25,7 +25,7 @@ async fn list_projects(State(state): State<AppState>) -> Result<Json<Vec<Project
         r#"
         SELECT p.id, p.name, p.client, p.site, p.created_at,
                COUNT(t.id) as total_tasks,
-               SUM(CASE WHEN t.completed = 1 THEN 1 ELSE 0 END) as done_tasks
+               SUM(CASE WHEN t.completed = TRUE THEN 1 ELSE 0 END) as done_tasks
         FROM projects p
         LEFT JOIN phases ph ON ph.project_id = p.id
         LEFT JOIN tasks t ON t.phase_id = ph.id
@@ -66,7 +66,7 @@ async fn create_project(
     let created_at = chrono::Utc::now().to_rfc3339();
 
     sqlx::query!(
-        "INSERT INTO projects (id, name, client, site, created_at) VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO projects (id, name, client, site, created_at) VALUES ($1, $2, $3, $4, $5)",
         project_id, body.name, client, site, created_at
     )
     .execute(&state.pool)
@@ -76,44 +76,42 @@ async fn create_project(
     let template = get_template();
     for (ph_idx, ph) in template.iter().enumerate() {
         let phase_id = format!("{}-{}", &project_id[..12], ph.id);
-        let unlocked: i64 = if ph_idx == 0 { 1 } else { 0 };
+        let unlocked = ph_idx == 0;
+        let ph_sort = ph_idx as i32;
 
         sqlx::query!(
-            "INSERT INTO phases (id, project_id, phase_number, title, color, description, unlocked, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            phase_id, project_id, ph.phase_number, ph.title, ph.color, ph.description, unlocked, ph_idx as i64
+            "INSERT INTO phases (id, project_id, phase_number, title, color, description, unlocked, sort_order) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+            phase_id, project_id, ph.phase_number, ph.title, ph.color, ph.description, unlocked, ph_sort
         )
         .execute(&state.pool)
         .await?;
 
         for (t_idx, task) in ph.tasks.iter().enumerate() {
             let task_id = format!("{}-{}", &project_id[..12], task.id);
-            let is_gate: i64 = if task.gate { 1 } else { 0 };
-            let track_dates: i64 = if task.track_dates { 1 } else { 0 };
-            let has_eq: i64 = if task.has_equipment_picker { 1 } else { 0 };
-            let has_sh: i64 = if task.has_stakeholders { 1 } else { 0 };
+            let t_sort = t_idx as i32;
 
             sqlx::query!(
-                "INSERT INTO tasks (id, phase_id, project_id, title, is_gate, track_dates, has_equipment_picker, has_stakeholders, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                task_id, phase_id, project_id, task.title, is_gate, track_dates, has_eq, has_sh, t_idx as i64
+                "INSERT INTO tasks (id, phase_id, project_id, title, is_gate, track_dates, has_equipment_picker, has_stakeholders, sort_order) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+                task_id, phase_id, project_id, task.title, task.gate, task.track_dates, task.has_equipment_picker, task.has_stakeholders, t_sort
             )
             .execute(&state.pool)
             .await?;
 
             for (s_idx, sub_text) in task.subtasks.iter().enumerate() {
                 let sub_text = sub_text.to_string();
+                let s_sort = s_idx as i32;
                 sqlx::query!(
-                    "INSERT INTO subtasks (task_id, project_id, sort_index, text) VALUES (?, ?, ?, ?)",
-                    task_id, project_id, s_idx as i64, sub_text
+                    "INSERT INTO subtasks (task_id, project_id, sort_index, text) VALUES ($1, $2, $3, $4)",
+                    task_id, project_id, s_sort, sub_text
                 )
                 .execute(&state.pool)
                 .await?;
             }
 
-            // Seed 5 empty stakeholder contact slots
             if task.has_stakeholders {
-                for slot in 0..5i64 {
+                for slot in 0..5i32 {
                     sqlx::query!(
-                        "INSERT INTO stakeholder_contacts (task_id, project_id, slot_index) VALUES (?, ?, ?)",
+                        "INSERT INTO stakeholder_contacts (task_id, project_id, slot_index) VALUES ($1, $2, $3)",
                         task_id, project_id, slot
                     )
                     .execute(&state.pool)
@@ -141,7 +139,7 @@ async fn get_project(
     Path(project_id): Path<String>,
 ) -> Result<Json<ProjectFull>, AppError> {
     let proj = sqlx::query!(
-        "SELECT id, name, client, site, created_at, map_cache, airspace_cache, network_cache, weather_cache FROM projects WHERE id = ?",
+        "SELECT id, name, client, site, created_at, map_cache, airspace_cache, network_cache, weather_cache FROM projects WHERE id = $1",
         project_id
     )
     .fetch_optional(&state.pool)
@@ -149,67 +147,60 @@ async fn get_project(
     .ok_or(AppError::NotFound)?;
 
     let phases_raw = sqlx::query!(
-        "SELECT id, project_id, phase_number, title, color, description, owner, unlocked, completed_at, sort_order FROM phases WHERE project_id = ? ORDER BY sort_order",
+        "SELECT id, project_id, phase_number, title, color, description, owner, unlocked, completed_at, sort_order FROM phases WHERE project_id = $1 ORDER BY sort_order",
         project_id
     )
     .fetch_all(&state.pool)
     .await?;
 
-    let phase_ids: Vec<String> = phases_raw.iter().map(|p| p.id.clone()).collect();
-
-    // Fetch all tasks for all phases in one query
-    let tasks_raw = if phase_ids.is_empty() {
+    let tasks_raw = if phases_raw.is_empty() {
         vec![]
     } else {
         sqlx::query!(
             r#"SELECT id, phase_id, project_id, title, completed, notes, due_date, assignee,
                       is_gate, is_custom, track_dates, has_stakeholders, has_equipment_picker, sort_order
-               FROM tasks WHERE project_id = ? ORDER BY phase_id, sort_order"#,
+               FROM tasks WHERE project_id = $1 ORDER BY phase_id, sort_order"#,
             project_id
         )
         .fetch_all(&state.pool)
         .await?
     };
 
-    let task_ids: Vec<String> = tasks_raw.iter().map(|t| t.id.clone()).collect();
+    let tasks_empty = tasks_raw.is_empty();
 
-    // Fetch all subtasks in bulk
-    let subtasks_raw = if task_ids.is_empty() {
+    let subtasks_raw = if tasks_empty {
         vec![]
     } else {
         sqlx::query!(
-            "SELECT id, task_id, sort_index, text, is_done, note, ot_ordered, ot_shipped, ot_eta, ot_delivered, ot_received_by FROM subtasks WHERE project_id = ? ORDER BY task_id, sort_index",
+            "SELECT id, task_id, sort_index, text, is_done, note, ot_ordered, ot_shipped, ot_eta, ot_delivered, ot_received_by FROM subtasks WHERE project_id = $1 ORDER BY task_id, sort_index",
             project_id
         )
         .fetch_all(&state.pool)
         .await?
     };
 
-    // Fetch all contacts in bulk
-    let contacts_raw = if task_ids.is_empty() {
+    let contacts_raw = if tasks_empty {
         vec![]
     } else {
         sqlx::query!(
-            "SELECT id, task_id, slot_index, name, email, phone FROM stakeholder_contacts WHERE project_id = ? ORDER BY task_id, slot_index",
+            "SELECT id, task_id, slot_index, name, email, phone FROM stakeholder_contacts WHERE project_id = $1 ORDER BY task_id, slot_index",
             project_id
         )
         .fetch_all(&state.pool)
         .await?
     };
 
-    // Fetch attachment metadata (no data blob)
-    let attachments_raw = if task_ids.is_empty() {
+    let attachments_raw = if tasks_empty {
         vec![]
     } else {
         sqlx::query!(
-            "SELECT id, task_id, name, mime_type, size_bytes, added_at, added_by FROM attachments WHERE project_id = ? ORDER BY task_id, added_at",
+            "SELECT id, task_id, name, mime_type, size_bytes, added_at, added_by FROM attachments WHERE project_id = $1 ORDER BY task_id, added_at",
             project_id
         )
         .fetch_all(&state.pool)
         .await?
     };
 
-    // Build nested structure
     let phases: Vec<PhaseFull> = phases_raw
         .into_iter()
         .map(|ph| {
@@ -225,7 +216,7 @@ async fn get_project(
                             task_id: s.task_id.clone(),
                             sort_index: s.sort_index,
                             text: s.text.clone(),
-                            is_done: s.is_done != 0,
+                            is_done: s.is_done,
                             note: s.note.clone(),
                             ot_ordered: s.ot_ordered.clone(),
                             ot_shipped: s.ot_shipped.clone(),
@@ -267,15 +258,15 @@ async fn get_project(
                         phase_id: t.phase_id.clone(),
                         project_id: t.project_id.clone(),
                         title: t.title.clone(),
-                        completed: t.completed != 0,
+                        completed: t.completed,
                         notes: t.notes.clone(),
                         due_date: t.due_date.clone(),
                         assignee: t.assignee.clone(),
-                        is_gate: t.is_gate != 0,
-                        is_custom: t.is_custom != 0,
-                        track_dates: t.track_dates != 0,
-                        has_stakeholders: t.has_stakeholders != 0,
-                        has_equipment_picker: t.has_equipment_picker != 0,
+                        is_gate: t.is_gate,
+                        is_custom: t.is_custom,
+                        track_dates: t.track_dates,
+                        has_stakeholders: t.has_stakeholders,
+                        has_equipment_picker: t.has_equipment_picker,
                         sort_order: t.sort_order,
                         subtasks,
                         stakeholder_contacts,
@@ -292,7 +283,7 @@ async fn get_project(
                 color: ph.color,
                 description: ph.description,
                 owner: ph.owner,
-                unlocked: ph.unlocked != 0,
+                unlocked: ph.unlocked,
                 completed_at: ph.completed_at,
                 sort_order: ph.sort_order,
                 tasks,
@@ -319,57 +310,54 @@ async fn update_project(
     Path(project_id): Path<String>,
     Json(body): Json<UpdateProject>,
 ) -> Result<Json<ProjectSummary>, AppError> {
-    // Only update fields that are present in the body
     if let Some(name) = &body.name {
-        sqlx::query!("UPDATE projects SET name = ? WHERE id = ?", name, project_id)
+        sqlx::query!("UPDATE projects SET name = $1 WHERE id = $2", name, project_id)
             .execute(&state.pool)
             .await?;
     }
     if let Some(client) = &body.client {
-        sqlx::query!("UPDATE projects SET client = ? WHERE id = ?", client, project_id)
+        sqlx::query!("UPDATE projects SET client = $1 WHERE id = $2", client, project_id)
             .execute(&state.pool)
             .await?;
     }
     if let Some(site) = &body.site {
-        sqlx::query!("UPDATE projects SET site = ? WHERE id = ?", site, project_id)
+        sqlx::query!("UPDATE projects SET site = $1 WHERE id = $2", site, project_id)
             .execute(&state.pool)
             .await?;
     }
-    // Cache fields: the value can be null (clear) or a string (set)
     if let Some(v) = &body.map_cache {
         let s = v.as_str().map(|s| s.to_string());
-        sqlx::query!("UPDATE projects SET map_cache = ? WHERE id = ?", s, project_id)
+        sqlx::query!("UPDATE projects SET map_cache = $1 WHERE id = $2", s, project_id)
             .execute(&state.pool)
             .await?;
     }
     if let Some(v) = &body.airspace_cache {
         let s = v.as_str().map(|s| s.to_string());
-        sqlx::query!("UPDATE projects SET airspace_cache = ? WHERE id = ?", s, project_id)
+        sqlx::query!("UPDATE projects SET airspace_cache = $1 WHERE id = $2", s, project_id)
             .execute(&state.pool)
             .await?;
     }
     if let Some(v) = &body.network_cache {
         let s = v.as_str().map(|s| s.to_string());
-        sqlx::query!("UPDATE projects SET network_cache = ? WHERE id = ?", s, project_id)
+        sqlx::query!("UPDATE projects SET network_cache = $1 WHERE id = $2", s, project_id)
             .execute(&state.pool)
             .await?;
     }
     if let Some(v) = &body.weather_cache {
         let s = v.as_str().map(|s| s.to_string());
-        sqlx::query!("UPDATE projects SET weather_cache = ? WHERE id = ?", s, project_id)
+        sqlx::query!("UPDATE projects SET weather_cache = $1 WHERE id = $2", s, project_id)
             .execute(&state.pool)
             .await?;
     }
 
-    // Return updated summary
     let row = sqlx::query!(
         r#"SELECT p.id, p.name, p.client, p.site, p.created_at,
                   COUNT(t.id) as total_tasks,
-                  SUM(CASE WHEN t.completed = 1 THEN 1 ELSE 0 END) as done_tasks
+                  SUM(CASE WHEN t.completed = TRUE THEN 1 ELSE 0 END) as done_tasks
            FROM projects p
            LEFT JOIN phases ph ON ph.project_id = p.id
            LEFT JOIN tasks t ON t.phase_id = ph.id
-           WHERE p.id = ?
+           WHERE p.id = $1
            GROUP BY p.id"#,
         project_id
     )
@@ -392,7 +380,7 @@ async fn delete_project(
     State(state): State<AppState>,
     Path(project_id): Path<String>,
 ) -> Result<StatusCode, AppError> {
-    let res = sqlx::query!("DELETE FROM projects WHERE id = ?", project_id)
+    let res = sqlx::query!("DELETE FROM projects WHERE id = $1", project_id)
         .execute(&state.pool)
         .await?;
     if res.rows_affected() == 0 {
@@ -406,31 +394,30 @@ async fn update_phase(
     Path((project_id, phase_id)): Path<(String, String)>,
     Json(body): Json<UpdatePhase>,
 ) -> Result<StatusCode, AppError> {
-    // Verify phase belongs to project
     let exists = sqlx::query_scalar!(
-        "SELECT COUNT(*) FROM phases WHERE id = ? AND project_id = ?",
+        "SELECT COUNT(*) FROM phases WHERE id = $1 AND project_id = $2",
         phase_id, project_id
     )
     .fetch_one(&state.pool)
-    .await?;
+    .await?
+    .unwrap_or(0);
     if exists == 0 {
         return Err(AppError::NotFound);
     }
 
     if let Some(owner) = &body.owner {
-        sqlx::query!("UPDATE phases SET owner = ? WHERE id = ?", owner, phase_id)
+        sqlx::query!("UPDATE phases SET owner = $1 WHERE id = $2", owner, phase_id)
             .execute(&state.pool)
             .await?;
     }
     if let Some(unlocked) = body.unlocked {
-        let v: i64 = if unlocked { 1 } else { 0 };
-        sqlx::query!("UPDATE phases SET unlocked = ? WHERE id = ?", v, phase_id)
+        sqlx::query!("UPDATE phases SET unlocked = $1 WHERE id = $2", unlocked, phase_id)
             .execute(&state.pool)
             .await?;
     }
     if let Some(v) = &body.completed_at {
         let s = v.as_str().map(|s| s.to_string());
-        sqlx::query!("UPDATE phases SET completed_at = ? WHERE id = ?", s, phase_id)
+        sqlx::query!("UPDATE phases SET completed_at = $1 WHERE id = $2", s, phase_id)
             .execute(&state.pool)
             .await?;
     }

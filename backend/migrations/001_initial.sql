@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS phases (
     color        TEXT NOT NULL DEFAULT '#EF4444',
     description  TEXT NOT NULL DEFAULT '',
     owner        TEXT NOT NULL DEFAULT '',
-    unlocked     INTEGER NOT NULL DEFAULT 0,
+    unlocked     BOOLEAN NOT NULL DEFAULT FALSE,
     completed_at TEXT,
     sort_order   INTEGER NOT NULL DEFAULT 0
 );
@@ -29,25 +29,25 @@ CREATE TABLE IF NOT EXISTS tasks (
     phase_id             TEXT NOT NULL REFERENCES phases(id) ON DELETE CASCADE,
     project_id           TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     title                TEXT NOT NULL,
-    completed            INTEGER NOT NULL DEFAULT 0,
+    completed            BOOLEAN NOT NULL DEFAULT FALSE,
     notes                TEXT NOT NULL DEFAULT '',
     due_date             TEXT NOT NULL DEFAULT '',
     assignee             TEXT NOT NULL DEFAULT '',
-    is_gate              INTEGER NOT NULL DEFAULT 0,
-    is_custom            INTEGER NOT NULL DEFAULT 0,
-    track_dates          INTEGER NOT NULL DEFAULT 0,
-    has_stakeholders     INTEGER NOT NULL DEFAULT 0,
-    has_equipment_picker INTEGER NOT NULL DEFAULT 0,
+    is_gate              BOOLEAN NOT NULL DEFAULT FALSE,
+    is_custom            BOOLEAN NOT NULL DEFAULT FALSE,
+    track_dates          BOOLEAN NOT NULL DEFAULT FALSE,
+    has_stakeholders     BOOLEAN NOT NULL DEFAULT FALSE,
+    has_equipment_picker BOOLEAN NOT NULL DEFAULT FALSE,
     sort_order           INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS subtasks (
-    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    id             BIGSERIAL PRIMARY KEY,
     task_id        TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
     project_id     TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     sort_index     INTEGER NOT NULL,
     text           TEXT NOT NULL,
-    is_done        INTEGER NOT NULL DEFAULT 0,
+    is_done        BOOLEAN NOT NULL DEFAULT FALSE,
     note           TEXT NOT NULL DEFAULT '',
     ot_ordered     TEXT NOT NULL DEFAULT '',
     ot_shipped     TEXT NOT NULL DEFAULT '',
@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS subtasks (
 );
 
 CREATE TABLE IF NOT EXISTS stakeholder_contacts (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    id         BIGSERIAL PRIMARY KEY,
     task_id    TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
     project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     slot_index INTEGER NOT NULL,
@@ -73,8 +73,8 @@ CREATE TABLE IF NOT EXISTS attachments (
     project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     name       TEXT NOT NULL,
     mime_type  TEXT NOT NULL DEFAULT '',
-    size_bytes INTEGER NOT NULL DEFAULT 0,
-    data       BLOB NOT NULL,
+    size_bytes BIGINT NOT NULL DEFAULT 0,
+    data       BYTEA NOT NULL,
     added_at   TEXT NOT NULL,
     added_by   TEXT NOT NULL DEFAULT ''
 );
@@ -102,7 +102,7 @@ CREATE TABLE IF NOT EXISTS app_settings (
     value TEXT NOT NULL
 );
 
-INSERT OR IGNORE INTO app_settings (key, value) VALUES ('quote_seq', '1000');
+INSERT INTO app_settings (key, value) VALUES ('quote_seq', '1000') ON CONFLICT DO NOTHING;
 
 CREATE INDEX IF NOT EXISTS idx_phases_project    ON phases(project_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_phase       ON tasks(phase_id);

@@ -40,6 +40,8 @@ jobs:
       - name: Build Rust binary (release)
         run: cargo build --release
         working-directory: backend
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
       # ── Package deploy artifact ─────────────────────────────────────────────
       - name: Stage artifact
@@ -58,6 +60,16 @@ jobs:
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Set app settings
+        uses: azure/cli@v2
+        with:
+          azcliversion: latest
+          inlineScript: |
+            az webapp config appsettings set \
+              --name onboarding-dev \
+              --resource-group rg-deusxdefense-ops-dev \
+              --settings DATABASE_URL="${{ secrets.DATABASE_URL }}"
 
       - name: Deploy to Azure
         uses: azure/webapps-deploy@v3

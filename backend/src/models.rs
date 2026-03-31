@@ -16,7 +16,7 @@ pub struct UpdateProject {
     pub name: Option<String>,
     pub client: Option<String>,
     pub site: Option<String>,
-    pub map_cache: Option<serde_json::Value>,       // null or string
+    pub map_cache: Option<serde_json::Value>,
     pub airspace_cache: Option<serde_json::Value>,
     pub network_cache: Option<serde_json::Value>,
     pub weather_cache: Option<serde_json::Value>,
@@ -27,7 +27,7 @@ pub struct UpdateProject {
 pub struct UpdatePhase {
     pub owner: Option<String>,
     pub unlocked: Option<bool>,
-    pub completed_at: Option<serde_json::Value>, // null or string
+    pub completed_at: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -137,14 +137,14 @@ pub struct ProjectFull {
 pub struct PhaseFull {
     pub id: String,
     pub project_id: String,
-    pub phase_number: i64,
+    pub phase_number: i32,
     pub title: String,
     pub color: String,
     pub description: String,
     pub owner: String,
     pub unlocked: bool,
     pub completed_at: Option<String>,
-    pub sort_order: i64,
+    pub sort_order: i32,
     pub tasks: Vec<TaskFull>,
 }
 
@@ -175,7 +175,7 @@ pub struct TaskFull {
 pub struct SubtaskRow {
     pub id: i64,
     pub task_id: String,
-    pub sort_index: i64,
+    pub sort_index: i32,
     pub text: String,
     pub is_done: bool,
     pub note: String,
@@ -191,7 +191,7 @@ pub struct SubtaskRow {
 pub struct ContactRow {
     pub id: i64,
     pub task_id: String,
-    pub slot_index: i64,
+    pub slot_index: i32,
     pub name: String,
     pub email: String,
     pub phone: String,

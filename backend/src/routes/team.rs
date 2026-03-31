@@ -33,9 +33,12 @@ async fn create_member(
     let id = format!("member-{}", &Uuid::new_v4().to_string().replace('-', "")[..12]);
     let role = body.role.unwrap_or_default();
     let email = body.email.unwrap_or_default();
-    sqlx::query!("INSERT INTO team_members (id, name, role, email) VALUES (?, ?, ?, ?)", id, body.name, role, email)
-        .execute(&state.pool)
-        .await?;
+    sqlx::query!(
+        "INSERT INTO team_members (id, name, role, email) VALUES ($1, $2, $3, $4)",
+        id, body.name, role, email
+    )
+    .execute(&state.pool)
+    .await?;
     Ok((StatusCode::CREATED, Json(TeamMember { id, name: body.name, role, email })))
 }
 
@@ -43,7 +46,7 @@ async fn delete_member(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> Result<StatusCode, AppError> {
-    sqlx::query!("DELETE FROM team_members WHERE id = ?", id)
+    sqlx::query!("DELETE FROM team_members WHERE id = $1", id)
         .execute(&state.pool)
         .await?;
     Ok(StatusCode::NO_CONTENT)
@@ -76,7 +79,7 @@ async fn create_admin_task(
     let priority = body.priority.unwrap_or_else(|| "medium".into());
     let created_at = chrono::Utc::now().to_rfc3339();
     sqlx::query!(
-        "INSERT INTO admin_tasks (id, title, description, assignee, due_date, priority, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO admin_tasks (id, title, description, assignee, due_date, priority, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)",
         id, body.title, description, assignee, due_date, priority, created_at
     )
     .execute(&state.pool)
@@ -93,22 +96,22 @@ async fn update_admin_task(
     Json(body): Json<UpdateAdminTask>,
 ) -> Result<StatusCode, AppError> {
     if let Some(v) = &body.title {
-        sqlx::query!("UPDATE admin_tasks SET title = ? WHERE id = ?", v, id).execute(&state.pool).await?;
+        sqlx::query!("UPDATE admin_tasks SET title = $1 WHERE id = $2", v, id).execute(&state.pool).await?;
     }
     if let Some(v) = &body.description {
-        sqlx::query!("UPDATE admin_tasks SET description = ? WHERE id = ?", v, id).execute(&state.pool).await?;
+        sqlx::query!("UPDATE admin_tasks SET description = $1 WHERE id = $2", v, id).execute(&state.pool).await?;
     }
     if let Some(v) = &body.assignee {
-        sqlx::query!("UPDATE admin_tasks SET assignee = ? WHERE id = ?", v, id).execute(&state.pool).await?;
+        sqlx::query!("UPDATE admin_tasks SET assignee = $1 WHERE id = $2", v, id).execute(&state.pool).await?;
     }
     if let Some(v) = &body.due_date {
-        sqlx::query!("UPDATE admin_tasks SET due_date = ? WHERE id = ?", v, id).execute(&state.pool).await?;
+        sqlx::query!("UPDATE admin_tasks SET due_date = $1 WHERE id = $2", v, id).execute(&state.pool).await?;
     }
     if let Some(v) = &body.priority {
-        sqlx::query!("UPDATE admin_tasks SET priority = ? WHERE id = ?", v, id).execute(&state.pool).await?;
+        sqlx::query!("UPDATE admin_tasks SET priority = $1 WHERE id = $2", v, id).execute(&state.pool).await?;
     }
     if let Some(v) = &body.status {
-        sqlx::query!("UPDATE admin_tasks SET status = ? WHERE id = ?", v, id).execute(&state.pool).await?;
+        sqlx::query!("UPDATE admin_tasks SET status = $1 WHERE id = $2", v, id).execute(&state.pool).await?;
     }
     Ok(StatusCode::NO_CONTENT)
 }
@@ -117,6 +120,6 @@ async fn delete_admin_task(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> Result<StatusCode, AppError> {
-    sqlx::query!("DELETE FROM admin_tasks WHERE id = ?", id).execute(&state.pool).await?;
+    sqlx::query!("DELETE FROM admin_tasks WHERE id = $1", id).execute(&state.pool).await?;
     Ok(StatusCode::NO_CONTENT)
 }
