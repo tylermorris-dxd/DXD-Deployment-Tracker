@@ -37,6 +37,17 @@ jobs:
         with:
           workspaces: backend
 
+      - name: Install sqlx-cli
+        run: cargo install sqlx-cli --no-default-features --features postgres
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Run database migrations
+        run: sqlx migrate run
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
       - name: Build Rust binary (release)
         run: cargo build --release
         working-directory: backend
