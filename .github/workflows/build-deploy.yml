@@ -26,9 +26,14 @@ jobs:
         run: npm run build
         working-directory: frontend
 
-      # ── Build Rust backend (Linux x86_64) ──────────────────────────────────
+      # ── Build Rust backend (Linux x86_64 static musl) ─────────────────────
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-musl
+
+      - name: Install musl tools
+        run: sudo apt-get install -y musl-tools
 
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
@@ -44,8 +49,8 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
-      - name: Build Rust binary (release)
-        run: cargo build --release
+      - name: Build Rust binary (static release)
+        run: cargo build --release --target x86_64-unknown-linux-musl
         working-directory: backend
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -54,10 +59,11 @@ jobs:
       - name: Stage artifact
         run: |
           mkdir -p dist/frontend dist/data
-          cp backend/target/release/dxd-tracker dist/dxd-tracker
+          cp backend/target/x86_64-unknown-linux-musl/release/dxd-tracker dist/dxd-tracker
           chmod +x dist/dxd-tracker
           cp -r frontend/out/* dist/frontend/
-          cp .deployment dist/.deployment 2>/dev/null || true
+          printf '#!/bin/sh\nexec /home/site/wwwroot/dxd-tracker\n' > dist/startup.sh
+          chmod +x dist/startup.sh
 
       - name: Create deploy zip
         run: cd dist && zip -r ../deploy.zip .
