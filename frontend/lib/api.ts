@@ -2,6 +2,7 @@ import type {
   ProjectSummary, ProjectFull, Phase, Task, Subtask, Contact, AttachmentMeta,
   TeamMember, AdminTask,
   CreateProject, UpdateProject, UpdatePhase, UpdateTask, UpdateSubtask, UpdateContact,
+  EquipmentItem, CreateEquipment, UpdateEquipment,
 } from './types'
 
 class ApiError extends Error {
@@ -100,6 +101,19 @@ export const api = {
     update: (id: string, body: Partial<AdminTask>) =>
       apiFetch<AdminTask>(`/admin-tasks/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
     delete: (id: string) => apiFetch<void>(`/admin-tasks/${id}`, { method: 'DELETE' }),
+  },
+
+  equipment: {
+    list: (projectId: string) =>
+      apiFetch<EquipmentItem[]>(`/projects/${encodeURIComponent(projectId)}/equipment`),
+    create: (projectId: string, body: CreateEquipment) =>
+      apiFetch<EquipmentItem>(`/projects/${encodeURIComponent(projectId)}/equipment`, {
+        method: 'POST', body: JSON.stringify(body),
+      }),
+    update: (id: string, body: UpdateEquipment) =>
+      apiFetch<void>(`/equipment/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+    delete: (id: string) =>
+      apiFetch<void>(`/equipment/${id}`, { method: 'DELETE' }),
   },
 
   claude: (body: unknown) =>

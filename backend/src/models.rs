@@ -218,6 +218,47 @@ pub struct TeamMember {
     pub email: String,
 }
 
+// ── Equipment ─────────────────────────────────────────────────────────────────
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateEquipment {
+    pub name: String,
+    pub serial_number: Option<String>,
+    pub status: Option<String>,
+    pub operator: Option<String>,
+    pub qty: Option<i32>,
+    pub notes: Option<String>,
+    pub subtask_id: Option<i64>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateEquipment {
+    pub name: Option<String>,
+    pub serial_number: Option<String>,
+    pub status: Option<String>,
+    pub operator: Option<String>,
+    pub qty: Option<i32>,
+    pub notes: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EquipmentItem {
+    pub id: String,
+    pub project_id: String,
+    pub subtask_id: Option<i64>,
+    pub name: String,
+    pub serial_number: String,
+    pub status: String,
+    pub operator: String,
+    pub qty: i32,
+    pub notes: String,
+    pub created_at: String,
+    pub is_virtual: bool,
+}
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AdminTask {

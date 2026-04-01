@@ -153,3 +153,38 @@ export interface UpdateContact {
   email?: string
   phone?: string
 }
+
+// ── Equipment ─────────────────────────────────────────────────────────────────
+
+export interface EquipmentItem {
+  id: string
+  projectId: string
+  subtaskId: number | null
+  name: string
+  serialNumber: string
+  status: string
+  operator: string
+  qty: number
+  notes: string
+  createdAt: string
+  isVirtual: boolean
+}
+
+export interface CreateEquipment {
+  name: string
+  serialNumber?: string
+  status?: string
+  operator?: string
+  qty?: number
+  notes?: string
+  subtaskId?: number | null
+}
+
+export interface UpdateEquipment {
+  name?: string
+  serialNumber?: string
+  status?: string
+  operator?: string
+  qty?: number
+  notes?: string
+}
