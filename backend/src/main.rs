@@ -28,8 +28,15 @@ async fn main() -> anyhow::Result<()> {
 
     let port = std::env::var("PORT").unwrap_or_else(|_| "3001".to_string());
 
-    let static_dir = std::env::var("STATIC_DIR")
-        .unwrap_or_else(|_| "../frontend/out".to_string());
+    // On Azure the binary lands in /home/site/wwwroot/ alongside the frontend/ dir.
+    // Locally it runs from backend/ so the frontend is at ../frontend/out.
+    let static_dir = std::env::var("STATIC_DIR").unwrap_or_else(|_| {
+        if std::path::Path::new("frontend").exists() {
+            "frontend".to_string()
+        } else {
+            "../frontend/out".to_string()
+        }
+    });
 
     tracing::info!("Connecting to database: {}", database_url);
     let pool = db::create_pool(&database_url).await?;
