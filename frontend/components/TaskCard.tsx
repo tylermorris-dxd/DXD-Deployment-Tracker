@@ -109,7 +109,13 @@ export default function TaskCard({ task, phase, projectId, teamMembers, onDataCh
         onClick={() => !editingTitle && setExpanded(e => !e)}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
-          <div style={{ width: 8, height: 8, borderRadius: '50%', background: task.completed ? '#22c55e' : phase.color, flexShrink: 0 }} />
+          <input
+            type="checkbox"
+            checked={task.completed}
+            onChange={e => { e.stopPropagation(); updateTask.mutate({ completed: e.target.checked }) }}
+            onClick={e => e.stopPropagation()}
+            style={{ width: 15, height: 15, flexShrink: 0, cursor: 'pointer', accentColor: task.completed ? '#22c55e' : phase.color }}
+          />
           {editingTitle ? (
             <input
               autoFocus
