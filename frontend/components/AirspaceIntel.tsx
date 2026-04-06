@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useCallback, useEffect, useRef } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import type { ProjectFull } from '@/lib/types'
 
@@ -224,23 +224,20 @@ export default function AirspaceIntel({ project, onCacheUpdate }: Props) {
     for (const feature of geojson.features) {
       if (!feature.geometry) continue
       try {
-        // Use a simple bbox check on the raw coordinates
-        type Coord = [number, number]
-        type Ring = Coord[]
-        const geom = feature.geometry as { type: string; coordinates: unknown }
-        let rings: Ring[] = []
-        if (geom.type === 'Polygon') rings = (geom.coordinates as Ring[])[0] ? [geom.coordinates as unknown as Ring] : []
-        if (geom.type === 'MultiPolygon') {
-          const mp = geom.coordinates as Ring[][]
-          for (const poly of mp) {
-            if (poly[0]) rings.push(poly[0])
+        const geom = feature.geometry as { type: string; coordinates: number[][][] | number[][][][] }
+        // For each outer ring, do a bounding-box check (UASFM grids are rectangles so this is exact)
+        const outerRings: number[][][] = []
+        if (geom.type === 'Polygon') {
+          const outer = (geom.coordinates as number[][][])[0]
+          if (outer) outerRings.push(outer)
+        } else if (geom.type === 'MultiPolygon') {
+          for (const poly of geom.coordinates as number[][][][]) {
+            if (poly[0]) outerRings.push(poly[0])
           }
         }
-        for (const ring of rings) {
-          // Flatten if nested
-          const coords2d: Coord[] = (ring as unknown as Coord[]).map((c) => (Array.isArray(c[0]) ? c[0] as unknown as Coord : c as Coord))
-          const lngs = coords2d.map(c => c[0])
-          const lats = coords2d.map(c => c[1])
+        for (const ring of outerRings) {
+          const lngs = ring.map(c => c[0])
+          const lats = ring.map(c => c[1])
           const minLng = Math.min(...lngs), maxLng = Math.max(...lngs)
           const minLat = Math.min(...lats), maxLat = Math.max(...lats)
           if (lng >= minLng && lng <= maxLng && lat >= minLat && lat <= maxLat) return feature

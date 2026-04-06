@@ -21,6 +21,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
         />
+        <link
+          rel="stylesheet"
+          href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        />
         <style>{`
           *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
           html, body { height: 100%; }

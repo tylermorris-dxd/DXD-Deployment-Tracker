@@ -3620,6 +3620,7 @@ function EquipmentTracker({ equipment, setEquipment, projects, teamMembers, onBa
   };
   const [inlineEdit, setInlineEdit] = useState(null); // { id, field }
   const [inlineVal, setInlineVal] = useState("");
+  const [openNoteId, setOpenNoteId] = useState(null);
 
   // Derive auto-populated entries from equipment picker (Phase 1 task 1-4) and Phase 2 procurement tasks
   const autoProcured = [];
@@ -3630,12 +3631,15 @@ function EquipmentTracker({ equipment, setEquipment, projects, teamMembers, onBa
       Object.entries(pickerTask.equipmentSelections).forEach(([itemName, qty]) => {
         if (!qty || qty <= 0) return;
         const cat = PRICING_CATALOG.find(i => i.name === itemName)?.category || "";
-        for (let unit = 1; unit <= qty; unit++) {
-          const autoId = `auto-picker-${proj.id}-${itemName}-${unit}`;
+        const isBattery = itemName.toLowerCase().includes("battery");
+        if (isBattery) {
+          // Consolidate all batteries into one entry with a qty field
+          const autoId = `auto-picker-${proj.id}-${itemName}-battery`;
           if (!equipment.some(e => e.autoId === autoId)) {
             autoProcured.push({
               id: autoId, autoId,
-              name: qty > 1 ? `${itemName} #${unit}` : itemName,
+              name: itemName,
+              qty,
               serialNumber: "", faaRegNumber: "", assignedOperator: "",
               assignedProjectId: proj.id,
               group: cat,
@@ -3644,6 +3648,23 @@ function EquipmentTracker({ equipment, setEquipment, projects, teamMembers, onBa
               notes: "", isAuto: true,
               projectName: proj.name,
             });
+          }
+        } else {
+          for (let unit = 1; unit <= qty; unit++) {
+            const autoId = `auto-picker-${proj.id}-${itemName}-${unit}`;
+            if (!equipment.some(e => e.autoId === autoId)) {
+              autoProcured.push({
+                id: autoId, autoId,
+                name: qty > 1 ? `${itemName} #${unit}` : itemName,
+                serialNumber: "", faaRegNumber: "", assignedOperator: "",
+                assignedProjectId: proj.id,
+                group: cat,
+                dateOrdered: "", dateReceived: "",
+                status: "ordered",
+                notes: "", isAuto: true,
+                projectName: proj.name,
+              });
+            }
           }
         }
       });
@@ -3775,14 +3796,25 @@ function EquipmentTracker({ equipment, setEquipment, projects, teamMembers, onBa
   const inlineCellStyle = { fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: "rgba(255,255,255,0.35)", cursor: "text", borderRadius: 4, padding: "2px 4px", transition: "background 0.15s" };
   const inlineInputStyle = { background: "rgba(255,255,255,0.08)", border: "1px solid rgba(196,30,58,0.5)", borderRadius: 4, padding: "2px 6px", color: "#E8ECF4", fontSize: 11, outline: "none", fontFamily: "'IBM Plex Mono', monospace", width: "100%" };
 
-  const EquipRow = ({ item, showProject }) => (
-    <div style={{ display: "grid", gridTemplateColumns: showProject ? "2fr 1fr 1fr 1fr 1fr 1fr auto" : "2fr 1fr 1fr 1fr 1fr auto", gap: 0, padding: "11px 18px", borderBottom: "1px solid rgba(255,255,255,0.04)", alignItems: "center", transition: "background 0.15s" }}
+  const EquipRow = ({ item, showProject }) => {
+    const noteOpen = openNoteId === (item.id || item.autoId);
+    const commitNote = (val) => {
+      if (item.isAuto) {
+        setEquipment(prev => [...prev, { ...item, id: "eq-" + Date.now(), isAuto: false, notes: val }]);
+      } else {
+        setEquipment(prev => prev.map(e => e.id === item.id ? { ...e, notes: val } : e));
+      }
+    };
+    return (
+    <div>
+    <div style={{ display: "grid", gridTemplateColumns: showProject ? "2fr 1fr 1fr 1fr 1fr 1fr auto" : "2fr 1fr 1fr 1fr 1fr auto", gap: 0, padding: "11px 18px", borderBottom: noteOpen ? "none" : "1px solid rgba(255,255,255,0.04)", alignItems: "center", transition: "background 0.15s" }}
       onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.02)"}
       onMouseLeave={e => e.currentTarget.style.background = "transparent"}
     >
       {/* Name */}
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 12, fontWeight: 600, color: "#E8ECF4" }}>{item.name}</span>
+        {item.qty > 1 && <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, fontWeight: 700, color: "#60A5FA", background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.3)", borderRadius: 3, padding: "1px 6px" }}>×{item.qty}</span>}
         {item.isAuto && <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 8, fontWeight: 700, color: "#F59E0B", background: "rgba(245,158,11,0.15)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: 3, padding: "1px 5px" }}>AUTO</span>}
       </div>
       {/* Project (optional column) */}
@@ -3850,6 +3882,13 @@ function EquipmentTracker({ equipment, setEquipment, projects, teamMembers, onBa
       </div>
       {/* Actions */}
       <div style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}>
+        <button
+          onClick={() => setOpenNoteId(noteOpen ? null : (item.id || item.autoId))}
+          style={{ background: "none", border: `1px solid ${item.notes ? "rgba(96,165,250,0.4)" : "rgba(255,255,255,0.08)"}`, borderRadius: 4, cursor: "pointer", color: item.notes ? "#60A5FA" : "rgba(255,255,255,0.3)", padding: "4px 8px", display: "flex", alignItems: "center" }}
+          title="Notes"
+        >
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2h8v7H7l-2 2V9H2V2Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/></svg>
+        </button>
         <button onClick={() => openEdit(item)} style={{ background: "none", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 4, cursor: "pointer", color: "rgba(255,255,255,0.4)", padding: "4px 8px", display: "flex", alignItems: "center" }} title="Edit all fields">
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M8.5 1.5L10.5 3.5L4 10H2V8L8.5 1.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </button>
@@ -3858,7 +3897,21 @@ function EquipmentTracker({ equipment, setEquipment, projects, teamMembers, onBa
         </button>
       </div>
     </div>
+    {/* Inline notes panel */}
+    {noteOpen && (
+      <div style={{ padding: "8px 18px 12px", borderBottom: "1px solid rgba(255,255,255,0.04)", background: "rgba(96,165,250,0.03)" }}>
+        <textarea
+          autoFocus
+          placeholder="Add notes..."
+          defaultValue={item.notes || ""}
+          onBlur={e => { commitNote(e.target.value); }}
+          style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(96,165,250,0.3)", borderRadius: 6, padding: "8px 10px", color: "#E8ECF4", fontSize: 11, fontFamily: "'IBM Plex Mono', monospace", resize: "vertical", minHeight: 60, outline: "none", boxSizing: "border-box" }}
+        />
+      </div>
+    )}
+    </div>
   );
+  };
 
   return (
     <div style={styles.container}>
