@@ -9,6 +9,21 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: dxd_tracker
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - uses: actions/checkout@v4
 
@@ -40,9 +55,20 @@ jobs:
         with:
           workspaces: backend
 
+      - name: Install sqlx-cli
+        run: cargo install sqlx-cli --no-default-features --features postgres,native-tls
+
+      - name: Run database migrations (against local CI postgres)
+        run: sqlx migrate run
+        working-directory: backend
+        env:
+          DATABASE_URL: postgres://ci:ci@localhost:5432/dxd_tracker
+
       - name: Build Rust binary (static release)
         run: cargo build --release --target x86_64-unknown-linux-musl
         working-directory: backend
+        env:
+          DATABASE_URL: postgres://ci:ci@localhost:5432/dxd_tracker
 
       # ── Package deploy artifact ─────────────────────────────────────────────
       - name: Stage artifact
