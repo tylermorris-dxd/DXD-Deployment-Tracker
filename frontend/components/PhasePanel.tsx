@@ -63,12 +63,23 @@ export default function PhasePanel({ phase, projectId, teamMembers, onDataChange
       {/* Phase owner */}
       <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
         <label style={s.fieldLabelSm}>PHASE OWNER</label>
-        <input
-          style={{ ...s.fieldInput, flex: 1, maxWidth: 240 }}
-          placeholder="Assigned to..."
-          value={phase.owner}
-          onChange={e => updatePhase.mutate(e.target.value)}
-        />
+        {teamMembers.length > 0 ? (
+          <select
+            style={{ ...s.fieldInput, flex: 1, maxWidth: 240, color: phase.owner ? '#f1f1f1' : 'rgba(255,255,255,0.3)' }}
+            value={phase.owner}
+            onChange={e => updatePhase.mutate(e.target.value)}
+          >
+            <option value="">— Unassigned —</option>
+            {teamMembers.map(m => <option key={m.id} value={m.name}>{m.name}{m.role ? ` (${m.role})` : ''}</option>)}
+          </select>
+        ) : (
+          <input
+            style={{ ...s.fieldInput, flex: 1, maxWidth: 240 }}
+            placeholder="Assigned to..."
+            value={phase.owner}
+            onChange={e => updatePhase.mutate(e.target.value)}
+          />
+        )}
       </div>
 
       {/* Tasks */}
