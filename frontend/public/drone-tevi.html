@@ -14,6 +14,14 @@
 </head>
 <body>
   <div id="root"></div>
+  <div id="err" style="color:#f87171;padding:20px;font-family:monospace;display:none"></div>
+  <script>
+    window.onerror = function(msg,src,line,col,err){
+      var el=document.getElementById('err');
+      el.style.display='block';
+      el.textContent='JS ERROR: '+msg+' ('+src+':'+line+')';
+    };
+  </script>
   <script type="text/babel" data-presets="react">
 const { useState, useReducer } = React;
 
@@ -1407,7 +1415,13 @@ function App(){
   );
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+try {
+  ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+} catch(e) {
+  var el=document.getElementById('err');
+  el.style.display='block';
+  el.textContent='RENDER ERROR: '+e.message;
+}
   </script>
 </body>
 </html>
