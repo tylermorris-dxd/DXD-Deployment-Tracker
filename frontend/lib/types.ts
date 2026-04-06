@@ -162,10 +162,14 @@ export interface EquipmentItem {
   subtaskId: number | null
   name: string
   serialNumber: string
+  faaRegNumber: string
   status: string
   operator: string
   qty: number
   notes: string
+  dateOrdered: string
+  dateReceived: string
+  groupName: string
   createdAt: string
   isVirtual: boolean
 }
@@ -173,18 +177,26 @@ export interface EquipmentItem {
 export interface CreateEquipment {
   name: string
   serialNumber?: string
+  faaRegNumber?: string
   status?: string
   operator?: string
   qty?: number
   notes?: string
   subtaskId?: number | null
+  dateOrdered?: string
+  dateReceived?: string
+  groupName?: string
 }
 
 export interface UpdateEquipment {
   name?: string
   serialNumber?: string
+  faaRegNumber?: string
   status?: string
   operator?: string
   qty?: number
   notes?: string
+  dateOrdered?: string
+  dateReceived?: string
+  groupName?: string
 }

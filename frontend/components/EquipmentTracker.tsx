@@ -7,161 +7,323 @@ import { s } from '@/lib/styles'
 import { Icons } from '@/lib/icons'
 import type { EquipmentItem, CreateEquipment, UpdateEquipment } from '@/lib/types'
 
-const STATUS_COLORS: Record<string, string> = {
-  pending:   'rgba(255,255,255,0.3)',
-  ordered:   '#f59e0b',
-  shipped:   '#3b82f6',
-  delivered: '#8b5cf6',
-  installed: '#22c55e',
-}
-const STATUS_OPTIONS = ['pending', 'ordered', 'shipped', 'delivered', 'installed']
+// ── Constants ──────────────────────────────────────────────────────────────────
 
-interface EditCell { id: string; field: 'name' | 'serialNumber' | 'status' | 'operator' | 'qty' }
+const STATUS_COLORS: Record<string, string> = {
+  ordered:        '#F59E0B',
+  'in-transit':   '#3B82F6',
+  received:       '#8B5CF6',
+  deployed:       '#22C55E',
+  maintenance:    '#F97316',
+  decommissioned: '#6B7280',
+}
+const STATUS_LABELS: Record<string, string> = {
+  ordered:        'ORDERED',
+  'in-transit':   'SHIPPED',
+  received:       'DELIVERED',
+  deployed:       'OPERATIONAL',
+  maintenance:    'MAINTENANCE',
+  decommissioned: 'DECOMMISSIONED',
+}
+const STATUS_OPTIONS = Object.keys(STATUS_LABELS)
+
+type EquipForm = {
+  name: string; serialNumber: string; faaRegNumber: string
+  assignedOperator: string; groupName: string; dateOrdered: string
+  dateReceived: string; status: string; notes: string; qty: number
+}
+
+const EMPTY_FORM: EquipForm = {
+  name: '', serialNumber: '', faaRegNumber: '', assignedOperator: '',
+  groupName: '', dateOrdered: '', dateReceived: '', status: 'ordered', notes: '', qty: 1,
+}
+
+// ── Sub-components ─────────────────────────────────────────────────────────────
+
+function StatusBadge({ status }: { status: string }) {
+  const color = STATUS_COLORS[status] || '#6B7280'
+  return (
+    <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, fontWeight: 700, letterSpacing: 0.8, color, background: `${color}22`, border: `1px solid ${color}44`, borderRadius: 4, padding: '2px 8px', whiteSpace: 'nowrap' }}>
+      {STATUS_LABELS[status] || status}
+    </span>
+  )
+}
+
+function StatCard({ label, value, color, icon }: { label: string; value: number; color: string; icon: React.ReactNode }) {
+  return (
+    <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14 }}>
+      <div style={{ color, opacity: 0.8 }}>{icon}</div>
+      <div>
+        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 22, fontWeight: 700, color, lineHeight: 1 }}>{value}</div>
+        <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 9, fontWeight: 600, letterSpacing: 1.5, color: 'rgba(255,255,255,0.3)', marginTop: 4 }}>{label}</div>
+      </div>
+    </div>
+  )
+}
+
+// ── Equipment Card ─────────────────────────────────────────────────────────────
+
+function EquipCard({
+  item, onEdit, onDelete, onStatusChange, onNoteChange,
+}: {
+  item: EquipmentItem
+  onEdit: () => void
+  onDelete: () => void
+  onStatusChange: (status: string) => void
+  onNoteChange: (notes: string) => void
+}) {
+  const [noteOpen, setNoteOpen] = useState(false)
+  const [noteVal, setNoteVal] = useState(item.notes)
+  const [statusOpen, setStatusOpen] = useState(false)
+
+  const accentColor = STATUS_COLORS[item.status] || '#6B7280'
+
+  return (
+    <div style={{
+      background: 'rgba(18,18,22,0.95)',
+      border: `1px solid rgba(255,255,255,0.07)`,
+      borderTop: `2px solid ${accentColor}55`,
+      borderRadius: 10,
+      overflow: 'hidden',
+      transition: 'border-color 0.15s',
+      display: 'flex',
+      flexDirection: 'column',
+    }}>
+      {/* Card body */}
+      <div style={{ padding: '14px 16px', flex: 1 }}>
+        {/* Name row */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 10 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 13, fontWeight: 700, color: '#E8ECF4', letterSpacing: 0.3, lineHeight: 1.3 }}>
+              {item.name}
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 5 }}>
+              {item.qty > 1 && (
+                <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, fontWeight: 700, color: '#60A5FA', background: 'rgba(96,165,250,0.12)', border: '1px solid rgba(96,165,250,0.3)', borderRadius: 3, padding: '1px 6px' }}>×{item.qty}</span>
+              )}
+              {item.isVirtual && (
+                <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 8, fontWeight: 700, color: '#F59E0B', background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 3, padding: '1px 5px' }}>AUTO</span>
+              )}
+              {item.groupName && (
+                <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 8, color: 'rgba(255,255,255,0.35)', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 3, padding: '1px 6px' }}>{item.groupName}</span>
+              )}
+            </div>
+          </div>
+          {/* Status badge — click to cycle */}
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <div onClick={() => setStatusOpen(v => !v)} style={{ cursor: 'pointer' }}>
+              <StatusBadge status={item.status} />
+            </div>
+            {statusOpen && (
+              <div style={{ position: 'absolute', right: 0, top: '110%', zIndex: 50, background: '#1a1a1e', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, overflow: 'hidden', minWidth: 150, boxShadow: '0 8px 24px rgba(0,0,0,0.6)' }}>
+                {STATUS_OPTIONS.map(opt => (
+                  <div key={opt} onClick={() => { onStatusChange(opt); setStatusOpen(false) }}
+                    style={{ padding: '8px 14px', cursor: 'pointer', fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: STATUS_COLORS[opt], background: item.status === opt ? `${STATUS_COLORS[opt]}15` : 'transparent', transition: 'background 0.12s' }}
+                    onMouseEnter={e => (e.currentTarget.style.background = `${STATUS_COLORS[opt]}20`)}
+                    onMouseLeave={e => (e.currentTarget.style.background = item.status === opt ? `${STATUS_COLORS[opt]}15` : 'transparent')}>
+                    {STATUS_LABELS[opt]}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Detail grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 12px' }}>
+          {item.serialNumber && (
+            <div>
+              <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 8, fontWeight: 600, letterSpacing: 1.2, color: 'rgba(255,255,255,0.25)', marginBottom: 2 }}>SERIAL #</div>
+              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: 'rgba(255,255,255,0.6)' }}>{item.serialNumber}</div>
+            </div>
+          )}
+          {item.faaRegNumber && (
+            <div>
+              <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 8, fontWeight: 600, letterSpacing: 1.2, color: 'rgba(255,255,255,0.25)', marginBottom: 2 }}>FAA REG #</div>
+              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: 'rgba(255,255,255,0.6)' }}>{item.faaRegNumber}</div>
+            </div>
+          )}
+          {item.operator && (
+            <div>
+              <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 8, fontWeight: 600, letterSpacing: 1.2, color: 'rgba(255,255,255,0.25)', marginBottom: 2 }}>OPERATOR</div>
+              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: 'rgba(255,255,255,0.6)' }}>{item.operator}</div>
+            </div>
+          )}
+          {(item.dateOrdered || item.dateReceived) && (
+            <div>
+              <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 8, fontWeight: 600, letterSpacing: 1.2, color: 'rgba(255,255,255,0.25)', marginBottom: 2 }}>DATES</div>
+              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, color: 'rgba(255,255,255,0.45)', lineHeight: 1.5 }}>
+                {item.dateOrdered && <span>Ord: {item.dateOrdered}</span>}
+                {item.dateOrdered && item.dateReceived && <br />}
+                {item.dateReceived && <span>Rcv: {item.dateReceived}</span>}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Notes preview */}
+        {item.notes && !noteOpen && (
+          <div style={{ marginTop: 8, fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, color: 'rgba(255,255,255,0.3)', lineHeight: 1.4, borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: 8 }}>
+            {item.notes.length > 80 ? item.notes.slice(0, 80) + '…' : item.notes}
+          </div>
+        )}
+
+        {/* Notes editor */}
+        {noteOpen && (
+          <div style={{ marginTop: 8, borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 8 }}>
+            <textarea
+              autoFocus
+              value={noteVal}
+              onChange={e => setNoteVal(e.target.value)}
+              onBlur={() => { onNoteChange(noteVal); setNoteOpen(false) }}
+              placeholder="Add notes..."
+              style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(96,165,250,0.3)', borderRadius: 6, padding: '7px 10px', color: '#E8ECF4', fontSize: 11, fontFamily: "'IBM Plex Mono', monospace", resize: 'vertical', minHeight: 60, outline: 'none', boxSizing: 'border-box' }}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Action bar */}
+      <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', padding: '7px 12px', display: 'flex', gap: 4, justifyContent: 'flex-end', background: 'rgba(0,0,0,0.15)' }}>
+        <button
+          onClick={() => { setNoteOpen(v => !v); if (!noteOpen) setNoteVal(item.notes) }}
+          title={item.notes ? 'Edit note' : 'Add note'}
+          style={{ background: 'none', border: `1px solid ${item.notes ? 'rgba(96,165,250,0.4)' : 'rgba(255,255,255,0.08)'}`, borderRadius: 4, cursor: 'pointer', color: item.notes ? '#60A5FA' : 'rgba(255,255,255,0.3)', padding: '4px 9px', display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}>
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 2h8v7H7l-2 2V9H2V2Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/></svg>
+          {item.notes ? 'NOTE' : 'NOTE'}
+        </button>
+        <button onClick={onEdit}
+          title="Edit"
+          style={{ background: 'none', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, cursor: 'pointer', color: 'rgba(255,255,255,0.4)', padding: '4px 9px', display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}>
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M8.5 1.5L10.5 3.5L4 10H2V8L8.5 1.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          EDIT
+        </button>
+        {!item.isVirtual && (
+          <button onClick={onDelete}
+            title="Delete"
+            style={{ background: 'none', border: '1px solid rgba(255,100,100,0.15)', borderRadius: 4, cursor: 'pointer', color: 'rgba(255,100,100,0.45)', padding: '4px 8px', display: 'flex', alignItems: 'center' }}>
+            {Icons.trash}
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Main component ─────────────────────────────────────────────────────────────
 
 export default function EquipmentTracker() {
   const qc = useQueryClient()
 
   const { data: projects = [] } = useQuery({ queryKey: ['projects'], queryFn: api.projects.list })
-  const [projectId, setProjectId] = useState('')
+  const { data: teamMembers = [] } = useQuery({ queryKey: ['teamMembers'], queryFn: api.team.list })
 
-  const { data: items = [], isLoading } = useQuery({
-    queryKey: ['equipment', projectId],
-    queryFn: () => api.equipment.list(projectId),
-    enabled: !!projectId,
+  // All items across all projects
+  const projectIds = projects.map(p => p.id)
+  const equipQueries = useQuery({
+    queryKey: ['equipment-all', projectIds.join(',')],
+    queryFn: async () => {
+      const results = await Promise.all(projectIds.map(id => api.equipment.list(id)))
+      return results.flat()
+    },
+    enabled: projectIds.length > 0,
   })
+  const allItems: EquipmentItem[] = equipQueries.data ?? []
 
-  const [editCell, setEditCell] = useState<EditCell | null>(null)
-  const [expandedNote, setExpandedNote] = useState<string | null>(null)
-  const [addingRow, setAddingRow] = useState(false)
-  const [newName, setNewName] = useState('')
-  const [newQty, setNewQty] = useState(1)
+  const [search, setSearch] = useState('')
+  const [showForm, setShowForm] = useState(false)
+  const [editId, setEditId] = useState<string | null>(null)
+  const [formProjectId, setFormProjectId] = useState<string>('')
+  const [form, setForm] = useState<EquipForm>(EMPTY_FORM)
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: ['equipment', projectId] })
+  const invalidate = () => qc.invalidateQueries({ queryKey: ['equipment-all'] })
 
   const updateMut = useMutation({
     mutationFn: ({ id, body }: { id: string; body: UpdateEquipment }) => api.equipment.update(id, body),
     onSuccess: invalidate,
   })
-
   const createMut = useMutation({
-    mutationFn: (body: CreateEquipment) => api.equipment.create(projectId, body),
-    onSuccess: () => { invalidate(); setAddingRow(false); setNewName(''); setNewQty(1) },
+    mutationFn: ({ projectId, body }: { projectId: string; body: CreateEquipment }) =>
+      api.equipment.create(projectId, body),
+    onSuccess: () => { invalidate(); setShowForm(false); setEditId(null); setForm(EMPTY_FORM) },
   })
-
   const deleteMut = useMutation({
     mutationFn: (id: string) => api.equipment.delete(id),
     onSuccess: invalidate,
   })
 
-  // Promote a virtual row to a real DB row, applying the patch at the same time
-  const promote = (row: EquipmentItem, patch: UpdateEquipment) => {
-    createMut.mutate({
-      name: patch.name ?? row.name,
-      serialNumber: patch.serialNumber ?? row.serialNumber,
-      status: patch.status ?? row.status,
-      operator: patch.operator ?? row.operator,
-      qty: patch.qty ?? row.qty,
-      notes: patch.notes ?? row.notes,
-      subtaskId: row.subtaskId,
+  const toggleCollapse = (id: string) => setCollapsed(p => ({ ...p, [id]: !p[id] }))
+
+  const openAdd = (presetProjectId?: string) => {
+    setFormProjectId(presetProjectId || projects[0]?.id || '')
+    setForm(EMPTY_FORM)
+    setEditId(null)
+    setShowForm(true)
+  }
+
+  const openEdit = (item: EquipmentItem) => {
+    setForm({
+      name: item.name, serialNumber: item.serialNumber, faaRegNumber: item.faaRegNumber,
+      assignedOperator: item.operator, groupName: item.groupName,
+      dateOrdered: item.dateOrdered, dateReceived: item.dateReceived,
+      status: item.status, notes: item.notes, qty: item.qty,
     })
+    setEditId(item.id)
+    setShowForm(true)
   }
 
-  const commitCell = (row: EquipmentItem, field: EditCell['field'], value: string | number) => {
-    setEditCell(null)
-    const patch: UpdateEquipment = { [field]: value }
-    if (row.isVirtual) promote(row, patch)
-    else updateMut.mutate({ id: row.id, body: patch })
-  }
-
-  const commitNote = (row: EquipmentItem, notes: string) => {
-    if (row.isVirtual) promote(row, { notes })
-    else updateMut.mutate({ id: row.id, body: { notes } })
-  }
-
-  const isBattery = (name: string) => name.toLowerCase().includes('battery')
-
-  const thSt: React.CSSProperties = {
-    fontFamily: "'Chakra Petch', sans-serif", fontSize: 9,
-    color: 'rgba(255,255,255,0.3)', letterSpacing: 1.5,
-    textAlign: 'left', padding: '8px 12px',
-    borderBottom: '1px solid rgba(255,255,255,0.07)',
-    whiteSpace: 'nowrap',
-  }
-  const tdSt: React.CSSProperties = {
-    padding: '9px 12px', borderBottom: '1px solid rgba(255,255,255,0.04)',
-    verticalAlign: 'middle',
-  }
-  const inlineInput: React.CSSProperties = {
-    background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(230,57,70,0.5)',
-    borderRadius: 4, padding: '3px 7px', color: '#E8ECF4',
-    fontSize: 12, fontFamily: "'IBM Plex Mono', monospace", outline: 'none', width: '100%',
-  }
-
-  const renderCell = (row: EquipmentItem, field: EditCell['field']) => {
-    const isEditing = editCell?.id === row.id && editCell?.field === field
-
-    if (field === 'status') {
-      if (isEditing) return (
-        <select autoFocus defaultValue={row.status}
-          style={{ ...inlineInput, padding: '3px 4px' }}
-          onBlur={e => commitCell(row, 'status', e.target.value)}
-          onChange={e => commitCell(row, 'status', e.target.value)}>
-          {STATUS_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-        </select>
-      )
-      const color = STATUS_COLORS[row.status] ?? 'rgba(255,255,255,0.3)'
-      return (
-        <span onClick={() => setEditCell({ id: row.id, field: 'status' })}
-          style={{ ...s.badge, background: color + '22', color, border: `1px solid ${color}55`, cursor: 'pointer', userSelect: 'none', textTransform: 'uppercase', fontSize: 9 }}>
-          {row.status}
-        </span>
-      )
+  const saveForm = () => {
+    if (!form.name.trim()) return
+    const body: CreateEquipment = {
+      name: form.name.trim(),
+      serialNumber: form.serialNumber,
+      faaRegNumber: form.faaRegNumber,
+      status: form.status,
+      operator: form.assignedOperator,
+      qty: form.qty,
+      notes: form.notes,
+      dateOrdered: form.dateOrdered,
+      dateReceived: form.dateReceived,
+      groupName: form.groupName,
     }
-
-    if (field === 'qty') {
-      if (isEditing) return (
-        <input autoFocus type="number" min={1} defaultValue={row.qty} style={{ ...inlineInput, width: 56 }}
-          onBlur={e => commitCell(row, 'qty', Math.max(1, parseInt(e.target.value) || 1))}
-          onKeyDown={e => {
-            if (e.key === 'Enter') commitCell(row, 'qty', Math.max(1, parseInt((e.target as HTMLInputElement).value) || 1))
-            if (e.key === 'Escape') setEditCell(null)
-          }} />
-      )
-      if (isBattery(row.name)) return (
-        <span onClick={() => setEditCell({ id: row.id, field: 'qty' })}
-          style={{ ...s.badge, background: 'rgba(251,191,36,0.15)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.3)', cursor: 'pointer' }}>
-          ×{row.qty}
-        </span>
-      )
-      return (
-        <span onClick={() => setEditCell({ id: row.id, field: 'qty' })}
-          style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, cursor: 'pointer', fontFamily: "'IBM Plex Mono', monospace" }}>
-          {row.qty}
-        </span>
-      )
+    if (editId) {
+      updateMut.mutate({ id: editId, body })
+      setShowForm(false); setEditId(null); setForm(EMPTY_FORM)
+    } else {
+      const projectId = formProjectId || projects[0]?.id
+      if (!projectId) return
+      createMut.mutate({ projectId, body })
     }
+  }
 
-    // Text fields
-    const val = field === 'name' ? row.name : field === 'serialNumber' ? row.serialNumber : row.operator
-    if (isEditing) return (
-      <input autoFocus defaultValue={val} style={inlineInput}
-        onBlur={e => commitCell(row, field, e.target.value)}
-        onKeyDown={e => {
-          if (e.key === 'Enter') commitCell(row, field, (e.target as HTMLInputElement).value)
-          if (e.key === 'Escape') setEditCell(null)
-        }} />
-    )
+  const handleNoteChange = (item: EquipmentItem, notes: string) => {
+    updateMut.mutate({ id: item.id, body: { notes } })
+  }
+
+  const handleDelete = (item: EquipmentItem) => {
+    if (window.confirm(`Delete "${item.name}"?`)) deleteMut.mutate(item.id)
+  }
+
+  // Filter
+  const filtered = allItems.filter(e => {
+    if (!search) return true
+    const q = search.toLowerCase()
     return (
-      <span onClick={() => setEditCell({ id: row.id, field })}
-        title="Click to edit"
-        style={{ cursor: 'pointer', color: val ? '#E8ECF4' : 'rgba(255,255,255,0.2)', fontSize: field === 'name' ? 13 : 11, fontFamily: "'IBM Plex Mono', monospace" }}>
-        {val || '—'}
-        {field === 'name' && row.isVirtual && (
-          <span style={{ marginLeft: 8, fontSize: 8, color: '#f59e0b', background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 3, padding: '1px 5px', fontWeight: 700 }}>AUTO</span>
-        )}
-      </span>
+      e.name.toLowerCase().includes(q) ||
+      e.serialNumber.toLowerCase().includes(q) ||
+      e.faaRegNumber.toLowerCase().includes(q) ||
+      e.operator.toLowerCase().includes(q)
     )
-  }
+  })
+
+  // Stats
+  const deployed    = allItems.filter(e => e.status === 'deployed').length
+  const inTransit   = allItems.filter(e => e.status === 'in-transit').length
+  const maintenance = allItems.filter(e => e.status === 'maintenance').length
+
+  const inputSm: React.CSSProperties = { width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: '8px 12px', color: '#E8ECF4', fontSize: 12, outline: 'none', fontFamily: "'IBM Plex Mono', monospace" }
+  const labelSm: React.CSSProperties = { display: 'block', fontFamily: "'Chakra Petch', sans-serif", fontSize: 9, fontWeight: 600, letterSpacing: 1.5, color: 'rgba(255,255,255,0.35)', marginBottom: 5, textTransform: 'uppercase' }
 
   return (
     <div style={s.container}>
@@ -174,136 +336,153 @@ export default function EquipmentTracker() {
             <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, color: 'rgba(255,255,255,0.35)', letterSpacing: 2, marginTop: 2 }}>DEUS X DEFENSE</div>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <select
-            value={projectId}
-            onChange={e => { setProjectId(e.target.value); setExpandedNote(null); setEditCell(null) }}
-            style={{ ...s.fieldInput, minWidth: 220, color: projectId ? '#E8ECF4' : 'rgba(255,255,255,0.35)' } as React.CSSProperties}
-          >
-            <option value="">— Select Project —</option>
-            {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
-          {projectId && (
-            <button style={s.ghostBtn} onClick={() => setAddingRow(v => !v)}>
-              {Icons.plus}<span>ADD ITEM</span>
-            </button>
-          )}
-        </div>
+        <button style={s.primaryBtn} onClick={() => openAdd()}>
+          {Icons.plus}<span>ADD EQUIPMENT</span>
+        </button>
       </div>
 
-      {/* Add row form */}
-      {addingRow && projectId && (
-        <div style={{ ...s.card, display: 'flex', gap: 10, alignItems: 'flex-end', marginBottom: 16 }}>
-          <div style={{ flex: 1 }}>
-            <label style={s.fieldLabelSm}>ITEM NAME *</label>
-            <input autoFocus style={s.fieldInput} placeholder="e.g. DJI Matrice 4TD"
-              value={newName} onChange={e => setNewName(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Escape') setAddingRow(false) }} />
+      {/* Stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
+        <StatCard label="TOTAL ITEMS" value={allItems.length} color="#E8ECF4"
+          icon={<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="2" y="4" width="14" height="11" rx="2" stroke="currentColor" strokeWidth="1.4"/><path d="M6 4V3a3 3 0 016 0v1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/><path d="M2 9h14" stroke="currentColor" strokeWidth="1.4"/></svg>} />
+        <StatCard label="DEPLOYED" value={deployed} color="#22C55E"
+          icon={<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 2l2 5h5l-4 3 1.5 5L9 12l-4.5 3L6 10 2 7h5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/></svg>} />
+        <StatCard label="IN TRANSIT" value={inTransit} color="#3B82F6"
+          icon={<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="1" y="7" width="13" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><path d="M14 10l2-1.5V13h-2" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/><circle cx="5" cy="15" r="1.5" stroke="currentColor" strokeWidth="1.2"/><circle cx="12" cy="15" r="1.5" stroke="currentColor" strokeWidth="1.2"/></svg>} />
+        <StatCard label="MAINTENANCE" value={maintenance} color="#F97316"
+          icon={<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M15 3l-4 4-2-1-1 2 1 2 2-1 4-4a4 4 0 01-4 8 4 4 0 01-4-4 4 4 0 018-6z" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>} />
+      </div>
+
+      {/* Search */}
+      <div style={{ position: 'relative', marginBottom: 24 }}>
+        <div style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.3)', pointerEvents: 'none' }}>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4" stroke="currentColor" strokeWidth="1.3"/><path d="M9.5 9.5l2.5 2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
+        </div>
+        <input style={{ ...inputSm, paddingLeft: 32 }} placeholder="Search equipment, serial #, FAA reg, operator..." value={search} onChange={e => setSearch(e.target.value)} />
+      </div>
+
+      {/* Add / Edit Form */}
+      {showForm && (
+        <div style={{ background: 'rgba(20,20,24,0.98)', border: '1px solid rgba(196,30,58,0.35)', borderRadius: 14, padding: '20px 24px', marginBottom: 24, animation: 'fadeSlideIn 0.25s ease' }}>
+          <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 11, color: '#C41E3A', letterSpacing: 1.5, marginBottom: 16 }}>{editId ? 'EDIT EQUIPMENT' : 'ADD EQUIPMENT'}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={labelSm}>Equipment Name *</label>
+              <input style={inputSm} placeholder="e.g. DJI Dock 3" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+            </div>
+            <div>
+              <label style={labelSm}>Serial Number</label>
+              <input style={inputSm} placeholder="e.g. SN-123456" value={form.serialNumber} onChange={e => setForm(f => ({ ...f, serialNumber: e.target.value }))} />
+            </div>
+            <div>
+              <label style={labelSm}>FAA Registration #</label>
+              <input style={inputSm} placeholder="e.g. FA3-1234567" value={form.faaRegNumber} onChange={e => setForm(f => ({ ...f, faaRegNumber: e.target.value }))} />
+            </div>
+            <div>
+              <label style={labelSm}>Assigned Operator</label>
+              {teamMembers.length > 0 ? (
+                <select style={inputSm} value={form.assignedOperator} onChange={e => setForm(f => ({ ...f, assignedOperator: e.target.value }))}>
+                  <option value="">— Unassigned —</option>
+                  {teamMembers.map(m => <option key={m.id} value={m.name}>{m.name}{m.role ? ` (${m.role})` : ''}</option>)}
+                </select>
+              ) : (
+                <input style={inputSm} placeholder="e.g. Tyler Morris" value={form.assignedOperator} onChange={e => setForm(f => ({ ...f, assignedOperator: e.target.value }))} />
+              )}
+            </div>
+            <div>
+              <label style={labelSm}>Group / Category</label>
+              <input style={inputSm} placeholder="e.g. Drones, DAA, Accessories..." value={form.groupName} onChange={e => setForm(f => ({ ...f, groupName: e.target.value }))} />
+            </div>
+            <div>
+              <label style={labelSm}>Status</label>
+              <select style={{ ...inputSm, color: STATUS_COLORS[form.status] || '#E8ECF4' }} value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
+                {STATUS_OPTIONS.map(opt => <option key={opt} value={opt}>{STATUS_LABELS[opt]}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={labelSm}>Qty</label>
+              <input type="number" min={1} style={inputSm} value={form.qty} onChange={e => setForm(f => ({ ...f, qty: Math.max(1, parseInt(e.target.value) || 1) }))} />
+            </div>
+            <div>
+              <label style={labelSm}>Date Ordered</label>
+              <input type="date" style={inputSm} value={form.dateOrdered} onChange={e => setForm(f => ({ ...f, dateOrdered: e.target.value }))} />
+            </div>
+            <div>
+              <label style={labelSm}>Date Received</label>
+              <input type="date" style={inputSm} value={form.dateReceived} onChange={e => setForm(f => ({ ...f, dateReceived: e.target.value }))} />
+            </div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={labelSm}>Notes</label>
+              <textarea style={{ ...inputSm, height: 70, resize: 'vertical' }} placeholder="Additional notes..." value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
+            </div>
           </div>
-          <div style={{ width: 72 }}>
-            <label style={s.fieldLabelSm}>QTY</label>
-            <input type="number" min={1} style={s.fieldInput} value={newQty}
-              onChange={e => setNewQty(Math.max(1, parseInt(e.target.value) || 1))} />
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button style={s.ghostBtn} onClick={() => { setShowForm(false); setEditId(null); setForm(EMPTY_FORM) }}>CANCEL</button>
+            <button style={{ ...s.primaryBtn, opacity: form.name.trim() ? 1 : 0.4 }} disabled={!form.name.trim() || createMut.isPending || updateMut.isPending} onClick={saveForm}>SAVE EQUIPMENT</button>
           </div>
-          <button style={{ ...s.primaryBtn, opacity: newName.trim() ? 1 : 0.4 }}
-            disabled={!newName.trim() || createMut.isPending}
-            onClick={() => createMut.mutate({ name: newName.trim(), qty: newQty })}>
-            ADD
-          </button>
-          <button style={s.ghostBtn} onClick={() => { setAddingRow(false); setNewName(''); setNewQty(1) }}>✕</button>
         </div>
       )}
 
-      {!projectId ? (
+      {/* Content */}
+      {equipQueries.isLoading && projects.length > 0 ? (
+        <div style={{ textAlign: 'center', padding: 40, color: 'rgba(255,255,255,0.3)', fontFamily: "'IBM Plex Mono', monospace", fontSize: 12 }}>Loading...</div>
+      ) : filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 20px', color: 'rgba(255,255,255,0.25)', fontFamily: "'IBM Plex Mono', monospace", fontSize: 12 }}>
-          Select a project to view its equipment
-        </div>
-      ) : isLoading ? (
-        <div style={{ textAlign: 'center', padding: 40, color: 'rgba(255,255,255,0.3)', fontFamily: "'IBM Plex Mono', monospace", fontSize: 12 }}>
-          Loading...
-        </div>
-      ) : items.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '60px 20px', color: 'rgba(255,255,255,0.2)', fontFamily: "'IBM Plex Mono', monospace", fontSize: 11 }}>
-          No equipment yet. Items checked in Phase 2 procurement tasks appear here automatically.
+          <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 15, fontWeight: 700, letterSpacing: 1, color: 'rgba(255,255,255,0.3)', marginBottom: 8 }}>{search ? 'No Results' : 'No Equipment'}</div>
+          <div>{search ? 'No items match your search.' : 'Add equipment or mark procurement items in Phase 2 of a project.'}</div>
         </div>
       ) : (
-        <div style={{ ...s.card, padding: 0, overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                <th style={thSt}>ITEM</th>
-                <th style={thSt}>QTY</th>
-                <th style={thSt}>STATUS</th>
-                <th style={thSt}>SERIAL #</th>
-                <th style={thSt}>OPERATOR</th>
-                <th style={{ ...thSt, width: 36 }}></th>
-                <th style={{ ...thSt, width: 36 }}></th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map(row => (
-                <React.Fragment key={row.id}>
-                  <tr style={{ background: row.isVirtual ? 'rgba(255,255,255,0.01)' : 'transparent' }}
-                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.025)')}
-                    onMouseLeave={e => (e.currentTarget.style.background = row.isVirtual ? 'rgba(255,255,255,0.01)' : 'transparent')}>
-                    <td style={tdSt}>{renderCell(row, 'name')}</td>
-                    <td style={tdSt}>{renderCell(row, 'qty')}</td>
-                    <td style={tdSt}>{renderCell(row, 'status')}</td>
-                    <td style={tdSt}>{renderCell(row, 'serialNumber')}</td>
-                    <td style={tdSt}>{renderCell(row, 'operator')}</td>
-                    <td style={tdSt}>
-                      <button
-                        style={{ ...s.iconBtn, color: expandedNote === row.id ? '#e63946' : row.notes ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.2)' }}
-                        title={row.notes ? 'Edit note' : 'Add note'}
-                        onClick={() => setExpandedNote(expandedNote === row.id ? null : row.id)}>
-                        {Icons.note}
-                      </button>
-                    </td>
-                    <td style={tdSt}>
-                      {!row.isVirtual && (
-                        <button style={{ ...s.iconBtn, color: 'rgba(255,80,80,0.4)' }} title="Delete"
-                          onClick={() => { if (window.confirm(`Delete "${row.name}"?`)) deleteMut.mutate(row.id) }}>
-                          {Icons.trash}
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                  {expandedNote === row.id && (
-                    <tr>
-                      <td colSpan={7} style={{ padding: '0 12px 10px', background: 'rgba(230,57,70,0.03)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                        <NoteEditor
-                          key={row.id}
-                          initialValue={row.notes}
-                          onSave={notes => commitNote(row, notes)}
-                        />
-                      </td>
-                    </tr>
-                  )}
-                </React.Fragment>
-              ))}
-            </tbody>
-          </table>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+          {projects.map(proj => {
+            const projItems = filtered.filter(e => e.projectId === proj.id)
+            if (projItems.length === 0) return null
+            const isCollapsed = !!collapsed[proj.id]
+            return (
+              <div key={proj.id} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, overflow: 'hidden' }}>
+                {/* Project header */}
+                <div onClick={() => toggleCollapse(proj.id)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px', background: 'rgba(255,255,255,0.03)', borderBottom: isCollapsed ? 'none' : '1px solid rgba(255,255,255,0.05)', cursor: 'pointer', userSelect: 'none', transition: 'background 0.15s' }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.055)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}>
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0, transition: 'transform 0.2s', transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', color: 'rgba(255,255,255,0.35)' }}>
+                    <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#C41E3A', boxShadow: '0 0 7px #C41E3A88', flexShrink: 0, display: 'inline-block' }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 14, fontWeight: 700, color: '#E8ECF4', letterSpacing: 0.3 }}>{proj.name}</div>
+                    {(proj.client || proj.site) && (
+                      <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: 'rgba(255,255,255,0.25)', marginTop: 2 }}>
+                        {[proj.client, proj.site].filter(Boolean).join(' · ')}
+                      </div>
+                    )}
+                  </div>
+                  <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: 'rgba(255,255,255,0.25)', background: 'rgba(255,255,255,0.06)', padding: '2px 10px', borderRadius: 10, flexShrink: 0 }}>{projItems.length} ITEM{projItems.length !== 1 ? 'S' : ''}</span>
+                  <button onClick={e => { e.stopPropagation(); openAdd(proj.id) }}
+                    style={{ background: 'rgba(196,30,58,0.15)', border: '1px solid rgba(196,30,58,0.3)', borderRadius: 6, cursor: 'pointer', color: '#C41E3A', padding: '4px 10px', fontSize: 11, fontFamily: "'Chakra Petch', sans-serif", letterSpacing: 0.5, flexShrink: 0 }}>
+                    + Add
+                  </button>
+                </div>
+
+                {/* Cards grid */}
+                {!isCollapsed && (
+                  <div style={{ padding: '16px 18px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
+                    {projItems.map(item => (
+                      <EquipCard
+                        key={item.id}
+                        item={item}
+                        onEdit={() => openEdit(item)}
+                        onDelete={() => handleDelete(item)}
+                        onStatusChange={status => updateMut.mutate({ id: item.id, body: { status } })}
+                        onNoteChange={notes => handleNoteChange(item, notes)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
-  )
-}
-
-function NoteEditor({ initialValue, onSave }: { initialValue: string; onSave: (v: string) => void }) {
-  const [value, setValue] = useState(initialValue)
-  return (
-    <textarea
-      autoFocus
-      value={value}
-      onChange={e => setValue(e.target.value)}
-      onBlur={() => onSave(value)}
-      placeholder="Add notes about this equipment item..."
-      style={{
-        width: '100%', minHeight: 64, resize: 'vertical', marginTop: 8,
-        background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
-        borderRadius: 6, color: '#E8ECF4', fontFamily: "'IBM Plex Mono', monospace",
-        fontSize: 11, padding: '8px 10px', outline: 'none', boxSizing: 'border-box',
-      }}
-    />
   )
 }

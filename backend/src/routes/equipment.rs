@@ -25,10 +25,9 @@ async fn list_equipment(
     State(state): State<AppState>,
     Path(project_id): Path<String>,
 ) -> Result<Json<Vec<EquipmentItem>>, AppError> {
-    // 1. Fetch stored rows
     let stored = sqlx::query(
-        "SELECT id, project_id, subtask_id, name, serial_number, status, \
-         operator, qty, notes, created_at \
+        "SELECT id, project_id, subtask_id, name, serial_number, faa_reg_number, \
+         status, operator, qty, notes, date_ordered, date_received, group_name, created_at \
          FROM equipment WHERE project_id = $1 ORDER BY created_at",
     )
     .bind(&project_id)
@@ -51,16 +50,20 @@ async fn list_equipment(
             subtask_id: r.try_get("subtask_id")?,
             name: r.try_get("name")?,
             serial_number: r.try_get("serial_number")?,
+            faa_reg_number: r.try_get("faa_reg_number")?,
             status: r.try_get("status")?,
             operator: r.try_get("operator")?,
             qty: r.try_get("qty")?,
             notes: r.try_get("notes")?,
+            date_ordered: r.try_get("date_ordered")?,
+            date_received: r.try_get("date_received")?,
+            group_name: r.try_get("group_name")?,
             created_at: r.try_get("created_at")?,
             is_virtual: false,
         });
     }
 
-    // 2. Auto-populate virtual entries from Phase 2 trackDates subtasks
+    // Auto-populate virtual entries from Phase 2 trackDates subtasks
     let virtuals = sqlx::query(
         "SELECT s.id, s.text, s.ot_ordered, s.ot_shipped, s.ot_delivered \
          FROM subtasks s \
@@ -98,10 +101,14 @@ async fn list_equipment(
             subtask_id: Some(subtask_id),
             name: v.try_get("text")?,
             serial_number: String::new(),
+            faa_reg_number: String::new(),
             status: status.to_string(),
             operator: String::new(),
             qty: 1,
             notes: String::new(),
+            date_ordered: ot_ordered,
+            date_received: ot_delivered,
+            group_name: String::new(),
             created_at: String::new(),
             is_virtual: true,
         });
@@ -119,27 +126,36 @@ async fn create_equipment(
         return Err(AppError::BadRequest("name is required".into()));
     }
     let id = format!("equip-{}", &Uuid::new_v4().to_string().replace('-', "")[..16]);
-    let serial_number = body.serial_number.unwrap_or_default();
-    let status = body.status.unwrap_or_else(|| "ordered".into());
-    let operator = body.operator.unwrap_or_default();
-    let qty: i32 = body.qty.unwrap_or(1).max(1);
-    let notes = body.notes.unwrap_or_default();
-    let created_at = chrono::Utc::now().to_rfc3339();
+    let serial_number  = body.serial_number.unwrap_or_default();
+    let faa_reg_number = body.faa_reg_number.unwrap_or_default();
+    let status         = body.status.unwrap_or_else(|| "ordered".into());
+    let operator       = body.operator.unwrap_or_default();
+    let qty: i32       = body.qty.unwrap_or(1).max(1);
+    let notes          = body.notes.unwrap_or_default();
+    let date_ordered   = body.date_ordered.unwrap_or_default();
+    let date_received  = body.date_received.unwrap_or_default();
+    let group_name     = body.group_name.unwrap_or_default();
+    let created_at     = chrono::Utc::now().to_rfc3339();
 
     sqlx::query(
         "INSERT INTO equipment \
-         (id, project_id, subtask_id, name, serial_number, status, operator, qty, notes, created_at) \
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
+         (id, project_id, subtask_id, name, serial_number, faa_reg_number, status, operator, \
+          qty, notes, date_ordered, date_received, group_name, created_at) \
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)",
     )
     .bind(&id)
     .bind(&project_id)
     .bind(body.subtask_id)
     .bind(&body.name)
     .bind(&serial_number)
+    .bind(&faa_reg_number)
     .bind(&status)
     .bind(&operator)
     .bind(qty)
     .bind(&notes)
+    .bind(&date_ordered)
+    .bind(&date_received)
+    .bind(&group_name)
     .bind(&created_at)
     .execute(&state.pool)
     .await?;
@@ -152,10 +168,14 @@ async fn create_equipment(
             subtask_id: body.subtask_id,
             name: body.name,
             serial_number,
+            faa_reg_number,
             status,
             operator,
             qty,
             notes,
+            date_ordered,
+            date_received,
+            group_name,
             created_at,
             is_virtual: false,
         }),
@@ -167,52 +187,30 @@ async fn update_equipment(
     Path(id): Path<String>,
     Json(body): Json<UpdateEquipment>,
 ) -> Result<StatusCode, AppError> {
+    macro_rules! patch {
+        ($field:literal, $val:expr) => {
+            sqlx::query(concat!("UPDATE equipment SET ", $field, " = $1 WHERE id = $2"))
+                .bind($val)
+                .bind(&id)
+                .execute(&state.pool)
+                .await?;
+        };
+    }
     if let Some(v) = &body.name {
         if v.trim().is_empty() {
             return Err(AppError::BadRequest("name cannot be empty".into()));
         }
-        sqlx::query("UPDATE equipment SET name = $1 WHERE id = $2")
-            .bind(v)
-            .bind(&id)
-            .execute(&state.pool)
-            .await?;
+        patch!("name", v);
     }
-    if let Some(v) = &body.serial_number {
-        sqlx::query("UPDATE equipment SET serial_number = $1 WHERE id = $2")
-            .bind(v)
-            .bind(&id)
-            .execute(&state.pool)
-            .await?;
-    }
-    if let Some(v) = &body.status {
-        sqlx::query("UPDATE equipment SET status = $1 WHERE id = $2")
-            .bind(v)
-            .bind(&id)
-            .execute(&state.pool)
-            .await?;
-    }
-    if let Some(v) = &body.operator {
-        sqlx::query("UPDATE equipment SET operator = $1 WHERE id = $2")
-            .bind(v)
-            .bind(&id)
-            .execute(&state.pool)
-            .await?;
-    }
-    if let Some(v) = body.qty {
-        let qty: i32 = v.max(1);
-        sqlx::query("UPDATE equipment SET qty = $1 WHERE id = $2")
-            .bind(qty)
-            .bind(&id)
-            .execute(&state.pool)
-            .await?;
-    }
-    if let Some(v) = &body.notes {
-        sqlx::query("UPDATE equipment SET notes = $1 WHERE id = $2")
-            .bind(v)
-            .bind(&id)
-            .execute(&state.pool)
-            .await?;
-    }
+    if let Some(v) = &body.serial_number  { patch!("serial_number",  v); }
+    if let Some(v) = &body.faa_reg_number { patch!("faa_reg_number", v); }
+    if let Some(v) = &body.status         { patch!("status",         v); }
+    if let Some(v) = &body.operator       { patch!("operator",       v); }
+    if let Some(v) = body.qty             { patch!("qty",            v.max(1)); }
+    if let Some(v) = &body.notes          { patch!("notes",          v); }
+    if let Some(v) = &body.date_ordered   { patch!("date_ordered",   v); }
+    if let Some(v) = &body.date_received  { patch!("date_received",  v); }
+    if let Some(v) = &body.group_name     { patch!("group_name",     v); }
     Ok(StatusCode::NO_CONTENT)
 }
 

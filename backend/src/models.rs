@@ -225,11 +225,15 @@ pub struct TeamMember {
 pub struct CreateEquipment {
     pub name: String,
     pub serial_number: Option<String>,
+    pub faa_reg_number: Option<String>,
     pub status: Option<String>,
     pub operator: Option<String>,
     pub qty: Option<i32>,
     pub notes: Option<String>,
     pub subtask_id: Option<i64>,
+    pub date_ordered: Option<String>,
+    pub date_received: Option<String>,
+    pub group_name: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -237,10 +241,14 @@ pub struct CreateEquipment {
 pub struct UpdateEquipment {
     pub name: Option<String>,
     pub serial_number: Option<String>,
+    pub faa_reg_number: Option<String>,
     pub status: Option<String>,
     pub operator: Option<String>,
     pub qty: Option<i32>,
     pub notes: Option<String>,
+    pub date_ordered: Option<String>,
+    pub date_received: Option<String>,
+    pub group_name: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -251,10 +259,14 @@ pub struct EquipmentItem {
     pub subtask_id: Option<i64>,
     pub name: String,
     pub serial_number: String,
+    pub faa_reg_number: String,
     pub status: String,
     pub operator: String,
     pub qty: i32,
     pub notes: String,
+    pub date_ordered: String,
+    pub date_received: String,
+    pub group_name: String,
     pub created_at: String,
     pub is_virtual: bool,
 }
