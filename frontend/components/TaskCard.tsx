@@ -32,7 +32,26 @@ export default function TaskCard({ task, phase, projectId, teamMembers, onDataCh
   const toggleSubtask = useMutation({
     mutationFn: ({ id, isDone }: { id: number; isDone: boolean }) =>
       api.subtasks.update(id, { isDone }),
-    onSuccess: invalidate,
+    onMutate: async ({ id, isDone }) => {
+      await qc.cancelQueries({ queryKey: ['project', projectId] })
+      const prev = qc.getQueryData(['project', projectId])
+      qc.setQueryData(['project', projectId], (old: any) => {
+        if (!old) return old
+        return {
+          ...old,
+          phases: old.phases.map((ph: any) => ({
+            ...ph,
+            tasks: ph.tasks.map((t: any) => ({
+              ...t,
+              subtasks: t.subtasks.map((sub: any) => sub.id === id ? { ...sub, isDone } : sub),
+            })),
+          })),
+        }
+      })
+      return { prev }
+    },
+    onError: (_e, _p, ctx: any) => { if (ctx?.prev) qc.setQueryData(['project', projectId], ctx.prev) },
+    onSettled: invalidate,
   })
 
   const updateSubtaskNote = useMutation({
