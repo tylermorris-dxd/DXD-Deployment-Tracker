@@ -14,13 +14,14 @@ import ConnectivityView from './ConnectivityView'
 import SiteMapper from './SiteMapper'
 import StakeholdersView from './StakeholdersView'
 import ProjectSettingsView from './ProjectSettingsView'
+import OpsPlanner from './OpsPlanner'
 
 interface Props {
   projectId: string
   onBack: () => void
 }
 
-type ViewMode = 'list' | 'kanban' | 'pricing' | 'wx' | 'airspace' | 'map' | 'network' | 'stakeholders' | 'settings'
+type ViewMode = 'list' | 'kanban' | 'pricing' | 'wx' | 'airspace' | 'map' | 'network' | 'stakeholders' | 'settings' | 'ops'
 
 // ── Shared tab-button styles ───────────────────────────────────────────────────
 
@@ -77,6 +78,10 @@ const TABS: Array<{ id: ViewMode; label: string; icon: React.ReactNode }> = [
   {
     id: 'settings', label: 'Settings',
     icon: <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="2" stroke="currentColor" strokeWidth="1.2"/><path d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M2.9 2.9l1.1 1.1M10 10l1.1 1.1M10 4L8.9 5.1M4 10L2.9 11.1" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/></svg>,
+  },
+  {
+    id: 'ops', label: 'Ops Planner',
+    icon: <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.2"/><path d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/><circle cx="7" cy="7" r="1.5" fill="currentColor"/></svg>,
   },
 ]
 
@@ -242,7 +247,7 @@ export default function ProjectView({ projectId, onBack }: Props) {
       )}
 
       {/* ── Content area ──────────────────────────────────────────────────── */}
-      <div style={{ padding: viewMode === 'map' ? 0 : '24px 24px 0 24px' }}>
+      <div style={{ padding: (viewMode === 'map' || viewMode === 'ops') ? 0 : '24px 24px 0 24px' }}>
         {/* LIST view */}
         {viewMode === 'list' && (
           <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: 24 }}>
@@ -311,6 +316,9 @@ export default function ProjectView({ projectId, onBack }: Props) {
 
         {/* SETTINGS view */}
         {viewMode === 'settings' && <ProjectSettingsView project={project} onUpdate={invalidate} />}
+
+        {/* OPS PLANNER view */}
+        {viewMode === 'ops' && <OpsPlanner />}
       </div>
     </div>
   )
