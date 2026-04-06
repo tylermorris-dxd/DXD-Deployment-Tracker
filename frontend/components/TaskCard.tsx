@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useRef, useState, useEffect } from 'react'
+import React, { useRef, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { s, formatFileSize } from '@/lib/styles'
@@ -27,10 +27,6 @@ export default function TaskCard({ task, phase, projectId, teamMembers, onDataCh
   const [editingSubtask, setEditingSubtask] = useState<number | null>(null)
   const [editSubtaskVal, setEditSubtaskVal] = useState('')
   const [dragOver, setDragOver] = useState(false)
-  const [completed, setCompleted] = useState(task.completed)
-
-  useEffect(() => { setCompleted(task.completed) }, [task.completed])
-
   const invalidate = () => { qc.invalidateQueries({ queryKey: ['project', projectId] }); onDataChange() }
 
   const toggleSubtask = useMutation({
@@ -58,8 +54,23 @@ export default function TaskCard({ task, phase, projectId, teamMembers, onDataCh
 
   const updateTask = useMutation({
     mutationFn: (patch: Parameters<typeof api.tasks.update>[1]) => api.tasks.update(task.id, patch),
-    onSuccess: invalidate,
-    onError: () => setCompleted(task.completed),
+    onMutate: async (patch) => {
+      await qc.cancelQueries({ queryKey: ['project', projectId] })
+      const prev = qc.getQueryData(['project', projectId])
+      qc.setQueryData(['project', projectId], (old: any) => {
+        if (!old) return old
+        return {
+          ...old,
+          phases: old.phases.map((ph: any) => ({
+            ...ph,
+            tasks: ph.tasks.map((t: any) => t.id === task.id ? { ...t, ...patch } : t),
+          })),
+        }
+      })
+      return { prev }
+    },
+    onError: (_e, _p, ctx: any) => { if (ctx?.prev) qc.setQueryData(['project', projectId], ctx.prev) },
+    onSettled: invalidate,
   })
 
   const deleteTask = useMutation({
@@ -115,8 +126,8 @@ export default function TaskCard({ task, phase, projectId, teamMembers, onDataCh
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
           <input
             type="checkbox"
-            checked={completed}
-            onChange={e => { e.stopPropagation(); setCompleted(e.target.checked); updateTask.mutate({ completed: e.target.checked }) }}
+            checked={task.completed}
+            onChange={e => { e.stopPropagation(); updateTask.mutate({ completed: e.target.checked }) }}
             onClick={e => e.stopPropagation()}
             style={{ width: 15, height: 15, flexShrink: 0, cursor: 'pointer', accentColor: '#e63946' }}
           />
@@ -131,7 +142,7 @@ export default function TaskCard({ task, phase, projectId, teamMembers, onDataCh
               onClick={e => e.stopPropagation()}
             />
           ) : (
-            <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, color: completed ? 'rgba(255,255,255,0.4)' : '#E8ECF4', textDecoration: completed ? 'line-through' : 'none', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, color: task.completed ? 'rgba(255,255,255,0.4)' : '#E8ECF4', textDecoration: task.completed ? 'line-through' : 'none', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {task.isGate && <span style={{ color: phase.color, marginRight: 5, fontSize: 10 }}>⬡ GATE</span>}
               {task.title}
             </span>
