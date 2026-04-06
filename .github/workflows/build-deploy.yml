@@ -79,6 +79,7 @@ jobs:
           cp -r frontend/out/* dist/frontend/
           printf '#!/bin/sh\nexec /home/site/wwwroot/dxd-tracker\n' > dist/startup.sh
           chmod +x dist/startup.sh
+          printf '{"name":"dxd-tracker","version":"2.0.0","scripts":{"start":"./dxd-tracker"}}\n' > dist/package.json
 
       - name: Create deploy zip
         run: cd dist && zip -r ../deploy.zip .
@@ -90,6 +91,7 @@ jobs:
           app-name: onboarding-dev
           publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
           package: deploy.zip
+          startup-command: '/home/site/wwwroot/dxd-tracker'
 
       - name: Upload artifact (manual download fallback)
         uses: actions/upload-artifact@v4
