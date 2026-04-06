@@ -318,7 +318,7 @@ export default function ProjectView({ projectId, onBack }: Props) {
         {viewMode === 'settings' && <ProjectSettingsView project={project} onUpdate={invalidate} />}
 
         {/* OPS PLANNER view */}
-        {viewMode === 'ops' && <OpsPlanner />}
+        {viewMode === 'ops' && <OpsPlanner site={project.site} name={project.name} />}
       </div>
     </div>
   )

@@ -1,622 +1,1265 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&display=swap');
-:root{--red:#cc1111;--red2:#e8000d;--blk:#080808;--blk2:#0f0f0f;--blk3:#161616;--blk4:#1e1e1e;--wht:#f0f0f0;--grey:#888;--grey2:#555;--bdr:#2a2a2a;}
-*{margin:0;padding:0;box-sizing:border-box;}
-body{background:var(--blk);color:var(--wht);font-family:'Barlow',sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden;}
-#header{background:var(--blk);border-bottom:2px solid var(--red);padding:0 12px;display:flex;justify-content:space-between;align-items:stretch;flex-shrink:0;height:44px;z-index:1000;}
-#hl{display:flex;align-items:center;gap:9px;}
-.logo{font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:800;letter-spacing:4px;display:flex;align-items:center;}
-.logo .x{color:var(--red2);}
-.hdiv{width:1px;height:100%;background:var(--bdr);}
-#op-title{font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:3px;text-transform:uppercase;}
-#op-sub{font-size:9px;color:var(--grey2);letter-spacing:1px;margin-top:1px;}
-#hr2{display:flex;align-items:center;gap:4px;}
-.draft{background:var(--red);color:#fff;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;padding:3px 10px;letter-spacing:2px;text-transform:uppercase;clip-path:polygon(6px 0%,100% 0%,calc(100% - 6px) 100%,0% 100%);}
-.hbtn{background:transparent;border:1px solid var(--bdr);color:var(--grey);font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:600;letter-spacing:1px;padding:3px 8px;cursor:pointer;text-transform:uppercase;transition:all .15s;}
-.hbtn:hover{border-color:var(--red);color:var(--wht);background:rgba(204,17,17,.1);}
-.hbtn.active{border-color:var(--red);color:var(--wht);background:rgba(204,17,17,.15);}
-#toolbar{background:var(--blk2);border-bottom:1px solid var(--bdr);padding:4px 8px;display:flex;gap:4px;align-items:center;flex-wrap:wrap;flex-shrink:0;z-index:1000;}
-.tbtn{background:var(--blk3);border:1px solid var(--bdr);color:var(--grey);font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:600;letter-spacing:1px;padding:3px 7px;cursor:pointer;text-transform:uppercase;transition:all .15s;white-space:nowrap;}
-.tbtn:hover{border-color:var(--red);color:var(--wht);}
-.tbtn.active{background:rgba(204,17,17,.15);border-color:var(--red);color:var(--wht);}
-.tbtn.danger{border-color:#5a0000;color:#cc4444;}
-.tbtn.danger:hover{background:rgba(204,17,17,.2);color:#ff6666;}
-.tbtn.warn{border-color:#4a3000;color:#aa6622;}
-.tbtn.warn:hover{border-color:#cc8833;color:#ffaa44;}
-.tsep{width:1px;height:20px;background:var(--bdr);margin:0 2px;flex-shrink:0;}
-input[type=color]{width:24px;height:22px;border:1px solid var(--bdr);background:var(--blk3);cursor:pointer;padding:1px;}
-input[type=range]{width:55px;accent-color:var(--red);}
-input[type=text],input[type=number],select,textarea{background:var(--blk3);border:1px solid var(--bdr);color:var(--wht);font-family:'Barlow Condensed',sans-serif;font-size:10px;letter-spacing:1px;padding:2px 5px;}
-input::placeholder{color:var(--grey2);}
-select option{background:var(--blk3);}
-#body{display:flex;flex:1;overflow:hidden;position:relative;}
-#map{flex:1;z-index:1;}
-#sidebar{width:272px;background:var(--blk2);border-left:2px solid var(--bdr);display:flex;flex-direction:column;overflow:hidden;z-index:500;flex-shrink:0;}
-#sb-tabs{display:flex;flex-shrink:0;border-bottom:2px solid var(--bdr);overflow-x:auto;}
-.sb-tab{flex:1;min-width:52px;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:6px 3px;cursor:pointer;text-align:center;color:var(--grey2);border-right:1px solid var(--bdr);transition:all .15s;border-bottom:2px solid transparent;margin-bottom:-2px;white-space:nowrap;}
-.sb-tab:last-child{border-right:none;}
-.sb-tab:hover{color:var(--wht);background:var(--blk3);}
-.sb-tab.active{color:var(--red);border-bottom:2px solid var(--red);background:rgba(204,17,17,.05);}
-.sb-panel{display:none;flex:1;flex-direction:column;overflow:hidden;}
-.sb-panel.active{display:flex;}
-.sec-hdr{padding:5px 9px;border-bottom:1px solid var(--bdr);flex-shrink:0;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;background:var(--blk2);}
-.sec-hdr:hover{background:var(--blk3);}
-.sec-title{font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--red);border-left:2px solid var(--red);padding-left:6px;display:flex;align-items:center;gap:5px;}
-.sec-acts{display:flex;gap:3px;align-items:center;}
-.pact{color:var(--grey2);cursor:pointer;font-size:9px;font-family:'Barlow Condensed',sans-serif;letter-spacing:1px;border:1px solid var(--bdr);padding:1px 5px;transition:all .15s;background:transparent;text-transform:uppercase;}
-.pact:hover{color:var(--wht);border-color:var(--red);}
-#legend-body{overflow-y:auto;padding:6px 8px;transition:all .2s;}
-.leg-item{display:flex;align-items:flex-start;gap:5px;padding:4px 5px;cursor:pointer;border:1px solid transparent;margin-bottom:2px;border-left:2px solid transparent;transition:all .1s;}
-.leg-item:hover{background:var(--blk3);border-left-color:var(--red);}
-.leg-item.on{background:rgba(204,17,17,.1);border-left-color:var(--red);}
-.leg-dot{width:9px;height:9px;flex-shrink:0;margin-top:2px;border:2px solid;}
-.leg-lbl{font-family:'Barlow Condensed',sans-serif;font-size:10px;letter-spacing:1px;text-transform:uppercase;}
-.leg-zt{font-size:8px;color:var(--grey2);letter-spacing:1px;margin-left:2px;}
-.leg-notes{font-size:9px;color:var(--grey);margin-top:1px;font-family:'Barlow',sans-serif;text-transform:none;letter-spacing:0;line-height:1.4;}
-.type-hdr{font-family:'Barlow Condensed',sans-serif;font-size:8px;letter-spacing:3px;text-transform:uppercase;color:var(--grey2);padding:2px 5px;border-bottom:1px solid var(--bdr);margin-bottom:2px;margin-top:3px;}
-#layers-body{overflow-y:auto;padding:6px 8px;transition:height .2s;}
-.coa-tabs{display:flex;gap:2px;flex-wrap:wrap;margin-bottom:5px;}
-.coa-tab{font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:2px 6px;cursor:pointer;border:1px solid var(--bdr);background:var(--blk3);color:var(--grey);transition:all .15s;display:flex;align-items:center;gap:3px;}
-.coa-tab:hover{border-color:var(--red);color:var(--wht);}
-.coa-tab.active{background:rgba(204,17,17,.15);border-color:var(--red);color:var(--wht);}
-.layer-item{display:flex;align-items:center;gap:3px;padding:2px 4px;cursor:pointer;border:1px solid transparent;margin-bottom:2px;font-family:'Barlow Condensed',sans-serif;font-size:10px;letter-spacing:1px;text-transform:uppercase;transition:all .1s;}
-.layer-item:hover{background:var(--blk4);}
-.layer-item.on{background:rgba(204,17,17,.1);border-color:var(--red);}
-.scope-tag{font-size:7px;color:var(--grey2);padding:1px 3px;border:1px solid var(--bdr);}
-.scope-tag.global{border-color:#446644;color:#668866;}
-.team-card{background:var(--blk3);border:1px solid var(--bdr);border-left:3px solid var(--red);margin-bottom:7px;}
-.team-card-hdr{display:flex;align-items:center;gap:6px;padding:6px 8px;cursor:pointer;user-select:none;}
-.team-card-hdr:hover{background:rgba(255,255,255,.03);}
-.tbadge{color:#fff;padding:2px 9px;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;clip-path:polygon(4px 0%,100% 0%,calc(100% - 4px) 100%,0% 100%);flex-shrink:0;}
-.team-card-body{padding:0 8px 8px;display:none;}
-.team-card-body.open{display:block;}
-.tsec{margin-top:7px;}
-.tsec-title{font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--red);border-bottom:1px solid var(--bdr);padding-bottom:3px;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center;}
-.mini-btn{font-family:'Barlow Condensed',sans-serif;font-size:9px;letter-spacing:1px;padding:1px 6px;border:1px solid var(--bdr);background:transparent;color:var(--grey2);cursor:pointer;text-transform:uppercase;}
-.mini-btn:hover{border-color:var(--red);color:var(--wht);}
-.drow{display:flex;align-items:center;gap:3px;margin-bottom:3px;padding:2px 3px;background:var(--blk4);border:1px solid var(--bdr);}
-.drow input,.drow select{font-size:9px;padding:2px 4px;}
-.reorder-btns{display:flex;flex-direction:column;gap:1px;flex-shrink:0;}
-.rarr{background:transparent;border:none;color:var(--grey2);cursor:pointer;font-size:9px;padding:0 2px;line-height:1;transition:color .1s;}
-.rarr:hover{color:var(--wht);}
-.te-row{display:flex;align-items:center;gap:4px;padding:5px 7px;border:1px solid var(--bdr);margin-bottom:4px;background:var(--blk3);border-left:3px solid var(--red);}
-.te-row input,.te-row select{font-size:10px;padding:3px 5px;}
-.te-team-badge{font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;padding:2px 7px;clip-path:polygon(3px 0%,100% 0%,calc(100% - 3px) 100%,0% 100%);flex-shrink:0;}
-#statusbar{background:var(--blk);border-top:2px solid var(--red);padding:2px 10px;font-family:'Barlow Condensed',sans-serif;font-size:9px;color:var(--grey2);display:flex;gap:16px;flex-shrink:0;z-index:1000;letter-spacing:1px;text-transform:uppercase;}
-#statusbar b{color:var(--grey);}
-#edit-panel{position:absolute;bottom:28px;left:10px;background:var(--blk2);border:1px solid var(--red);padding:9px 11px;z-index:700;width:228px;display:none;font-family:'Barlow Condensed',sans-serif;clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%);}
-.ep-title{color:var(--red);font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;margin-bottom:7px;display:flex;justify-content:space-between;border-left:2px solid var(--red);padding-left:5px;}
-.ep-row{margin-bottom:4px;}
-.ep-row label{display:block;color:var(--grey2);font-size:8px;letter-spacing:2px;text-transform:uppercase;margin-bottom:2px;}
-.ep-row input,.ep-row select,.ep-row textarea{width:100%;}
-.ep-row textarea{height:44px;resize:none;font-family:'Barlow',sans-serif;font-size:10px;letter-spacing:0;text-transform:none;}
-.ep-btns{display:flex;gap:3px;margin-top:6px;flex-wrap:wrap;}
-.ep-btns button{flex:1;padding:3px;font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;border:1px solid var(--bdr);background:transparent;color:var(--grey);min-width:34px;}
-.map-hover-tip{position:absolute;background:rgba(8,8,8,.95);border:1px solid var(--red);color:var(--wht);font-family:'Barlow Condensed',sans-serif;font-size:10px;letter-spacing:1px;padding:6px 10px;pointer-events:none;z-index:800;max-width:200px;display:none;text-transform:uppercase;}
-.map-hover-tip .ht-label{font-weight:700;font-size:11px;color:var(--wht);margin-bottom:3px;}
-.map-hover-tip .ht-notes{font-family:'Barlow',sans-serif;font-size:10px;text-transform:none;letter-spacing:0;color:var(--grey);margin-top:2px;}
-.uas-tip{background:rgba(8,8,8,.92)!important;border:1px solid rgba(204,17,17,.4)!important;color:var(--wht)!important;font-family:'Barlow Condensed',sans-serif!important;font-size:10px!important;letter-spacing:2px!important;text-transform:uppercase!important;padding:2px 7px!important;border-radius:0!important;box-shadow:none!important;}
-.uas-tip::before{display:none!important;}
-#modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9999;align-items:center;justify-content:center;}
-.mbox{background:var(--blk2);border:1px solid var(--red);padding:18px;width:720px;max-width:96vw;max-height:90vh;overflow-y:auto;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,0 100%);}
-.mbox h3{font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:800;letter-spacing:4px;text-transform:uppercase;color:var(--red);margin-bottom:12px;border-left:3px solid var(--red);padding-left:7px;}
-.mrow{margin-bottom:8px;}
-.mrow label{display:block;font-family:'Barlow Condensed',sans-serif;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--grey2);margin-bottom:2px;}
-.mrow input,.mrow select{width:100%;padding:4px 7px;}
-.mrow textarea{width:100%;padding:5px 7px;font-family:'Barlow',sans-serif;font-size:11px;letter-spacing:0;text-transform:none;resize:vertical;}
-.mbtns{display:flex;gap:7px;margin-top:12px;}
-.mbtns button{flex:1;padding:7px;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;cursor:pointer;}
-.mok{background:rgba(204,17,17,.15);border:1px solid var(--red);color:var(--wht);}
-.mno{background:transparent;border:1px solid var(--bdr);color:var(--grey);}
-.pdf-sec{background:var(--blk3);border:1px solid var(--bdr);padding:10px 12px;margin-bottom:10px;}
-.pdf-sec-title{font-family:'Barlow Condensed',sans-serif;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--red);margin-bottom:6px;border-left:2px solid var(--red);padding-left:5px;}
-.pdf-sec textarea{background:var(--blk4);border:1px solid var(--bdr);color:var(--wht);padding:6px 8px;width:100%;font-family:'Barlow',sans-serif;font-size:11px;letter-spacing:0;text-transform:none;resize:vertical;}
-.pdf-team-sec{background:var(--blk4);border:1px solid var(--bdr);border-left:3px solid #444;padding:8px 10px;margin-bottom:8px;}
-.pdf-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
-.pdf-col-title{font-family:'Barlow Condensed',sans-serif;font-size:8px;letter-spacing:3px;text-transform:uppercase;color:var(--red);border-bottom:1px solid var(--bdr);padding-bottom:2px;margin-bottom:4px;}
-.pf-inp{background:var(--blk3);border:none;border-bottom:1px solid var(--bdr);color:var(--wht);font-family:'Barlow',sans-serif;font-size:10px;padding:2px 3px;width:100%;letter-spacing:0;text-transform:none;}
-.pf-sel{background:var(--blk3);border:none;border-bottom:1px solid var(--bdr);color:var(--grey2);font-family:'Barlow Condensed',sans-serif;font-size:9px;padding:1px 3px;letter-spacing:1px;}
-/* ── OVERLAY PANEL — floats over map, does NOT affect layout ── */
-#ov-panel{position:absolute;top:8px;right:280px;width:256px;background:var(--blk3);border:1px solid #446688;border-left:3px solid #6699bb;padding:9px 11px;z-index:900;display:none;max-height:calc(100vh - 140px);overflow-y:auto;font-family:'Barlow Condensed',sans-serif;}
-.ov-hdr{font-size:9px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#6699bb;border-bottom:1px solid #446688;padding-bottom:4px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;}
-.ov-lbl{display:block;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--grey2);margin-bottom:2px;margin-top:5px;}
-.ov-btn{font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;border:1px solid var(--bdr);background:transparent;color:var(--grey);padding:3px 7px;}
-.ov-btn:hover{border-color:#6699bb;color:#aaccee;}
-.ov-btn.hi{background:rgba(68,102,136,.2);border-color:#6699bb;color:#aaccee;}
-.ov-row{display:flex;gap:4px;margin-top:5px;}
-.ov-item{display:flex;align-items:center;gap:4px;padding:3px 5px;background:var(--blk4);border:1px solid var(--bdr);margin-top:3px;font-size:9px;}
-::-webkit-scrollbar{width:3px;}::-webkit-scrollbar-track{background:var(--blk2);}::-webkit-scrollbar-thumb{background:var(--red);}
-</style>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-</head>
-<body>
-<div id="header">
-  <div id="hl">
-    <div class="logo">DEUS <span class="x">X</span></div>
-    <div class="hdiv"></div>
-    <div><div id="op-title">UAS OPERATIONS PLAN — NEW PROJECT</div><div id="op-sub">LOCATION TBD | AOR OVERLAY</div></div>
-  </div>
-  <div id="hr2">
-    <button class="hbtn" onclick="goTo()">📍 GO TO</button>
-    <button class="hbtn" onclick="showProjModal()">⚙ PROJECT</button>
-    <button class="hbtn" onclick="importJSON()">⬆ IMPORT</button>
-    <button class="hbtn" onclick="exportJSON()">⬇ JSON</button>
-    <button class="hbtn" onclick="exportCSV()">📋 CSV</button>
-    <button class="hbtn" onclick="showPrintPreview()">🖨 PRINT PREVIEW</button>
-    <div class="draft">DRAFT — PLANNING USE ONLY</div>
-  </div>
-</div>
-<div id="toolbar">
-  <button class="tbtn active" id="btn-select" onclick="setMode('select')">↖ SELECT</button>
-  <button class="tbtn" id="btn-move"   onclick="setMode('move')">✥ MOVE</button>
-  <button class="tbtn" id="btn-rect"   onclick="setMode('rect')">▭ AOR BOX</button>
-  <button class="tbtn" id="btn-circle" onclick="setMode('circle')">◉ CIRCLE</button>
-  <button class="tbtn" id="btn-line"   onclick="setMode('line')">╌ LINE</button>
-  <button class="tbtn" id="btn-marker" onclick="setMode('marker')">⊕ MARKER</button>
-  <div class="tsep"></div>
-  <input type="color" id="col" value="#cc1111">
-  <input type="range" id="opa" min="0" max="100" value="35">
-  <span id="opa-lbl" style="font-family:'Barlow Condensed',sans-serif;font-size:9px;color:var(--grey2);min-width:24px;">35%</span>
-  <input type="text" id="lbl" placeholder="LABEL…" style="width:90px;">
-  <select id="ztype">
-    <option>AOR</option><option>RESTRICTED</option><option>HLZ</option>
-    <option>LRZ</option><option>BOUNDARY</option><option>BROADCAST</option>
-    <option>MARKER</option><option>CUSTOM</option>
-  </select>
-  <div class="tsep"></div>
-  <button class="hbtn active" id="btn-labels" onclick="toggleAllLabels()" style="font-size:9px;padding:3px 7px;">🏷 LABELS</button>
-  <div class="tsep"></div>
-  <button class="tbtn danger" onclick="deleteSelected()">✕ DELETE</button>
-  <button class="tbtn" onclick="addCOA()">+ COA</button>
-  <button class="tbtn warn" onclick="clearActive()">⊘ CLEAR</button>
-  <div class="tsep"></div>
-  <button class="tbtn" id="btn-ov" onclick="toggleOvPanel()" style="border-color:#446688;color:#6699bb;">🗺 IMG OVERLAY</button>
-</div>
-
-<div id="body">
-  <div id="map"></div>
-  <div id="hover-tip" class="map-hover-tip"></div>
-
-  <!-- OVERLAY PANEL — absolutely positioned, never touches map div -->
-  <div id="ov-panel">
-    <div class="ov-hdr">📐 IMAGE OVERLAY <span onclick="toggleOvPanel()" style="cursor:pointer;color:var(--grey2);">✕</span></div>
-
-    <label class="ov-lbl">1 — Upload PNG / JPG</label>
-    <input type="file" id="ov-file" accept="image/png,image/jpeg" onchange="ovHandleFile(this)" style="width:100%;font-size:9px;color:var(--grey);">
-
-    <label class="ov-lbl">2 — Place at (address, place, or lat,lng)</label>
-    <div class="ov-row">
-      <input type="text" id="ov-q" placeholder="e.g. Saline Michigan" style="flex:1;font-size:9px;">
-      <button class="ov-btn hi" onclick="ovPlace()">GO</button>
-    </div>
-    <div style="font-size:8px;color:var(--grey2);margin-top:3px;">— or — <span onclick="ovDropAtCenter()" style="color:#6699bb;cursor:pointer;text-decoration:underline;">DROP AT MAP CENTER</span></div>
-
-    <label class="ov-lbl">Opacity — <span id="ov-opa-val">65%</span></label>
-    <input type="range" id="ov-opa" min="0" max="100" value="65" oninput="ovSetOpacity(this.value)" style="width:100%;accent-color:#6699bb;">
-
-    <label class="ov-lbl">Width (km) — <span id="ov-km-val">2.0 km</span></label>
-    <input type="range" id="ov-km" min="1" max="100" value="20" oninput="ovSetScale(this.value)" style="width:100%;accent-color:#6699bb;">
-
-    <div style="margin-top:8px;display:flex;gap:4px;flex-wrap:wrap;">
-      <button class="ov-btn" id="ov-mvbtn" onclick="ovToggleMove()">✥ MOVE MODE</button>
-      <button class="ov-btn" onclick="ovFit()">⊞ FIT</button>
-      <button class="ov-btn" style="border-color:#5a3300;color:#cc6633;" onclick="ovRemove()">✕ REMOVE</button>
-    </div>
-
-    <label class="ov-lbl" style="margin-top:8px;">Fine Nudge</label>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:3px;width:96px;margin-top:2px;">
-      <div></div><button class="ov-btn" onclick="ovNudge(0,1)" style="padding:2px 0;">▲</button><div></div>
-      <button class="ov-btn" onclick="ovNudge(-1,0)" style="padding:2px 0;">◀</button>
-      <button class="ov-btn" style="padding:2px 0;font-size:7px;color:var(--grey2);">·</button>
-      <button class="ov-btn" onclick="ovNudge(1,0)" style="padding:2px 0;">▶</button>
-      <div></div><button class="ov-btn" onclick="ovNudge(0,-1)" style="padding:2px 0;">▼</button><div></div>
-    </div>
-
-    <div id="ov-list" style="margin-top:8px;"></div>
-    <div style="font-size:8px;color:var(--grey2);margin-top:6px;border-top:1px solid var(--bdr);padding-top:5px;line-height:1.5;">
-      Upload → Place → scale to site width → nudge to align.
-    </div>
-  </div>
-
-  <div id="edit-panel">
-    <div class="ep-title">EDIT SHAPE <span onclick="closeEdit()" style="color:var(--red);cursor:pointer;">✕</span></div>
-    <div class="ep-row"><label>Label</label><input type="text" id="ep-label" oninput="liveEdit()"></div>
-    <div class="ep-row"><label>Zone Type</label>
-      <select id="ep-ztype" onchange="liveEdit()">
-        <option>AOR</option><option>RESTRICTED</option><option>HLZ</option>
-        <option>LRZ</option><option>BOUNDARY</option><option>BROADCAST</option>
-        <option>MARKER</option><option>CUSTOM</option>
-      </select>
-    </div>
-    <div class="ep-row"><label>Color</label><input type="color" id="ep-color" style="width:100%;height:24px;" oninput="liveEdit()"></div>
-    <div class="ep-row"><label>Opacity</label><input type="range" id="ep-opa" min="0" max="100" style="width:100%;accent-color:var(--red);" oninput="liveEdit()"></div>
-    <div class="ep-row" id="ep-rr" style="display:none;"><label>Radius (m)</label><input type="number" id="ep-radius" min="10" oninput="liveEdit()"></div>
-    <div class="ep-row"><label>Notes</label><textarea id="ep-notes" oninput="liveEdit()"></textarea></div>
-    <div class="ep-btns">
-      <button style="background:rgba(204,17,17,.15);border:1px solid var(--red);color:var(--wht);" onclick="applyEdit()">✓ APPLY</button>
-      <button style="border-color:#446688;color:#6699bb;" onclick="setMode('move')">✥ MOVE</button>
-      <button style="border-color:#446644;color:#668866;font-size:8px;" onclick="toggleGlobal()" id="ep-global-btn">⊕ SHARE</button>
-      <button style="border-color:#5a0000;color:#cc4444;" onclick="deleteSelected()">✕</button>
-    </div>
-  </div>
-
-  <div id="sidebar">
-    <div id="sb-tabs">
-      <div class="sb-tab active" onclick="switchSBTab('map')">🗺 MAP</div>
-      <div class="sb-tab" onclick="switchSBTab('teams')">👥 TEAMS</div>
-      <div class="sb-tab" onclick="switchSBTab('tasks')">✅ TASKS</div>
-      <div class="sb-tab" onclick="switchSBTab('equip')">🔧 EQUIP</div>
-    </div>
-    <div id="tab-map" class="sb-panel active">
-      <div class="sec-hdr" onclick="toggleSection('legend')">
-        <div class="sec-title"><span id="legend-arrow">▼</span> LEGEND</div>
-        <div class="sec-acts" onclick="event.stopPropagation()">
-          <button class="pact" id="legend-toggle-btn" onclick="toggleSection('legend')">COLLAPSE</button>
-        </div>
-      </div>
-      <div id="legend-body" style="flex:1;min-height:0;overflow-y:auto;padding:6px 8px;"></div>
-      <div class="sec-hdr" onclick="toggleSection('layers')">
-        <div class="sec-title"><span id="layers-arrow">▼</span> LAYERS</div>
-        <div class="sec-acts" onclick="event.stopPropagation()">
-          <button class="pact" onclick="addCOA()">+ COA</button>
-          <button class="pact" id="layers-toggle-btn" onclick="toggleSection('layers')">COLLAPSE</button>
-        </div>
-      </div>
-      <div id="layers-body" style="height:180px;flex-shrink:0;overflow-y:auto;padding:6px 8px;"></div>
-    </div>
-    <div id="tab-teams" class="sb-panel">
-      <div style="padding:5px 9px;border-bottom:1px solid var(--bdr);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:9px;letter-spacing:2px;color:var(--grey2);text-transform:uppercase;">TEAMS · TASK ORG · TASKS · EQUIPMENT</div>
-        <button class="pact" onclick="addTeamCard()">+ ADD</button>
-      </div>
-      <div id="teams-panel" style="flex:1;overflow-y:auto;padding:8px 9px;"></div>
-    </div>
-    <div id="tab-tasks" class="sb-panel">
-      <div style="padding:5px 9px;border-bottom:1px solid var(--bdr);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:9px;letter-spacing:2px;color:var(--grey2);text-transform:uppercase;">ALL TASKS</div>
-        <button class="pact" onclick="addGlobalTask()">+ ADD TASK</button>
-      </div>
-      <div id="tasks-panel" style="flex:1;overflow-y:auto;padding:8px 9px;"></div>
-    </div>
-    <div id="tab-equip" class="sb-panel">
-      <div style="padding:5px 9px;border-bottom:1px solid var(--bdr);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:9px;letter-spacing:2px;color:var(--grey2);text-transform:uppercase;">ALL EQUIPMENT</div>
-        <button class="pact" onclick="addGlobalEquip()">+ ADD ITEM</button>
-      </div>
-      <div id="equip-panel" style="flex:1;overflow-y:auto;padding:8px 9px;"></div>
-    </div>
-  </div>
-</div>
-
-<div id="statusbar">
-  <span>MODE: <b id="st-mode">SELECT</b></span>
-  <span>COA: <b id="st-coa">—</b></span>
-  <span>LAYERS: <b id="st-layers">0</b></span>
-  <span>LABELS: <b id="st-labels">ON</b></span>
-  <span>OVERLAY: <b id="st-ov">NONE</b></span>
-  <span>LAT/LNG: <b id="st-ll">—</b></span>
-</div>
-
-<div id="modal">
-  <div class="mbox">
-    <h3 id="modal-title"></h3>
-    <div id="modal-body"></div>
-    <div class="mbtns">
-      <button class="mok" onclick="confirmModal()">✓ CONFIRM</button>
-      <button class="mno" onclick="closeModal()">✕ CANCEL</button>
-    </div>
-  </div>
-</div>
-
-<script>
-// ── State ──────────────────────────────────────────────────────
-var S={
-  mode:'select',
-  coas:[{id:'c1',name:'COA 1 — INITIAL',color:'#cc1111',visible:true}],
-  active:'c1',layers:[],planSummary:'',
-  teams:[
-    {id:'vd1',badge:'VD1',color:'#cc1111',type:'VLOS',aor:'NORTH',lrz:'Maint. Shed Roof',members:[{id:'m1',name:'',role:'Pilot'}],tasks:[],equipment:[]},
-    {id:'vd2',badge:'VD2',color:'#888888',type:'VLOS',aor:'SOUTH',lrz:'Clubhouse Roof',members:[{id:'m2',name:'',role:'Pilot'}],tasks:[],equipment:[]}
-  ],
-  sel:null,idN:0,modalCb:null,
-  dragging:false,dragStart:null,previewLayer:null,
-  moving:false,moveLayerId:null,
-  leafletLayers:{},linePoints:[],lineTempLayer:null,lineTempMarkers:[],
-  labelsVisible:true,sections:{legend:true,layers:true},sbTab:'map',
-  _hoverLayerId:null
-};
-function uid(){return 'L'+(++S.idN);}
-function tid(){return 'T'+Date.now()+Math.random().toString(36).slice(2,6);}
-function activeCOA(){return S.coas.find(function(c){return c.id===S.active;})||S.coas[0];}
-function visibleLayers(){return S.layers.filter(function(l){return l.scope==='global'||l.scope===S.active;});}
-function getMeta(id){return S.layers.find(function(l){return l.id===id;});}
-function sortedLayers(ls){var o=['rect','circle','line','marker'];return[].concat(ls).sort(function(a,b){var ai=o.indexOf(a.type),bi=o.indexOf(b.type);return ai!==bi?ai-bi:(a.label||'').localeCompare(b.label||'');});}
-function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-function moveArr(arr,i,dir){var j=i+dir;if(j<0||j>=arr.length)return;var t=arr[i];arr[i]=arr[j];arr[j]=t;}
-function keepOpen(id){setTimeout(function(){var el=document.getElementById(id);if(el)el.classList.add('open');},10);}
-
-// ── Overlay system (self-contained, touches nothing else) ──────
-var OV={list:[],active:null,moveMode:false,fileData:null};
-function toggleOvPanel(){
-  var p=document.getElementById('ov-panel');
-  var open=p.style.display==='block';
-  p.style.display=open?'none':'block';
-  document.getElementById('btn-ov').classList.toggle('active',!open);
-  if(!open) ovRenderList();
-}
-function ovHandleFile(inp){
-  var f=inp.files[0]; if(!f)return;
-  var r=new FileReader();
-  r.onload=function(e){OV.fileData={url:e.target.result,name:f.name};};
-  r.readAsDataURL(f);
-}
-function ovBounds(center,kmW,imgW,imgH){
-  var aspect=(imgW&&imgH)?(imgH/imgW):1;
-  var kmH=kmW*aspect;
-  var dLat=(kmH/2)/110.574;
-  var dLng=(kmW/2)/(111.320*Math.cos(center.lat*Math.PI/180));
-  return[[center.lat-dLat,center.lng-dLng],[center.lat+dLat,center.lng+dLng]];
-}
-function ovCreate(center){
-  if(!OV.fileData){alert('UPLOAD AN IMAGE FIRST.');return;}
-  var opa=parseInt(document.getElementById('ov-opa').value)/100;
-  var kmW=parseInt(document.getElementById('ov-km').value)/10;
-  var img=new Image();
-  img.onload=function(){
-    var b=ovBounds(center,kmW,img.width,img.height);
-    var lf=L.imageOverlay(OV.fileData.url,b,{opacity:opa,interactive:false,zIndex:200});
-    lf.addTo(map);
-    var id='OV'+Date.now();
-    var o={id:id,name:OV.fileData.name,url:OV.fileData.url,center:[center.lat,center.lng],
-           kmW:kmW,imgW:img.width,imgH:img.height,opacity:opa,lf:lf,hidden:false};
-    OV.list.push(o); OV.active=id;
-    OV.fileData=null;
-    document.getElementById('ov-file').value='';
-    map.fitBounds(b,{padding:[30,30]});
-    ovUpdateStatus(); ovRenderList();
-  };
-  img.src=OV.fileData.url;
-}
-function ovDropAtCenter(){ovCreate(map.getCenter());}
-function ovPlace(){
-  var q=document.getElementById('ov-q').value.trim(); if(!q)return;
-  var pts=q.split(',');
-  if(pts.length===2&&!isNaN(+pts[0])&&!isNaN(+pts[1])){ovCreate(L.latLng(+pts[0],+pts[1]));return;}
-  fetch('https://nominatim.openstreetmap.org/search?format=json&q='+encodeURIComponent(q))
-    .then(function(r){return r.json();})
-    .then(function(d){
-      if(d&&d[0]){map.flyTo([+d[0].lat,+d[0].lon],15,{duration:1});setTimeout(function(){ovCreate(L.latLng(+d[0].lat,+d[0].lon));},1100);}
-      else alert('NOT FOUND — TRY LAT,LNG');
-    }).catch(function(){alert('TRY LAT,LNG FORMAT');});
-}
-function ovGet(){return OV.list.find(function(o){return o.id===OV.active;})||OV.list[OV.list.length-1]||null;}
-function ovSetOpacity(v){
-  document.getElementById('ov-opa-val').textContent=v+'%';
-  var o=ovGet(); if(!o)return; o.opacity=v/100; o.lf.setOpacity(o.opacity);
-}
-function ovSetScale(v){
-  var km=v/10; document.getElementById('ov-km-val').textContent=km.toFixed(1)+' km';
-  var o=ovGet(); if(!o)return;
-  o.kmW=km;
-  var b=ovBounds(L.latLng(o.center[0],o.center[1]),km,o.imgW,o.imgH);
-  o.lf.setBounds(b);
-}
-function ovNudge(dx,dy){
-  var o=ovGet(); if(!o)return;
-  var bds=map.getBounds();
-  var step=Math.max((bds.getEast()-bds.getWest())/400,0.0001);
-  o.center=[o.center[0]+dy*step, o.center[1]+dx*step];
-  var b=ovBounds(L.latLng(o.center[0],o.center[1]),o.kmW,o.imgW,o.imgH);
-  o.lf.setBounds(b);
-}
-function ovToggleMove(){
-  OV.moveMode=!OV.moveMode;
-  var btn=document.getElementById('ov-mvbtn');
-  btn.classList.toggle('hi',OV.moveMode);
-  btn.textContent=OV.moveMode?'✕ EXIT MOVE':'✥ MOVE MODE';
-  map.getContainer().style.cursor=OV.moveMode?'crosshair':'';
-  document.getElementById('st-ov').textContent=OV.moveMode?'MOVE MODE — CLICK MAP':(OV.list.length?OV.list.length+' ACTIVE':'NONE');
-}
-function ovFit(){var o=ovGet();if(o)map.fitBounds(o.lf.getBounds(),{padding:[30,30]});}
-function ovRemove(){var o=ovGet();if(!o)return;ovRemoveById(o.id);}
-function ovRemoveById(id){
-  var i=OV.list.findIndex(function(o){return o.id===id;});if(i<0)return;
-  map.removeLayer(OV.list[i].lf); OV.list.splice(i,1);
-  OV.active=OV.list.length?OV.list[OV.list.length-1].id:null;
-  ovUpdateStatus(); ovRenderList();
-}
-function ovToggleVis(id){
-  var o=OV.list.find(function(x){return x.id===id;});if(!o)return;
-  o.hidden=!o.hidden;
-  o.hidden?map.removeLayer(o.lf):o.lf.addTo(map);
-  ovRenderList();
-}
-function ovSelect(id){
-  OV.active=id;
-  var o=OV.list.find(function(x){return x.id===id;});if(!o)return;
-  document.getElementById('ov-opa').value=Math.round(o.opacity*100);
-  document.getElementById('ov-opa-val').textContent=Math.round(o.opacity*100)+'%';
-  document.getElementById('ov-km').value=Math.round(o.kmW*10);
-  document.getElementById('ov-km-val').textContent=o.kmW.toFixed(1)+' km';
-  ovRenderList();
-}
-function ovUpdateStatus(){document.getElementById('st-ov').textContent=OV.list.length?OV.list.length+' ACTIVE':'NONE';}
-function ovRenderList(){
-  var el=document.getElementById('ov-list'); if(!el)return;
-  if(!OV.list.length){el.innerHTML='<div style="font-size:9px;color:var(--grey2);letter-spacing:1px;">NO OVERLAYS YET</div>';return;}
-  el.innerHTML='<div style="font-size:8px;color:var(--grey2);letter-spacing:2px;text-transform:uppercase;border-top:1px solid var(--bdr);padding-top:5px;margin-bottom:3px;">ACTIVE</div>'+
-  OV.list.map(function(o){
-    var sel=o.id===OV.active;
-    return '<div class="ov-item" onclick="ovSelect(\''+o.id+'\')" style="cursor:pointer;'+(sel?'border-color:#6699bb;':'')+'">'+
-      '<span style="flex:1;color:#aaccee;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(o.name.length>16?o.name.slice(0,14)+'…':o.name)+'</span>'+
-      '<input type="range" min="0" max="100" value="'+Math.round(o.opacity*100)+'" onclick="event.stopPropagation()" oninput="OV.list.find(function(x){return x.id===\''+o.id+'\';}).opacity=this.value/100;OV.list.find(function(x){return x.id===\''+o.id+'\';}).lf.setOpacity(this.value/100);" style="width:40px;accent-color:#6699bb;">'+
-      '<span onclick="event.stopPropagation();ovToggleVis(\''+o.id+'\')" style="cursor:pointer;">'+(o.hidden?'🚫':'👁')+'</span>'+
-      '<span onclick="event.stopPropagation();ovRemoveById(\''+o.id+'\')" style="cursor:pointer;color:#cc4444;">✕</span>'+
-    '</div>';
-  }).join('');
-}
-
-// ── Sidebar tabs ──────────────────────────────────────────────
-var ALL_TABS=['map','teams','tasks','equip'];
-function switchSBTab(tab){
-  S.sbTab=tab;
-  document.querySelectorAll('.sb-tab').forEach(function(t,i){t.classList.toggle('active',ALL_TABS[i]===tab);});
-  ALL_TABS.forEach(function(t){document.getElementById('tab-'+t).classList.toggle('active',t===tab);});
-  if(tab==='teams')renderTeamsTab();
-  else if(tab==='tasks')renderTasksTab();
-  else if(tab==='equip')renderEquipTab();
-}
-
-// ── Section collapse ──────────────────────────────────────────
-function toggleSection(sec){
-  S.sections[sec]=!S.sections[sec];
-  var body=document.getElementById(sec+'-body');
-  var arrow=document.getElementById(sec+'-arrow');
-  var btn=document.getElementById(sec+'-toggle-btn');
-  if(sec==='layers'){body.style.height=S.sections[sec]?'180px':'0';body.style.overflow=S.sections[sec]?'auto':'hidden';body.style.padding=S.sections[sec]?'6px 8px':'0 8px';}
-  else{if(S.sections[sec]){body.style.flex='1';body.style.minHeight='0';body.style.overflow='auto';}else{body.style.flex='0 0 0';body.style.overflow='hidden';}}
-  if(arrow)arrow.textContent=S.sections[sec]?'▼':'▶';
-  if(btn)btn.textContent=S.sections[sec]?'COLLAPSE':'EXPAND';
-}
-
-// ── Hover tip ─────────────────────────────────────────────────
-var htip=document.getElementById('hover-tip');
-function showHoverTip(meta,e){htip.innerHTML='<div class="ht-label">'+(meta.label||meta.ztype||'')+'</div><div style="font-size:8px;color:var(--grey2);letter-spacing:1px;">'+meta.ztype+(meta.scope==='global'?' | SHARED':'')+'</div>'+(meta.notes?'<div class="ht-notes">'+esc(meta.notes)+'</div>':'');htip.style.display='block';posHoverTip(e);}
-function posHoverTip(e){var br=document.getElementById('body').getBoundingClientRect();var x=e.clientX-br.left+14,y=e.clientY-br.top-10;if(x+210>br.width-280)x=e.clientX-br.left-220;htip.style.left=x+'px';htip.style.top=y+'px';}
-function hideHoverTip(){htip.style.display='none';}
-
-// ── Map ───────────────────────────────────────────────────────
-var map=L.map('map',{zoomControl:true,attributionControl:true});
-map.setView([33.765,-78.795],15);
-var sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'© Esri',maxZoom:20});
-var osm=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM',maxZoom:19});
-sat.addTo(map);
-L.control.layers({'Satellite':sat,'Street Map':osm},{},{position:'topleft'}).addTo(map);
-
-map.on('mousemove',function(e){
-  document.getElementById('st-ll').textContent=e.latlng.lat.toFixed(5)+', '+e.latlng.lng.toFixed(5);
-  if(S.dragging&&S.dragStart)onDragMove(e);
-  if(htip.style.display==='block')posHoverTip(e.originalEvent);
-});
-map.on('mousedown',onMapDown);
-map.on('mouseup',onMapUp);
-map.on('click',function(e){
-  // overlay move mode intercepts click
-  if(OV.moveMode){
-    var o=ovGet();
-    if(o){o.center=[e.latlng.lat,e.latlng.lng];var b=ovBounds(e.latlng,o.kmW,o.imgW,o.imgH);o.lf.setBounds(b);}
-    ovToggleMove();
-    return;
-  }
-  onMapClick(e);
-});
-map.on('contextmenu',function(e){if(S.mode==='line'&&S.linePoints.length>=2)finalizeLine();});
-map.on('dblclick',function(e){if(S.mode==='line'&&S.linePoints.length>=2){L.DomEvent.stopPropagation(e);finalizeLine();}});
-
-// ── Labels ────────────────────────────────────────────────────
-function toggleAllLabels(){S.labelsVisible=!S.labelsVisible;document.getElementById('btn-labels').classList.toggle('active',S.labelsVisible);document.getElementById('st-labels').textContent=S.labelsVisible?'ON':'OFF';S.layers.forEach(function(l){if(l.labelHidden)return;var lf=S.leafletLayers[l.id];if(!lf||!lf.getTooltip)return;S.labelsVisible?lf.openTooltip():lf.closeTooltip();});}
-function toggleLayerLabel(id){var meta=getMeta(id);if(!meta)return;meta.labelHidden=!meta.labelHidden;var lf=S.leafletLayers[id];if(lf&&lf.getTooltip&&lf.getTooltip()){meta.labelHidden?lf.closeTooltip():lf.openTooltip();}renderMapTab();}
-
-// ── Mode ──────────────────────────────────────────────────────
-var HINTS={move:'MOVE — CLICK SHAPE THEN NEW LOCATION',rect:'AOR BOX — CLICK & DRAG',circle:'CIRCLE — CLICK CENTER, DRAG RADIUS',line:'LINE — CLICK POINTS · RIGHT-CLICK TO FINISH',marker:'MARKER — CLICK TO PLACE'};
-function setMode(m){
-  S.mode=m;S.dragging=false;S.dragStart=null;S.moving=false;S.moveLayerId=null;
-  clearPreview();clearLineTemp();S.linePoints=[];
-  document.querySelectorAll('.tbtn[id^="btn-"]').forEach(function(b){b.classList.remove('active');});
-  var b=document.getElementById('btn-'+m);if(b)b.classList.add('active');
-  document.getElementById('st-mode').textContent=m.toUpperCase();
-  var hb=document.getElementById('hint-bar');
-  if(m==='select'){if(hb)hb.style.display='none';}
-  else{if(!hb){hb=document.createElement('div');hb.id='hint-bar';hb.style.cssText='position:absolute;bottom:28px;left:50%;transform:translateX(-50%);background:rgba(8,8,8,.9);color:#888;font-family:\'Barlow Condensed\',sans-serif;font-size:9px;letter-spacing:2px;padding:3px 12px;pointer-events:none;white-space:nowrap;z-index:600;text-transform:uppercase;border:1px solid #2a2a2a;';document.getElementById('body').appendChild(hb);}hb.style.display='';hb.textContent=HINTS[m]||'';}
-  if(m==='select'||m==='move'){map.dragging.enable();map.getContainer().style.cursor=m==='move'?'crosshair':'';}
-  else{map.dragging.disable();map.getContainer().style.cursor='crosshair';}
-  if(m!=='select')closeEdit();
-}
-
-// ── Draw ──────────────────────────────────────────────────────
-function onMapDown(e){if(S.mode==='rect'||S.mode==='circle'){S.dragging=true;S.dragStart=e.latlng;}}
-function onDragMove(e){if(!S.dragging||!S.dragStart)return;var col=document.getElementById('col').value,op=parseInt(document.getElementById('opa').value)/100;clearPreview();if(S.mode==='rect')S.previewLayer=L.rectangle(bnds(S.dragStart,e.latlng),{color:col,weight:2,fillColor:col,fillOpacity:op,dashArray:'6,4',interactive:false}).addTo(map);else S.previewLayer=L.circle(S.dragStart,{radius:S.dragStart.distanceTo(e.latlng),color:col,weight:2,fillColor:col,fillOpacity:op,dashArray:'6,4',interactive:false}).addTo(map);}
-function onMapUp(e){if(!S.dragging||!S.dragStart)return;var col=document.getElementById('col').value,op=parseInt(document.getElementById('opa').value)/100;var lbl=document.getElementById('lbl').value||'',zt=document.getElementById('ztype').value;clearPreview();if(S.mode==='rect'&&(Math.abs(S.dragStart.lat-e.latlng.lat)>0.0001||Math.abs(S.dragStart.lng-e.latlng.lng)>0.0001)){var b=bnds(S.dragStart,e.latlng);commitLayer(L.rectangle(b,{color:col,weight:2,fillColor:col,fillOpacity:op}),{type:'rect',color:col,opacity:op,label:lbl,ztype:zt,notes:'',bounds:b,scope:S.active});}else if(S.mode==='circle'){var r=S.dragStart.distanceTo(e.latlng);if(r>10){var d=zt==='RESTRICTED'||zt==='HLZ';commitLayer(L.circle(S.dragStart,{radius:r,color:col,weight:2,fillColor:col,fillOpacity:op,dashArray:d?'8,6':null}),{type:'circle',color:col,opacity:op,label:lbl,ztype:zt,notes:'',center:[S.dragStart.lat,S.dragStart.lng],radius:r,dashed:d,scope:S.active});}}S.dragging=false;S.dragStart=null;}
-function bnds(a,b){return[[Math.min(a.lat,b.lat),Math.min(a.lng,b.lng)],[Math.max(a.lat,b.lat),Math.max(a.lng,b.lng)]];}
-function clearPreview(){if(S.previewLayer){map.removeLayer(S.previewLayer);S.previewLayer=null;}}
-function onMapClick(e){if(S.dragging)return;var col=document.getElementById('col').value,op=parseInt(document.getElementById('opa').value)/100;var lbl=document.getElementById('lbl').value||'',zt=document.getElementById('ztype').value;if(S.mode==='move'){if(!S.moving){var h=hitTest(e.latlng);if(h){S.moving=true;S.moveLayerId=h;var hb=document.getElementById('hint-bar');if(hb)hb.textContent='CLICK NEW LOCATION FOR: '+(getMeta(h).label||getMeta(h).ztype);}}else{moveLayerTo(S.moveLayerId,e.latlng);S.moving=false;S.moveLayerId=null;var hb=document.getElementById('hint-bar');if(hb)hb.textContent=HINTS['move'];}return;}if(S.mode==='marker'){placeMarker(e.latlng,col,op,lbl,zt);return;}if(S.mode==='line'){S.linePoints.push(e.latlng);updateLineTemp();return;}}
-function hitTest(ll){var vl=visibleLayers();for(var i=vl.length-1;i>=0;i--){var l=vl[i];if(!l.visible)continue;var lf=S.leafletLayers[l.id];if(!lf)continue;if(l.type==='rect'&&lf.getBounds().contains(ll))return l.id;if(l.type==='circle'&&ll.distanceTo(lf.getLatLng())<=lf.getRadius())return l.id;if(l.type==='marker'&&ll.distanceTo(lf.getLatLng())<=30/map.getZoom())return l.id;}return null;}
-function moveLayerTo(id,nll){var meta=getMeta(id),lf=S.leafletLayers[id];if(!meta||!lf)return;if(meta.type==='marker'){lf.setLatLng(nll);meta.ll=[nll.lat,nll.lng];}else if(meta.type==='circle'){lf.setLatLng(nll);meta.center=[nll.lat,nll.lng];}else if(meta.type==='rect'){var b=lf.getBounds(),c=b.getCenter(),dLat=nll.lat-c.lat,dLng=nll.lng-c.lng;var nb=[[b.getSouth()+dLat,b.getWest()+dLng],[b.getNorth()+dLat,b.getEast()+dLng]];lf.setBounds(nb);meta.bounds=nb;}else if(meta.type==='line'){var ct=ptCtr(meta.pts);meta.pts=meta.pts.map(function(p){return[p[0]+nll.lat-ct.lat,p[1]+nll.lng-ct.lng];});lf.setLatLngs(meta.pts);}renderMapTab();}
-function ptCtr(pts){return L.latLng(pts.reduce(function(a,p){return a+p[0];},0)/pts.length,pts.reduce(function(a,p){return a+p[1];},0)/pts.length);}
-function updateLineTemp(){clearLineTemp();var col=document.getElementById('col').value;if(S.linePoints.length>=2)S.lineTempLayer=L.polyline(S.linePoints,{color:col,weight:2,dashArray:'6,4',interactive:false}).addTo(map);S.linePoints.forEach(function(p){var m=L.circleMarker(p,{radius:3,color:'#cc1111',fillColor:'#cc1111',fillOpacity:1,weight:1,interactive:false}).addTo(map);S.lineTempMarkers.push(m);});}
-function clearLineTemp(){if(S.lineTempLayer){map.removeLayer(S.lineTempLayer);S.lineTempLayer=null;}S.lineTempMarkers.forEach(function(m){map.removeLayer(m);});S.lineTempMarkers=[];}
-function finalizeLine(){var col=document.getElementById('col').value,lbl=document.getElementById('lbl').value||'',zt=document.getElementById('ztype').value;var pts=S.linePoints.map(function(p){return[p.lat,p.lng];});commitLayer(L.polyline(pts,{color:col,weight:2,dashArray:zt==='BOUNDARY'?'10,6':null}),{type:'line',color:col,label:lbl,ztype:zt,notes:'',pts:pts,dashed:zt==='BOUNDARY',scope:S.active});clearLineTemp();S.linePoints=[];}
-var MICONS={AOR:'A',RESTRICTED:'⊗',HLZ:'H',LRZ:'L',BOUNDARY:'─',BROADCAST:'B',MARKER:'⊕',CUSTOM:'◆'};
-function markerIcon(col,zt){return L.divIcon({html:'<div style="background:'+col+';color:#fff;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:12px;border:2px solid rgba(255,255,255,.3);box-shadow:0 2px 6px rgba(0,0,0,.7);clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);">'+(MICONS[zt]||'⊕')+'</div>',iconSize:[28,28],iconAnchor:[14,14],className:''});}
-function placeMarker(ll,col,op,lbl,zt){var m=L.marker(ll,{icon:markerIcon(col,zt),draggable:true});if(lbl)m.bindTooltip(lbl,{permanent:true,direction:'top',offset:[0,-16],className:'uas-tip'});var meta={type:'marker',color:col,opacity:op,label:lbl,ztype:zt,notes:'',ll:[ll.lat,ll.lng],scope:S.active};m.on('dragend',function(ev){var p=ev.target.getLatLng();meta.ll=[p.lat,p.lng];});commitLayer(m,meta);}
-function attachHover(lf,meta){lf.on('mouseover',function(e){S._hoverLayerId=meta.id;showHoverTip(meta,e.originalEvent);});lf.on('mousemove',function(e){posHoverTip(e.originalEvent);});lf.on('mouseout',function(){S._hoverLayerId=null;hideHoverTip();});}
-function commitLayer(lf,meta){var id=uid();meta.id=id;meta.visible=true;meta.labelHidden=false;if(meta.label&&meta.type!=='marker')lf.bindTooltip(meta.label,{permanent:true,direction:'center',className:'uas-tip'});if(!S.labelsVisible)setTimeout(function(){if(lf.getTooltip&&lf.getTooltip())lf.closeTooltip();},50);lf.on('click',function(e){if(S.mode==='select'){L.DomEvent.stopPropagation(e);selectLayer(id);}else if(S.mode==='move'&&!S.moving){L.DomEvent.stopPropagation(e);S.moving=true;S.moveLayerId=id;}});attachHover(lf,meta);S.layers.push(meta);S.leafletLayers[id]=lf;lf.addTo(map);document.getElementById('lbl').value='';setMode('select');selectLayer(id);renderMapTab();}
-function selectLayer(id){S.sel=id;Object.values(S.leafletLayers).forEach(function(lf){if(lf.setStyle)lf.setStyle({weight:2});});var sl=S.leafletLayers[id];if(sl&&sl.setStyle)sl.setStyle({weight:4});var meta=getMeta(id);if(meta)openEdit(meta);renderMapTab();}
-function openEdit(meta){document.getElementById('edit-panel').style.display='block';document.getElementById('ep-label').value=meta.label||'';document.getElementById('ep-ztype').value=meta.ztype||'CUSTOM';document.getElementById('ep-color').value=meta.color||'#cc1111';document.getElementById('ep-opa').value=Math.round((meta.opacity||.35)*100);document.getElementById('ep-notes').value=meta.notes||'';document.getElementById('ep-rr').style.display=meta.type==='circle'?'block':'none';if(meta.type==='circle')document.getElementById('ep-radius').value=Math.round(meta.radius||100);document.getElementById('ep-global-btn').textContent=meta.scope==='global'?'⊗ UNSHARE':'⊕ SHARE';}
-function closeEdit(){document.getElementById('edit-panel').style.display='none';}
-function liveEdit(){if(S.sel)applyEdit();}
-function applyEdit(){if(!S.sel)return;var meta=getMeta(S.sel);if(!meta)return;var nL=document.getElementById('ep-label').value,nC=document.getElementById('ep-color').value;var nO=parseInt(document.getElementById('ep-opa').value)/100,nZ=document.getElementById('ep-ztype').value;var nN=document.getElementById('ep-notes').value,nR=parseFloat(document.getElementById('ep-radius').value)||meta.radius;meta.label=nL;meta.color=nC;meta.opacity=nO;meta.ztype=nZ;meta.notes=nN;var lf=S.leafletLayers[S.sel];if(!lf)return;if(lf.setStyle)lf.setStyle({color:nC,fillColor:nC,fillOpacity:nO,weight:4});if(meta.type==='circle'&&lf.setRadius){meta.radius=nR;lf.setRadius(nR);}if(lf.getTooltip())lf.unbindTooltip();if(nL&&!meta.labelHidden){lf.bindTooltip(nL,{permanent:true,direction:meta.type==='marker'?'top':'center',offset:meta.type==='marker'?[0,-16]:[0,0],className:'uas-tip'});if(!S.labelsVisible)lf.closeTooltip();}else if(nL&&meta.labelHidden){lf.bindTooltip(nL,{permanent:true,direction:meta.type==='marker'?'top':'center',offset:meta.type==='marker'?[0,-16]:[0,0],className:'uas-tip'});lf.closeTooltip();}if(meta.type==='marker')lf.setIcon(markerIcon(nC,nZ));renderMapTab();}
-function toggleGlobal(){if(!S.sel)return;var meta=getMeta(S.sel);if(!meta)return;meta.scope=meta.scope==='global'?S.active:'global';openEdit(meta);renderMapTab();}
-function syncVis(){S.layers.forEach(function(l){var lf=S.leafletLayers[l.id];if(!lf)return;var show=l.visible&&(l.scope==='global'||l.scope===S.active);if(show&&!map.hasLayer(lf))lf.addTo(map);else if(!show&&map.hasLayer(lf))map.removeLayer(lf);});}
-function deleteSelected(){if(!S.sel)return;removeById(S.sel);S.sel=null;closeEdit();renderMapTab();}
-function removeById(id){if(S.leafletLayers[id]){map.removeLayer(S.leafletLayers[id]);delete S.leafletLayers[id];}S.layers=S.layers.filter(function(l){return l.id!==id;});}
-function toggleVis(id){var meta=getMeta(id);if(!meta)return;meta.visible=!meta.visible;var lf=S.leafletLayers[id];if(lf){meta.visible?lf.addTo(map):map.removeLayer(lf);}renderMapTab();}
-function clearActive(){if(!confirm('CLEAR ALL LAYERS IN ACTIVE COA?'))return;S.layers.filter(function(l){return l.scope===S.active;}).forEach(function(l){if(S.leafletLayers[l.id]){map.removeLayer(S.leafletLayers[l.id]);delete S.leafletLayers[l.id];}});S.layers=S.layers.filter(function(l){return l.scope!==S.active;});S.sel=null;closeEdit();renderMapTab();}
-function addCOA(){var n=S.coas.length+1,id='c'+Date.now();var cols=['#cc1111','#888','#cc6600','#446688','#cc1166','#668844'];S.coas.push({id:id,name:'COA '+n,color:cols[(n-1)%cols.length],visible:true});switchCOA(id);}
-function switchCOA(id){S.active=id;S.sel=null;closeEdit();syncVis();renderMapTab();}
-function deleteCOA(id){if(S.coas.length<=1){alert('CANNOT DELETE LAST COA.');return;}S.layers.filter(function(l){return l.scope===id;}).forEach(function(l){if(S.leafletLayers[l.id]){map.removeLayer(S.leafletLayers[l.id]);delete S.leafletLayers[l.id];}});S.layers=S.layers.filter(function(l){return l.scope!==id;});S.coas=S.coas.filter(function(c){return c.id!==id;});if(S.active===id)switchCOA(S.coas[0].id);else renderMapTab();}
-function renameCOA(id){var c=S.coas.find(function(x){return x.id===id;});if(!c)return;showModal('RENAME COA','<div class="mrow"><label>COA Name</label><input id="m-coaname" type="text" value="'+c.name+'"></div>',function(){var v=document.getElementById('m-coaname').value.trim();if(v){c.name=v;renderMapTab();}});}
-function flyToLayer(id){var meta=getMeta(id);var lf=S.leafletLayers[id];if(!lf)return;selectLayer(id);if(meta.type==='marker'||meta.type==='circle')map.flyTo(lf.getLatLng(),Math.max(map.getZoom(),16),{duration:.8});else if(lf.getBounds)map.flyToBounds(lf.getBounds(),{padding:[40,40],duration:.8,maxZoom:18});}
-function reorderLayer(id,dir){var idx=S.layers.findIndex(function(l){return l.id===id;});if(idx<0)return;moveArr(S.layers,idx,dir);renderMapTab();}
-
-// ── Render MAP tab ────────────────────────────────────────────
-function renderMapTab(){renderLegend();renderLayersPanel();document.getElementById('st-coa').textContent=activeCOA()?activeCOA().name:'—';document.getElementById('st-layers').textContent=S.layers.length;}
-function renderLegend(){var el=document.getElementById('legend-body');var vl=sortedLayers(visibleLayers());if(!vl.length){el.innerHTML='<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:9px;color:var(--grey2);padding:6px;letter-spacing:1px;">NO LAYERS</div>';return;}var groups={},order=['rect','circle','line','marker'],labels={rect:'AOR / RECT',circle:'CIRCLES / ZONES',line:'LINES',marker:'MARKERS'};vl.forEach(function(l){if(!groups[l.type])groups[l.type]=[];groups[l.type].push(l);});var html='';order.forEach(function(t){if(!groups[t]||!groups[t].length)return;html+='<div><div class="type-hdr">'+labels[t]+'</div>';groups[t].forEach(function(l){html+='<div class="leg-item'+(l.id===S.sel?' on':'')+'" onclick="flyToLayer(\''+l.id+'\')"><div class="leg-dot" style="background:'+l.color+'33;border-color:'+l.color+';"></div><div style="flex:1;min-width:0;"><div style="display:flex;align-items:center;gap:2px;flex-wrap:wrap;"><span class="leg-lbl"'+(l.visible?'':' style="opacity:.4;"')+'>'+(l.label||'[UNLABELED]')+'</span><span class="leg-zt">'+l.ztype+'</span>'+(l.scope==='global'?'<span style="font-size:7px;color:#668866;border:1px solid #446644;padding:0 3px;">SHR</span>':'')+'</div>'+(l.notes?'<div class="leg-notes">'+esc(l.notes)+'</div>':'')+'</div><span onclick="event.stopPropagation();toggleLayerLabel(\''+l.id+'\')" style="cursor:pointer;font-size:10px;color:'+(l.labelHidden?'var(--grey2)':'var(--wht)')+';margin-left:1px;">🏷</span><span style="cursor:pointer;color:var(--grey2);font-size:9px;margin-left:1px;" onclick="event.stopPropagation();toggleVis(\''+l.id+'\')">'+(l.visible?'👁':'🚫')+'</span><div class="reorder-btns" onclick="event.stopPropagation()"><button class="rarr" onclick="reorderLayer(\''+l.id+'\',-1)">▲</button><button class="rarr" onclick="reorderLayer(\''+l.id+'\',1)">▼</button></div></div>';});html+='</div>';});el.innerHTML=html;}
-function renderLayersPanel(){var el=document.getElementById('layers-body');var vl=sortedLayers(visibleLayers());var gc=S.layers.filter(function(l){return l.scope==='global';}).length;var tabsHtml='<div class="coa-tabs">'+S.coas.map(function(c){return '<div class="coa-tab'+(c.id===S.active?' active':'')+'" onclick="switchCOA(\''+c.id+'\')"><div style="width:5px;height:5px;background:'+c.color+';clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);flex-shrink:0;"></div><span ondblclick="event.stopPropagation();renameCOA(\''+c.id+'\')" title="Dbl-click rename">'+c.name+'</span>'+(S.coas.length>1?'<span style="color:var(--grey2);font-size:9px;margin-left:2px;" onclick="event.stopPropagation();deleteCOA(\''+c.id+'\')">✕</span>':'')+'</div>';}).join('')+'</div>';var shrNote=gc?'<div style="font-size:8px;color:#668866;font-family:\'Barlow Condensed\',sans-serif;letter-spacing:1px;margin-bottom:3px;">⊕ '+gc+' SHARED</div>':'';var lHtml=vl.length?vl.map(function(l){return '<div class="layer-item'+(l.id===S.sel?' on':'')+'" onclick="selectLayer(\''+l.id+'\')"><div style="width:6px;height:6px;background:'+l.color+';flex-shrink:0;"></div><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;">'+(l.label||l.ztype)+'</span><span style="font-size:8px;color:var(--grey2);">'+l.type+'</span>'+(l.scope==='global'?'<span class="scope-tag global">SHR</span>':'<span class="scope-tag">COA</span>')+'<span style="cursor:pointer;color:var(--grey2);font-size:9px;margin-left:2px;" onclick="event.stopPropagation();toggleVis(\''+l.id+'\')">'+(l.visible?'👁':'🚫')+'</span><span style="color:var(--red);cursor:pointer;margin-left:2px;font-size:10px;" onclick="event.stopPropagation();removeById(\''+l.id+'\');if(S.sel===\''+l.id+'\'){S.sel=null;closeEdit();}renderMapTab();">✕</span></div>';}).join(''):'<div style="font-size:9px;color:var(--grey2);font-family:\'Barlow Condensed\',sans-serif;padding:3px 0;">NO LAYERS YET</div>';el.innerHTML=tabsHtml+shrNote+lHtml;}
-
-// ── TEAMS ─────────────────────────────────────────────────────
-function renderTeamsTab(){var el=document.getElementById('teams-panel');if(!S.teams.length){el.innerHTML='<div style="font-size:9px;color:var(--grey2);font-family:\'Barlow Condensed\',sans-serif;padding:8px 0;">NO TEAMS — CLICK + ADD</div>';return;}el.innerHTML=S.teams.map(function(t,ti){var mH=t.members&&t.members.length?t.members.map(function(m,mi){return '<div class="drow"><div class="reorder-btns"><button class="rarr" onclick="moveArr(S.teams['+ti+'].members,'+mi+',-1);renderTeamsTab();keepOpen(\'tc-'+ti+'\')">▲</button><button class="rarr" onclick="moveArr(S.teams['+ti+'].members,'+mi+',1);renderTeamsTab();keepOpen(\'tc-'+ti+'\')">▼</button></div><input type="text" placeholder="NAME" value="'+esc(m.name)+'" oninput="S.teams['+ti+'].members['+mi+'].name=this.value" style="flex:1;"><input type="text" placeholder="ROLE" value="'+esc(m.role)+'" oninput="S.teams['+ti+'].members['+mi+'].role=this.value" style="width:68px;"><span onclick="S.teams['+ti+'].members.splice('+mi+',1);renderTeamsTab();keepOpen(\'tc-'+ti+'\')" style="color:var(--red);cursor:pointer;font-size:10px;padding:0 2px;">✕</span></div>';}).join(''):'<div style="font-size:9px;color:var(--grey2);font-family:\'Barlow Condensed\',sans-serif;">NO PERSONNEL</div>';var tH=t.tasks&&t.tasks.length?t.tasks.map(function(tk,ki){return '<div class="drow"><div class="reorder-btns"><button class="rarr" onclick="moveArr(S.teams['+ti+'].tasks,'+ki+',-1);renderTeamsTab();renderTasksTab();keepOpen(\'tc-'+ti+'\')">▲</button><button class="rarr" onclick="moveArr(S.teams['+ti+'].tasks,'+ki+',1);renderTeamsTab();renderTasksTab();keepOpen(\'tc-'+ti+'\')">▼</button></div><input type="text" placeholder="TASK…" value="'+esc(tk.task)+'" oninput="S.teams['+ti+'].tasks['+ki+'].task=this.value;if(S.sbTab===\'tasks\')renderTasksTab();" style="flex:2;"><select oninput="S.teams['+ti+'].tasks['+ki+'].priority=this.value;if(S.sbTab===\'tasks\')renderTasksTab();" style="width:66px;">'+ ['HIGH','MEDIUM','LOW'].map(function(p){return '<option'+(tk.priority===p?' selected':'')+'>'+p+'</option>';}).join('')+'</select><select oninput="S.teams['+ti+'].tasks['+ki+'].status=this.value;if(S.sbTab===\'tasks\')renderTasksTab();" style="width:78px;">'+ ['PENDING','IN PROG','COMPLETE','HOLD'].map(function(s){return '<option'+(tk.status===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select><span onclick="S.teams['+ti+'].tasks.splice('+ki+',1);renderTeamsTab();renderTasksTab();keepOpen(\'tc-'+ti+'\')" style="color:var(--red);cursor:pointer;font-size:10px;flex-shrink:0;">✕</span></div>';}).join(''):'<div style="font-size:9px;color:var(--grey2);font-family:\'Barlow Condensed\',sans-serif;">NO TASKS</div>';var eH=t.equipment&&t.equipment.length?t.equipment.map(function(eq,ei){return '<div class="drow"><div class="reorder-btns"><button class="rarr" onclick="moveArr(S.teams['+ti+'].equipment,'+ei+',-1);renderTeamsTab();renderEquipTab();keepOpen(\'tc-'+ti+'\')">▲</button><button class="rarr" onclick="moveArr(S.teams['+ti+'].equipment,'+ei+',1);renderTeamsTab();renderEquipTab();keepOpen(\'tc-'+ti+'\')">▼</button></div><input type="text" placeholder="ITEM" value="'+esc(eq.item)+'" oninput="S.teams['+ti+'].equipment['+ei+'].item=this.value;if(S.sbTab===\'equip\')renderEquipTab();" style="flex:2;"><input type="text" placeholder="QTY" value="'+esc(eq.qty)+'" oninput="S.teams['+ti+'].equipment['+ei+'].qty=this.value" style="width:32px;"><input type="text" placeholder="NOTES" value="'+esc(eq.notes)+'" oninput="S.teams['+ti+'].equipment['+ei+'].notes=this.value" style="flex:1;"><span onclick="S.teams['+ti+'].equipment.splice('+ei+',1);renderTeamsTab();renderEquipTab();keepOpen(\'tc-'+ti+'\')" style="color:var(--red);cursor:pointer;font-size:10px;flex-shrink:0;">✕</span></div>';}).join(''):'<div style="font-size:9px;color:var(--grey2);font-family:\'Barlow Condensed\',sans-serif;">NO EQUIPMENT</div>';return '<div class="team-card" style="border-left-color:'+t.color+';"><div class="team-card-hdr" onclick="toggleTeamCard(\'tc-'+ti+'\')"><div class="reorder-btns" onclick="event.stopPropagation()"><button class="rarr" onclick="moveArr(S.teams,'+ti+',-1);renderTeamsTab()">▲</button><button class="rarr" onclick="moveArr(S.teams,'+ti+',1);renderTeamsTab()">▼</button></div><div class="tbadge" style="background:'+t.color+';">'+esc(t.badge)+'</div><div style="flex:1;"><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;">'+esc(t.type)+' — '+esc(t.aor)+'</div><div style="font-size:9px;color:var(--grey2);">LRZ: '+esc(t.lrz)+'</div></div><div style="display:flex;gap:3px;" onclick="event.stopPropagation()"><span onclick="editTeamMeta('+ti+')" style="color:var(--grey2);cursor:pointer;border:1px solid var(--bdr);padding:1px 5px;font-family:\'Barlow Condensed\',sans-serif;font-size:9px;">✎</span><span onclick="if(confirm(\'REMOVE TEAM?\'))S.teams.splice('+ti+',1),renderTeamsTab()" style="color:var(--red);cursor:pointer;border:1px solid #5a0000;padding:1px 5px;font-size:10px;">✕</span></div></div><div class="team-card-body" id="tc-'+ti+'"><div class="tsec"><div class="tsec-title">TASK ORG / PERSONNEL <button class="mini-btn" onclick="S.teams['+ti+'].members.push({id:tid(),name:\'\',role:\'Pilot\'});renderTeamsTab();keepOpen(\'tc-'+ti+'\')">+ ADD</button></div>'+mH+'</div><div class="tsec"><div class="tsec-title">TASK LIST <button class="mini-btn" onclick="S.teams['+ti+'].tasks.push({id:tid(),task:\'\',priority:\'MEDIUM\',status:\'PENDING\'});renderTeamsTab();renderTasksTab();keepOpen(\'tc-'+ti+'\')">+ ADD</button></div>'+tH+'</div><div class="tsec"><div class="tsec-title">EQUIPMENT <button class="mini-btn" onclick="S.teams['+ti+'].equipment.push({id:tid(),item:\'\',qty:\'1\',notes:\'\'});renderTeamsTab();renderEquipTab();keepOpen(\'tc-'+ti+'\')">+ ADD</button></div><div style="font-size:8px;color:var(--grey2);font-family:\'Barlow Condensed\',sans-serif;display:flex;gap:3px;margin-bottom:2px;padding-left:18px;"><span style="flex:2;">ITEM</span><span style="width:32px;">QTY</span><span style="flex:1;">NOTES</span></div>'+eH+'</div></div></div>';}).join('');}
-function toggleTeamCard(id){var el=document.getElementById(id);if(el)el.classList.toggle('open');}
-function editTeamMeta(ti){var t=S.teams[ti];if(!t)return;showModal('EDIT TEAM','<div style="display:flex;gap:6px;"><div class="mrow" style="flex:0 0 auto;"><label>Color</label><input type="color" id="et-color" value="'+t.color+'" style="width:40px;height:32px;"></div><div class="mrow" style="flex:1;"><label>Badge</label><input id="et-badge" type="text" value="'+esc(t.badge)+'"></div></div><div style="display:flex;gap:6px;"><div class="mrow" style="flex:1;"><label>Type</label><input id="et-type" type="text" value="'+esc(t.type)+'"></div><div class="mrow" style="flex:1;"><label>AOR</label><input id="et-aor" type="text" value="'+esc(t.aor)+'"></div></div><div class="mrow"><label>LRZ / Base Location</label><input id="et-lrz" type="text" value="'+esc(t.lrz)+'"></div>',function(){S.teams[ti].color=document.getElementById('et-color').value;S.teams[ti].badge=document.getElementById('et-badge').value||t.badge;S.teams[ti].type=document.getElementById('et-type').value||t.type;S.teams[ti].aor=document.getElementById('et-aor').value||t.aor;S.teams[ti].lrz=document.getElementById('et-lrz').value||t.lrz;renderTeamsTab();});}
-function addTeamCard(){var cols=['#cc1111','#888888','#cc6600','#446688','#cc1166','#668844'];S.teams.push({id:tid(),badge:'T'+(S.teams.length+1),color:cols[S.teams.length%cols.length],type:'VLOS',aor:'TBD',lrz:'TBD',members:[],tasks:[],equipment:[]});renderTeamsTab();setTimeout(function(){var el=document.getElementById('tc-'+(S.teams.length-1));if(el)el.classList.add('open');},50);}
-
-// ── TASKS ─────────────────────────────────────────────────────
-function renderTasksTab(){var el=document.getElementById('tasks-panel');var allTasks=[];S.teams.forEach(function(t,ti){(t.tasks||[]).forEach(function(tk,ki){allTasks.push({ti:ti,ki:ki,tk:tk,t:t});});});if(!allTasks.length){el.innerHTML='<div style="font-size:9px;color:var(--grey2);font-family:\'Barlow Condensed\',sans-serif;padding:8px 0;">NO TASKS</div>';return;}el.innerHTML=allTasks.map(function(row){var ti=row.ti,ki=row.ki,tk=row.tk,t=row.t;return '<div class="te-row" style="border-left-color:'+t.color+';"><div style="display:flex;flex-direction:column;gap:1px;margin-right:3px;"><button class="rarr" onclick="moveArr(S.teams['+ti+'].tasks,'+ki+',-1);renderTasksTab();">▲</button><button class="rarr" onclick="moveArr(S.teams['+ti+'].tasks,'+ki+',1);renderTasksTab();">▼</button></div><span class="te-team-badge" style="background:'+t.color+';">'+esc(t.badge)+'</span><input type="text" placeholder="TASK…" value="'+esc(tk.task)+'" oninput="S.teams['+ti+'].tasks['+ki+'].task=this.value;" style="flex:2;"><select oninput="S.teams['+ti+'].tasks['+ki+'].priority=this.value;" style="width:66px;">'+ ['HIGH','MEDIUM','LOW'].map(function(p){return '<option'+(tk.priority===p?' selected':'')+'>'+p+'</option>';}).join('')+'</select><select oninput="S.teams['+ti+'].tasks['+ki+'].status=this.value;" style="width:80px;">'+ ['PENDING','IN PROG','COMPLETE','HOLD'].map(function(s){return '<option'+(tk.status===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select><select title="Reassign" onchange="reassignTask('+ti+','+ki+',this.value);this.value=\''+ti+'\'" style="width:50px;font-size:8px;">'+S.teams.map(function(tt,idx){return '<option value="'+idx+'"'+(idx===ti?' selected':'')+'>'+esc(tt.badge)+'</option>';}).join('')+'</select><span onclick="S.teams['+ti+'].tasks.splice('+ki+',1);renderTasksTab();" style="color:var(--red);cursor:pointer;font-size:10px;flex-shrink:0;">✕</span></div>';}).join('');}
-function addGlobalTask(){if(!S.teams.length){alert('ADD A TEAM FIRST.');return;}S.teams[0].tasks.push({id:tid(),task:'',priority:'MEDIUM',status:'PENDING'});renderTasksTab();}
-function reassignTask(fromTi,ki,toTi){toTi=parseInt(toTi);if(fromTi===toTi)return;var task=S.teams[fromTi].tasks.splice(ki,1)[0];S.teams[toTi].tasks.push(task);renderTasksTab();}
-
-// ── EQUIP ─────────────────────────────────────────────────────
-function renderEquipTab(){var el=document.getElementById('equip-panel');var allEquip=[];S.teams.forEach(function(t,ti){(t.equipment||[]).forEach(function(eq,ei){allEquip.push({ti:ti,ei:ei,eq:eq,t:t});});});if(!allEquip.length){el.innerHTML='<div style="font-size:9px;color:var(--grey2);font-family:\'Barlow Condensed\',sans-serif;padding:8px 0;">NO EQUIPMENT</div>';return;}el.innerHTML=allEquip.map(function(row){var ti=row.ti,ei=row.ei,eq=row.eq,t=row.t;return '<div class="te-row" style="border-left-color:'+t.color+';"><div style="display:flex;flex-direction:column;gap:1px;margin-right:3px;"><button class="rarr" onclick="moveArr(S.teams['+ti+'].equipment,'+ei+',-1);renderEquipTab();">▲</button><button class="rarr" onclick="moveArr(S.teams['+ti+'].equipment,'+ei+',1);renderEquipTab();">▼</button></div><span class="te-team-badge" style="background:'+t.color+';">'+esc(t.badge)+'</span><input type="text" placeholder="ITEM" value="'+esc(eq.item)+'" oninput="S.teams['+ti+'].equipment['+ei+'].item=this.value;" style="flex:2;"><input type="text" placeholder="QTY" value="'+esc(eq.qty)+'" oninput="S.teams['+ti+'].equipment['+ei+'].qty=this.value;" style="width:34px;"><input type="text" placeholder="NOTES" value="'+esc(eq.notes)+'" oninput="S.teams['+ti+'].equipment['+ei+'].notes=this.value;" style="flex:1;"><select title="Reassign" onchange="reassignEquip('+ti+','+ei+',this.value);this.value=\''+ti+'\'" style="width:50px;font-size:8px;">'+S.teams.map(function(tt,idx){return '<option value="'+idx+'"'+(idx===ti?' selected':'')+'>'+esc(tt.badge)+'</option>';}).join('')+'</select><span onclick="S.teams['+ti+'].equipment.splice('+ei+',1);renderEquipTab();" style="color:var(--red);cursor:pointer;font-size:10px;flex-shrink:0;">✕</span></div>';}).join('');}
-function addGlobalEquip(){if(!S.teams.length){alert('ADD A TEAM FIRST.');return;}S.teams[0].equipment.push({id:tid(),item:'',qty:'1',notes:''});renderEquipTab();}
-function reassignEquip(fromTi,ei,toTi){toTi=parseInt(toTi);if(fromTi===toTi)return;var item=S.teams[fromTi].equipment.splice(ei,1)[0];S.teams[toTi].equipment.push(item);renderEquipTab();}
-
-// ── Print / Export (unchanged from v10) ───────────────────────
-function showPrintPreview(){var title=document.getElementById('op-title').textContent;var sub=document.getElementById('op-sub').textContent;var teamsPreviewHtml=S.teams.map(function(t,ti){var memH=t.members&&t.members.length?'<div style="font-size:8px;color:var(--grey2);font-family:\'Barlow Condensed\',sans-serif;letter-spacing:2px;display:flex;gap:4px;margin-bottom:2px;"><span style="flex:1;">NAME</span><span style="width:70px;">ROLE</span></div>'+t.members.map(function(m,mi){return '<div style="display:flex;gap:4px;margin-bottom:2px;"><input class="pf-inp" value="'+esc(m.name)+'" placeholder="Name" oninput="S.teams['+ti+'].members['+mi+'].name=this.value" style="flex:1;"><input class="pf-inp" value="'+esc(m.role)+'" placeholder="Role" oninput="S.teams['+ti+'].members['+mi+'].role=this.value" style="width:70px;"></div>';}).join(''):'<div style="font-size:9px;color:var(--grey2);">None</div>';var tskH=t.tasks&&t.tasks.length?'<div style="font-size:8px;color:var(--grey2);font-family:\'Barlow Condensed\',sans-serif;letter-spacing:2px;display:flex;gap:3px;margin-bottom:2px;"><span style="flex:1;">TASK</span><span style="width:62px;">PRI</span><span style="width:74px;">STATUS</span></div>'+t.tasks.map(function(tk,ki){return '<div style="display:flex;gap:3px;margin-bottom:2px;"><input class="pf-inp" value="'+esc(tk.task)+'" placeholder="Task…" oninput="S.teams['+ti+'].tasks['+ki+'].task=this.value" style="flex:1;"><select class="pf-sel" oninput="S.teams['+ti+'].tasks['+ki+'].priority=this.value" style="width:62px;">'+['HIGH','MEDIUM','LOW'].map(function(p){return '<option'+(tk.priority===p?' selected':'')+'>'+p+'</option>';}).join('')+'</select><select class="pf-sel" oninput="S.teams['+ti+'].tasks['+ki+'].status=this.value" style="width:74px;">'+['PENDING','IN PROG','COMPLETE','HOLD'].map(function(s){return '<option'+(tk.status===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select></div>';}).join(''):'<div style="font-size:9px;color:var(--grey2);">None</div>';var eqH=t.equipment&&t.equipment.length?'<div style="font-size:8px;color:var(--grey2);font-family:\'Barlow Condensed\',sans-serif;letter-spacing:2px;display:flex;gap:3px;margin-bottom:2px;"><span style="flex:1;">ITEM</span><span style="width:32px;">QTY</span><span style="flex:1;">NOTES</span></div>'+t.equipment.map(function(eq,ei){return '<div style="display:flex;gap:3px;margin-bottom:2px;"><input class="pf-inp" value="'+esc(eq.item)+'" placeholder="Item…" oninput="S.teams['+ti+'].equipment['+ei+'].item=this.value" style="flex:1;"><input class="pf-inp" value="'+esc(eq.qty)+'" placeholder="Qty" oninput="S.teams['+ti+'].equipment['+ei+'].qty=this.value" style="width:32px;"><input class="pf-inp" value="'+esc(eq.notes)+'" placeholder="Notes" oninput="S.teams['+ti+'].equipment['+ei+'].notes=this.value" style="flex:1;"></div>';}).join(''):'<div style="font-size:9px;color:var(--grey2);">None</div>';return '<div class="pdf-team-sec" style="border-left-color:'+t.color+'"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><input class="pf-inp" value="'+esc(t.badge)+'" oninput="S.teams['+ti+'].badge=this.value" style="width:60px;font-weight:700;font-size:11px;letter-spacing:2px;" placeholder="Badge"><input class="pf-inp" value="'+esc(t.type)+'" oninput="S.teams['+ti+'].type=this.value" style="width:60px;" placeholder="Type"><input class="pf-inp" value="'+esc(t.aor)+'" oninput="S.teams['+ti+'].aor=this.value" style="width:70px;" placeholder="AOR"><input class="pf-inp" value="'+esc(t.lrz)+'" oninput="S.teams['+ti+'].lrz=this.value" style="flex:1;" placeholder="LRZ"><input type="color" value="'+t.color+'" oninput="S.teams['+ti+'].color=this.value" style="width:24px;height:22px;border:1px solid var(--bdr);cursor:pointer;padding:1px;"></div><div class="pdf-grid"><div><div class="pdf-col-title">TASK ORG</div>'+memH+'</div><div><div class="pdf-col-title">TASK LIST</div>'+tskH+'</div><div><div class="pdf-col-title">EQUIPMENT</div>'+eqH+'</div></div></div>';}).join('');var typeOrder=['rect','circle','line','marker'],typeLabels={rect:'AOR / RECTANGLES',circle:'CIRCLES / ZONES',line:'LINES / BOUNDARIES',marker:'MARKERS / POINTS'};var groups={};S.layers.forEach(function(l){if(!groups[l.type])groups[l.type]=[];groups[l.type].push(l);});var layerRows='';typeOrder.forEach(function(t){if(!groups[t]||!groups[t].length)return;layerRows+='<tr style="background:#1a0000;"><td colspan="5" style="color:#cc1111;font-weight:700;font-size:9px;letter-spacing:2px;padding:3px 6px;">'+typeLabels[t]+'</td></tr>';groups[t].forEach(function(l){var coaObj=S.coas.find(function(c){return c.id===l.scope;});var coaDesc=l.scope==='global'?'ALL COAs':(coaObj?coaObj.name:l.scope);var coords='';if(l.type==='marker'&&l.ll)coords=l.ll[0].toFixed(4)+','+l.ll[1].toFixed(4);else if(l.type==='circle'&&l.center)coords='Ctr:'+l.center[0].toFixed(4)+' R:'+Math.round(l.radius)+'m';else if(l.type==='rect'&&l.bounds)coords='SW:'+l.bounds[0][0].toFixed(4)+','+l.bounds[0][1].toFixed(4);layerRows+='<tr><td><span style="display:inline-block;width:8px;height:8px;background:'+l.color+';margin-right:4px;vertical-align:middle;"></span><input value="'+esc(l.label||'')+'" oninput="getMeta(\''+l.id+'\').label=this.value" style="background:transparent;border:none;border-bottom:1px solid #333;color:#ccc;font-family:\'Barlow Condensed\',sans-serif;font-size:10px;letter-spacing:1px;width:90px;"></td><td><input value="'+esc(l.ztype||'')+'" oninput="getMeta(\''+l.id+'\').ztype=this.value" style="background:transparent;border:none;border-bottom:1px solid #333;color:#888;font-family:\'Barlow Condensed\',sans-serif;font-size:9px;width:70px;"></td><td style="font-size:9px;color:#888;">'+coaDesc+'</td><td style="font-size:9px;color:#555;">'+coords+'</td><td><input value="'+esc(l.notes||'')+'" oninput="getMeta(\''+l.id+'\').notes=this.value" style="background:transparent;border:none;border-bottom:1px solid #333;color:#888;font-family:\'Barlow\',sans-serif;font-size:9px;width:100%;"></td></tr>';});});var body='<div style="font-size:9px;color:var(--grey2);letter-spacing:1px;font-family:\'Barlow Condensed\',sans-serif;margin-bottom:10px;padding:5px 8px;background:var(--blk3);border:1px solid var(--bdr);">✎ ALL FIELDS EDITABLE — CHANGES APPLY LIVE</div><div class="pdf-sec"><div class="pdf-sec-title">OPERATION TITLE &amp; SUBTITLE</div><div style="display:flex;gap:8px;"><div class="mrow" style="flex:1;"><label>Title</label><input id="ppv-title" type="text" value="'+esc(title)+'" oninput="document.getElementById(\'op-title\').textContent=this.value"></div><div class="mrow" style="flex:1;"><label>Subtitle</label><input id="ppv-sub" type="text" value="'+esc(sub)+'" oninput="document.getElementById(\'op-sub\').textContent=this.value"></div></div></div><div class="pdf-sec"><div class="pdf-sec-title">PLAN SUMMARY</div><textarea id="ppv-summary" rows="3" placeholder="Brief summary…" oninput="S.planSummary=this.value">'+esc(S.planSummary)+'</textarea></div><div class="pdf-sec"><div class="pdf-sec-title">TEAM ASSIGNMENTS</div>'+teamsPreviewHtml+'</div><div class="pdf-sec"><div class="pdf-sec-title">LAYER SUMMARY</div><table style="width:100%;border-collapse:collapse;"><thead><tr><th style="text-align:left;color:var(--grey2);font-family:\'Barlow Condensed\',sans-serif;font-size:8px;letter-spacing:2px;border-bottom:1px solid var(--bdr);padding:3px 6px;">LABEL</th><th style="text-align:left;color:var(--grey2);font-family:\'Barlow Condensed\',sans-serif;font-size:8px;letter-spacing:2px;border-bottom:1px solid var(--bdr);padding:3px 4px;">TYPE</th><th style="text-align:left;color:var(--grey2);font-family:\'Barlow Condensed\',sans-serif;font-size:8px;letter-spacing:2px;border-bottom:1px solid var(--bdr);padding:3px 4px;">COA</th><th style="text-align:left;color:var(--grey2);font-family:\'Barlow Condensed\',sans-serif;font-size:8px;letter-spacing:2px;border-bottom:1px solid var(--bdr);padding:3px 4px;">COORDS</th><th style="text-align:left;color:var(--grey2);font-family:\'Barlow Condensed\',sans-serif;font-size:8px;letter-spacing:2px;border-bottom:1px solid var(--bdr);padding:3px 4px;">NOTES</th></tr></thead><tbody>'+layerRows+'</tbody></table></div>';showModal('🖨 PRINT PREVIEW &amp; EDIT',body,function(){S.planSummary=document.getElementById('ppv-summary')?.value||S.planSummary;doPrint();});setTimeout(function(){var ok=document.querySelector('.mok');if(ok)ok.textContent='🖨 PRINT / SAVE PDF';},50);}
-function buildOpsOverview(){var rows=S.teams.map(function(t){var pending=(t.tasks||[]).filter(function(tk){return tk.status==='PENDING';}).length;var inprog=(t.tasks||[]).filter(function(tk){return tk.status==='IN PROG';}).length;var complete=(t.tasks||[]).filter(function(tk){return tk.status==='COMPLETE';}).length;var hold=(t.tasks||[]).filter(function(tk){return tk.status==='HOLD';}).length;return '<tr><td><span style="background:'+t.color+';color:#fff;padding:1px 7px;font-family:\'Barlow Condensed\',sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;">'+esc(t.badge)+'</span></td><td style="text-align:center;">'+((t.members||[]).length)+'</td><td style="text-align:center;">'+(t.tasks||[]).length+'</td><td style="text-align:center;"><span style="color:#cc6600;">'+pending+'</span></td><td style="text-align:center;"><span style="color:#ccaa00;">'+inprog+'</span></td><td style="text-align:center;"><span style="color:#448844;">'+complete+'</span></td><td style="text-align:center;"><span style="color:#cc4444;">'+hold+'</span></td><td style="text-align:center;">'+(t.equipment||[]).length+'</td></tr>';}).join('');var totalP=S.teams.reduce(function(a,t){return a+(t.members||[]).length;},0);var totalT=S.teams.reduce(function(a,t){return a+(t.tasks||[]).length;},0);var totalE=S.teams.reduce(function(a,t){return a+(t.equipment||[]).length;},0);return '<table style="width:100%;border-collapse:collapse;font-size:11px;"><thead><tr><th style="text-align:left;color:#666;font-family:\'Barlow Condensed\',sans-serif;font-size:9px;letter-spacing:2px;border-bottom:1px solid #2a2a2a;padding:4px 7px;background:#0f0f0f;">TEAM</th><th style="text-align:center;color:#666;font-family:\'Barlow Condensed\',sans-serif;font-size:9px;letter-spacing:2px;border-bottom:1px solid #2a2a2a;padding:4px 5px;background:#0f0f0f;">PERS</th><th style="text-align:center;color:#666;font-family:\'Barlow Condensed\',sans-serif;font-size:9px;letter-spacing:2px;border-bottom:1px solid #2a2a2a;padding:4px 5px;background:#0f0f0f;">TASKS</th><th style="text-align:center;color:#cc6600;font-family:\'Barlow Condensed\',sans-serif;font-size:9px;letter-spacing:2px;border-bottom:1px solid #2a2a2a;padding:4px 5px;background:#0f0f0f;">PEND</th><th style="text-align:center;color:#ccaa00;font-family:\'Barlow Condensed\',sans-serif;font-size:9px;letter-spacing:2px;border-bottom:1px solid #2a2a2a;padding:4px 5px;background:#0f0f0f;">PROG</th><th style="text-align:center;color:#448844;font-family:\'Barlow Condensed\',sans-serif;font-size:9px;letter-spacing:2px;border-bottom:1px solid #2a2a2a;padding:4px 5px;background:#0f0f0f;">DONE</th><th style="text-align:center;color:#cc4444;font-family:\'Barlow Condensed\',sans-serif;font-size:9px;letter-spacing:2px;border-bottom:1px solid #2a2a2a;padding:4px 5px;background:#0f0f0f;">HOLD</th><th style="text-align:center;color:#446688;font-family:\'Barlow Condensed\',sans-serif;font-size:9px;letter-spacing:2px;border-bottom:1px solid #2a2a2a;padding:4px 5px;background:#0f0f0f;">EQUIP</th></tr></thead><tbody>'+rows+'</tbody><tfoot><tr style="border-top:2px solid #2a2a2a;"><td style="font-family:\'Barlow Condensed\',sans-serif;font-size:9px;letter-spacing:2px;color:#cc1111;padding:4px 7px;">TOTALS</td><td style="text-align:center;font-weight:700;padding:4px 5px;">'+totalP+'</td><td style="text-align:center;font-weight:700;padding:4px 5px;">'+totalT+'</td><td colspan="4"></td><td style="text-align:center;font-weight:700;padding:4px 5px;">'+totalE+'</td></tr></tfoot></table>';}
-function doPrint(){var center=map.getCenter(),zoom=map.getZoom();var title=document.getElementById('op-title').textContent;var sub=document.getElementById('op-sub').textContent;var date=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});var typeOrder=['rect','circle','line','marker'],typeLabels={rect:'AOR / RECTANGLES',circle:'CIRCLES / ZONES',line:'LINES / BOUNDARIES',marker:'MARKERS / POINTS'};var groups={};S.layers.forEach(function(l){if(!groups[l.type])groups[l.type]=[];groups[l.type].push(l);});var layerRows='';typeOrder.forEach(function(t){if(!groups[t]||!groups[t].length)return;layerRows+='<tr><td colspan="5" style="background:#1a0000;color:#cc1111;font-weight:700;letter-spacing:3px;font-size:10px;padding:5px 8px;border-top:2px solid #cc1111;">'+typeLabels[t]+'</td></tr>';groups[t].forEach(function(l){var coaObj=S.coas.find(function(c){return c.id===l.scope;});var coaDesc=l.scope==='global'?'ALL COAs':(coaObj?coaObj.name:l.scope);var coords='';if(l.type==='marker'&&l.ll)coords=l.ll[0].toFixed(5)+','+l.ll[1].toFixed(5);else if(l.type==='circle'&&l.center)coords='Ctr:'+l.center[0].toFixed(4)+','+l.center[1].toFixed(4)+' R:'+Math.round(l.radius)+'m';else if(l.type==='rect'&&l.bounds)coords='SW:'+l.bounds[0][0].toFixed(4)+','+l.bounds[0][1].toFixed(4);layerRows+='<tr><td><span style="display:inline-block;width:9px;height:9px;background:'+l.color+';margin-right:5px;vertical-align:middle;"></span>'+esc(l.label||'—')+'</td><td>'+esc(l.ztype||'')+'</td><td>'+coaDesc+'</td><td style="font-size:9px;color:#aaa;">'+coords+'</td><td style="font-size:9px;color:#bbb;">'+esc(l.notes||'')+'</td></tr>';});});var teamSections=S.teams.map(function(t){var memRows=t.members&&t.members.length?t.members.map(function(m){return '<tr><td>'+esc(m.name||'—')+'</td><td>'+esc(m.role||'')+'</td></tr>';}).join(''):'<tr><td colspan="2" style="color:#555;font-style:italic;font-size:10px;">No personnel</td></tr>';var taskRows=t.tasks&&t.tasks.length?t.tasks.map(function(tk){var pc={'HIGH':'#8a0000','MEDIUM':'#664400','LOW':'#1a3a5a'};var sc={'PENDING':'#664400','IN PROG':'#664400','COMPLETE':'#1a3a1a','HOLD':'#8a0000'};return '<tr><td>'+esc(tk.task||'')+'</td><td><span style="background:'+(pc[tk.priority]||'#444')+';color:#fff;padding:1px 5px;font-size:8px;font-weight:700;">'+tk.priority+'</span></td><td><span style="background:'+(sc[tk.status]||'#444')+';color:#fff;padding:1px 5px;font-size:8px;font-weight:700;">'+tk.status+'</span></td></tr>';}).join(''):'<tr><td colspan="3" style="color:#555;font-style:italic;font-size:10px;">No tasks</td></tr>';var equipRows=t.equipment&&t.equipment.length?t.equipment.map(function(eq){return '<tr><td>'+esc(eq.item||'—')+'</td><td style="text-align:center;">'+esc(eq.qty||'')+'</td><td style="color:#aaa;">'+esc(eq.notes||'')+'</td></tr>';}).join(''):'<tr><td colspan="3" style="color:#555;font-style:italic;font-size:10px;">No equipment</td></tr>';return '<div style="margin-bottom:16px;border:1px solid #2a2a2a;border-left:3px solid '+t.color+';"><div style="background:#0f0f0f;padding:7px 10px;display:flex;align-items:center;gap:10px;"><span style="background:'+t.color+';color:#fff;padding:2px 9px;font-family:\'Barlow Condensed\',sans-serif;font-size:13px;font-weight:700;letter-spacing:2px;">'+esc(t.badge)+'</span><span style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#ccc;">'+esc(t.type)+' — AOR: '+esc(t.aor)+' | LRZ: '+esc(t.lrz)+'</span></div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;"><div style="border-right:1px solid #2a2a2a;padding:7px 9px;"><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:#cc1111;border-bottom:1px solid #2a2a2a;padding-bottom:3px;margin-bottom:5px;">TASK ORG</div><table style="width:100%;font-size:10px;border-collapse:collapse;"><thead><tr><th style="text-align:left;color:#555;font-size:9px;padding-bottom:2px;">NAME</th><th style="text-align:left;color:#555;font-size:9px;">ROLE</th></tr></thead><tbody>'+memRows+'</tbody></table></div><div style="border-right:1px solid #2a2a2a;padding:7px 9px;"><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:#cc1111;border-bottom:1px solid #2a2a2a;padding-bottom:3px;margin-bottom:5px;">TASKS</div><table style="width:100%;font-size:10px;border-collapse:collapse;"><thead><tr><th style="text-align:left;color:#555;font-size:9px;padding-bottom:2px;">TASK</th><th style="color:#555;font-size:9px;">PRI</th><th style="color:#555;font-size:9px;">STATUS</th></tr></thead><tbody>'+taskRows+'</tbody></table></div><div style="padding:7px 9px;"><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:#cc1111;border-bottom:1px solid #2a2a2a;padding-bottom:3px;margin-bottom:5px;">EQUIPMENT</div><table style="width:100%;font-size:10px;border-collapse:collapse;"><thead><tr><th style="text-align:left;color:#555;font-size:9px;padding-bottom:2px;">ITEM</th><th style="color:#555;font-size:9px;">QTY</th><th style="color:#555;font-size:9px;">NOTES</th></tr></thead><tbody>'+equipRows+'</tbody></table></div></div></div>';}).join('');var summaryHTML=S.planSummary?'<div class="sec"><div class="sec-title">Plan Summary</div><div style="font-size:11px;color:#ccc;line-height:1.7;white-space:pre-wrap;padding:8px 10px;background:#0f0f0f;border:1px solid #2a2a2a;">'+esc(S.planSummary)+'</div></div>':'';var overviewHTML=S.teams.length?'<div class="sec"><div class="sec-title">Operations Overview</div>'+buildOpsOverview()+'</div>':'';var win=window.open('','_blank');win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>DXD OPS BRIEF — '+esc(title)+'</title><style>@import url(\'https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500&display=swap\');*{margin:0;padding:0;box-sizing:border-box;}body{background:#080808;color:#f0f0f0;font-family:\'Barlow\',sans-serif;}.page{max-width:1100px;margin:0 auto;padding:26px 34px;}.hdr{border-bottom:3px solid #cc1111;padding-bottom:12px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:flex-end;}.logo{font-family:\'Barlow Condensed\',sans-serif;font-size:26px;font-weight:800;letter-spacing:5px;}.logo .x{color:#e8000d;}.op-title{font-family:\'Barlow Condensed\',sans-serif;font-size:19px;font-weight:800;letter-spacing:4px;text-transform:uppercase;}.op-sub{font-size:10px;color:#666;letter-spacing:2px;margin-top:2px;text-transform:uppercase;}.op-date{font-size:9px;color:#555;margin-top:2px;}.draft-bar{background:#cc1111;color:#fff;font-family:\'Barlow Condensed\',sans-serif;font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;padding:4px 14px;margin-bottom:16px;text-align:center;}.sec{margin-bottom:20px;}.sec-title{font-family:\'Barlow Condensed\',sans-serif;font-size:12px;font-weight:700;letter-spacing:4px;text-transform:uppercase;color:#cc1111;border-left:3px solid #cc1111;padding-left:7px;margin-bottom:8px;}table{width:100%;border-collapse:collapse;font-size:11px;}th{font-family:\'Barlow Condensed\',sans-serif;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#666;border-bottom:1px solid #2a2a2a;padding:4px 7px;text-align:left;background:#0f0f0f;}td{padding:4px 7px;border-bottom:1px solid #1a1a1a;vertical-align:top;color:#ccc;}.map-ph{background:#0f0f0f;border:1px solid #2a2a2a;height:260px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#555;font-family:\'Barlow Condensed\',sans-serif;letter-spacing:2px;text-transform:uppercase;margin-bottom:18px;}.footer{border-top:1px solid #2a2a2a;margin-top:22px;padding-top:10px;display:flex;justify-content:space-between;font-size:8px;color:#444;letter-spacing:1px;text-transform:uppercase;}@media print{body{background:#fff!important;color:#000!important;}.logo .x,.sec-title{color:#cc1111!important;}.draft-bar{background:#cc1111!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}th{background:#f0f0f0!important;color:#333!important;}td{color:#333!important;}}</style></head><body><div class="page"><div class="hdr"><div class="logo">DEUS <span class="x">X</span></div><div><div class="op-title">'+esc(title)+'</div><div class="op-sub">'+esc(sub)+'</div><div class="op-date">Generated: '+date+' | Center: '+center.lat.toFixed(4)+', '+center.lng.toFixed(4)+'</div></div></div><div class="draft-bar">⚠ DRAFT — FOR PLANNING USE ONLY</div><div class="map-ph"><div>[ MAP VIEW — PASTE SCREENSHOT HERE ]</div><div style="font-size:9px;color:#444;margin-top:5px;">'+center.lat.toFixed(5)+', '+center.lng.toFixed(5)+' | Zoom: '+zoom+'</div></div>'+summaryHTML+overviewHTML+'<div class="sec"><div class="sec-title">Team Assignments</div>'+teamSections+'</div><div class="sec"><div class="sec-title">Layer Summary</div><table><thead><tr><th>Label</th><th>Zone Type</th><th>COA</th><th>Coordinates</th><th>Notes</th></tr></thead><tbody>'+layerRows+'</tbody></table></div><div class="footer"><span>DEUS X DEFENSE — CONFIDENTIAL</span><span>'+esc(title)+'</span><span>'+date+'</span></div></div><script>window.onload=function(){window.print();};<\/script></body></html>');win.document.close();}
-
-// ── Go To / Project / Modal ───────────────────────────────────
-function goTo(){showModal('GO TO LOCATION','<div class="mrow"><label>Address or Lat, Lng</label><input id="go-q" type="text" placeholder="e.g. Saline Michigan"></div>',function(){var v=document.getElementById('go-q').value.trim(),pts=v.split(',');if(pts.length===2&&!isNaN(parseFloat(pts[0]))&&!isNaN(parseFloat(pts[1]))){map.flyTo([parseFloat(pts[0]),parseFloat(pts[1])],15);}else fetch('https://nominatim.openstreetmap.org/search?format=json&q='+encodeURIComponent(v)).then(function(r){return r.json();}).then(function(d){if(d&&d[0])map.flyTo([parseFloat(d[0].lat),parseFloat(d[0].lon)],15);else alert('NOT FOUND');}).catch(function(){alert('TRY LAT, LNG FORMAT');});});}
-function showProjModal(){showModal('PROJECT SETTINGS','<div class="mrow"><label>Operation Title</label><input id="m-title" type="text" value="'+esc(document.getElementById('op-title').textContent)+'"></div><div class="mrow"><label>Subtitle / Location</label><input id="m-sub" type="text" value="'+esc(document.getElementById('op-sub').textContent)+'"></div>',function(){document.getElementById('op-title').textContent=document.getElementById('m-title').value||'UAS OPERATIONS PLAN';document.getElementById('op-sub').textContent=document.getElementById('m-sub').value||'';});}
-function showModal(title,body,cb){document.getElementById('modal-title').innerHTML=title;document.getElementById('modal-body').innerHTML=body;document.getElementById('modal').style.display='flex';S.modalCb=cb;}
-function confirmModal(){if(S.modalCb)S.modalCb();closeModal();}
-function closeModal(){document.getElementById('modal').style.display='none';S.modalCb=null;}
-
-// ── Export / Import ───────────────────────────────────────────
-function exportJSON(){var data=JSON.stringify({project:{title:document.getElementById('op-title').textContent,sub:document.getElementById('op-sub').textContent},planSummary:S.planSummary,coas:S.coas,layers:S.layers,teams:S.teams,mapCenter:map.getCenter(),mapZoom:map.getZoom()},null,2);var blob=new Blob([data],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='dxd_ops_plan.json';a.click();}
-function importJSON(){var inp=document.createElement('input');inp.type='file';inp.accept='.json';inp.onchange=function(e){var file=e.target.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(ev){try{var data=JSON.parse(ev.target.result);Object.values(S.leafletLayers).forEach(function(lf){map.removeLayer(lf);});S.leafletLayers={};if(data.project){document.getElementById('op-title').textContent=data.project.title||'UAS OPERATIONS PLAN';document.getElementById('op-sub').textContent=data.project.sub||'';}S.planSummary=data.planSummary||'';S.coas=data.coas||[{id:'c1',name:'COA 1',color:'#cc1111',visible:true}];S.teams=(data.teams||[]).map(function(t){return Object.assign({members:[],tasks:[],equipment:[]},t);});S.active=S.coas[0].id;S.layers=data.layers||[];S.sel=null;closeEdit();S.layers.forEach(function(meta){rebuildLL(meta);});if(data.mapCenter)map.setView([data.mapCenter.lat,data.mapCenter.lng],data.mapZoom||15);syncVis();renderMapTab();}catch(err){alert('INVALID JSON: '+err.message);}};reader.readAsText(file);};inp.click();}
-function rebuildLL(meta){var col=meta.color||'#cc1111',op=meta.opacity||.35,lf;if(meta.type==='rect'&&meta.bounds)lf=L.rectangle(meta.bounds,{color:col,weight:2,fillColor:col,fillOpacity:op});else if(meta.type==='circle'&&meta.center)lf=L.circle(meta.center,{radius:meta.radius||100,color:col,weight:2,fillColor:col,fillOpacity:op,dashArray:meta.dashed?'8,6':null});else if(meta.type==='line'&&meta.pts)lf=L.polyline(meta.pts,{color:col,weight:2,dashArray:meta.dashed?'10,6':null});else if(meta.type==='marker'&&meta.ll){lf=L.marker(meta.ll,{icon:markerIcon(col,meta.ztype),draggable:true});if(meta.label&&!meta.labelHidden)lf.bindTooltip(meta.label,{permanent:true,direction:'top',offset:[0,-16],className:'uas-tip'});lf.on('dragend',function(ev){var p=ev.target.getLatLng();meta.ll=[p.lat,p.lng];});}if(!lf)return;if(meta.label&&meta.type!=='marker'&&!meta.labelHidden)lf.bindTooltip(meta.label,{permanent:true,direction:'center',className:'uas-tip'});lf.on('click',function(e){if(S.mode==='select'){L.DomEvent.stopPropagation(e);selectLayer(meta.id);}else if(S.mode==='move'&&!S.moving){L.DomEvent.stopPropagation(e);S.moving=true;S.moveLayerId=meta.id;}});attachHover(lf,meta);S.leafletLayers[meta.id]=lf;var n=parseInt(meta.id.replace('L',''))||0;if(S.idN<n)S.idN=n;}
-function exportCSV(){var rows=[['ID','LABEL','TYPE','ZONE TYPE','SCOPE','COA','COLOR','NOTES','COORDINATES']];S.layers.forEach(function(l){var coaObj=S.coas.find(function(c){return c.id===l.scope;});var coaDesc=l.scope==='global'?'ALL COAs':(coaObj?coaObj.name:l.scope);var coords='';if(l.type==='marker'&&l.ll)coords=l.ll[0].toFixed(5)+','+l.ll[1].toFixed(5);else if(l.type==='circle'&&l.center)coords='Ctr:'+l.center[0].toFixed(5)+','+l.center[1].toFixed(5)+' R:'+Math.round(l.radius)+'m';else if(l.type==='rect'&&l.bounds)coords='SW:'+l.bounds[0][0].toFixed(5)+','+l.bounds[0][1].toFixed(5)+' NE:'+l.bounds[1][0].toFixed(5)+','+l.bounds[1][1].toFixed(5);rows.push([l.id,l.label||'',l.type,l.ztype||'',l.scope==='global'?'SHARED':'COA',coaDesc,l.color,(l.notes||'').replace(/,/g,';'),coords]);});rows.push([],[' PLAN SUMMARY','','','','','','','','']);rows.push([S.planSummary||'','','','','','','','','']);rows.push([],['TEAMS','','','','','','','','']);S.teams.forEach(function(t){rows.push(['--- TEAM: '+t.badge+' | '+t.type+' | AOR: '+t.aor,'','','','','','','','']);if(t.members&&t.members.length){rows.push(['PERSONNEL','NAME','ROLE','','','','','','']);t.members.forEach(function(m){rows.push(['',m.name||'',m.role||'','','','','','','']);});}if(t.tasks&&t.tasks.length){rows.push(['TASKS','TASK','PRIORITY','STATUS','','','','','']);t.tasks.forEach(function(tk){rows.push(['',tk.task||'',tk.priority||'',tk.status||'','','','','','']);});}if(t.equipment&&t.equipment.length){rows.push(['EQUIPMENT','ITEM','QTY','NOTES','','','','','']);t.equipment.forEach(function(eq){rows.push(['',eq.item||'',eq.qty||'',eq.notes||'','','','','','']);})}rows.push([]);});var csv=rows.map(function(r){return r.map(function(c){var s=String(c||'');return(s.includes(',')||s.includes('"'))?'"'+s.replace(/"/g,'""')+'"':s;}).join(',');}).join('\n');var blob=new Blob([csv],{type:'text/csv'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='dxd_ops_layers.csv';a.click();}
-
-document.getElementById('opa').addEventListener('input',function(){document.getElementById('opa-lbl').textContent=this.value+'%';});
-document.getElementById('legend-body').style.flex='1';
-document.getElementById('legend-body').style.minHeight='0';
-renderMapTab();
-</script>
-</body>
-</html>
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="UTF-8">
+
+<style>
+
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&display=swap');
+
+:root{--red:#cc1111;--red2:#e8000d;--blk:#080808;--blk2:#0f0f0f;--blk3:#161616;--blk4:#1e1e1e;--wht:#f0f0f0;--grey:#888;--grey2:#555;--bdr:#2a2a2a;}
+
+*{margin:0;padding:0;box-sizing:border-box;}
+
+body{background:var(--blk);color:var(--wht);font-family:'Barlow',sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+
+#header{background:var(--blk);border-bottom:2px solid var(--red);padding:0 12px;display:flex;justify-content:space-between;align-items:stretch;flex-shrink:0;height:44px;z-index:1000;}
+
+#hl{display:flex;align-items:center;gap:9px;}
+
+.logo{font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:800;letter-spacing:4px;display:flex;align-items:center;}
+
+.logo .x{color:var(--red2);}
+
+.hdiv{width:1px;height:100%;background:var(--bdr);}
+
+#op-title{font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:3px;text-transform:uppercase;}
+
+#op-sub{font-size:9px;color:var(--grey2);letter-spacing:1px;margin-top:1px;}
+
+#hr2{display:flex;align-items:center;gap:4px;}
+
+.draft{background:var(--red);color:#fff;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;padding:3px 10px;letter-spacing:2px;text-transform:uppercase;clip-path:polygon(6px 0%,100% 0%,calc(100% - 6px) 100%,0% 100%);}
+
+.hbtn{background:transparent;border:1px solid var(--bdr);color:var(--grey);font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:600;letter-spacing:1px;padding:3px 8px;cursor:pointer;text-transform:uppercase;transition:all .15s;}
+
+.hbtn:hover{border-color:var(--red);color:var(--wht);background:rgba(204,17,17,.1);}
+
+.hbtn.active{border-color:var(--red);color:var(--wht);background:rgba(204,17,17,.15);}
+
+#toolbar{background:var(--blk2);border-bottom:1px solid var(--bdr);padding:4px 8px;display:flex;gap:4px;align-items:center;flex-wrap:wrap;flex-shrink:0;z-index:1000;}
+
+.tbtn{background:var(--blk3);border:1px solid var(--bdr);color:var(--grey);font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:600;letter-spacing:1px;padding:3px 7px;cursor:pointer;text-transform:uppercase;transition:all .15s;white-space:nowrap;}
+
+.tbtn:hover{border-color:var(--red);color:var(--wht);}
+
+.tbtn.active{background:rgba(204,17,17,.15);border-color:var(--red);color:var(--wht);}
+
+.tbtn.danger{border-color:#5a0000;color:#cc4444;}
+
+.tbtn.danger:hover{background:rgba(204,17,17,.2);color:#ff6666;}
+
+.tbtn.warn{border-color:#4a3000;color:#aa6622;}
+
+.tbtn.warn:hover{border-color:#cc8833;color:#ffaa44;}
+
+.tsep{width:1px;height:20px;background:var(--bdr);margin:0 2px;flex-shrink:0;}
+
+input[type=color]{width:24px;height:22px;border:1px solid var(--bdr);background:var(--blk3);cursor:pointer;padding:1px;}
+
+input[type=range]{width:55px;accent-color:var(--red);}
+
+input[type=text],input[type=number],select,textarea{background:var(--blk3);border:1px solid var(--bdr);color:var(--wht);font-family:'Barlow Condensed',sans-serif;font-size:10px;letter-spacing:1px;padding:2px 5px;}
+
+input::placeholder{color:var(--grey2);}
+
+select option{background:var(--blk3);}
+
+#body{display:flex;flex:1;overflow:hidden;position:relative;}
+
+#map{flex:1;z-index:1;}
+
+#sidebar{width:272px;background:var(--blk2);border-left:2px solid var(--bdr);display:flex;flex-direction:column;overflow:hidden;z-index:500;flex-shrink:0;}
+
+#sb-tabs{display:flex;flex-shrink:0;border-bottom:2px solid var(--bdr);overflow-x:auto;}
+
+.sb-tab{flex:1;min-width:52px;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:6px 3px;cursor:pointer;text-align:center;color:var(--grey2);border-right:1px solid var(--bdr);transition:all .15s;border-bottom:2px solid transparent;margin-bottom:-2px;white-space:nowrap;}
+
+.sb-tab:last-child{border-right:none;}
+
+.sb-tab:hover{color:var(--wht);background:var(--blk3);}
+
+.sb-tab.active{color:var(--red);border-bottom:2px solid var(--red);background:rgba(204,17,17,.05);}
+
+.sb-panel{display:none;flex:1;flex-direction:column;overflow:hidden;}
+
+.sb-panel.active{display:flex;}
+
+.sec-hdr{padding:5px 9px;border-bottom:1px solid var(--bdr);flex-shrink:0;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;background:var(--blk2);}
+
+.sec-hdr:hover{background:var(--blk3);}
+
+.sec-title{font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--red);border-left:2px solid var(--red);padding-left:6px;display:flex;align-items:center;gap:5px;}
+
+.sec-acts{display:flex;gap:3px;align-items:center;}
+
+.pact{color:var(--grey2);cursor:pointer;font-size:9px;font-family:'Barlow Condensed',sans-serif;letter-spacing:1px;border:1px solid var(--bdr);padding:1px 5px;transition:all .15s;background:transparent;text-transform:uppercase;}
+
+.pact:hover{color:var(--wht);border-color:var(--red);}
+
+#legend-body{overflow-y:auto;padding:6px 8px;transition:all .2s;}
+
+.leg-item{display:flex;align-items:flex-start;gap:5px;padding:4px 5px;cursor:pointer;border:1px solid transparent;margin-bottom:2px;border-left:2px solid transparent;transition:all .1s;}
+
+.leg-item:hover{background:var(--blk3);border-left-color:var(--red);}
+
+.leg-item.on{background:rgba(204,17,17,.1);border-left-color:var(--red);}
+
+.leg-dot{width:9px;height:9px;flex-shrink:0;margin-top:2px;border:2px solid;}
+
+.leg-lbl{font-family:'Barlow Condensed',sans-serif;font-size:10px;letter-spacing:1px;text-transform:uppercase;}
+
+.leg-zt{font-size:8px;color:var(--grey2);letter-spacing:1px;margin-left:2px;}
+
+.leg-notes{font-size:9px;color:var(--grey);margin-top:1px;font-family:'Barlow',sans-serif;text-transform:none;letter-spacing:0;line-height:1.4;}
+
+.type-hdr{font-family:'Barlow Condensed',sans-serif;font-size:8px;letter-spacing:3px;text-transform:uppercase;color:var(--grey2);padding:2px 5px;border-bottom:1px solid var(--bdr);margin-bottom:2px;margin-top:3px;}
+
+#layers-body{overflow-y:auto;padding:6px 8px;transition:height .2s;}
+
+.coa-tabs{display:flex;gap:2px;flex-wrap:wrap;margin-bottom:5px;}
+
+.coa-tab{font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:2px 6px;cursor:pointer;border:1px solid var(--bdr);background:var(--blk3);color:var(--grey);transition:all .15s;display:flex;align-items:center;gap:3px;}
+
+.coa-tab:hover{border-color:var(--red);color:var(--wht);}
+
+.coa-tab.active{background:rgba(204,17,17,.15);border-color:var(--red);color:var(--wht);}
+
+.layer-item{display:flex;align-items:center;gap:3px;padding:2px 4px;cursor:pointer;border:1px solid transparent;margin-bottom:2px;font-family:'Barlow Condensed',sans-serif;font-size:10px;letter-spacing:1px;text-transform:uppercase;transition:all .1s;}
+
+.layer-item:hover{background:var(--blk4);}
+
+.layer-item.on{background:rgba(204,17,17,.1);border-color:var(--red);}
+
+.scope-tag{font-size:7px;color:var(--grey2);padding:1px 3px;border:1px solid var(--bdr);}
+
+.scope-tag.global{border-color:#446644;color:#668866;}
+
+.team-card{background:var(--blk3);border:1px solid var(--bdr);border-left:3px solid var(--red);margin-bottom:7px;}
+
+.team-card-hdr{display:flex;align-items:center;gap:6px;padding:6px 8px;cursor:pointer;user-select:none;}
+
+.team-card-hdr:hover{background:rgba(255,255,255,.03);}
+
+.tbadge{color:#fff;padding:2px 9px;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;clip-path:polygon(4px 0%,100% 0%,calc(100% - 4px) 100%,0% 100%);flex-shrink:0;}
+
+.team-card-body{padding:0 8px 8px;display:none;}
+
+.team-card-body.open{display:block;}
+
+.tsec{margin-top:7px;}
+
+.tsec-title{font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--red);border-bottom:1px solid var(--bdr);padding-bottom:3px;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center;}
+
+.mini-btn{font-family:'Barlow Condensed',sans-serif;font-size:9px;letter-spacing:1px;padding:1px 6px;border:1px solid var(--bdr);background:transparent;color:var(--grey2);cursor:pointer;text-transform:uppercase;}
+
+.mini-btn:hover{border-color:var(--red);color:var(--wht);}
+
+.drow{display:flex;align-items:center;gap:3px;margin-bottom:3px;padding:2px 3px;background:var(--blk4);border:1px solid var(--bdr);}
+
+.drow input,.drow select{font-size:9px;padding:2px 4px;}
+
+.reorder-btns{display:flex;flex-direction:column;gap:1px;flex-shrink:0;}
+
+.rarr{background:transparent;border:none;color:var(--grey2);cursor:pointer;font-size:9px;padding:0 2px;line-height:1;transition:color .1s;}
+
+.rarr:hover{color:var(--wht);}
+
+.te-row{display:flex;align-items:center;gap:4px;padding:5px 7px;border:1px solid var(--bdr);margin-bottom:4px;background:var(--blk3);border-left:3px solid var(--red);}
+
+.te-row input,.te-row select{font-size:10px;padding:3px 5px;}
+
+.te-team-badge{font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;padding:2px 7px;clip-path:polygon(3px 0%,100% 0%,calc(100% - 3px) 100%,0% 100%);flex-shrink:0;}
+
+#statusbar{background:var(--blk);border-top:2px solid var(--red);padding:2px 10px;font-family:'Barlow Condensed',sans-serif;font-size:9px;color:var(--grey2);display:flex;gap:16px;flex-shrink:0;z-index:1000;letter-spacing:1px;text-transform:uppercase;}
+
+#statusbar b{color:var(--grey);}
+
+#edit-panel{position:absolute;bottom:28px;left:10px;background:var(--blk2);border:1px solid var(--red);padding:9px 11px;z-index:700;width:228px;display:none;font-family:'Barlow Condensed',sans-serif;clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%);}
+
+.ep-title{color:var(--red);font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;margin-bottom:7px;display:flex;justify-content:space-between;border-left:2px solid var(--red);padding-left:5px;}
+
+.ep-row{margin-bottom:4px;}
+
+.ep-row label{display:block;color:var(--grey2);font-size:8px;letter-spacing:2px;text-transform:uppercase;margin-bottom:2px;}
+
+.ep-row input,.ep-row select,.ep-row textarea{width:100%;}
+
+.ep-row textarea{height:44px;resize:none;font-family:'Barlow',sans-serif;font-size:10px;letter-spacing:0;text-transform:none;}
+
+.ep-btns{display:flex;gap:3px;margin-top:6px;flex-wrap:wrap;}
+
+.ep-btns button{flex:1;padding:3px;font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;border:1px solid var(--bdr);background:transparent;color:var(--grey);min-width:34px;}
+
+.map-hover-tip{position:absolute;background:rgba(8,8,8,.95);border:1px solid var(--red);color:var(--wht);font-family:'Barlow Condensed',sans-serif;font-size:10px;letter-spacing:1px;padding:6px 10px;pointer-events:none;z-index:800;max-width:200px;display:none;text-transform:uppercase;}
+
+.map-hover-tip .ht-label{font-weight:700;font-size:11px;color:var(--wht);margin-bottom:3px;}
+
+.map-hover-tip .ht-notes{font-family:'Barlow',sans-serif;font-size:10px;text-transform:none;letter-spacing:0;color:var(--grey);margin-top:2px;}
+
+.uas-tip{background:rgba(8,8,8,.92)!important;border:1px solid rgba(204,17,17,.4)!important;color:var(--wht)!important;font-family:'Barlow Condensed',sans-serif!important;font-size:10px!important;letter-spacing:2px!important;text-transform:uppercase!important;padding:2px 7px!important;border-radius:0!important;box-shadow:none!important;}
+
+.uas-tip::before{display:none!important;}
+
+#modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9999;align-items:center;justify-content:center;}
+
+.mbox{background:var(--blk2);border:1px solid var(--red);padding:18px;width:720px;max-width:96vw;max-height:90vh;overflow-y:auto;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,0 100%);}
+
+.mbox h3{font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:800;letter-spacing:4px;text-transform:uppercase;color:var(--red);margin-bottom:12px;border-left:3px solid var(--red);padding-left:7px;}
+
+.mrow{margin-bottom:8px;}
+
+.mrow label{display:block;font-family:'Barlow Condensed',sans-serif;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--grey2);margin-bottom:2px;}
+
+.mrow input,.mrow select{width:100%;padding:4px 7px;}
+
+.mrow textarea{width:100%;padding:5px 7px;font-family:'Barlow',sans-serif;font-size:11px;letter-spacing:0;text-transform:none;resize:vertical;}
+
+.mbtns{display:flex;gap:7px;margin-top:12px;}
+
+.mbtns button{flex:1;padding:7px;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;cursor:pointer;}
+
+.mok{background:rgba(204,17,17,.15);border:1px solid var(--red);color:var(--wht);}
+
+.mno{background:transparent;border:1px solid var(--bdr);color:var(--grey);}
+
+.pdf-sec{background:var(--blk3);border:1px solid var(--bdr);padding:10px 12px;margin-bottom:10px;}
+
+.pdf-sec-title{font-family:'Barlow Condensed',sans-serif;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--red);margin-bottom:6px;border-left:2px solid var(--red);padding-left:5px;}
+
+.pdf-sec textarea{background:var(--blk4);border:1px solid var(--bdr);color:var(--wht);padding:6px 8px;width:100%;font-family:'Barlow',sans-serif;font-size:11px;letter-spacing:0;text-transform:none;resize:vertical;}
+
+.pdf-team-sec{background:var(--blk4);border:1px solid var(--bdr);border-left:3px solid #444;padding:8px 10px;margin-bottom:8px;}
+
+.pdf-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+
+.pdf-col-title{font-family:'Barlow Condensed',sans-serif;font-size:8px;letter-spacing:3px;text-transform:uppercase;color:var(--red);border-bottom:1px solid var(--bdr);padding-bottom:2px;margin-bottom:4px;}
+
+.pf-inp{background:var(--blk3);border:none;border-bottom:1px solid var(--bdr);color:var(--wht);font-family:'Barlow',sans-serif;font-size:10px;padding:2px 3px;width:100%;letter-spacing:0;text-transform:none;}
+
+.pf-sel{background:var(--blk3);border:none;border-bottom:1px solid var(--bdr);color:var(--grey2);font-family:'Barlow Condensed',sans-serif;font-size:9px;padding:1px 3px;letter-spacing:1px;}
+
+/* ── OVERLAY PANEL — floats over map, does NOT affect layout ── */
+
+#ov-panel{position:absolute;top:8px;right:280px;width:256px;background:var(--blk3);border:1px solid #446688;border-left:3px solid #6699bb;padding:9px 11px;z-index:900;display:none;max-height:calc(100vh - 140px);overflow-y:auto;font-family:'Barlow Condensed',sans-serif;}
+
+.ov-hdr{font-size:9px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#6699bb;border-bottom:1px solid #446688;padding-bottom:4px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;}
+
+.ov-lbl{display:block;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--grey2);margin-bottom:2px;margin-top:5px;}
+
+.ov-btn{font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;border:1px solid var(--bdr);background:transparent;color:var(--grey);padding:3px 7px;}
+
+.ov-btn:hover{border-color:#6699bb;color:#aaccee;}
+
+.ov-btn.hi{background:rgba(68,102,136,.2);border-color:#6699bb;color:#aaccee;}
+
+.ov-row{display:flex;gap:4px;margin-top:5px;}
+
+.ov-item{display:flex;align-items:center;gap:4px;padding:3px 5px;background:var(--blk4);border:1px solid var(--bdr);margin-top:3px;font-size:9px;}
+
+::-webkit-scrollbar{width:3px;}::-webkit-scrollbar-track{background:var(--blk2);}::-webkit-scrollbar-thumb{background:var(--red);}
+
+</style>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+</head>
+
+<body>
+
+<div id="header">
+
+  <div id="hl">
+
+    <div class="logo">DEUS <span class="x">X</span></div>
+
+    <div class="hdiv"></div>
+
+    <div><div id="op-title">UAS OPERATIONS PLAN — NEW PROJECT</div><div id="op-sub">LOCATION TBD | AOR OVERLAY</div></div>
+
+  </div>
+
+  <div id="hr2">
+
+    <button class="hbtn" onclick="goTo()">📍 GO TO</button>
+
+    <button class="hbtn" onclick="showProjModal()">⚙ PROJECT</button>
+
+    <button class="hbtn" onclick="importJSON()">⬆ IMPORT</button>
+
+    <button class="hbtn" onclick="exportJSON()">⬇ JSON</button>
+
+    <button class="hbtn" onclick="exportCSV()">📋 CSV</button>
+
+    <button class="hbtn" onclick="showPrintPreview()">🖨 PRINT PREVIEW</button>
+
+    <div class="draft">DRAFT — PLANNING USE ONLY</div>
+
+  </div>
+
+</div>
+
+<div id="toolbar">
+
+  <button class="tbtn active" id="btn-select" onclick="setMode('select')">↖ SELECT</button>
+
+  <button class="tbtn" id="btn-move"   onclick="setMode('move')">✥ MOVE</button>
+
+  <button class="tbtn" id="btn-rect"   onclick="setMode('rect')">▭ AOR BOX</button>
+
+  <button class="tbtn" id="btn-circle" onclick="setMode('circle')">◉ CIRCLE</button>
+
+  <button class="tbtn" id="btn-line"   onclick="setMode('line')">╌ LINE</button>
+
+  <button class="tbtn" id="btn-marker" onclick="setMode('marker')">⊕ MARKER</button>
+
+  <div class="tsep"></div>
+
+  <input type="color" id="col" value="#cc1111">
+
+  <input type="range" id="opa" min="0" max="100" value="35">
+
+  <span id="opa-lbl" style="font-family:'Barlow Condensed',sans-serif;font-size:9px;color:var(--grey2);min-width:24px;">35%</span>
+
+  <input type="text" id="lbl" placeholder="LABEL…" style="width:90px;">
+
+  <select id="ztype">
+
+    <option>AOR</option><option>RESTRICTED</option><option>HLZ</option>
+
+    <option>LRZ</option><option>BOUNDARY</option><option>BROADCAST</option>
+
+    <option>MARKER</option><option>CUSTOM</option>
+
+  </select>
+
+  <div class="tsep"></div>
+
+  <button class="hbtn active" id="btn-labels" onclick="toggleAllLabels()" style="font-size:9px;padding:3px 7px;">🏷 LABELS</button>
+
+  <div class="tsep"></div>
+
+  <button class="tbtn danger" onclick="deleteSelected()">✕ DELETE</button>
+
+  <button class="tbtn" onclick="addCOA()">+ COA</button>
+
+  <button class="tbtn warn" onclick="clearActive()">⊘ CLEAR</button>
+
+  <div class="tsep"></div>
+
+  <button class="tbtn" id="btn-ov" onclick="toggleOvPanel()" style="border-color:#446688;color:#6699bb;">🗺 IMG OVERLAY</button>
+
+</div>
+
+
+
+<div id="body">
+
+  <div id="map"></div>
+
+  <div id="hover-tip" class="map-hover-tip"></div>
+
+
+
+  <!-- OVERLAY PANEL — absolutely positioned, never touches map div -->
+
+  <div id="ov-panel">
+
+    <div class="ov-hdr">📐 IMAGE OVERLAY <span onclick="toggleOvPanel()" style="cursor:pointer;color:var(--grey2);">✕</span></div>
+
+
+
+    <label class="ov-lbl">1 — Upload PNG / JPG</label>
+
+    <input type="file" id="ov-file" accept="image/png,image/jpeg" onchange="ovHandleFile(this)" style="width:100%;font-size:9px;color:var(--grey);">
+
+
+
+    <label class="ov-lbl">2 — Place at (address, place, or lat,lng)</label>
+
+    <div class="ov-row">
+
+      <input type="text" id="ov-q" placeholder="e.g. Saline Michigan" style="flex:1;font-size:9px;">
+
+      <button class="ov-btn hi" onclick="ovPlace()">GO</button>
+
+    </div>
+
+    <div style="font-size:8px;color:var(--grey2);margin-top:3px;">— or — <span onclick="ovDropAtCenter()" style="color:#6699bb;cursor:pointer;text-decoration:underline;">DROP AT MAP CENTER</span></div>
+
+
+
+    <label class="ov-lbl">Opacity — <span id="ov-opa-val">65%</span></label>
+
+    <input type="range" id="ov-opa" min="0" max="100" value="65" oninput="ovSetOpacity(this.value)" style="width:100%;accent-color:#6699bb;">
+
+
+
+    <label class="ov-lbl">Width (km) — <span id="ov-km-val">2.0 km</span></label>
+
+    <input type="range" id="ov-km" min="1" max="100" value="20" oninput="ovSetScale(this.value)" style="width:100%;accent-color:#6699bb;">
+
+
+
+    <div style="margin-top:8px;display:flex;gap:4px;flex-wrap:wrap;">
+
+      <button class="ov-btn" id="ov-mvbtn" onclick="ovToggleMove()">✥ MOVE MODE</button>
+
+      <button class="ov-btn" onclick="ovFit()">⊞ FIT</button>
+
+      <button class="ov-btn" style="border-color:#5a3300;color:#cc6633;" onclick="ovRemove()">✕ REMOVE</button>
+
+    </div>
+
+
+
+    <label class="ov-lbl" style="margin-top:8px;">Fine Nudge</label>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:3px;width:96px;margin-top:2px;">
+
+      <div></div><button class="ov-btn" onclick="ovNudge(0,1)" style="padding:2px 0;">▲</button><div></div>
+
+      <button class="ov-btn" onclick="ovNudge(-1,0)" style="padding:2px 0;">◀</button>
+
+      <button class="ov-btn" style="padding:2px 0;font-size:7px;color:var(--grey2);">·</button>
+
+      <button class="ov-btn" onclick="ovNudge(1,0)" style="padding:2px 0;">▶</button>
+
+      <div></div><button class="ov-btn" onclick="ovNudge(0,-1)" style="padding:2px 0;">▼</button><div></div>
+
+    </div>
+
+
+
+    <div id="ov-list" style="margin-top:8px;"></div>
+
+    <div style="font-size:8px;color:var(--grey2);margin-top:6px;border-top:1px solid var(--bdr);padding-top:5px;line-height:1.5;">
+
+      Upload → Place → scale to site width → nudge to align.
+
+    </div>
+
+  </div>
+
+
+
+  <div id="edit-panel">
+
+    <div class="ep-title">EDIT SHAPE <span onclick="closeEdit()" style="color:var(--red);cursor:pointer;">✕</span></div>
+
+    <div class="ep-row"><label>Label</label><input type="text" id="ep-label" oninput="liveEdit()"></div>
+
+    <div class="ep-row"><label>Zone Type</label>
+
+      <select id="ep-ztype" onchange="liveEdit()">
+
+        <option>AOR</option><option>RESTRICTED</option><option>HLZ</option>
+
+        <option>LRZ</option><option>BOUNDARY</option><option>BROADCAST</option>
+
+        <option>MARKER</option><option>CUSTOM</option>
+
+      </select>
+
+    </div>
+
+    <div class="ep-row"><label>Color</label><input type="color" id="ep-color" style="width:100%;height:24px;" oninput="liveEdit()"></div>
+
+    <div class="ep-row"><label>Opacity</label><input type="range" id="ep-opa" min="0" max="100" style="width:100%;accent-color:var(--red);" oninput="liveEdit()"></div>
+
+    <div class="ep-row" id="ep-rr" style="display:none;"><label>Radius (m)</label><input type="number" id="ep-radius" min="10" oninput="liveEdit()"></div>
+
+    <div class="ep-row"><label>Notes</label><textarea id="ep-notes" oninput="liveEdit()"></textarea></div>
+
+    <div class="ep-btns">
+
+      <button style="background:rgba(204,17,17,.15);border:1px solid var(--red);color:var(--wht);" onclick="applyEdit()">✓ APPLY</button>
+
+      <button style="border-color:#446688;color:#6699bb;" onclick="setMode('move')">✥ MOVE</button>
+
+      <button style="border-color:#446644;color:#668866;font-size:8px;" onclick="toggleGlobal()" id="ep-global-btn">⊕ SHARE</button>
+
+      <button style="border-color:#5a0000;color:#cc4444;" onclick="deleteSelected()">✕</button>
+
+    </div>
+
+  </div>
+
+
+
+  <div id="sidebar">
+
+    <div id="sb-tabs">
+
+      <div class="sb-tab active" onclick="switchSBTab('map')">🗺 MAP</div>
+
+      <div class="sb-tab" onclick="switchSBTab('teams')">👥 TEAMS</div>
+
+      <div class="sb-tab" onclick="switchSBTab('tasks')">✅ TASKS</div>
+
+      <div class="sb-tab" onclick="switchSBTab('equip')">🔧 EQUIP</div>
+
+    </div>
+
+    <div id="tab-map" class="sb-panel active">
+
+      <div class="sec-hdr" onclick="toggleSection('legend')">
+
+        <div class="sec-title"><span id="legend-arrow">▼</span> LEGEND</div>
+
+        <div class="sec-acts" onclick="event.stopPropagation()">
+
+          <button class="pact" id="legend-toggle-btn" onclick="toggleSection('legend')">COLLAPSE</button>
+
+        </div>
+
+      </div>
+
+      <div id="legend-body" style="flex:1;min-height:0;overflow-y:auto;padding:6px 8px;"></div>
+
+      <div class="sec-hdr" onclick="toggleSection('layers')">
+
+        <div class="sec-title"><span id="layers-arrow">▼</span> LAYERS</div>
+
+        <div class="sec-acts" onclick="event.stopPropagation()">
+
+          <button class="pact" onclick="addCOA()">+ COA</button>
+
+          <button class="pact" id="layers-toggle-btn" onclick="toggleSection('layers')">COLLAPSE</button>
+
+        </div>
+
+      </div>
+
+      <div id="layers-body" style="height:180px;flex-shrink:0;overflow-y:auto;padding:6px 8px;"></div>
+
+    </div>
+
+    <div id="tab-teams" class="sb-panel">
+
+      <div style="padding:5px 9px;border-bottom:1px solid var(--bdr);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
+
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:9px;letter-spacing:2px;color:var(--grey2);text-transform:uppercase;">TEAMS · TASK ORG · TASKS · EQUIPMENT</div>
+
+        <button class="pact" onclick="addTeamCard()">+ ADD</button>
+
+      </div>
+
+      <div id="teams-panel" style="flex:1;overflow-y:auto;padding:8px 9px;"></div>
+
+    </div>
+
+    <div id="tab-tasks" class="sb-panel">
+
+      <div style="padding:5px 9px;border-bottom:1px solid var(--bdr);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
+
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:9px;letter-spacing:2px;color:var(--grey2);text-transform:uppercase;">ALL TASKS</div>
+
+        <button class="pact" onclick="addGlobalTask()">+ ADD TASK</button>
+
+      </div>
+
+      <div id="tasks-panel" style="flex:1;overflow-y:auto;padding:8px 9px;"></div>
+
+    </div>
+
+    <div id="tab-equip" class="sb-panel">
+
+      <div style="padding:5px 9px;border-bottom:1px solid var(--bdr);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
+
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:9px;letter-spacing:2px;color:var(--grey2);text-transform:uppercase;">ALL EQUIPMENT</div>
+
+        <button class="pact" onclick="addGlobalEquip()">+ ADD ITEM</button>
+
+      </div>
+
+      <div id="equip-panel" style="flex:1;overflow-y:auto;padding:8px 9px;"></div>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+
+<div id="statusbar">
+
+  <span>MODE: <b id="st-mode">SELECT</b></span>
+
+  <span>COA: <b id="st-coa">—</b></span>
+
+  <span>LAYERS: <b id="st-layers">0</b></span>
+
+  <span>LABELS: <b id="st-labels">ON</b></span>
+
+  <span>OVERLAY: <b id="st-ov">NONE</b></span>
+
+  <span>LAT/LNG: <b id="st-ll">—</b></span>
+
+</div>
+
+
+
+<div id="modal">
+
+  <div class="mbox">
+
+    <h3 id="modal-title"></h3>
+
+    <div id="modal-body"></div>
+
+    <div class="mbtns">
+
+      <button class="mok" onclick="confirmModal()">✓ CONFIRM</button>
+
+      <button class="mno" onclick="closeModal()">✕ CANCEL</button>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+
+<script>
+
+// ── State ──────────────────────────────────────────────────────
+
+var S={
+
+  mode:'select',
+
+  coas:[{id:'c1',name:'COA 1 — INITIAL',color:'#cc1111',visible:true}],
+
+  active:'c1',layers:[],planSummary:'',
+
+  teams:[
+
+    {id:'vd1',badge:'VD1',color:'#cc1111',type:'VLOS',aor:'NORTH',lrz:'Maint. Shed Roof',members:[{id:'m1',name:'',role:'Pilot'}],tasks:[],equipment:[]},
+
+    {id:'vd2',badge:'VD2',color:'#888888',type:'VLOS',aor:'SOUTH',lrz:'Clubhouse Roof',members:[{id:'m2',name:'',role:'Pilot'}],tasks:[],equipment:[]}
+
+  ],
+
+  sel:null,idN:0,modalCb:null,
+
+  dragging:false,dragStart:null,previewLayer:null,
+
+  moving:false,moveLayerId:null,
+
+  leafletLayers:{},linePoints:[],lineTempLayer:null,lineTempMarkers:[],
+
+  labelsVisible:true,sections:{legend:true,layers:true},sbTab:'map',
+
+  _hoverLayerId:null
+
+};
+
+function uid(){return 'L'+(++S.idN);}
+
+function tid(){return 'T'+Date.now()+Math.random().toString(36).slice(2,6);}
+
+function activeCOA(){return S.coas.find(function(c){return c.id===S.active;})||S.coas[0];}
+
+function visibleLayers(){return S.layers.filter(function(l){return l.scope==='global'||l.scope===S.active;});}
+
+function getMeta(id){return S.layers.find(function(l){return l.id===id;});}
+
+function sortedLayers(ls){var o=['rect','circle','line','marker'];return[].concat(ls).sort(function(a,b){var ai=o.indexOf(a.type),bi=o.indexOf(b.type);return ai!==bi?ai-bi:(a.label||'').localeCompare(b.label||'');});}
+
+function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function moveArr(arr,i,dir){var j=i+dir;if(j<0||j>=arr.length)return;var t=arr[i];arr[i]=arr[j];arr[j]=t;}
+
+function keepOpen(id){setTimeout(function(){var el=document.getElementById(id);if(el)el.classList.add('open');},10);}
+
+
+
+// ── Overlay system (self-contained, touches nothing else) ──────
+
+var OV={list:[],active:null,moveMode:false,fileData:null};
+
+function toggleOvPanel(){
+
+  var p=document.getElementById('ov-panel');
+
+  var open=p.style.display==='block';
+
+  p.style.display=open?'none':'block';
+
+  document.getElementById('btn-ov').classList.toggle('active',!open);
+
+  if(!open) ovRenderList();
+
+}
+
+function ovHandleFile(inp){
+
+  var f=inp.files[0]; if(!f)return;
+
+  var r=new FileReader();
+
+  r.onload=function(e){OV.fileData={url:e.target.result,name:f.name};};
+
+  r.readAsDataURL(f);
+
+}
+
+function ovBounds(center,kmW,imgW,imgH){
+
+  var aspect=(imgW&&imgH)?(imgH/imgW):1;
+
+  var kmH=kmW*aspect;
+
+  var dLat=(kmH/2)/110.574;
+
+  var dLng=(kmW/2)/(111.320*Math.cos(center.lat*Math.PI/180));
+
+  return[[center.lat-dLat,center.lng-dLng],[center.lat+dLat,center.lng+dLng]];
+
+}
+
+function ovCreate(center){
+
+  if(!OV.fileData){alert('UPLOAD AN IMAGE FIRST.');return;}
+
+  var opa=parseInt(document.getElementById('ov-opa').value)/100;
+
+  var kmW=parseInt(document.getElementById('ov-km').value)/10;
+
+  var img=new Image();
+
+  img.onload=function(){
+
+    var b=ovBounds(center,kmW,img.width,img.height);
+
+    var lf=L.imageOverlay(OV.fileData.url,b,{opacity:opa,interactive:false,zIndex:200});
+
+    lf.addTo(map);
+
+    var id='OV'+Date.now();
+
+    var o={id:id,name:OV.fileData.name,url:OV.fileData.url,center:[center.lat,center.lng],
+
+           kmW:kmW,imgW:img.width,imgH:img.height,opacity:opa,lf:lf,hidden:false};
+
+    OV.list.push(o); OV.active=id;
+
+    OV.fileData=null;
+
+    document.getElementById('ov-file').value='';
+
+    map.fitBounds(b,{padding:[30,30]});
+
+    ovUpdateStatus(); ovRenderList();
+
+  };
+
+  img.src=OV.fileData.url;
+
+}
+
+function ovDropAtCenter(){ovCreate(map.getCenter());}
+
+function ovPlace(){
+
+  var q=document.getElementById('ov-q').value.trim(); if(!q)return;
+
+  var pts=q.split(',');
+
+  if(pts.length===2&&!isNaN(+pts[0])&&!isNaN(+pts[1])){ovCreate(L.latLng(+pts[0],+pts[1]));return;}
+
+  fetch('https://nominatim.openstreetmap.org/search?format=json&q='+encodeURIComponent(q))
+
+    .then(function(r){return r.json();})
+
+    .then(function(d){
+
+      if(d&&d[0]){map.flyTo([+d[0].lat,+d[0].lon],15,{duration:1});setTimeout(function(){ovCreate(L.latLng(+d[0].lat,+d[0].lon));},1100);}
+
+      else alert('NOT FOUND — TRY LAT,LNG');
+
+    }).catch(function(){alert('TRY LAT,LNG FORMAT');});
+
+}
+
+function ovGet(){return OV.list.find(function(o){return o.id===OV.active;})||OV.list[OV.list.length-1]||null;}
+
+function ovSetOpacity(v){
+
+  document.getElementById('ov-opa-val').textContent=v+'%';
+
+  var o=ovGet(); if(!o)return; o.opacity=v/100; o.lf.setOpacity(o.opacity);
+
+}
+
+function ovSetScale(v){
+
+  var km=v/10; document.getElementById('ov-km-val').textContent=km.toFixed(1)+' km';
+
+  var o=ovGet(); if(!o)return;
+
+  o.kmW=km;
+
+  var b=ovBounds(L.latLng(o.center[0],o.center[1]),km,o.imgW,o.imgH);
+
+  o.lf.setBounds(b);
+
+}
+
+function ovNudge(dx,dy){
+
+  var o=ovGet(); if(!o)return;
+
+  var bds=map.getBounds();
+
+  var step=Math.max((bds.getEast()-bds.getWest())/400,0.0001);
+
+  o.center=[o.center[0]+dy*step, o.center[1]+dx*step];
+
+  var b=ovBounds(L.latLng(o.center[0],o.center[1]),o.kmW,o.imgW,o.imgH);
+
+  o.lf.setBounds(b);
+
+}
+
+function ovToggleMove(){
+
+  OV.moveMode=!OV.moveMode;
+
+  var btn=document.getElementById('ov-mvbtn');
+
+  btn.classList.toggle('hi',OV.moveMode);
+
+  btn.textContent=OV.moveMode?'✕ EXIT MOVE':'✥ MOVE MODE';
+
+  map.getContainer().style.cursor=OV.moveMode?'crosshair':'';
+
+  document.getElementById('st-ov').textContent=OV.moveMode?'MOVE MODE — CLICK MAP':(OV.list.length?OV.list.length+' ACTIVE':'NONE');
+
+}
+
+function ovFit(){var o=ovGet();if(o)map.fitBounds(o.lf.getBounds(),{padding:[30,30]});}
+
+function ovRemove(){var o=ovGet();if(!o)return;ovRemoveById(o.id);}
+
+function ovRemoveById(id){
+
+  var i=OV.list.findIndex(function(o){return o.id===id;});if(i<0)return;
+
+  map.removeLayer(OV.list[i].lf); OV.list.splice(i,1);
+
+  OV.active=OV.list.length?OV.list[OV.list.length-1].id:null;
+
+  ovUpdateStatus(); ovRenderList();
+
+}
+
+function ovToggleVis(id){
+
+  var o=OV.list.find(function(x){return x.id===id;});if(!o)return;
+
+  o.hidden=!o.hidden;
+
+  o.hidden?map.removeLayer(o.lf):o.lf.addTo(map);
+
+  ovRenderList();
+
+}
+
+function ovSelect(id){
+
+  OV.active=id;
+
+  var o=OV.list.find(function(x){return x.id===id;});if(!o)return;
+
+  document.getElementById('ov-opa').value=Math.round(o.opacity*100);
+
+  document.getElementById('ov-opa-val').textContent=Math.round(o.opacity*100)+'%';
+
+  document.getElementById('ov-km').value=Math.round(o.kmW*10);
+
+  document.getElementById('ov-km-val').textContent=o.kmW.toFixed(1)+' km';
+
+  ovRenderList();
+
+}
+
+function ovUpdateStatus(){document.getElementById('st-ov').textContent=OV.list.length?OV.list.length+' ACTIVE':'NONE';}
+
+function ovRenderList(){
+
+  var el=document.getElementById('ov-list'); if(!el)return;
+
+  if(!OV.list.length){el.innerHTML='<div style="font-size:9px;color:var(--grey2);letter-spacing:1px;">NO OVERLAYS YET</div>';return;}
+
+  el.innerHTML='<div style="font-size:8px;color:var(--grey2);letter-spacing:2px;text-transform:uppercase;border-top:1px solid var(--bdr);padding-top:5px;margin-bottom:3px;">ACTIVE</div>'+
+
+  OV.list.map(function(o){
+
+    var sel=o.id===OV.active;
+
+    return '<div class="ov-item" onclick="ovSelect(\''+o.id+'\')" style="cursor:pointer;'+(sel?'border-color:#6699bb;':'')+'">'+
+
+      '<span style="flex:1;color:#aaccee;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(o.name.length>16?o.name.slice(0,14)+'…':o.name)+'</span>'+
+
+      '<input type="range" min="0" max="100" value="'+Math.round(o.opacity*100)+'" onclick="event.stopPropagation()" oninput="OV.list.find(function(x){return x.id===\''+o.id+'\';}).opacity=this.value/100;OV.list.find(function(x){return x.id===\''+o.id+'\';}).lf.setOpacity(this.value/100);" style="width:40px;accent-color:#6699bb;">'+
+
+      '<span onclick="event.stopPropagation();ovToggleVis(\''+o.id+'\')" style="cursor:pointer;">'+(o.hidden?'🚫':'👁')+'</span>'+
+
+      '<span onclick="event.stopPropagation();ovRemoveById(\''+o.id+'\')" style="cursor:pointer;color:#cc4444;">✕</span>'+
+
+    '</div>';
+
+  }).join('');
+
+}
+
+
+
+// ── Sidebar tabs ──────────────────────────────────────────────
+
+var ALL_TABS=['map','teams','tasks','equip'];
+
+function switchSBTab(tab){
+
+  S.sbTab=tab;
+
+  document.querySelectorAll('.sb-tab').forEach(function(t,i){t.classList.toggle('active',ALL_TABS[i]===tab);});
+
+  ALL_TABS.forEach(function(t){document.getElementById('tab-'+t).classList.toggle('active',t===tab);});
+
+  if(tab==='teams')renderTeamsTab();
+
+  else if(tab==='tasks')renderTasksTab();
+
+  else if(tab==='equip')renderEquipTab();
+
+}
+
+
+
+// ── Section collapse ──────────────────────────────────────────
+
+function toggleSection(sec){
+
+  S.sections[sec]=!S.sections[sec];
+
+  var body=document.getElementById(sec+'-body');
+
+  var arrow=document.getElementById(sec+'-arrow');
+
+  var btn=document.getElementById(sec+'-toggle-btn');
+
+  if(sec==='layers'){body.style.height=S.sections[sec]?'180px':'0';body.style.overflow=S.sections[sec]?'auto':'hidden';body.style.padding=S.sections[sec]?'6px 8px':'0 8px';}
+
+  else{if(S.sections[sec]){body.style.flex='1';body.style.minHeight='0';body.style.overflow='auto';}else{body.style.flex='0 0 0';body.style.overflow='hidden';}}
+
+  if(arrow)arrow.textContent=S.sections[sec]?'▼':'▶';
+
+  if(btn)btn.textContent=S.sections[sec]?'COLLAPSE':'EXPAND';
+
+}
+
+
+
+// ── Hover tip ─────────────────────────────────────────────────
+
+var htip=document.getElementById('hover-tip');
+
+function showHoverTip(meta,e){htip.innerHTML='<div class="ht-label">'+(meta.label||meta.ztype||'')+'</div><div style="font-size:8px;color:var(--grey2);letter-spacing:1px;">'+meta.ztype+(meta.scope==='global'?' | SHARED':'')+'</div>'+(meta.notes?'<div class="ht-notes">'+esc(meta.notes)+'</div>':'');htip.style.display='block';posHoverTip(e);}
+
+function posHoverTip(e){var br=document.getElementById('body').getBoundingClientRect();var x=e.clientX-br.left+14,y=e.clientY-br.top-10;if(x+210>br.width-280)x=e.clientX-br.left-220;htip.style.left=x+'px';htip.style.top=y+'px';}
+
+function hideHoverTip(){htip.style.display='none';}
+
+
+
+// ── Map ───────────────────────────────────────────────────────
+
+var map=L.map('map',{zoomControl:true,attributionControl:true});
+
+map.setView([33.765,-78.795],15);
+
+var sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'© Esri',maxZoom:20});
+
+var osm=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM',maxZoom:19});
+
+sat.addTo(map);
+
+L.control.layers({'Satellite':sat,'Street Map':osm},{},{position:'topleft'}).addTo(map);
+
+// ── Auto-navigate to project address from URL params ─────────────────────────
+(function(){
+  var params=new URLSearchParams(window.location.search);
+  var addr=params.get('address');
+  var title=params.get('title');
+  if(title){
+    var el=document.getElementById('op-title');
+    if(el) el.textContent=title.toUpperCase()+' — OPS PLAN';
+  }
+  if(addr){
+    var sub=document.getElementById('op-sub');
+    if(sub) sub.textContent=addr.toUpperCase();
+    fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q='+encodeURIComponent(addr))
+      .then(function(r){return r.json();})
+      .then(function(d){
+        if(d&&d[0]){map.setView([+d[0].lat,+d[0].lon],15);}
+      })
+      .catch(function(){});
+  }
+})();
+
+
+
+map.on('mousemove',function(e){
+
+  document.getElementById('st-ll').textContent=e.latlng.lat.toFixed(5)+', '+e.latlng.lng.toFixed(5);
+
+  if(S.dragging&&S.dragStart)onDragMove(e);
+
+  if(htip.style.display==='block')posHoverTip(e.originalEvent);
+
+});
+
+map.on('mousedown',onMapDown);
+
+map.on('mouseup',onMapUp);
+
+map.on('click',function(e){
+
+  // overlay move mode intercepts click
+
+  if(OV.moveMode){
+
+    var o=ovGet();
+
+    if(o){o.center=[e.latlng.lat,e.latlng.lng];var b=ovBounds(e.latlng,o.kmW,o.imgW,o.imgH);o.lf.setBounds(b);}
+
+    ovToggleMove();
+
+    return;
+
+  }
+
+  onMapClick(e);
+
+});
+
+map.on('contextmenu',function(e){if(S.mode==='line'&&S.linePoints.length>=2)finalizeLine();});
+
+map.on('dblclick',function(e){if(S.mode==='line'&&S.linePoints.length>=2){L.DomEvent.stopPropagation(e);finalizeLine();}});
+
+
+
+// ── Labels ────────────────────────────────────────────────────
+
+function toggleAllLabels(){S.labelsVisible=!S.labelsVisible;document.getElementById('btn-labels').classList.toggle('active',S.labelsVisible);document.getElementById('st-labels').textContent=S.labelsVisible?'ON':'OFF';S.layers.forEach(function(l){if(l.labelHidden)return;var lf=S.leafletLayers[l.id];if(!lf||!lf.getTooltip)return;S.labelsVisible?lf.openTooltip():lf.closeTooltip();});}
+
+function toggleLayerLabel(id){var meta=getMeta(id);if(!meta)return;meta.labelHidden=!meta.labelHidden;var lf=S.leafletLayers[id];if(lf&&lf.getTooltip&&lf.getTooltip()){meta.labelHidden?lf.closeTooltip():lf.openTooltip();}renderMapTab();}
+
+
+
+// ── Mode ──────────────────────────────────────────────────────
+
+var HINTS={move:'MOVE — CLICK SHAPE THEN NEW LOCATION',rect:'AOR BOX — CLICK & DRAG',circle:'CIRCLE — CLICK CENTER, DRAG RADIUS',line:'LINE — CLICK POINTS · RIGHT-CLICK TO FINISH',marker:'MARKER — CLICK TO PLACE'};
+
+function setMode(m){
+
+  S.mode=m;S.dragging=false;S.dragStart=null;S.moving=false;S.moveLayerId=null;
+
+  clearPreview();clearLineTemp();S.linePoints=[];
+
+  document.querySelectorAll('.tbtn[id^="btn-"]').forEach(function(b){b.classList.remove('active');});
+
+  var b=document.getElementById('btn-'+m);if(b)b.classList.add('active');
+
+  document.getElementById('st-mode').textContent=m.toUpperCase();
+
+  var hb=document.getElementById('hint-bar');
+
+  if(m==='select'){if(hb)hb.style.display='none';}
+
+  else{if(!hb){hb=document.createElement('div');hb.id='hint-bar';hb.style.cssText='position:absolute;bottom:28px;left:50%;transform:translateX(-50%);background:rgba(8,8,8,.9);color:#888;font-family:\'Barlow Condensed\',sans-serif;font-size:9px;letter-spacing:2px;padding:3px 12px;pointer-events:none;white-space:nowrap;z-index:600;text-transform:uppercase;border:1px solid #2a2a2a;';document.getElementById('body').appendChild(hb);}hb.style.display='';hb.textContent=HINTS[m]||'';}
+
+  if(m==='select'||m==='move'){map.dragging.enable();map.getContainer().style.cursor=m==='move'?'crosshair':'';}
+
+  else{map.dragging.disable();map.getContainer().style.cursor='crosshair';}
+
+  if(m!=='select')closeEdit();
+
+}
+
+
+
+// ── Draw ──────────────────────────────────────────────────────
+
+function onMapDown(e){if(S.mode==='rect'||S.mode==='circle'){S.dragging=true;S.dragStart=e.latlng;}}
+
+function onDragMove(e){if(!S.dragging||!S.dragStart)return;var col=document.getElementById('col').value,op=parseInt(document.getElementById('opa').value)/100;clearPreview();if(S.mode==='rect')S.previewLayer=L.rectangle(bnds(S.dragStart,e.latlng),{color:col,weight:2,fillColor:col,fillOpacity:op,dashArray:'6,4',interactive:false}).addTo(map);else S.previewLayer=L.circle(S.dragStart,{radius:S.dragStart.distanceTo(e.latlng),color:col,weight:2,fillColor:col,fillOpacity:op,dashArray:'6,4',interactive:false}).addTo(map);}
+
+function onMapUp(e){if(!S.dragging||!S.dragStart)return;var col=document.getElementById('col').value,op=parseInt(document.getElementById('opa').value)/100;var lbl=document.getElementById('lbl').value||'',zt=document.getElementById('ztype').value;clearPreview();if(S.mode==='rect'&&(Math.abs(S.dragStart.lat-e.latlng.lat)>0.0001||Math.abs(S.dragStart.lng-e.latlng.lng)>0.0001)){var b=bnds(S.dragStart,e.latlng);commitLayer(L.rectangle(b,{color:col,weight:2,fillColor:col,fillOpacity:op}),{type:'rect',color:col,opacity:op,label:lbl,ztype:zt,notes:'',bounds:b,scope:S.active});}else if(S.mode==='circle'){var r=S.dragStart.distanceTo(e.latlng);if(r>10){var d=zt==='RESTRICTED'||zt==='HLZ';commitLayer(L.circle(S.dragStart,{radius:r,color:col,weight:2,fillColor:col,fillOpacity:op,dashArray:d?'8,6':null}),{type:'circle',color:col,opacity:op,label:lbl,ztype:zt,notes:'',center:[S.dragStart.lat,S.dragStart.lng],radius:r,dashed:d,scope:S.active});}}S.dragging=false;S.dragStart=null;}
+
+function bnds(a,b){return[[Math.min(a.lat,b.lat),Math.min(a.lng,b.lng)],[Math.max(a.lat,b.lat),Math.max(a.lng,b.lng)]];}
+
+function clearPreview(){if(S.previewLayer){map.removeLayer(S.previewLayer);S.previewLayer=null;}}
+
+function onMapClick(e){if(S.dragging)return;var col=document.getElementById('col').value,op=parseInt(document.getElementById('opa').value)/100;var lbl=document.getElementById('lbl').value||'',zt=document.getElementById('ztype').value;if(S.mode==='move'){if(!S.moving){var h=hitTest(e.latlng);if(h){S.moving=true;S.moveLayerId=h;var hb=document.getElementById('hint-bar');if(hb)hb.textContent='CLICK NEW LOCATION FOR: '+(getMeta(h).label||getMeta(h).ztype);}}else{moveLayerTo(S.moveLayerId,e.latlng);S.moving=false;S.moveLayerId=null;var hb=document.getElementById('hint-bar');if(hb)hb.textContent=HINTS['move'];}return;}if(S.mode==='marker'){placeMarker(e.latlng,col,op,lbl,zt);return;}if(S.mode==='line'){S.linePoints.push(e.latlng);updateLineTemp();return;}}
+
+function hitTest(ll){var vl=visibleLayers();for(var i=vl.length-1;i>=0;i--){var l=vl[i];if(!l.visible)continue;var lf=S.leafletLayers[l.id];if(!lf)continue;if(l.type==='rect'&&lf.getBounds().contains(ll))return l.id;if(l.type==='circle'&&ll.distanceTo(lf.getLatLng())<=lf.getRadius())return l.id;if(l.type==='marker'&&ll.distanceTo(lf.getLatLng())<=30/map.getZoom())return l.id;}return null;}
+
+function moveLayerTo(id,nll){var meta=getMeta(id),lf=S.leafletLayers[id];if(!meta||!lf)return;if(meta.type==='marker'){lf.setLatLng(nll);meta.ll=[nll.lat,nll.lng];}else if(meta.type==='circle'){lf.setLatLng(nll);meta.center=[nll.lat,nll.lng];}else if(meta.type==='rect'){var b=lf.getBounds(),c=b.getCenter(),dLat=nll.lat-c.lat,dLng=nll.lng-c.lng;var nb=[[b.getSouth()+dLat,b.getWest()+dLng],[b.getNorth()+dLat,b.getEast()+dLng]];lf.setBounds(nb);meta.bounds=nb;}else if(meta.type==='line'){var ct=ptCtr(meta.pts);meta.pts=meta.pts.map(function(p){return[p[0]+nll.lat-ct.lat,p[1]+nll.lng-ct.lng];});lf.setLatLngs(meta.pts);}renderMapTab();}
+
+function ptCtr(pts){return L.latLng(pts.reduce(function(a,p){return a+p[0];},0)/pts.length,pts.reduce(function(a,p){return a+p[1];},0)/pts.length);}
+
+function updateLineTemp(){clearLineTemp();var col=document.getElementById('col').value;if(S.linePoints.length>=2)S.lineTempLayer=L.polyline(S.linePoints,{color:col,weight:2,dashArray:'6,4',interactive:false}).addTo(map);S.linePoints.forEach(function(p){var m=L.circleMarker(p,{radius:3,color:'#cc1111',fillColor:'#cc1111',fillOpacity:1,weight:1,interactive:false}).addTo(map);S.lineTempMarkers.push(m);});}
+
+function clearLineTemp(){if(S.lineTempLayer){map.removeLayer(S.lineTempLayer);S.lineTempLayer=null;}S.lineTempMarkers.forEach(function(m){map.removeLayer(m);});S.lineTempMarkers=[];}
+
+function finalizeLine(){var col=document.getElementById('col').value,lbl=document.getElementById('lbl').value||'',zt=document.getElementById('ztype').value;var pts=S.linePoints.map(function(p){return[p.lat,p.lng];});commitLayer(L.polyline(pts,{color:col,weight:2,dashArray:zt==='BOUNDARY'?'10,6':null}),{type:'line',color:col,label:lbl,ztype:zt,notes:'',pts:pts,dashed:zt==='BOUNDARY',scope:S.active});clearLineTemp();S.linePoints=[];}
+
+var MICONS={AOR:'A',RESTRICTED:'⊗',HLZ:'H',LRZ:'L',BOUNDARY:'─',BROADCAST:'B',MARKER:'⊕',CUSTOM:'◆'};
+
+function markerIcon(col,zt){return L.divIcon({html:'<div style="background:'+col+';color:#fff;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:12px;border:2px solid rgba(255,255,255,.3);box-shadow:0 2px 6px rgba(0,0,0,.7);clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);">'+(MICONS[zt]||'⊕')+'</div>',iconSize:[28,28],iconAnchor:[14,14],className:''});}
+
+function placeMarker(ll,col,op,lbl,zt){var m=L.marker(ll,{icon:markerIcon(col,zt),draggable:true});if(lbl)m.bindTooltip(lbl,{permanent:true,direction:'top',offset:[0,-16],className:'uas-tip'});var meta={type:'marker',color:col,opacity:op,label:lbl,ztype:zt,notes:'',ll:[ll.lat,ll.lng],scope:S.active};m.on('dragend',function(ev){var p=ev.target.getLatLng();meta.ll=[p.lat,p.lng];});commitLayer(m,meta);}
+
+function attachHover(lf,meta){lf.on('mouseover',function(e){S._hoverLayerId=meta.id;showHoverTip(meta,e.originalEvent);});lf.on('mousemove',function(e){posHoverTip(e.originalEvent);});lf.on('mouseout',function(){S._hoverLayerId=null;hideHoverTip();});}
+
+function commitLayer(lf,meta){var id=uid();meta.id=id;meta.visible=true;meta.labelHidden=false;if(meta.label&&meta.type!=='marker')lf.bindTooltip(meta.label,{permanent:true,direction:'center',className:'uas-tip'});if(!S.labelsVisible)setTimeout(function(){if(lf.getTooltip&&lf.getTooltip())lf.closeTooltip();},50);lf.on('click',function(e){if(S.mode==='select'){L.DomEvent.stopPropagation(e);selectLayer(id);}else if(S.mode==='move'&&!S.moving){L.DomEvent.stopPropagation(e);S.moving=true;S.moveLayerId=id;}});attachHover(lf,meta);S.layers.push(meta);S.leafletLayers[id]=lf;lf.addTo(map);document.getElementById('lbl').value='';setMode('select');selectLayer(id);renderMapTab();}
+
+function selectLayer(id){S.sel=id;Object.values(S.leafletLayers).forEach(function(lf){if(lf.setStyle)lf.setStyle({weight:2});});var sl=S.leafletLayers[id];if(sl&&sl.setStyle)sl.setStyle({weight:4});var meta=getMeta(id);if(meta)openEdit(meta);renderMapTab();}
+
+function openEdit(meta){document.getElementById('edit-panel').style.display='block';document.getElementById('ep-label').value=meta.label||'';document.getElementById('ep-ztype').value=meta.ztype||'CUSTOM';document.getElementById('ep-color').value=meta.color||'#cc1111';document.getElementById('ep-opa').value=Math.round((meta.opacity||.35)*100);document.getElementById('ep-notes').value=meta.notes||'';document.getElementById('ep-rr').style.display=meta.type==='circle'?'block':'none';if(meta.type==='circle')document.getElementById('ep-radius').value=Math.round(meta.radius||100);document.getElementById('ep-global-btn').textContent=meta.scope==='global'?'⊗ UNSHARE':'⊕ SHARE';}
+
+function closeEdit(){document.getElementById('edit-panel').style.display='none';}
+
+function liveEdit(){if(S.sel)applyEdit();}
+
+function applyEdit(){if(!S.sel)return;var meta=getMeta(S.sel);if(!meta)return;var nL=document.getElementById('ep-label').value,nC=document.getElementById('ep-color').value;var nO=parseInt(document.getElementById('ep-opa').value)/100,nZ=document.getElementById('ep-ztype').value;var nN=document.getElementById('ep-notes').value,nR=parseFloat(document.getElementById('ep-radius').value)||meta.radius;meta.label=nL;meta.color=nC;meta.opacity=nO;meta.ztype=nZ;meta.notes=nN;var lf=S.leafletLayers[S.sel];if(!lf)return;if(lf.setStyle)lf.setStyle({color:nC,fillColor:nC,fillOpacity:nO,weight:4});if(meta.type==='circle'&&lf.setRadius){meta.radius=nR;lf.setRadius(nR);}if(lf.getTooltip())lf.unbindTooltip();if(nL&&!meta.labelHidden){lf.bindTooltip(nL,{permanent:true,direction:meta.type==='marker'?'top':'center',offset:meta.type==='marker'?[0,-16]:[0,0],className:'uas-tip'});if(!S.labelsVisible)lf.closeTooltip();}else if(nL&&meta.labelHidden){lf.bindTooltip(nL,{permanent:true,direction:meta.type==='marker'?'top':'center',offset:meta.type==='marker'?[0,-16]:[0,0],className:'uas-tip'});lf.closeTooltip();}if(meta.type==='marker')lf.setIcon(markerIcon(nC,nZ));renderMapTab();}
+
+function toggleGlobal(){if(!S.sel)return;var meta=getMeta(S.sel);if(!meta)return;meta.scope=meta.scope==='global'?S.active:'global';openEdit(meta);renderMapTab();}
+
+function syncVis(){S.layers.forEach(function(l){var lf=S.leafletLayers[l.id];if(!lf)return;var show=l.visible&&(l.scope==='global'||l.scope===S.active);if(show&&!map.hasLayer(lf))lf.addTo(map);else if(!show&&map.hasLayer(lf))map.removeLayer(lf);});}
+
+function deleteSelected(){if(!S.sel)return;removeById(S.sel);S.sel=null;closeEdit();renderMapTab();}
+
+function removeById(id){if(S.leafletLayers[id]){map.removeLayer(S.leafletLayers[id]);delete S.leafletLayers[id];}S.layers=S.layers.filter(function(l){return l.id!==id;});}
+
+function toggleVis(id){var meta=getMeta(id);if(!meta)return;meta.visible=!meta.visible;var lf=S.leafletLayers[id];if(lf){meta.visible?lf.addTo(map):map.removeLayer(lf);}renderMapTab();}
+
+function clearActive(){if(!confirm('CLEAR ALL LAYERS IN ACTIVE COA?'))return;S.layers.filter(function(l){return l.scope===S.active;}).forEach(function(l){if(S.leafletLayers[l.id]){map.removeLayer(S.leafletLayers[l.id]);delete S.leafletLayers[l.id];}});S.layers=S.layers.filter(function(l){return l.scope!==S.active;});S.sel=null;closeEdit();renderMapTab();}
+
+function addCOA(){var n=S.coas.length+1,id='c'+Date.now();var cols=['#cc1111','#888','#cc6600','#446688','#cc1166','#668844'];S.coas.push({id:id,name:'COA '+n,color:cols[(n-1)%cols.length],visible:true});switchCOA(id);}
+
+function switchCOA(id){S.active=id;S.sel=null;closeEdit();syncVis();renderMapTab();}
+
+function deleteCOA(id){if(S.coas.length<=1){alert('CANNOT DELETE LAST COA.');return;}S.layers.filter(function(l){return l.scope===id;}).forEach(function(l){if(S.leafletLayers[l.id]){map.removeLayer(S.leafletLayers[l.id]);delete S.leafletLayers[l.id];}});S.layers=S.layers.filter(function(l){return l.scope!==id;});S.coas=S.coas.filter(function(c){return c.id!==id;});if(S.active===id)switchCOA(S.coas[0].id);else renderMapTab();}
+
+function renameCOA(id){var c=S.coas.find(function(x){return x.id===id;});if(!c)return;showModal('RENAME COA','<div class="mrow"><label>COA Name</label><input id="m-coaname" type="text" value="'+c.name+'"></div>',function(){var v=document.getElementById('m-coaname').value.trim();if(v){c.name=v;renderMapTab();}});}
+
+function flyToLayer(id){var meta=getMeta(id);var lf=S.leafletLayers[id];if(!lf)return;selectLayer(id);if(meta.type==='marker'||meta.type==='circle')map.flyTo(lf.getLatLng(),Math.max(map.getZoom(),16),{duration:.8});else if(lf.getBounds)map.flyToBounds(lf.getBounds(),{padding:[40,40],duration:.8,maxZoom:18});}
+
+function reorderLayer(id,dir){var idx=S.layers.findIndex(function(l){return l.id===id;});if(idx<0)return;moveArr(S.layers,idx,dir);renderMapTab();}
+
+
+
+// ── Render MAP tab ────────────────────────────────────────────
+
+function renderMapTab(){renderLegend();renderLayersPanel();document.getElementById('st-coa').textContent=activeCOA()?activeCOA().name:'—';document.getElementById('st-layers').textContent=S.layers.length;}
+
+function renderLegend(){var el=document.getElementById('legend-body');var vl=sortedLayers(visibleLayers());if(!vl.length){el.innerHTML='<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:9px;color:var(--grey2);padding:6px;letter-spacing:1px;">NO LAYERS</div>';return;}var groups={},order=['rect','circle','line','marker'],labels={rect:'AOR / RECT',circle:'CIRCLES / ZONES',line:'LINES',marker:'MARKERS'};vl.forEach(function(l){if(!groups[l.type])groups[l.type]=[];groups[l.type].push(l);});var html='';order.forEach(function(t){if(!groups[t]||!groups[t].length)return;html+='<div><div class="type-hdr">'+labels[t]+'</div>';groups[t].forEach(function(l){html+='<div class="leg-item'+(l.id===S.sel?' on':'')+'" onclick="flyToLayer(\''+l.id+'\')"><div class="leg-dot" style="background:'+l.color+'33;border-color:'+l.color+';"></div><div style="flex:1;min-width:0;"><div style="display:flex;align-items:center;gap:2px;flex-wrap:wrap;"><span class="leg-lbl"'+(l.visible?'':' style="opacity:.4;"')+'>'+(l.label||'[UNLABELED]')+'</span><span class="leg-zt">'+l.ztype+'</span>'+(l.scope==='global'?'<span style="font-size:7px;color:#668866;border:1px solid #446644;padding:0 3px;">SHR</span>':'')+'</div>'+(l.notes?'<div class="leg-notes">'+esc(l.notes)+'</div>':'')+'</div><span onclick="event.stopPropagation();toggleLayerLabel(\''+l.id+'\')" style="cursor:pointer;font-size:10px;color:'+(l.labelHidden?'var(--grey2)':'var(--wht)')+';margin-left:1px;">🏷</span><span style="cursor:pointer;color:var(--grey2);font-size:9px;margin-left:1px;" onclick="event.stopPropagation();toggleVis(\''+l.id+'\')">'+(l.visible?'👁':'🚫')+'</span><div class="reorder-btns" onclick="event.stopPropagation()"><button class="rarr" onclick="reorderLayer(\''+l.id+'\',-1)">▲</button><button class="rarr" onclick="reorderLayer(\''+l.id+'\',1)">▼</button></div></div>';});html+='</div>';});el.innerHTML=html;}
+
+function renderLayersPanel(){var el=document.getElementById('layers-body');var vl=sortedLayers(visibleLayers());var gc=S.layers.filter(function(l){return l.scope==='global';}).length;var tabsHtml='<div class="coa-tabs">'+S.coas.map(function(c){return '<div class="coa-tab'+(c.id===S.active?' active':'')+'" onclick="switchCOA(\''+c.id+'\')"><div style="width:5px;height:5px;background:'+c.color+';clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);flex-shrink:0;"></div><span ondblclick="event.stopPropagation();renameCOA(\''+c.id+'\')" title="Dbl-click rename">'+c.name+'</span>'+(S.coas.length>1?'<span style="color:var(--grey2);font-size:9px;margin-left:2px;" onclick="event.stopPropagation();deleteCOA(\''+c.id+'\')">✕</span>':'')+'</div>';}).join('')+'</div>';var shrNote=gc?'<div style="font-size:8px;color:#668866;font-family:\'Barlow Condensed\',sans-serif;letter-spacing:1px;margin-bottom:3px;">⊕ '+gc+' SHARED</div>':'';var lHtml=vl.length?vl.map(function(l){return '<div class="layer-item'+(l.id===S.sel?' on':'')+'" onclick="selectLayer(\''+l.id+'\')"><div style="width:6px;height:6px;background:'+l.color+';flex-shrink:0;"></div><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;">'+(l.label||l.ztype)+'</span><span style="font-size:8px;color:var(--grey2);">'+l.type+'</span>'+(l.scope==='global'?'<span class="scope-tag global">SHR</span>':'<span class="scope-tag">COA</span>')+'<span style="cursor:pointer;color:var(--grey2);font-size:9px;margin-left:2px;" onclick="event.stopPropagation();toggleVis(\''+l.id+'\')">'+(l.visible?'👁':'🚫')+'</span><span style="color:var(--red);cursor:pointer;margin-left:2px;font-size:10px;" onclick="event.stopPropagation();removeById(\''+l.id+'\');if(S.sel===\''+l.id+'\'){S.sel=null;closeEdit();}renderMapTab();">✕</span></div>';}).join(''):'<div style="font-size:9px;color:var(--grey2);font-family:\'Barlow Condensed\',sans-serif;padding:3px 0;">NO LAYERS YET</div>';el.innerHTML=tabsHtml+shrNote+lHtml;}
+
+
+
+// ── TEAMS ─────────────────────────────────────────────────────
+
+function renderTeamsTab(){var el=document.getElementById('teams-panel');if(!S.teams.length){el.innerHTML='<div style="font-size:9px;color:var(--grey2);font-family:\'Barlow Condensed\',sans-serif;padding:8px 0;">NO TEAMS — CLICK + ADD</div>';return;}el.innerHTML=S.teams.map(function(t,ti){var mH=t.members&&t.members.length?t.members.map(function(m,mi){return '<div class="drow"><div class="reorder-btns"><button class="rarr" onclick="moveArr(S.teams['+ti+'].members,'+mi+',-1);renderTeamsTab();keepOpen(\'tc-'+ti+'\')">▲</button><button class="rarr" onclick="moveArr(S.teams['+ti+'].members,'+mi+',1);renderTeamsTab();keepOpen(\'tc-'+ti+'\')">▼</button></div><input type="text" placeholder="NAME" value="'+esc(m.name)+'" oninput="S.teams['+ti+'].members['+mi+'].name=this.value" style="flex:1;"><input type="text" placeholder="ROLE" value="'+esc(m.role)+'" oninput="S.teams['+ti+'].members['+mi+'].role=this.value" style="width:68px;"><span onclick="S.teams['+ti+'].members.splice('+mi+',1);renderTeamsTab();keepOpen(\'tc-'+ti+'\')" style="color:var(--red);cursor:pointer;font-size:10px;padding:0 2px;">✕</span></div>';}).join(''):'<div style="font-size:9px;color:var(--grey2);font-family:\'Barlow Condensed\',sans-serif;">NO PERSONNEL</div>';var tH=t.tasks&&t.tasks.length?t.tasks.map(function(tk,ki){return '<div class="drow"><div class="reorder-btns"><button class="rarr" onclick="moveArr(S.teams['+ti+'].tasks,'+ki+',-1);renderTeamsTab();renderTasksTab();keepOpen(\'tc-'+ti+'\')">▲</button><button class="rarr" onclick="moveArr(S.teams['+ti+'].tasks,'+ki+',1);renderTeamsTab();renderTasksTab();keepOpen(\'tc-'+ti+'\')">▼</button></div><input type="text" placeholder="TASK…" value="'+esc(tk.task)+'" oninput="S.teams['+ti+'].tasks['+ki+'].task=this.value;if(S.sbTab===\'tasks\')renderTasksTab();" style="flex:2;"><select oninput="S.teams['+ti+'].tasks['+ki+'].priority=this.value;if(S.sbTab===\'tasks\')renderTasksTab();" style="width:66px;">'+ ['HIGH','MEDIUM','LOW'].map(function(p){return '<option'+(tk.priority===p?' selected':'')+'>'+p+'</option>';}).join('')+'</select><select oninput="S.teams['+ti+'].tasks['+ki+'].status=this.value;if(S.sbTab===\'tasks\')renderTasksTab();" style="width:78px;">'+ ['PENDING','IN PROG','COMPLETE','HOLD'].map(function(s){return '<option'+(tk.status===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select><span onclick="S.teams['+ti+'].tasks.splice('+ki+',1);renderTeamsTab();renderTasksTab();keepOpen(\'tc-'+ti+'\')" style="color:var(--red);cursor:pointer;font-size:10px;flex-shrink:0;">✕</span></div>';}).join(''):'<div style="font-size:9px;color:var(--grey2);font-family:\'Barlow Condensed\',sans-serif;">NO TASKS</div>';var eH=t.equipment&&t.equipment.length?t.equipment.map(function(eq,ei){return '<div class="drow"><div class="reorder-btns"><button class="rarr" onclick="moveArr(S.teams['+ti+'].equipment,'+ei+',-1);renderTeamsTab();renderEquipTab();keepOpen(\'tc-'+ti+'\')">▲</button><button class="rarr" onclick="moveArr(S.teams['+ti+'].equipment,'+ei+',1);renderTeamsTab();renderEquipTab();keepOpen(\'tc-'+ti+'\')">▼</button></div><input type="text" placeholder="ITEM" value="'+esc(eq.item)+'" oninput="S.teams['+ti+'].equipment['+ei+'].item=this.value;if(S.sbTab===\'equip\')renderEquipTab();" style="flex:2;"><input type="text" placeholder="QTY" value="'+esc(eq.qty)+'" oninput="S.teams['+ti+'].equipment['+ei+'].qty=this.value" style="width:32px;"><input type="text" placeholder="NOTES" value="'+esc(eq.notes)+'" oninput="S.teams['+ti+'].equipment['+ei+'].notes=this.value" style="flex:1;"><span onclick="S.teams['+ti+'].equipment.splice('+ei+',1);renderTeamsTab();renderEquipTab();keepOpen(\'tc-'+ti+'\')" style="color:var(--red);cursor:pointer;font-size:10px;flex-shrink:0;">✕</span></div>';}).join(''):'<div style="font-size:9px;color:var(--grey2);font-family:\'Barlow Condensed\',sans-serif;">NO EQUIPMENT</div>';return '<div class="team-card" style="border-left-color:'+t.color+';"><div class="team-card-hdr" onclick="toggleTeamCard(\'tc-'+ti+'\')"><div class="reorder-btns" onclick="event.stopPropagation()"><button class="rarr" onclick="moveArr(S.teams,'+ti+',-1);renderTeamsTab()">▲</button><button class="rarr" onclick="moveArr(S.teams,'+ti+',1);renderTeamsTab()">▼</button></div><div class="tbadge" style="background:'+t.color+';">'+esc(t.badge)+'</div><div style="flex:1;"><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;">'+esc(t.type)+' — '+esc(t.aor)+'</div><div style="font-size:9px;color:var(--grey2);">LRZ: '+esc(t.lrz)+'</div></div><div style="display:flex;gap:3px;" onclick="event.stopPropagation()"><span onclick="editTeamMeta('+ti+')" style="color:var(--grey2);cursor:pointer;border:1px solid var(--bdr);padding:1px 5px;font-family:\'Barlow Condensed\',sans-serif;font-size:9px;">✎</span><span onclick="if(confirm(\'REMOVE TEAM?\'))S.teams.splice('+ti+',1),renderTeamsTab()" style="color:var(--red);cursor:pointer;border:1px solid #5a0000;padding:1px 5px;font-size:10px;">✕</span></div></div><div class="team-card-body" id="tc-'+ti+'"><div class="tsec"><div class="tsec-title">TASK ORG / PERSONNEL <button class="mini-btn" onclick="S.teams['+ti+'].members.push({id:tid(),name:\'\',role:\'Pilot\'});renderTeamsTab();keepOpen(\'tc-'+ti+'\')">+ ADD</button></div>'+mH+'</div><div class="tsec"><div class="tsec-title">TASK LIST <button class="mini-btn" onclick="S.teams['+ti+'].tasks.push({id:tid(),task:\'\',priority:\'MEDIUM\',status:\'PENDING\'});renderTeamsTab();renderTasksTab();keepOpen(\'tc-'+ti+'\')">+ ADD</button></div>'+tH+'</div><div class="tsec"><div class="tsec-title">EQUIPMENT <button class="mini-btn" onclick="S.teams['+ti+'].equipment.push({id:tid(),item:\'\',qty:\'1\',notes:\'\'});renderTeamsTab();renderEquipTab();keepOpen(\'tc-'+ti+'\')">+ ADD</button></div><div style="font-size:8px;color:var(--grey2);font-family:\'Barlow Condensed\',sans-serif;display:flex;gap:3px;margin-bottom:2px;padding-left:18px;"><span style="flex:2;">ITEM</span><span style="width:32px;">QTY</span><span style="flex:1;">NOTES</span></div>'+eH+'</div></div></div>';}).join('');}
+
+function toggleTeamCard(id){var el=document.getElementById(id);if(el)el.classList.toggle('open');}
+
+function editTeamMeta(ti){var t=S.teams[ti];if(!t)return;showModal('EDIT TEAM','<div style="display:flex;gap:6px;"><div class="mrow" style="flex:0 0 auto;"><label>Color</label><input type="color" id="et-color" value="'+t.color+'" style="width:40px;height:32px;"></div><div class="mrow" style="flex:1;"><label>Badge</label><input id="et-badge" type="text" value="'+esc(t.badge)+'"></div></div><div style="display:flex;gap:6px;"><div class="mrow" style="flex:1;"><label>Type</label><input id="et-type" type="text" value="'+esc(t.type)+'"></div><div class="mrow" style="flex:1;"><label>AOR</label><input id="et-aor" type="text" value="'+esc(t.aor)+'"></div></div><div class="mrow"><label>LRZ / Base Location</label><input id="et-lrz" type="text" value="'+esc(t.lrz)+'"></div>',function(){S.teams[ti].color=document.getElementById('et-color').value;S.teams[ti].badge=document.getElementById('et-badge').value||t.badge;S.teams[ti].type=document.getElementById('et-type').value||t.type;S.teams[ti].aor=document.getElementById('et-aor').value||t.aor;S.teams[ti].lrz=document.getElementById('et-lrz').value||t.lrz;renderTeamsTab();});}
+
+function addTeamCard(){var cols=['#cc1111','#888888','#cc6600','#446688','#cc1166','#668844'];S.teams.push({id:tid(),badge:'T'+(S.teams.length+1),color:cols[S.teams.length%cols.length],type:'VLOS',aor:'TBD',lrz:'TBD',members:[],tasks:[],equipment:[]});renderTeamsTab();setTimeout(function(){var el=document.getElementById('tc-'+(S.teams.length-1));if(el)el.classList.add('open');},50);}
+
+
+
+// ── TASKS ─────────────────────────────────────────────────────
+
+function renderTasksTab(){var el=document.getElementById('tasks-panel');var allTasks=[];S.teams.forEach(function(t,ti){(t.tasks||[]).forEach(function(tk,ki){allTasks.push({ti:ti,ki:ki,tk:tk,t:t});});});if(!allTasks.length){el.innerHTML='<div style="font-size:9px;color:var(--grey2);font-family:\'Barlow Condensed\',sans-serif;padding:8px 0;">NO TASKS</div>';return;}el.innerHTML=allTasks.map(function(row){var ti=row.ti,ki=row.ki,tk=row.tk,t=row.t;return '<div class="te-row" style="border-left-color:'+t.color+';"><div style="display:flex;flex-direction:column;gap:1px;margin-right:3px;"><button class="rarr" onclick="moveArr(S.teams['+ti+'].tasks,'+ki+',-1);renderTasksTab();">▲</button><button class="rarr" onclick="moveArr(S.teams['+ti+'].tasks,'+ki+',1);renderTasksTab();">▼</button></div><span class="te-team-badge" style="background:'+t.color+';">'+esc(t.badge)+'</span><input type="text" placeholder="TASK…" value="'+esc(tk.task)+'" oninput="S.teams['+ti+'].tasks['+ki+'].task=this.value;" style="flex:2;"><select oninput="S.teams['+ti+'].tasks['+ki+'].priority=this.value;" style="width:66px;">'+ ['HIGH','MEDIUM','LOW'].map(function(p){return '<option'+(tk.priority===p?' selected':'')+'>'+p+'</option>';}).join('')+'</select><select oninput="S.teams['+ti+'].tasks['+ki+'].status=this.value;" style="width:80px;">'+ ['PENDING','IN PROG','COMPLETE','HOLD'].map(function(s){return '<option'+(tk.status===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select><select title="Reassign" onchange="reassignTask('+ti+','+ki+',this.value);this.value=\''+ti+'\'" style="width:50px;font-size:8px;">'+S.teams.map(function(tt,idx){return '<option value="'+idx+'"'+(idx===ti?' selected':'')+'>'+esc(tt.badge)+'</option>';}).join('')+'</select><span onclick="S.teams['+ti+'].tasks.splice('+ki+',1);renderTasksTab();" style="color:var(--red);cursor:pointer;font-size:10px;flex-shrink:0;">✕</span></div>';}).join('');}
+
+function addGlobalTask(){if(!S.teams.length){alert('ADD A TEAM FIRST.');return;}S.teams[0].tasks.push({id:tid(),task:'',priority:'MEDIUM',status:'PENDING'});renderTasksTab();}
+
+function reassignTask(fromTi,ki,toTi){toTi=parseInt(toTi);if(fromTi===toTi)return;var task=S.teams[fromTi].tasks.splice(ki,1)[0];S.teams[toTi].tasks.push(task);renderTasksTab();}
+
+
+
+// ── EQUIP ─────────────────────────────────────────────────────
+
+function renderEquipTab(){var el=document.getElementById('equip-panel');var allEquip=[];S.teams.forEach(function(t,ti){(t.equipment||[]).forEach(function(eq,ei){allEquip.push({ti:ti,ei:ei,eq:eq,t:t});});});if(!allEquip.length){el.innerHTML='<div style="font-size:9px;color:var(--grey2);font-family:\'Barlow Condensed\',sans-serif;padding:8px 0;">NO EQUIPMENT</div>';return;}el.innerHTML=allEquip.map(function(row){var ti=row.ti,ei=row.ei,eq=row.eq,t=row.t;return '<div class="te-row" style="border-left-color:'+t.color+';"><div style="display:flex;flex-direction:column;gap:1px;margin-right:3px;"><button class="rarr" onclick="moveArr(S.teams['+ti+'].equipment,'+ei+',-1);renderEquipTab();">▲</button><button class="rarr" onclick="moveArr(S.teams['+ti+'].equipment,'+ei+',1);renderEquipTab();">▼</button></div><span class="te-team-badge" style="background:'+t.color+';">'+esc(t.badge)+'</span><input type="text" placeholder="ITEM" value="'+esc(eq.item)+'" oninput="S.teams['+ti+'].equipment['+ei+'].item=this.value;" style="flex:2;"><input type="text" placeholder="QTY" value="'+esc(eq.qty)+'" oninput="S.teams['+ti+'].equipment['+ei+'].qty=this.value;" style="width:34px;"><input type="text" placeholder="NOTES" value="'+esc(eq.notes)+'" oninput="S.teams['+ti+'].equipment['+ei+'].notes=this.value;" style="flex:1;"><select title="Reassign" onchange="reassignEquip('+ti+','+ei+',this.value);this.value=\''+ti+'\'" style="width:50px;font-size:8px;">'+S.teams.map(function(tt,idx){return '<option value="'+idx+'"'+(idx===ti?' selected':'')+'>'+esc(tt.badge)+'</option>';}).join('')+'</select><span onclick="S.teams['+ti+'].equipment.splice('+ei+',1);renderEquipTab();" style="color:var(--red);cursor:pointer;font-size:10px;flex-shrink:0;">✕</span></div>';}).join('');}
+
+function addGlobalEquip(){if(!S.teams.length){alert('ADD A TEAM FIRST.');return;}S.teams[0].equipment.push({id:tid(),item:'',qty:'1',notes:''});renderEquipTab();}
+
+function reassignEquip(fromTi,ei,toTi){toTi=parseInt(toTi);if(fromTi===toTi)return;var item=S.teams[fromTi].equipment.splice(ei,1)[0];S.teams[toTi].equipment.push(item);renderEquipTab();}
+
+
+
+// ── Print / Export (unchanged from v10) ───────────────────────
+
+function showPrintPreview(){var title=document.getElementById('op-title').textContent;var sub=document.getElementById('op-sub').textContent;var teamsPreviewHtml=S.teams.map(function(t,ti){var memH=t.members&&t.members.length?'<div style="font-size:8px;color:var(--grey2);font-family:\'Barlow Condensed\',sans-serif;letter-spacing:2px;display:flex;gap:4px;margin-bottom:2px;"><span style="flex:1;">NAME</span><span style="width:70px;">ROLE</span></div>'+t.members.map(function(m,mi){return '<div style="display:flex;gap:4px;margin-bottom:2px;"><input class="pf-inp" value="'+esc(m.name)+'" placeholder="Name" oninput="S.teams['+ti+'].members['+mi+'].name=this.value" style="flex:1;"><input class="pf-inp" value="'+esc(m.role)+'" placeholder="Role" oninput="S.teams['+ti+'].members['+mi+'].role=this.value" style="width:70px;"></div>';}).join(''):'<div style="font-size:9px;color:var(--grey2);">None</div>';var tskH=t.tasks&&t.tasks.length?'<div style="font-size:8px;color:var(--grey2);font-family:\'Barlow Condensed\',sans-serif;letter-spacing:2px;display:flex;gap:3px;margin-bottom:2px;"><span style="flex:1;">TASK</span><span style="width:62px;">PRI</span><span style="width:74px;">STATUS</span></div>'+t.tasks.map(function(tk,ki){return '<div style="display:flex;gap:3px;margin-bottom:2px;"><input class="pf-inp" value="'+esc(tk.task)+'" placeholder="Task…" oninput="S.teams['+ti+'].tasks['+ki+'].task=this.value" style="flex:1;"><select class="pf-sel" oninput="S.teams['+ti+'].tasks['+ki+'].priority=this.value" style="width:62px;">'+['HIGH','MEDIUM','LOW'].map(function(p){return '<option'+(tk.priority===p?' selected':'')+'>'+p+'</option>';}).join('')+'</select><select class="pf-sel" oninput="S.teams['+ti+'].tasks['+ki+'].status=this.value" style="width:74px;">'+['PENDING','IN PROG','COMPLETE','HOLD'].map(function(s){return '<option'+(tk.status===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select></div>';}).join(''):'<div style="font-size:9px;color:var(--grey2);">None</div>';var eqH=t.equipment&&t.equipment.length?'<div style="font-size:8px;color:var(--grey2);font-family:\'Barlow Condensed\',sans-serif;letter-spacing:2px;display:flex;gap:3px;margin-bottom:2px;"><span style="flex:1;">ITEM</span><span style="width:32px;">QTY</span><span style="flex:1;">NOTES</span></div>'+t.equipment.map(function(eq,ei){return '<div style="display:flex;gap:3px;margin-bottom:2px;"><input class="pf-inp" value="'+esc(eq.item)+'" placeholder="Item…" oninput="S.teams['+ti+'].equipment['+ei+'].item=this.value" style="flex:1;"><input class="pf-inp" value="'+esc(eq.qty)+'" placeholder="Qty" oninput="S.teams['+ti+'].equipment['+ei+'].qty=this.value" style="width:32px;"><input class="pf-inp" value="'+esc(eq.notes)+'" placeholder="Notes" oninput="S.teams['+ti+'].equipment['+ei+'].notes=this.value" style="flex:1;"></div>';}).join(''):'<div style="font-size:9px;color:var(--grey2);">None</div>';return '<div class="pdf-team-sec" style="border-left-color:'+t.color+'"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><input class="pf-inp" value="'+esc(t.badge)+'" oninput="S.teams['+ti+'].badge=this.value" style="width:60px;font-weight:700;font-size:11px;letter-spacing:2px;" placeholder="Badge"><input class="pf-inp" value="'+esc(t.type)+'" oninput="S.teams['+ti+'].type=this.value" style="width:60px;" placeholder="Type"><input class="pf-inp" value="'+esc(t.aor)+'" oninput="S.teams['+ti+'].aor=this.value" style="width:70px;" placeholder="AOR"><input class="pf-inp" value="'+esc(t.lrz)+'" oninput="S.teams['+ti+'].lrz=this.value" style="flex:1;" placeholder="LRZ"><input type="color" value="'+t.color+'" oninput="S.teams['+ti+'].color=this.value" style="width:24px;height:22px;border:1px solid var(--bdr);cursor:pointer;padding:1px;"></div><div class="pdf-grid"><div><div class="pdf-col-title">TASK ORG</div>'+memH+'</div><div><div class="pdf-col-title">TASK LIST</div>'+tskH+'</div><div><div class="pdf-col-title">EQUIPMENT</div>'+eqH+'</div></div></div>';}).join('');var typeOrder=['rect','circle','line','marker'],typeLabels={rect:'AOR / RECTANGLES',circle:'CIRCLES / ZONES',line:'LINES / BOUNDARIES',marker:'MARKERS / POINTS'};var groups={};S.layers.forEach(function(l){if(!groups[l.type])groups[l.type]=[];groups[l.type].push(l);});var layerRows='';typeOrder.forEach(function(t){if(!groups[t]||!groups[t].length)return;layerRows+='<tr style="background:#1a0000;"><td colspan="5" style="color:#cc1111;font-weight:700;font-size:9px;letter-spacing:2px;padding:3px 6px;">'+typeLabels[t]+'</td></tr>';groups[t].forEach(function(l){var coaObj=S.coas.find(function(c){return c.id===l.scope;});var coaDesc=l.scope==='global'?'ALL COAs':(coaObj?coaObj.name:l.scope);var coords='';if(l.type==='marker'&&l.ll)coords=l.ll[0].toFixed(4)+','+l.ll[1].toFixed(4);else if(l.type==='circle'&&l.center)coords='Ctr:'+l.center[0].toFixed(4)+' R:'+Math.round(l.radius)+'m';else if(l.type==='rect'&&l.bounds)coords='SW:'+l.bounds[0][0].toFixed(4)+','+l.bounds[0][1].toFixed(4);layerRows+='<tr><td><span style="display:inline-block;width:8px;height:8px;background:'+l.color+';margin-right:4px;vertical-align:middle;"></span><input value="'+esc(l.label||'')+'" oninput="getMeta(\''+l.id+'\').label=this.value" style="background:transparent;border:none;border-bottom:1px solid #333;color:#ccc;font-family:\'Barlow Condensed\',sans-serif;font-size:10px;letter-spacing:1px;width:90px;"></td><td><input value="'+esc(l.ztype||'')+'" oninput="getMeta(\''+l.id+'\').ztype=this.value" style="background:transparent;border:none;border-bottom:1px solid #333;color:#888;font-family:\'Barlow Condensed\',sans-serif;font-size:9px;width:70px;"></td><td style="font-size:9px;color:#888;">'+coaDesc+'</td><td style="font-size:9px;color:#555;">'+coords+'</td><td><input value="'+esc(l.notes||'')+'" oninput="getMeta(\''+l.id+'\').notes=this.value" style="background:transparent;border:none;border-bottom:1px solid #333;color:#888;font-family:\'Barlow\',sans-serif;font-size:9px;width:100%;"></td></tr>';});});var body='<div style="font-size:9px;color:var(--grey2);letter-spacing:1px;font-family:\'Barlow Condensed\',sans-serif;margin-bottom:10px;padding:5px 8px;background:var(--blk3);border:1px solid var(--bdr);">✎ ALL FIELDS EDITABLE — CHANGES APPLY LIVE</div><div class="pdf-sec"><div class="pdf-sec-title">OPERATION TITLE &amp; SUBTITLE</div><div style="display:flex;gap:8px;"><div class="mrow" style="flex:1;"><label>Title</label><input id="ppv-title" type="text" value="'+esc(title)+'" oninput="document.getElementById(\'op-title\').textContent=this.value"></div><div class="mrow" style="flex:1;"><label>Subtitle</label><input id="ppv-sub" type="text" value="'+esc(sub)+'" oninput="document.getElementById(\'op-sub\').textContent=this.value"></div></div></div><div class="pdf-sec"><div class="pdf-sec-title">PLAN SUMMARY</div><textarea id="ppv-summary" rows="3" placeholder="Brief summary…" oninput="S.planSummary=this.value">'+esc(S.planSummary)+'</textarea></div><div class="pdf-sec"><div class="pdf-sec-title">TEAM ASSIGNMENTS</div>'+teamsPreviewHtml+'</div><div class="pdf-sec"><div class="pdf-sec-title">LAYER SUMMARY</div><table style="width:100%;border-collapse:collapse;"><thead><tr><th style="text-align:left;color:var(--grey2);font-family:\'Barlow Condensed\',sans-serif;font-size:8px;letter-spacing:2px;border-bottom:1px solid var(--bdr);padding:3px 6px;">LABEL</th><th style="text-align:left;color:var(--grey2);font-family:\'Barlow Condensed\',sans-serif;font-size:8px;letter-spacing:2px;border-bottom:1px solid var(--bdr);padding:3px 4px;">TYPE</th><th style="text-align:left;color:var(--grey2);font-family:\'Barlow Condensed\',sans-serif;font-size:8px;letter-spacing:2px;border-bottom:1px solid var(--bdr);padding:3px 4px;">COA</th><th style="text-align:left;color:var(--grey2);font-family:\'Barlow Condensed\',sans-serif;font-size:8px;letter-spacing:2px;border-bottom:1px solid var(--bdr);padding:3px 4px;">COORDS</th><th style="text-align:left;color:var(--grey2);font-family:\'Barlow Condensed\',sans-serif;font-size:8px;letter-spacing:2px;border-bottom:1px solid var(--bdr);padding:3px 4px;">NOTES</th></tr></thead><tbody>'+layerRows+'</tbody></table></div>';showModal('🖨 PRINT PREVIEW &amp; EDIT',body,function(){S.planSummary=document.getElementById('ppv-summary')?.value||S.planSummary;doPrint();});setTimeout(function(){var ok=document.querySelector('.mok');if(ok)ok.textContent='🖨 PRINT / SAVE PDF';},50);}
+
+function buildOpsOverview(){var rows=S.teams.map(function(t){var pending=(t.tasks||[]).filter(function(tk){return tk.status==='PENDING';}).length;var inprog=(t.tasks||[]).filter(function(tk){return tk.status==='IN PROG';}).length;var complete=(t.tasks||[]).filter(function(tk){return tk.status==='COMPLETE';}).length;var hold=(t.tasks||[]).filter(function(tk){return tk.status==='HOLD';}).length;return '<tr><td><span style="background:'+t.color+';color:#fff;padding:1px 7px;font-family:\'Barlow Condensed\',sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;">'+esc(t.badge)+'</span></td><td style="text-align:center;">'+((t.members||[]).length)+'</td><td style="text-align:center;">'+(t.tasks||[]).length+'</td><td style="text-align:center;"><span style="color:#cc6600;">'+pending+'</span></td><td style="text-align:center;"><span style="color:#ccaa00;">'+inprog+'</span></td><td style="text-align:center;"><span style="color:#448844;">'+complete+'</span></td><td style="text-align:center;"><span style="color:#cc4444;">'+hold+'</span></td><td style="text-align:center;">'+(t.equipment||[]).length+'</td></tr>';}).join('');var totalP=S.teams.reduce(function(a,t){return a+(t.members||[]).length;},0);var totalT=S.teams.reduce(function(a,t){return a+(t.tasks||[]).length;},0);var totalE=S.teams.reduce(function(a,t){return a+(t.equipment||[]).length;},0);return '<table style="width:100%;border-collapse:collapse;font-size:11px;"><thead><tr><th style="text-align:left;color:#666;font-family:\'Barlow Condensed\',sans-serif;font-size:9px;letter-spacing:2px;border-bottom:1px solid #2a2a2a;padding:4px 7px;background:#0f0f0f;">TEAM</th><th style="text-align:center;color:#666;font-family:\'Barlow Condensed\',sans-serif;font-size:9px;letter-spacing:2px;border-bottom:1px solid #2a2a2a;padding:4px 5px;background:#0f0f0f;">PERS</th><th style="text-align:center;color:#666;font-family:\'Barlow Condensed\',sans-serif;font-size:9px;letter-spacing:2px;border-bottom:1px solid #2a2a2a;padding:4px 5px;background:#0f0f0f;">TASKS</th><th style="text-align:center;color:#cc6600;font-family:\'Barlow Condensed\',sans-serif;font-size:9px;letter-spacing:2px;border-bottom:1px solid #2a2a2a;padding:4px 5px;background:#0f0f0f;">PEND</th><th style="text-align:center;color:#ccaa00;font-family:\'Barlow Condensed\',sans-serif;font-size:9px;letter-spacing:2px;border-bottom:1px solid #2a2a2a;padding:4px 5px;background:#0f0f0f;">PROG</th><th style="text-align:center;color:#448844;font-family:\'Barlow Condensed\',sans-serif;font-size:9px;letter-spacing:2px;border-bottom:1px solid #2a2a2a;padding:4px 5px;background:#0f0f0f;">DONE</th><th style="text-align:center;color:#cc4444;font-family:\'Barlow Condensed\',sans-serif;font-size:9px;letter-spacing:2px;border-bottom:1px solid #2a2a2a;padding:4px 5px;background:#0f0f0f;">HOLD</th><th style="text-align:center;color:#446688;font-family:\'Barlow Condensed\',sans-serif;font-size:9px;letter-spacing:2px;border-bottom:1px solid #2a2a2a;padding:4px 5px;background:#0f0f0f;">EQUIP</th></tr></thead><tbody>'+rows+'</tbody><tfoot><tr style="border-top:2px solid #2a2a2a;"><td style="font-family:\'Barlow Condensed\',sans-serif;font-size:9px;letter-spacing:2px;color:#cc1111;padding:4px 7px;">TOTALS</td><td style="text-align:center;font-weight:700;padding:4px 5px;">'+totalP+'</td><td style="text-align:center;font-weight:700;padding:4px 5px;">'+totalT+'</td><td colspan="4"></td><td style="text-align:center;font-weight:700;padding:4px 5px;">'+totalE+'</td></tr></tfoot></table>';}
+
+function doPrint(){var center=map.getCenter(),zoom=map.getZoom();var title=document.getElementById('op-title').textContent;var sub=document.getElementById('op-sub').textContent;var date=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});var typeOrder=['rect','circle','line','marker'],typeLabels={rect:'AOR / RECTANGLES',circle:'CIRCLES / ZONES',line:'LINES / BOUNDARIES',marker:'MARKERS / POINTS'};var groups={};S.layers.forEach(function(l){if(!groups[l.type])groups[l.type]=[];groups[l.type].push(l);});var layerRows='';typeOrder.forEach(function(t){if(!groups[t]||!groups[t].length)return;layerRows+='<tr><td colspan="5" style="background:#1a0000;color:#cc1111;font-weight:700;letter-spacing:3px;font-size:10px;padding:5px 8px;border-top:2px solid #cc1111;">'+typeLabels[t]+'</td></tr>';groups[t].forEach(function(l){var coaObj=S.coas.find(function(c){return c.id===l.scope;});var coaDesc=l.scope==='global'?'ALL COAs':(coaObj?coaObj.name:l.scope);var coords='';if(l.type==='marker'&&l.ll)coords=l.ll[0].toFixed(5)+','+l.ll[1].toFixed(5);else if(l.type==='circle'&&l.center)coords='Ctr:'+l.center[0].toFixed(4)+','+l.center[1].toFixed(4)+' R:'+Math.round(l.radius)+'m';else if(l.type==='rect'&&l.bounds)coords='SW:'+l.bounds[0][0].toFixed(4)+','+l.bounds[0][1].toFixed(4);layerRows+='<tr><td><span style="display:inline-block;width:9px;height:9px;background:'+l.color+';margin-right:5px;vertical-align:middle;"></span>'+esc(l.label||'—')+'</td><td>'+esc(l.ztype||'')+'</td><td>'+coaDesc+'</td><td style="font-size:9px;color:#aaa;">'+coords+'</td><td style="font-size:9px;color:#bbb;">'+esc(l.notes||'')+'</td></tr>';});});var teamSections=S.teams.map(function(t){var memRows=t.members&&t.members.length?t.members.map(function(m){return '<tr><td>'+esc(m.name||'—')+'</td><td>'+esc(m.role||'')+'</td></tr>';}).join(''):'<tr><td colspan="2" style="color:#555;font-style:italic;font-size:10px;">No personnel</td></tr>';var taskRows=t.tasks&&t.tasks.length?t.tasks.map(function(tk){var pc={'HIGH':'#8a0000','MEDIUM':'#664400','LOW':'#1a3a5a'};var sc={'PENDING':'#664400','IN PROG':'#664400','COMPLETE':'#1a3a1a','HOLD':'#8a0000'};return '<tr><td>'+esc(tk.task||'')+'</td><td><span style="background:'+(pc[tk.priority]||'#444')+';color:#fff;padding:1px 5px;font-size:8px;font-weight:700;">'+tk.priority+'</span></td><td><span style="background:'+(sc[tk.status]||'#444')+';color:#fff;padding:1px 5px;font-size:8px;font-weight:700;">'+tk.status+'</span></td></tr>';}).join(''):'<tr><td colspan="3" style="color:#555;font-style:italic;font-size:10px;">No tasks</td></tr>';var equipRows=t.equipment&&t.equipment.length?t.equipment.map(function(eq){return '<tr><td>'+esc(eq.item||'—')+'</td><td style="text-align:center;">'+esc(eq.qty||'')+'</td><td style="color:#aaa;">'+esc(eq.notes||'')+'</td></tr>';}).join(''):'<tr><td colspan="3" style="color:#555;font-style:italic;font-size:10px;">No equipment</td></tr>';return '<div style="margin-bottom:16px;border:1px solid #2a2a2a;border-left:3px solid '+t.color+';"><div style="background:#0f0f0f;padding:7px 10px;display:flex;align-items:center;gap:10px;"><span style="background:'+t.color+';color:#fff;padding:2px 9px;font-family:\'Barlow Condensed\',sans-serif;font-size:13px;font-weight:700;letter-spacing:2px;">'+esc(t.badge)+'</span><span style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#ccc;">'+esc(t.type)+' — AOR: '+esc(t.aor)+' | LRZ: '+esc(t.lrz)+'</span></div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;"><div style="border-right:1px solid #2a2a2a;padding:7px 9px;"><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:#cc1111;border-bottom:1px solid #2a2a2a;padding-bottom:3px;margin-bottom:5px;">TASK ORG</div><table style="width:100%;font-size:10px;border-collapse:collapse;"><thead><tr><th style="text-align:left;color:#555;font-size:9px;padding-bottom:2px;">NAME</th><th style="text-align:left;color:#555;font-size:9px;">ROLE</th></tr></thead><tbody>'+memRows+'</tbody></table></div><div style="border-right:1px solid #2a2a2a;padding:7px 9px;"><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:#cc1111;border-bottom:1px solid #2a2a2a;padding-bottom:3px;margin-bottom:5px;">TASKS</div><table style="width:100%;font-size:10px;border-collapse:collapse;"><thead><tr><th style="text-align:left;color:#555;font-size:9px;padding-bottom:2px;">TASK</th><th style="color:#555;font-size:9px;">PRI</th><th style="color:#555;font-size:9px;">STATUS</th></tr></thead><tbody>'+taskRows+'</tbody></table></div><div style="padding:7px 9px;"><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:#cc1111;border-bottom:1px solid #2a2a2a;padding-bottom:3px;margin-bottom:5px;">EQUIPMENT</div><table style="width:100%;font-size:10px;border-collapse:collapse;"><thead><tr><th style="text-align:left;color:#555;font-size:9px;padding-bottom:2px;">ITEM</th><th style="color:#555;font-size:9px;">QTY</th><th style="color:#555;font-size:9px;">NOTES</th></tr></thead><tbody>'+equipRows+'</tbody></table></div></div></div>';}).join('');var summaryHTML=S.planSummary?'<div class="sec"><div class="sec-title">Plan Summary</div><div style="font-size:11px;color:#ccc;line-height:1.7;white-space:pre-wrap;padding:8px 10px;background:#0f0f0f;border:1px solid #2a2a2a;">'+esc(S.planSummary)+'</div></div>':'';var overviewHTML=S.teams.length?'<div class="sec"><div class="sec-title">Operations Overview</div>'+buildOpsOverview()+'</div>':'';var win=window.open('','_blank');win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>DXD OPS BRIEF — '+esc(title)+'</title><style>@import url(\'https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500&display=swap\');*{margin:0;padding:0;box-sizing:border-box;}body{background:#080808;color:#f0f0f0;font-family:\'Barlow\',sans-serif;}.page{max-width:1100px;margin:0 auto;padding:26px 34px;}.hdr{border-bottom:3px solid #cc1111;padding-bottom:12px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:flex-end;}.logo{font-family:\'Barlow Condensed\',sans-serif;font-size:26px;font-weight:800;letter-spacing:5px;}.logo .x{color:#e8000d;}.op-title{font-family:\'Barlow Condensed\',sans-serif;font-size:19px;font-weight:800;letter-spacing:4px;text-transform:uppercase;}.op-sub{font-size:10px;color:#666;letter-spacing:2px;margin-top:2px;text-transform:uppercase;}.op-date{font-size:9px;color:#555;margin-top:2px;}.draft-bar{background:#cc1111;color:#fff;font-family:\'Barlow Condensed\',sans-serif;font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;padding:4px 14px;margin-bottom:16px;text-align:center;}.sec{margin-bottom:20px;}.sec-title{font-family:\'Barlow Condensed\',sans-serif;font-size:12px;font-weight:700;letter-spacing:4px;text-transform:uppercase;color:#cc1111;border-left:3px solid #cc1111;padding-left:7px;margin-bottom:8px;}table{width:100%;border-collapse:collapse;font-size:11px;}th{font-family:\'Barlow Condensed\',sans-serif;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#666;border-bottom:1px solid #2a2a2a;padding:4px 7px;text-align:left;background:#0f0f0f;}td{padding:4px 7px;border-bottom:1px solid #1a1a1a;vertical-align:top;color:#ccc;}.map-ph{background:#0f0f0f;border:1px solid #2a2a2a;height:260px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#555;font-family:\'Barlow Condensed\',sans-serif;letter-spacing:2px;text-transform:uppercase;margin-bottom:18px;}.footer{border-top:1px solid #2a2a2a;margin-top:22px;padding-top:10px;display:flex;justify-content:space-between;font-size:8px;color:#444;letter-spacing:1px;text-transform:uppercase;}@media print{body{background:#fff!important;color:#000!important;}.logo .x,.sec-title{color:#cc1111!important;}.draft-bar{background:#cc1111!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}th{background:#f0f0f0!important;color:#333!important;}td{color:#333!important;}}</style></head><body><div class="page"><div class="hdr"><div class="logo">DEUS <span class="x">X</span></div><div><div class="op-title">'+esc(title)+'</div><div class="op-sub">'+esc(sub)+'</div><div class="op-date">Generated: '+date+' | Center: '+center.lat.toFixed(4)+', '+center.lng.toFixed(4)+'</div></div></div><div class="draft-bar">⚠ DRAFT — FOR PLANNING USE ONLY</div><div class="map-ph"><div>[ MAP VIEW — PASTE SCREENSHOT HERE ]</div><div style="font-size:9px;color:#444;margin-top:5px;">'+center.lat.toFixed(5)+', '+center.lng.toFixed(5)+' | Zoom: '+zoom+'</div></div>'+summaryHTML+overviewHTML+'<div class="sec"><div class="sec-title">Team Assignments</div>'+teamSections+'</div><div class="sec"><div class="sec-title">Layer Summary</div><table><thead><tr><th>Label</th><th>Zone Type</th><th>COA</th><th>Coordinates</th><th>Notes</th></tr></thead><tbody>'+layerRows+'</tbody></table></div><div class="footer"><span>DEUS X DEFENSE — CONFIDENTIAL</span><span>'+esc(title)+'</span><span>'+date+'</span></div></div><script>window.onload=function(){window.print();};<\/script></body></html>');win.document.close();}
+
+
+
+// ── Go To / Project / Modal ───────────────────────────────────
+
+function goTo(){showModal('GO TO LOCATION','<div class="mrow"><label>Address or Lat, Lng</label><input id="go-q" type="text" placeholder="e.g. Saline Michigan"></div>',function(){var v=document.getElementById('go-q').value.trim(),pts=v.split(',');if(pts.length===2&&!isNaN(parseFloat(pts[0]))&&!isNaN(parseFloat(pts[1]))){map.flyTo([parseFloat(pts[0]),parseFloat(pts[1])],15);}else fetch('https://nominatim.openstreetmap.org/search?format=json&q='+encodeURIComponent(v)).then(function(r){return r.json();}).then(function(d){if(d&&d[0])map.flyTo([parseFloat(d[0].lat),parseFloat(d[0].lon)],15);else alert('NOT FOUND');}).catch(function(){alert('TRY LAT, LNG FORMAT');});});}
+
+function showProjModal(){showModal('PROJECT SETTINGS','<div class="mrow"><label>Operation Title</label><input id="m-title" type="text" value="'+esc(document.getElementById('op-title').textContent)+'"></div><div class="mrow"><label>Subtitle / Location</label><input id="m-sub" type="text" value="'+esc(document.getElementById('op-sub').textContent)+'"></div>',function(){document.getElementById('op-title').textContent=document.getElementById('m-title').value||'UAS OPERATIONS PLAN';document.getElementById('op-sub').textContent=document.getElementById('m-sub').value||'';});}
+
+function showModal(title,body,cb){document.getElementById('modal-title').innerHTML=title;document.getElementById('modal-body').innerHTML=body;document.getElementById('modal').style.display='flex';S.modalCb=cb;}
+
+function confirmModal(){if(S.modalCb)S.modalCb();closeModal();}
+
+function closeModal(){document.getElementById('modal').style.display='none';S.modalCb=null;}
+
+
+
+// ── Export / Import ───────────────────────────────────────────
+
+function exportJSON(){var data=JSON.stringify({project:{title:document.getElementById('op-title').textContent,sub:document.getElementById('op-sub').textContent},planSummary:S.planSummary,coas:S.coas,layers:S.layers,teams:S.teams,mapCenter:map.getCenter(),mapZoom:map.getZoom()},null,2);var blob=new Blob([data],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='dxd_ops_plan.json';a.click();}
+
+function importJSON(){var inp=document.createElement('input');inp.type='file';inp.accept='.json';inp.onchange=function(e){var file=e.target.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(ev){try{var data=JSON.parse(ev.target.result);Object.values(S.leafletLayers).forEach(function(lf){map.removeLayer(lf);});S.leafletLayers={};if(data.project){document.getElementById('op-title').textContent=data.project.title||'UAS OPERATIONS PLAN';document.getElementById('op-sub').textContent=data.project.sub||'';}S.planSummary=data.planSummary||'';S.coas=data.coas||[{id:'c1',name:'COA 1',color:'#cc1111',visible:true}];S.teams=(data.teams||[]).map(function(t){return Object.assign({members:[],tasks:[],equipment:[]},t);});S.active=S.coas[0].id;S.layers=data.layers||[];S.sel=null;closeEdit();S.layers.forEach(function(meta){rebuildLL(meta);});if(data.mapCenter)map.setView([data.mapCenter.lat,data.mapCenter.lng],data.mapZoom||15);syncVis();renderMapTab();}catch(err){alert('INVALID JSON: '+err.message);}};reader.readAsText(file);};inp.click();}
+
+function rebuildLL(meta){var col=meta.color||'#cc1111',op=meta.opacity||.35,lf;if(meta.type==='rect'&&meta.bounds)lf=L.rectangle(meta.bounds,{color:col,weight:2,fillColor:col,fillOpacity:op});else if(meta.type==='circle'&&meta.center)lf=L.circle(meta.center,{radius:meta.radius||100,color:col,weight:2,fillColor:col,fillOpacity:op,dashArray:meta.dashed?'8,6':null});else if(meta.type==='line'&&meta.pts)lf=L.polyline(meta.pts,{color:col,weight:2,dashArray:meta.dashed?'10,6':null});else if(meta.type==='marker'&&meta.ll){lf=L.marker(meta.ll,{icon:markerIcon(col,meta.ztype),draggable:true});if(meta.label&&!meta.labelHidden)lf.bindTooltip(meta.label,{permanent:true,direction:'top',offset:[0,-16],className:'uas-tip'});lf.on('dragend',function(ev){var p=ev.target.getLatLng();meta.ll=[p.lat,p.lng];});}if(!lf)return;if(meta.label&&meta.type!=='marker'&&!meta.labelHidden)lf.bindTooltip(meta.label,{permanent:true,direction:'center',className:'uas-tip'});lf.on('click',function(e){if(S.mode==='select'){L.DomEvent.stopPropagation(e);selectLayer(meta.id);}else if(S.mode==='move'&&!S.moving){L.DomEvent.stopPropagation(e);S.moving=true;S.moveLayerId=meta.id;}});attachHover(lf,meta);S.leafletLayers[meta.id]=lf;var n=parseInt(meta.id.replace('L',''))||0;if(S.idN<n)S.idN=n;}
+
+function exportCSV(){var rows=[['ID','LABEL','TYPE','ZONE TYPE','SCOPE','COA','COLOR','NOTES','COORDINATES']];S.layers.forEach(function(l){var coaObj=S.coas.find(function(c){return c.id===l.scope;});var coaDesc=l.scope==='global'?'ALL COAs':(coaObj?coaObj.name:l.scope);var coords='';if(l.type==='marker'&&l.ll)coords=l.ll[0].toFixed(5)+','+l.ll[1].toFixed(5);else if(l.type==='circle'&&l.center)coords='Ctr:'+l.center[0].toFixed(5)+','+l.center[1].toFixed(5)+' R:'+Math.round(l.radius)+'m';else if(l.type==='rect'&&l.bounds)coords='SW:'+l.bounds[0][0].toFixed(5)+','+l.bounds[0][1].toFixed(5)+' NE:'+l.bounds[1][0].toFixed(5)+','+l.bounds[1][1].toFixed(5);rows.push([l.id,l.label||'',l.type,l.ztype||'',l.scope==='global'?'SHARED':'COA',coaDesc,l.color,(l.notes||'').replace(/,/g,';'),coords]);});rows.push([],[' PLAN SUMMARY','','','','','','','','']);rows.push([S.planSummary||'','','','','','','','','']);rows.push([],['TEAMS','','','','','','','','']);S.teams.forEach(function(t){rows.push(['--- TEAM: '+t.badge+' | '+t.type+' | AOR: '+t.aor,'','','','','','','','']);if(t.members&&t.members.length){rows.push(['PERSONNEL','NAME','ROLE','','','','','','']);t.members.forEach(function(m){rows.push(['',m.name||'',m.role||'','','','','','','']);});}if(t.tasks&&t.tasks.length){rows.push(['TASKS','TASK','PRIORITY','STATUS','','','','','']);t.tasks.forEach(function(tk){rows.push(['',tk.task||'',tk.priority||'',tk.status||'','','','','','']);});}if(t.equipment&&t.equipment.length){rows.push(['EQUIPMENT','ITEM','QTY','NOTES','','','','','']);t.equipment.forEach(function(eq){rows.push(['',eq.item||'',eq.qty||'',eq.notes||'','','','','','']);})}rows.push([]);});var csv=rows.map(function(r){return r.map(function(c){var s=String(c||'');return(s.includes(',')||s.includes('"'))?'"'+s.replace(/"/g,'""')+'"':s;}).join(',');}).join('\n');var blob=new Blob([csv],{type:'text/csv'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='dxd_ops_layers.csv';a.click();}
+
+
+
+document.getElementById('opa').addEventListener('input',function(){document.getElementById('opa-lbl').textContent=this.value+'%';});
+
+document.getElementById('legend-body').style.flex='1';
+
+document.getElementById('legend-body').style.minHeight='0';
+
+renderMapTab();
+
+</script>
+
+</body>
+
+</html>
+
