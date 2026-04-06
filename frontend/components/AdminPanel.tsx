@@ -58,7 +58,7 @@ export default function AdminPanel() {
   const [taskDesc, setTaskDesc] = useState('')
   const [taskAssignee, setTaskAssignee] = useState('')
   const [taskDue, setTaskDue] = useState('')
-  const [taskPriority, setTaskPriority] = useState('medium')
+  const [taskPriority, setTaskPriority] = useState<'low' | 'medium' | 'high' | 'urgent'>('medium')
 
   const createTaskMut = useMutation({
     mutationFn: () => api.adminTasks.create({ title: taskTitle.trim(), description: taskDesc.trim(), assignee: taskAssignee, dueDate: taskDue, priority: taskPriority }),
@@ -192,7 +192,7 @@ export default function AdminPanel() {
                 </div>
                 <div>
                   <label style={fieldLabel}>PRIORITY</label>
-                  <select style={{ ...inputSm, color: PRIORITY_COLORS[taskPriority] }} value={taskPriority} onChange={e => setTaskPriority(e.target.value)}>
+                  <select style={{ ...inputSm, color: PRIORITY_COLORS[taskPriority] }} value={taskPriority} onChange={e => setTaskPriority(e.target.value as 'low' | 'medium' | 'high' | 'urgent')}>
                     {Object.entries(PRIORITY_LABELS).map(([val, lbl]) => <option key={val} value={val}>{lbl}</option>)}
                   </select>
                 </div>
