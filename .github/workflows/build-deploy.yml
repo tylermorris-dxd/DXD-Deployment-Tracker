@@ -40,20 +40,9 @@ jobs:
         with:
           workspaces: backend
 
-      - name: Install sqlx-cli
-        run: cargo install sqlx-cli --no-default-features --features postgres,native-tls
-
-      - name: Run database migrations
-        run: sqlx migrate run
-        working-directory: backend
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-
       - name: Build Rust binary (static release)
         run: cargo build --release --target x86_64-unknown-linux-musl
         working-directory: backend
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
       # ── Package deploy artifact ─────────────────────────────────────────────
       - name: Stage artifact
