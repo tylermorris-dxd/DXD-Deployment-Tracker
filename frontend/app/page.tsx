@@ -5,9 +5,17 @@ import ProjectList from '@/components/ProjectList'
 import ProjectView from '@/components/ProjectView'
 import EquipmentTracker from '@/components/EquipmentTracker'
 import AdminPanel from '@/components/AdminPanel'
+import CostEstimator from '@/components/CostEstimator'
 import { s } from '@/lib/styles'
 
-type Tab = 'projects' | 'equipment' | 'admin'
+type Tab = 'projects' | 'equipment' | 'admin' | 'cost'
+
+const TAB_LABELS: Record<Tab, string> = {
+  projects: 'PROJECTS',
+  equipment: 'EQUIPMENT',
+  admin: 'ADMIN',
+  cost: 'COST ESTIMATOR',
+}
 
 export default function Home() {
   const [tab, setTab] = useState<Tab>('projects')
@@ -21,12 +29,12 @@ export default function Home() {
     <>
       <div style={{ maxWidth: 960, margin: '0 auto', padding: '16px 20px 0' }}>
         <div style={{ display: 'flex', gap: 6 }}>
-          {(['projects', 'equipment', 'admin'] as Tab[]).map(t => (
+          {(['projects', 'equipment', 'admin', 'cost'] as Tab[]).map(t => (
             <button key={t} onClick={() => setTab(t)} style={{
               ...s.ghostBtn,
               ...(tab === t ? { borderColor: '#e63946', color: '#E8ECF4' } : {}),
             }}>
-              {t.toUpperCase()}
+              {TAB_LABELS[t]}
             </button>
           ))}
         </div>
@@ -34,6 +42,7 @@ export default function Home() {
       {tab === 'projects'  && <ProjectList onSelectProject={setActiveProjectId} />}
       {tab === 'equipment' && <EquipmentTracker />}
       {tab === 'admin'     && <AdminPanel />}
+      {tab === 'cost'      && <CostEstimator />}
     </>
   )
 }
