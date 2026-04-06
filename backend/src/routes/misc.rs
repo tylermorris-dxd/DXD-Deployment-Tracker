@@ -25,7 +25,11 @@ pub fn router() -> Router<AppState> {
 }
 
 async fn health() -> Json<Value> {
-    Json(json!({ "status": "ok", "service": "dxd-tracker" }))
+    Json(json!({
+        "status": "ok",
+        "service": "dxd-tracker",
+        "version": "2.0"
+    }))
 }
 
 async fn me(headers: HeaderMap) -> Json<Value> {
