@@ -38,6 +38,9 @@ export default function ProjectList({ onSelectProject }: { onSelectProject: (id:
     createMutation.mutate()
   }
 
+  const active    = projects.filter(p => p.totalTasks === 0 || p.doneTasks < p.totalTasks)
+  const completed = projects.filter(p => p.totalTasks > 0 && p.doneTasks === p.totalTasks)
+
   return (
     <div style={s.container}>
       {/* Header */}
@@ -49,43 +52,38 @@ export default function ProjectList({ onSelectProject }: { onSelectProject: (id:
             <div style={s.logoSub}>DRONE DEPLOYMENT OPS</div>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button style={s.ghostBtn} onClick={() => setShowNew(!showNew)}>
-            {Icons.plus}<span>NEW PROJECT</span>
-          </button>
-        </div>
+        <button style={s.primaryBtn} onClick={() => setShowNew(!showNew)}>
+          {Icons.plus}<span>NEW PROJECT</span>
+        </button>
       </div>
 
       {/* New Project Form */}
       {showNew && (
-        <div style={{ ...s.card, marginBottom: 20, animation: 'fadeSlideIn 0.2s ease' }}>
-          <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 10, color: '#e63946', letterSpacing: 1.5, marginBottom: 12 }}>NEW PROJECT</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+        <div style={{ background: 'rgba(40,40,42,0.85)', border: '1px solid rgba(229,57,53,0.2)', borderRadius: 10, padding: 24, marginBottom: 24, backdropFilter: 'blur(12px)', animation: 'fadeSlideIn 0.3s ease' }}>
+          <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 10, color: '#e63946', letterSpacing: 1.5, marginBottom: 14 }}>NEW PROJECT</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
             <div style={{ gridColumn: '1/-1' }}>
               <label style={s.fieldLabel}>PROJECT NAME *</label>
-              <input
-                autoFocus
-                style={s.input}
-                placeholder="e.g. Acme Corp HQ Deployment"
-                value={newName}
-                onChange={e => setNewName(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') handleCreate(); if (e.key === 'Escape') setShowNew(false) }}
-              />
+              <input autoFocus style={s.input} placeholder="e.g. Acme Corp HQ Deployment"
+                value={newName} onChange={e => setNewName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleCreate(); if (e.key === 'Escape') setShowNew(false) }} />
             </div>
             <div>
               <label style={s.fieldLabel}>CLIENT</label>
-              <input style={s.input} placeholder="Client or company name" value={newClient} onChange={e => setNewClient(e.target.value)} />
+              <input style={s.input} placeholder="e.g. Acme Corporation" value={newClient} onChange={e => setNewClient(e.target.value)} />
             </div>
             <div>
-              <label style={s.fieldLabel}>SITE / LOCATION</label>
+              <label style={s.fieldLabel}>SITE LOCATION</label>
               <input style={s.input} placeholder="e.g. Dallas, TX" value={newSite} onChange={e => setNewSite(e.target.value)} />
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button style={s.primaryBtn} onClick={handleCreate} disabled={createMutation.isPending}>
-              {createMutation.isPending ? 'Creating...' : 'Create Project'}
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button style={s.ghostBtn} onClick={() => setShowNew(false)}>CANCEL</button>
+            <button style={{ ...s.primaryBtn, opacity: newName.trim() ? 1 : 0.4 }}
+              disabled={!newName.trim() || createMutation.isPending}
+              onClick={handleCreate}>
+              {createMutation.isPending ? 'CREATING…' : 'DEPLOY PROJECT'}
             </button>
-            <button style={s.ghostBtn} onClick={() => setShowNew(false)}>Cancel</button>
           </div>
           {createMutation.isError && (
             <div style={{ color: '#ef4444', fontSize: 11, marginTop: 8, fontFamily: "'IBM Plex Mono', monospace" }}>
@@ -102,50 +100,148 @@ export default function ProjectList({ onSelectProject }: { onSelectProject: (id:
         </div>
       ) : projects.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-          <div style={{ fontSize: 40, marginBottom: 16 }}>🛸</div>
-          <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 14, color: 'rgba(255,255,255,0.4)', letterSpacing: 1.5, marginBottom: 8 }}>NO PROJECTS YET</div>
-          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>Create your first drone deployment project above.</div>
+          <img src="/images/logo.png" alt="DXD" style={{ width: 64, height: 64, objectFit: 'contain', opacity: 0.2, marginBottom: 16 }} />
+          <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 14, color: 'rgba(255,255,255,0.4)', letterSpacing: 1.5, marginBottom: 8 }}>NO ACTIVE DEPLOYMENTS</div>
+          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>Create your first project to begin tracking a drone deployment.</div>
         </div>
       ) : (
-        <div>
-          {projects.map(proj => <ProjectCard key={proj.id} proj={proj} onOpen={onSelectProject} onDelete={id => {
-            if (window.confirm(`Delete "${proj.name}"? This cannot be undone.`)) deleteMutation.mutate(id)
-          }} />)}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
+          {/* Active */}
+          <div>
+            <SectionHeader label="ACTIVE" count={active.length} color="#E53935" />
+            {active.length === 0 ? (
+              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: 'rgba(255,255,255,0.25)', padding: '12px 4px' }}>No active deployments</div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))', gap: 14 }}>
+                {active.map((p, i) => (
+                  <ProjectCard key={p.id} proj={p} index={i}
+                    onOpen={() => onSelectProject(p.id)}
+                    onDelete={() => { if (window.confirm(`Delete "${p.name}"? This cannot be undone.`)) deleteMutation.mutate(p.id) }} />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Completed */}
+          {completed.length > 0 && (
+            <div>
+              <SectionHeader label="COMPLETED" count={completed.length} color="#22C55E" />
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))', gap: 14 }}>
+                {completed.map((p, i) => (
+                  <ProjectCard key={p.id} proj={p} index={i} isCompleted
+                    onOpen={() => onSelectProject(p.id)}
+                    onDelete={() => { if (window.confirm(`Delete "${p.name}"? This cannot be undone.`)) deleteMutation.mutate(p.id) }} />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
   )
 }
 
-function ProjectCard({ proj, onOpen, onDelete }: { proj: ProjectSummary; onOpen: (id: string) => void; onDelete: (id: string) => void }) {
+function SectionHeader({ label, count, color }: { label: string; count: number; color: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.09)' }}>
+      <span style={{ width: 9, height: 9, borderRadius: '50%', background: color, boxShadow: `0 0 6px ${color}88`, flexShrink: 0, display: 'inline-block' }} />
+      <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, fontWeight: 700, letterSpacing: 3, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>{label}</span>
+      <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: 'rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.05)', padding: '2px 10px', borderRadius: 10 }}>{count}</span>
+    </div>
+  )
+}
+
+function ProjectCard({ proj, index, isCompleted = false, onOpen, onDelete }: {
+  proj: ProjectSummary
+  index: number
+  isCompleted?: boolean
+  onOpen: () => void
+  onDelete: () => void
+}) {
   const pct = proj.totalTasks > 0 ? Math.round((proj.doneTasks / proj.totalTasks) * 100) : 0
-  const color = progressColor(pct)
+  const accentColor = isCompleted ? '#22C55E' : progressColor(pct)
 
   return (
-    <div style={{ ...s.card, cursor: 'default', display: 'flex', alignItems: 'center', gap: 16 }}>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 15, fontWeight: 600, color: '#E8ECF4', marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {proj.name}
-        </div>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
-          {proj.client && <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>{proj.client}</span>}
-          {proj.site && <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: 'rgba(255,255,255,0.3)' }}>📍 {proj.site}</span>}
-        </div>
-        {/* Progress bar */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ flex: 1, height: 4, background: 'rgba(255,255,255,0.07)', borderRadius: 2, overflow: 'hidden' }}>
-            <div style={{ width: pct + '%', height: '100%', background: color, borderRadius: 2, transition: 'width 0.3s ease' }} />
-          </div>
-          <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: 'rgba(255,255,255,0.4)', flexShrink: 0 }}>
-            {proj.doneTasks}/{proj.totalTasks}
-          </span>
+    <div
+      onClick={onOpen}
+      style={{
+        background: isCompleted
+          ? 'linear-gradient(160deg, rgba(34,197,94,0.07), rgba(22,22,26,0.99))'
+          : 'linear-gradient(160deg, rgba(32,32,36,0.97), rgba(22,22,26,0.99))',
+        border: isCompleted ? '1px solid rgba(34,197,94,0.25)' : '1px solid rgba(255,255,255,0.09)',
+        borderLeft: `3px solid ${accentColor}`,
+        borderRadius: 10,
+        padding: '18px 20px',
+        cursor: 'pointer',
+        transition: 'all 0.2s',
+        backdropFilter: 'blur(16px)',
+        boxShadow: '0 2px 16px rgba(0,0,0,0.35)',
+        animationDelay: `${index * 0.06}s`,
+        animation: 'fadeSlideIn 0.4s ease both',
+      }}
+      onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLDivElement).style.boxShadow = `0 6px 24px rgba(0,0,0,0.5), 0 0 0 1px ${accentColor}33` }}
+      onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.transform = ''; (e.currentTarget as HTMLDivElement).style.boxShadow = '0 2px 16px rgba(0,0,0,0.35)' }}
+    >
+      {/* Top row: phase tag + pct + delete */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+        <span style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          fontSize: 10, letterSpacing: 1.5, fontWeight: 700, textTransform: 'uppercase',
+          background: `${accentColor}18`, border: `1px solid ${accentColor}44`,
+          borderRadius: 4, padding: '3px 9px', color: accentColor,
+          fontFamily: "'Chakra Petch', sans-serif",
+        }}>
+          {isCompleted ? '✓ COMPLETE' : pct === 0 ? 'PHASE 1' : pct < 30 ? 'PHASE 2' : pct < 60 ? 'PHASE 3' : pct < 85 ? 'PHASE 4' : 'PHASE 5'}
+        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 15, fontWeight: 700, color: accentColor }}>{pct}%</span>
+          <button
+            style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.25)', cursor: 'pointer', padding: 4, borderRadius: 4, lineHeight: 0 }}
+            onClick={e => { e.stopPropagation(); onDelete() }}
+            title="Delete project">
+            {Icons.trash}
+          </button>
         </div>
       </div>
-      <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-        <button style={s.primaryBtn} onClick={() => onOpen(proj.id)}>OPEN</button>
-        <button style={{ ...s.iconBtn, padding: '6px 8px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6 }} onClick={() => onDelete(proj.id)} title="Delete project">
-          {Icons.trash}
-        </button>
+
+      {/* Name */}
+      <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 5, lineHeight: 1.25, color: '#FFFFFF', fontFamily: "'Chakra Petch', sans-serif" }}>
+        {proj.name}
+      </div>
+
+      {/* Client */}
+      {proj.client && (
+        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', marginBottom: 3, fontWeight: 500, fontFamily: "'IBM Plex Mono', monospace" }}>
+          {proj.client}
+        </div>
+      )}
+
+      {/* Site */}
+      {proj.site && (
+        <div style={{ display: 'flex', alignItems: 'center', fontSize: 11, color: 'rgba(255,255,255,0.4)', fontFamily: "'IBM Plex Mono', monospace" }}>
+          <svg width="10" height="10" viewBox="0 0 14 14" fill="none" style={{ marginRight: 4, opacity: 0.5 }}>
+            <circle cx="7" cy="6" r="2.5" stroke="currentColor" strokeWidth="1.3"/>
+            <path d="M7 1C4.24 1 2 3.24 2 6c0 3.5 5 7 5 7s5-3.5 5-7c0-2.76-2.24-5-5-5z" stroke="currentColor" strokeWidth="1.3" fill="none"/>
+          </svg>
+          {proj.site}
+        </div>
+      )}
+
+      {/* Progress bar */}
+      <div style={{ marginTop: 16, marginBottom: 6 }}>
+        <div style={{ height: 7, background: 'rgba(255,255,255,0.07)', borderRadius: 4, overflow: 'hidden' }}>
+          <div style={{ height: '100%', borderRadius: 4, transition: 'width 0.6s ease', width: `${pct}%`, background: `linear-gradient(90deg, ${accentColor}cc, ${accentColor})`, boxShadow: `0 0 6px ${accentColor}55` }} />
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+        <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>
+          {proj.doneTasks} / {proj.totalTasks} tasks
+        </span>
+        <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', fontFamily: "'IBM Plex Mono', monospace" }}>
+          {new Date(proj.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+        </span>
       </div>
     </div>
   )
