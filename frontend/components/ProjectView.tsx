@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useCallback } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { s, progressColor } from '@/lib/styles'
 import { Icons } from '@/lib/icons'
@@ -99,6 +99,11 @@ export default function ProjectView({ projectId, onBack }: Props) {
 
   const invalidate = useCallback(() => qc.invalidateQueries({ queryKey: ['project', projectId] }), [qc, projectId])
 
+  const deleteMutation = useMutation({
+    mutationFn: () => api.projects.delete(projectId),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['projects'] }); onBack() },
+  })
+
   // ── Cache update helpers — write JSON string to DB then re-fetch ──────────
   const updateMapCache = useCallback(async (data: unknown) => {
     try {
@@ -190,6 +195,15 @@ export default function ProjectView({ projectId, onBack }: Props) {
             <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, fontWeight: 700, color: '#E53935', lineHeight: 1 }}>{overallPct}%</span>
           </div>
         </div>
+
+        {/* Delete project */}
+        <button
+          style={{ ...s.ghostBtn, flexShrink: 0, color: 'rgba(255,255,255,0.35)', borderColor: 'transparent' }}
+          onClick={() => { if (window.confirm(`Delete "${project.name}"? This cannot be undone.`)) deleteMutation.mutate() }}
+          disabled={deleteMutation.isPending}
+          title="Delete project">
+          {Icons.trash}
+        </button>
 
         {/* View mode tab bar */}
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
