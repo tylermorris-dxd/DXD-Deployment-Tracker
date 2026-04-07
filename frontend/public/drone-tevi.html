@@ -14,15 +14,8 @@
 </head>
 <body>
   <div id="root"></div>
-  <div id="err" style="color:#f87171;padding:20px;font-family:monospace;display:none"></div>
-  <script>
-    window.onerror = function(msg,src,line,col,err){
-      var el=document.getElementById('err');
-      el.style.display='block';
-      el.textContent='JS ERROR: '+msg+' ('+src+':'+line+')';
-    };
-  </script>
-  <script type="text/babel" data-presets="react">
+  <div id="err" style="color:#f87171;padding:20px;font-family:monospace;white-space:pre-wrap;display:none"></div>
+  <script id="app-src" type="text/plain">
 const { useState, useReducer } = React;
 
 
@@ -1415,13 +1408,23 @@ function App(){
   );
 }
 
-try {
-  ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-} catch(e) {
-  var el=document.getElementById('err');
-  el.style.display='block';
-  el.textContent='RENDER ERROR: '+e.message;
-}
+  </script>
+  <script>
+    function showErr(msg) {
+      var el = document.getElementById('err');
+      el.style.display = 'block';
+      el.textContent = msg;
+    }
+    window.addEventListener('load', function() {
+      try {
+        var src = document.getElementById('app-src').textContent;
+        var result = Babel.transform(src, { presets: ['react'] });
+        eval(result.code);
+        ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+      } catch(e) {
+        showErr('ERROR: ' + e.message + (e.stack ? '\n\n' + e.stack : ''));
+      }
+    });
   </script>
 </body>
 </html>
