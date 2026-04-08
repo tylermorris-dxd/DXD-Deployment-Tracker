@@ -1139,9 +1139,9 @@ function setMode(m){
 
   else{if(!hb){hb=document.createElement('div');hb.id='hint-bar';hb.style.cssText='position:absolute;bottom:28px;left:50%;transform:translateX(-50%);background:rgba(8,8,8,.9);color:#888;font-family:\'Barlow Condensed\',sans-serif;font-size:9px;letter-spacing:2px;padding:3px 12px;pointer-events:none;white-space:nowrap;z-index:600;text-transform:uppercase;border:1px solid #2a2a2a;';document.getElementById('body').appendChild(hb);}hb.style.display='';hb.textContent=HINTS[m]||'';}
 
-  if(m==='select'||m==='move'){map.dragging.enable();map.getContainer().style.cursor=m==='move'?'crosshair':'';}
-
-  else{map.dragging.disable();map.getContainer().style.cursor='crosshair';}
+  // Only rect/circle need drag disabled (they use mousedown→drag to draw)
+  if(m==='rect'||m==='circle'){map.dragging.disable();}else{map.dragging.enable();}
+  map.getContainer().style.cursor=(m==='select')?'':(m==='move'?'crosshair':'crosshair');
 
   if(m!=='select')closeEdit();
 
