@@ -298,6 +298,8 @@ select option{background:var(--blk3);}
 
     <button class="hbtn" onclick="showPrintPreview()">🖨 PRINT PREVIEW</button>
 
+    <button class="hbtn" id="btn-fs" onclick="toggleFullscreen()" style="border-color:#446688;color:#6699bb;">⛶ FULL SCREEN</button>
+
     <div class="draft">DRAFT — PLANNING USE ONLY</div>
 
   </div>
@@ -1617,6 +1619,30 @@ function exportCSV(){var rows=[['ID','LABEL','TYPE','ZONE TYPE','SCOPE','COA','C
 
 
 document.getElementById('opa').addEventListener('input',function(){document.getElementById('opa-lbl').textContent=this.value+'%';});
+
+// ── Fullscreen ────────────────────────────────────────────────
+function toggleFullscreen(){
+  if(!document.fullscreenElement){
+    document.documentElement.requestFullscreen().catch(function(){});
+  } else {
+    document.exitFullscreen().catch(function(){});
+  }
+}
+document.addEventListener('fullscreenchange',function(){
+  var btn=document.getElementById('btn-fs');
+  if(!btn)return;
+  if(document.fullscreenElement){
+    btn.textContent='⛶ EXIT FULL SCREEN';
+    btn.style.background='rgba(68,102,136,0.2)';
+    btn.style.borderColor='#6699bb';
+    btn.style.color='#aaccee';
+  } else {
+    btn.textContent='⛶ FULL SCREEN';
+    btn.style.background='';
+    btn.style.borderColor='#446688';
+    btn.style.color='#6699bb';
+  }
+});
 
 document.getElementById('legend-body').style.flex='1';
 
