@@ -318,6 +318,18 @@ select option{background:var(--blk3);}
 
   <button class="tbtn" id="btn-marker" onclick="setMode('marker')">⊕ MARKER</button>
 
+  <button class="tbtn" id="btn-dock"   onclick="setMode('dock')">🏠 DOCK</button>
+
+  <select id="dock-model" style="font-family:'Barlow Condensed',sans-serif;font-size:9px;letter-spacing:1px;padding:2px 4px;width:100px;" title="Dock model">
+    <option value="dji-dock-3">DJI DOCK 3</option>
+    <option value="skydio-x10">SKYDIO X10</option>
+    <option value="sunflower">SUNFLOWER</option>
+  </select>
+
+  <button class="tbtn" id="btn-measure" onclick="setMode('measure')">📏 MEASURE</button>
+
+  <button class="tbtn" id="btn-boundary" onclick="setMode('boundary')">⬡ BOUNDARY</button>
+
   <div class="tsep"></div>
 
   <input type="color" id="col" value="#cc1111">
@@ -538,6 +550,33 @@ select option{background:var(--blk3);}
 
       <div id="layers-body" style="height:180px;flex-shrink:0;overflow-y:auto;padding:6px 8px;"></div>
 
+      <div class="sec-hdr" onclick="toggleSection('docks')">
+        <div class="sec-title"><span id="docks-arrow">▼</span> 🏠 DOCKS</div>
+        <div class="sec-acts" onclick="event.stopPropagation()">
+          <button class="pact" onclick="setMode('dock')">+ PLACE</button>
+          <button class="pact" id="docks-toggle-btn" onclick="toggleSection('docks')">COLLAPSE</button>
+        </div>
+      </div>
+      <div id="docks-body" style="height:100px;flex-shrink:0;overflow-y:auto;padding:6px 8px;"><div id="dock-list" style="font-size:9px;color:var(--grey2);font-family:'Barlow Condensed',sans-serif;letter-spacing:1px;">NO DOCKS PLACED</div></div>
+
+      <div class="sec-hdr" onclick="toggleSection('measures')">
+        <div class="sec-title"><span id="measures-arrow">▼</span> 📏 DISTANCES</div>
+        <div class="sec-acts" onclick="event.stopPropagation()">
+          <button class="pact" onclick="setMode('measure')">+ MEASURE</button>
+          <button class="pact" id="measures-toggle-btn" onclick="toggleSection('measures')">COLLAPSE</button>
+        </div>
+      </div>
+      <div id="measures-body" style="height:100px;flex-shrink:0;overflow-y:auto;padding:6px 8px;"><div id="measure-list" style="font-size:9px;color:var(--grey2);font-family:'Barlow Condensed',sans-serif;letter-spacing:1px;">NO MEASUREMENTS</div></div>
+
+      <div class="sec-hdr" onclick="toggleSection('boundaries')">
+        <div class="sec-title"><span id="boundaries-arrow">▼</span> ⬡ BOUNDARIES</div>
+        <div class="sec-acts" onclick="event.stopPropagation()">
+          <button class="pact" onclick="setMode('boundary')">+ DRAW</button>
+          <button class="pact" id="boundaries-toggle-btn" onclick="toggleSection('boundaries')">COLLAPSE</button>
+        </div>
+      </div>
+      <div id="boundaries-body" style="height:100px;flex-shrink:0;overflow-y:auto;padding:6px 8px;"><div id="boundary-list" style="font-size:9px;color:var(--grey2);font-family:'Barlow Condensed',sans-serif;letter-spacing:1px;">NO BOUNDARIES</div></div>
+
     </div>
 
     <div id="tab-teams" class="sb-panel">
@@ -656,7 +695,7 @@ var S={
 
   leafletLayers:{},linePoints:[],lineTempLayer:null,lineTempMarkers:[],
 
-  labelsVisible:true,sections:{legend:true,layers:true},sbTab:'map',
+  labelsVisible:true,sections:{legend:true,layers:true,docks:true,measures:true,boundaries:true},sbTab:'map',
 
   _hoverLayerId:null
 
@@ -948,6 +987,8 @@ function switchSBTab(tab){
 
 // ── Section collapse ──────────────────────────────────────────
 
+var FIXED_HEIGHT_SECS={layers:'180px',docks:'100px',measures:'100px',boundaries:'100px'};
+
 function toggleSection(sec){
 
   S.sections[sec]=!S.sections[sec];
@@ -958,7 +999,7 @@ function toggleSection(sec){
 
   var btn=document.getElementById(sec+'-toggle-btn');
 
-  if(sec==='layers'){body.style.height=S.sections[sec]?'180px':'0';body.style.overflow=S.sections[sec]?'auto':'hidden';body.style.padding=S.sections[sec]?'6px 8px':'0 8px';}
+  if(FIXED_HEIGHT_SECS[sec]){body.style.height=S.sections[sec]?FIXED_HEIGHT_SECS[sec]:'0';body.style.overflow=S.sections[sec]?'auto':'hidden';body.style.padding=S.sections[sec]?'6px 8px':'0 8px';}
 
   else{if(S.sections[sec]){body.style.flex='1';body.style.minHeight='0';body.style.overflow='auto';}else{body.style.flex='0 0 0';body.style.overflow='hidden';}}
 
@@ -1053,9 +1094,9 @@ map.on('click',function(e){
 
 });
 
-map.on('contextmenu',function(e){if(S.mode==='line'&&S.linePoints.length>=2)finalizeLine();});
+map.on('contextmenu',function(e){if(S.mode==='line'&&S.linePoints.length>=2)finalizeLine();else if(S.mode==='measure'&&S.measurePts.length>=2)finalizeMeasure();else if(S.mode==='boundary'&&S.boundaryPts.length>=3)finalizeBoundary();});
 
-map.on('dblclick',function(e){if(S.mode==='line'&&S.linePoints.length>=2){L.DomEvent.stopPropagation(e);finalizeLine();}});
+map.on('dblclick',function(e){L.DomEvent.stopPropagation(e);if(S.mode==='line'&&S.linePoints.length>=2)finalizeLine();else if(S.mode==='measure'&&S.measurePts.length>=2)finalizeMeasure();else if(S.mode==='boundary'&&S.boundaryPts.length>=3)finalizeBoundary();});
 
 
 
@@ -1069,13 +1110,13 @@ function toggleLayerLabel(id){var meta=getMeta(id);if(!meta)return;meta.labelHid
 
 // ── Mode ──────────────────────────────────────────────────────
 
-var HINTS={move:'MOVE — CLICK SHAPE THEN NEW LOCATION',rect:'AOR BOX — CLICK & DRAG',circle:'CIRCLE — CLICK CENTER, DRAG RADIUS',line:'LINE — CLICK POINTS · RIGHT-CLICK TO FINISH',marker:'MARKER — CLICK TO PLACE'};
+var HINTS={move:'MOVE — CLICK SHAPE THEN NEW LOCATION',rect:'AOR BOX — CLICK & DRAG',circle:'CIRCLE — CLICK CENTER, DRAG RADIUS',line:'LINE — CLICK POINTS · RIGHT-CLICK TO FINISH',marker:'MARKER — CLICK TO PLACE',dock:'DOCK — CLICK TO PLACE DOCK + FLIGHT RINGS',measure:'MEASURE — CLICK POINTS · RIGHT-CLICK TO FINISH SEGMENT',boundary:'BOUNDARY — CLICK POINTS · RIGHT-CLICK TO CLOSE POLYGON'};
 
 function setMode(m){
 
   S.mode=m;S.dragging=false;S.dragStart=null;S.moving=false;S.moveLayerId=null;
 
-  clearPreview();clearLineTemp();S.linePoints=[];
+  clearPreview();clearLineTemp();S.linePoints=[];clearMeasureTemp();S.measurePts=[];clearBoundaryTemp();S.boundaryPts=[];
 
   document.querySelectorAll('.tbtn[id^="btn-"]').forEach(function(b){b.classList.remove('active');});
 
@@ -1111,7 +1152,7 @@ function bnds(a,b){return[[Math.min(a.lat,b.lat),Math.min(a.lng,b.lng)],[Math.ma
 
 function clearPreview(){if(S.previewLayer){map.removeLayer(S.previewLayer);S.previewLayer=null;}}
 
-function onMapClick(e){if(S.dragging)return;var col=document.getElementById('col').value,op=parseInt(document.getElementById('opa').value)/100;var lbl=document.getElementById('lbl').value||'',zt=document.getElementById('ztype').value;if(S.mode==='move'){if(!S.moving){var h=hitTest(e.latlng);if(h){S.moving=true;S.moveLayerId=h;var hb=document.getElementById('hint-bar');if(hb)hb.textContent='CLICK NEW LOCATION FOR: '+(getMeta(h).label||getMeta(h).ztype);}}else{moveLayerTo(S.moveLayerId,e.latlng);S.moving=false;S.moveLayerId=null;var hb=document.getElementById('hint-bar');if(hb)hb.textContent=HINTS['move'];}return;}if(S.mode==='marker'){placeMarker(e.latlng,col,op,lbl,zt);return;}if(S.mode==='line'){S.linePoints.push(e.latlng);updateLineTemp();return;}}
+function onMapClick(e){if(S.dragging)return;var col=document.getElementById('col').value,op=parseInt(document.getElementById('opa').value)/100;var lbl=document.getElementById('lbl').value||'',zt=document.getElementById('ztype').value;if(S.mode==='move'){if(!S.moving){var h=hitTest(e.latlng);if(h){S.moving=true;S.moveLayerId=h;var hb=document.getElementById('hint-bar');if(hb)hb.textContent='CLICK NEW LOCATION FOR: '+(getMeta(h).label||getMeta(h).ztype);}}else{moveLayerTo(S.moveLayerId,e.latlng);S.moving=false;S.moveLayerId=null;var hb=document.getElementById('hint-bar');if(hb)hb.textContent=HINTS['move'];}return;}if(S.mode==='marker'){placeMarker(e.latlng,col,op,lbl,zt);return;}if(S.mode==='line'){S.linePoints.push(e.latlng);updateLineTemp();return;}if(S.mode==='dock'){placeDock(e.latlng);return;}if(S.mode==='measure'){S.measurePts.push(e.latlng);updateMeasureTemp();return;}if(S.mode==='boundary'){S.boundaryPts.push(e.latlng);updateBoundaryTemp();return;}}
 
 function hitTest(ll){var vl=visibleLayers();for(var i=vl.length-1;i>=0;i--){var l=vl[i];if(!l.visible)continue;var lf=S.leafletLayers[l.id];if(!lf)continue;if(l.type==='rect'&&lf.getBounds().contains(ll))return l.id;if(l.type==='circle'&&ll.distanceTo(lf.getLatLng())<=lf.getRadius())return l.id;if(l.type==='marker'&&ll.distanceTo(lf.getLatLng())<=30/map.getZoom())return l.id;}return null;}
 
@@ -1170,6 +1211,242 @@ function flyToLayer(id){var meta=getMeta(id);var lf=S.leafletLayers[id];if(!lf)r
 function reorderLayer(id,dir){var idx=S.layers.findIndex(function(l){return l.id===id;});if(idx<0)return;moveArr(S.layers,idx,dir);renderMapTab();}
 
 
+
+// ── DOCK PLACEMENT ───────────────────────────────────────────
+
+var DOCK_MODELS={
+  'dji-dock-3':  {label:'DJI DOCK 3',   speedMph:33, launchDelaySec:30, color:'#2dd4bf'},
+  'skydio-x10':  {label:'SKYDIO X10',   speedMph:45, launchDelaySec:20, color:'#f59e0b'},
+  'sunflower':   {label:'SUNFLOWER',    speedMph:9,  launchDelaySec:5,  color:'#a78bfa'}
+};
+var DOCK_RING_TIMES=[60,90,120,150,180,210];// seconds
+var DOCK_RING_COLORS=['#FFFFFF','#FF2020','#39FF14','#FF8C00','#60a5fa','#f472b6'];
+var M_PER_MILE=1609.344;
+var dockGroups=[];// {id, leafletLayers:[...], meta}
+
+function placeDock(ll){
+  var modelKey=document.getElementById('dock-model').value;
+  var model=DOCK_MODELS[modelKey];
+  var speedMs=model.speedMph*M_PER_MILE/3600;
+  var layers=[];
+  var id='DOCK'+Date.now();
+
+  // Dock icon
+  var iconHtml='<div style="width:28px;height:28px;background:'+model.color+';border:2px solid #fff;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 6px rgba(0,0,0,.8);">🏠</div>';
+  var icon=L.divIcon({html:iconHtml,iconSize:[28,28],iconAnchor:[14,14],className:''});
+  var marker=L.marker(ll,{icon:icon,zIndexOffset:1000});
+  var label=model.label+'\n'+model.speedMph+' MPH';
+  marker.bindTooltip(label,{permanent:true,direction:'top',offset:[0,-16],className:'uas-tip'});
+  marker.addTo(map);
+  layers.push(marker);
+
+  // Flight time rings
+  DOCK_RING_TIMES.forEach(function(sec,i){
+    var flySec=Math.max(0,sec-model.launchDelaySec);
+    var radiusM=flySec*speedMs;
+    if(radiusM<1)return;
+    var col=DOCK_RING_COLORS[i]||'#fff';
+    var ring=L.circle(ll,{radius:radiusM,color:col,weight:1.5,fillOpacity:0,dashArray:'4,6',interactive:false});
+    var ft=Math.round(radiusM*3.28084);
+    ring.bindTooltip(sec+'s / '+ft+'ft',{permanent:false,direction:'right',className:'uas-tip'});
+    ring.addTo(map);
+    layers.push(ring);
+  });
+
+  dockGroups.push({id:id,ll:[ll.lat,ll.lng],modelKey:modelKey,layers:layers});
+  setMode('select');
+  renderDockList();
+}
+
+function removeDock(id){
+  var idx=dockGroups.findIndex(function(d){return d.id===id;});
+  if(idx<0)return;
+  dockGroups[idx].layers.forEach(function(lf){map.removeLayer(lf);});
+  dockGroups.splice(idx,1);
+  renderDockList();
+}
+
+function renderDockList(){
+  var el=document.getElementById('dock-list');
+  if(!el)return;
+  if(!dockGroups.length){el.innerHTML='<div style="font-size:9px;color:var(--grey2);font-family:\'Barlow Condensed\',sans-serif;letter-spacing:1px;">NO DOCKS PLACED</div>';return;}
+  el.innerHTML=dockGroups.map(function(d){
+    var m=DOCK_MODELS[d.modelKey]||{label:d.modelKey,color:'#fff'};
+    return '<div style="display:flex;align-items:center;gap:4px;padding:3px 5px;background:var(--blk4);border:1px solid var(--bdr);margin-bottom:2px;font-family:\'Barlow Condensed\',sans-serif;font-size:9px;letter-spacing:1px;">'+
+      '<span style="width:8px;height:8px;background:'+m.color+';flex-shrink:0;border-radius:1px;"></span>'+
+      '<span style="flex:1;color:var(--wht);">'+m.label+'</span>'+
+      '<span style="color:var(--grey2);font-size:8px;">'+d.ll[0].toFixed(4)+','+d.ll[1].toFixed(4)+'</span>'+
+      '<span onclick="removeDock(\''+d.id+'\')" style="cursor:pointer;color:var(--red);margin-left:3px;font-size:10px;">✕</span>'+
+    '</div>';
+  }).join('');
+}
+
+// ── MEASURE DISTANCES ─────────────────────────────────────────
+
+S.measurePts=[];
+var measureTempLayer=null;
+var measureTempMarkers=[];
+var measureSegments=[];// {id, lf, labelLf, pts, distFt}
+
+function updateMeasureTemp(){
+  clearMeasureTemp();
+  if(S.measurePts.length>=2){
+    measureTempLayer=L.polyline(S.measurePts,{color:'#fbbf24',weight:2,dashArray:'6,4',interactive:false}).addTo(map);
+    var d=totalDistFt(S.measurePts);
+    measureTempLayer.bindTooltip(fmtFt(d),{permanent:true,direction:'center',className:'uas-tip',interactive:false});
+  }
+  S.measurePts.forEach(function(p){
+    var m=L.circleMarker(p,{radius:3,color:'#fbbf24',fillColor:'#fbbf24',fillOpacity:1,weight:1,interactive:false}).addTo(map);
+    measureTempMarkers.push(m);
+  });
+}
+
+function clearMeasureTemp(){
+  if(measureTempLayer){map.removeLayer(measureTempLayer);measureTempLayer=null;}
+  measureTempMarkers.forEach(function(m){map.removeLayer(m);});
+  measureTempMarkers=[];
+}
+
+function finalizeMeasure(){
+  if(S.measurePts.length<2)return;
+  var pts=S.measurePts.slice();
+  var d=totalDistFt(pts);
+  var id='MSR'+Date.now();
+  var lf=L.polyline(pts,{color:'#fbbf24',weight:2,interactive:true});
+  lf.bindTooltip(fmtFt(d),{permanent:true,direction:'center',className:'uas-tip'});
+  lf.on('click',function(e){L.DomEvent.stopPropagation(e);});
+  lf.addTo(map);
+  measureSegments.push({id:id,lf:lf,pts:pts,distFt:d});
+  clearMeasureTemp();
+  S.measurePts=[];
+  renderMeasureList();
+}
+
+function removeMeasure(id){
+  var idx=measureSegments.findIndex(function(s){return s.id===id;});
+  if(idx<0)return;
+  map.removeLayer(measureSegments[idx].lf);
+  measureSegments.splice(idx,1);
+  renderMeasureList();
+}
+
+function totalDistFt(pts){
+  var m=0;
+  for(var i=1;i<pts.length;i++)m+=pts[i-1].distanceTo(pts[i]);
+  return m*3.28084;
+}
+
+function fmtFt(ft){
+  if(ft>=5280)return (ft/5280).toFixed(2)+' mi ('+Math.round(ft).toLocaleString()+' ft)';
+  return Math.round(ft).toLocaleString()+' ft';
+}
+
+function renderMeasureList(){
+  var el=document.getElementById('measure-list');
+  if(!el)return;
+  if(!measureSegments.length){el.innerHTML='<div style="font-size:9px;color:var(--grey2);font-family:\'Barlow Condensed\',sans-serif;letter-spacing:1px;">NO MEASUREMENTS</div>';return;}
+  el.innerHTML=measureSegments.map(function(s,i){
+    return '<div style="display:flex;align-items:center;gap:4px;padding:3px 5px;background:var(--blk4);border:1px solid var(--bdr);margin-bottom:2px;font-family:\'Barlow Condensed\',sans-serif;font-size:9px;letter-spacing:1px;">'+
+      '<span style="color:var(--grey2);min-width:12px;">'+(i+1)+'</span>'+
+      '<span style="flex:1;color:#fbbf24;">'+fmtFt(s.distFt)+'</span>'+
+      '<span style="color:var(--grey2);font-size:8px;">'+s.pts.length+' PTS</span>'+
+      '<span onclick="removeMeasure(\''+s.id+'\')" style="cursor:pointer;color:var(--red);margin-left:3px;font-size:10px;">✕</span>'+
+    '</div>';
+  }).join('');
+}
+
+// ── BOUNDARY POLYGON ──────────────────────────────────────────
+
+S.boundaryPts=[];
+var boundaryTempPoly=null;
+var boundaryTempMarkers=[];
+var boundaryPolys=[];// {id, lf, acres, perimFt}
+
+function updateBoundaryTemp(){
+  clearBoundaryTemp();
+  S.boundaryPts.forEach(function(p){
+    var m=L.circleMarker(p,{radius:3,color:'#86efac',fillColor:'#86efac',fillOpacity:1,weight:1,interactive:false}).addTo(map);
+    boundaryTempMarkers.push(m);
+  });
+  if(S.boundaryPts.length>=3){
+    boundaryTempPoly=L.polygon(S.boundaryPts,{color:'#86efac',weight:2,fillColor:'#86efac',fillOpacity:0.12,dashArray:'6,4',interactive:false}).addTo(map);
+    var ac=polyAcres(S.boundaryPts);
+    var ft=polyPerimFt(S.boundaryPts);
+    boundaryTempPoly.bindTooltip(ac.toFixed(2)+' ac\n'+Math.round(ft).toLocaleString()+' ft perim',{permanent:true,direction:'center',className:'uas-tip'});
+  }
+}
+
+function clearBoundaryTemp(){
+  if(boundaryTempPoly){map.removeLayer(boundaryTempPoly);boundaryTempPoly=null;}
+  boundaryTempMarkers.forEach(function(m){map.removeLayer(m);});
+  boundaryTempMarkers=[];
+}
+
+function finalizeBoundary(){
+  if(S.boundaryPts.length<3)return;
+  var pts=S.boundaryPts.slice();
+  var ac=polyAcres(pts);
+  var ft=polyPerimFt(pts);
+  var id='BND'+Date.now();
+  var lf=L.polygon(pts,{color:'#86efac',weight:2,fillColor:'#86efac',fillOpacity:0.1,interactive:true});
+  var tip=ac.toFixed(2)+' ac  |  '+Math.round(ft).toLocaleString()+' ft';
+  lf.bindTooltip(tip,{permanent:true,direction:'center',className:'uas-tip'});
+  lf.on('click',function(e){L.DomEvent.stopPropagation(e);});
+  lf.addTo(map);
+  boundaryPolys.push({id:id,lf:lf,pts:pts,acres:ac,perimFt:ft});
+  clearBoundaryTemp();
+  S.boundaryPts=[];
+  renderBoundaryList();
+}
+
+function removeBoundary(id){
+  var idx=boundaryPolys.findIndex(function(b){return b.id===id;});
+  if(idx<0)return;
+  map.removeLayer(boundaryPolys[idx].lf);
+  boundaryPolys.splice(idx,1);
+  renderBoundaryList();
+}
+
+// Shoelace formula in meters² → acres
+function polyAcres(pts){
+  var area=0;
+  var n=pts.length;
+  for(var i=0;i<n;i++){
+    var j=(i+1)%n;
+    var a=L.latLng(pts[i]),b=L.latLng(pts[j]);
+    var aX=a.lng*(Math.PI/180)*6378137*Math.cos(a.lat*(Math.PI/180));
+    var aY=a.lat*(Math.PI/180)*6378137;
+    var bX=b.lng*(Math.PI/180)*6378137*Math.cos(b.lat*(Math.PI/180));
+    var bY=b.lat*(Math.PI/180)*6378137;
+    area+=aX*bY-bX*aY;
+  }
+  var m2=Math.abs(area)/2;
+  return m2/4046.8564;// m² → acres
+}
+
+function polyPerimFt(pts){
+  var m=0;
+  var n=pts.length;
+  for(var i=0;i<n;i++){
+    var j=(i+1)%n;
+    m+=L.latLng(pts[i]).distanceTo(L.latLng(pts[j]));
+  }
+  return m*3.28084;
+}
+
+function renderBoundaryList(){
+  var el=document.getElementById('boundary-list');
+  if(!el)return;
+  if(!boundaryPolys.length){el.innerHTML='<div style="font-size:9px;color:var(--grey2);font-family:\'Barlow Condensed\',sans-serif;letter-spacing:1px;">NO BOUNDARIES</div>';return;}
+  el.innerHTML=boundaryPolys.map(function(b,i){
+    return '<div style="display:flex;align-items:center;gap:4px;padding:3px 5px;background:var(--blk4);border:1px solid var(--bdr);margin-bottom:2px;font-family:\'Barlow Condensed\',sans-serif;font-size:9px;letter-spacing:1px;">'+
+      '<span style="color:var(--grey2);min-width:12px;">'+(i+1)+'</span>'+
+      '<span style="color:#86efac;flex:1;">'+b.acres.toFixed(2)+' ac</span>'+
+      '<span style="color:var(--grey);font-size:8px;">'+Math.round(b.perimFt).toLocaleString()+' ft</span>'+
+      '<span onclick="removeBoundary(\''+b.id+'\')" style="cursor:pointer;color:var(--red);margin-left:3px;font-size:10px;">✕</span>'+
+    '</div>';
+  }).join('');
+}
 
 // ── Render MAP tab ────────────────────────────────────────────
 
