@@ -376,6 +376,8 @@ select option{background:var(--blk3);}
 
   <div id="hover-tip" class="map-hover-tip"></div>
 
+  <button id="close-boundary-btn" onclick="finalizeBoundary()" style="display:none;position:absolute;bottom:36px;left:50%;transform:translateX(-50%);z-index:700;background:rgba(134,239,172,0.15);border:2px solid #86efac;color:#86efac;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:3px;padding:6px 20px;cursor:pointer;text-transform:uppercase;white-space:nowrap;clip-path:polygon(8px 0%,100% 0%,calc(100% - 8px) 100%,0% 100%);">⬡ CLOSE BOUNDARY</button>
+
 
 
   <!-- OVERLAY PANEL — absolutely positioned, never touches map div -->
@@ -1101,9 +1103,9 @@ map.on('click',function(e){
 
 });
 
-map.on('contextmenu',function(e){if(S.mode==='line'&&S.linePoints.length>=2)finalizeLine();else if(S.mode==='measure'&&S.measurePts.length>=2)finalizeMeasure();else if(S.mode==='boundary'&&S.boundaryPts.length>=3)finalizeBoundary();});
+map.on('contextmenu',function(e){if(S.mode==='line'&&S.linePoints.length>=2)finalizeLine();else if(S.mode==='measure'&&S.measurePts.length>=2)finalizeMeasure();});
 
-map.on('dblclick',function(e){L.DomEvent.stopPropagation(e);if(S.mode==='line'&&S.linePoints.length>=2)finalizeLine();else if(S.mode==='measure'&&S.measurePts.length>=2)finalizeMeasure();else if(S.mode==='boundary'&&S.boundaryPts.length>=3)finalizeBoundary();});
+map.on('dblclick',function(e){L.DomEvent.stopPropagation(e);if(S.mode==='line'&&S.linePoints.length>=2)finalizeLine();else if(S.mode==='measure'&&S.measurePts.length>=2)finalizeMeasure();});
 
 
 
@@ -1117,13 +1119,13 @@ function toggleLayerLabel(id){var meta=getMeta(id);if(!meta)return;meta.labelHid
 
 // ── Mode ──────────────────────────────────────────────────────
 
-var HINTS={move:'MOVE — CLICK SHAPE THEN NEW LOCATION',rect:'AOR BOX — CLICK & DRAG',circle:'CIRCLE — CLICK CENTER, DRAG RADIUS',line:'LINE — CLICK POINTS · RIGHT-CLICK TO FINISH',marker:'MARKER — CLICK TO PLACE',dock:'DOCK — CLICK TO PLACE DOCK + FLIGHT RINGS',measure:'MEASURE — CLICK POINTS · RIGHT-CLICK TO FINISH SEGMENT',boundary:'BOUNDARY — CLICK POINTS · RIGHT-CLICK TO CLOSE POLYGON'};
+var HINTS={move:'MOVE — CLICK SHAPE THEN NEW LOCATION',rect:'AOR BOX — CLICK & DRAG',circle:'CIRCLE — CLICK CENTER, DRAG RADIUS',line:'LINE — CLICK POINTS · RIGHT-CLICK TO FINISH',marker:'MARKER — CLICK TO PLACE',dock:'DOCK — CLICK TO PLACE DOCK + FLIGHT RINGS',measure:'MEASURE — CLICK POINTS · RIGHT-CLICK TO FINISH SEGMENT',boundary:'BOUNDARY — CLICK POINTS · CLICK CLOSE BOUNDARY BUTTON TO FINISH (3+ POINTS)'};
 
 function setMode(m){
 
   S.mode=m;S.dragging=false;S.dragStart=null;S.moving=false;S.moveLayerId=null;
 
-  clearPreview();clearLineTemp();S.linePoints=[];clearMeasureTemp();S.measurePts=[];clearBoundaryTemp();S.boundaryPts=[];
+  clearPreview();clearLineTemp();S.linePoints=[];clearMeasureTemp();S.measurePts=[];clearBoundaryTemp();S.boundaryPts=[];updateCloseBoundaryBtn();
 
   document.querySelectorAll('.tbtn[id^="btn-"]').forEach(function(b){b.classList.remove('active');});
 
@@ -1442,11 +1444,19 @@ function updateBoundaryTemp(){
     boundaryTempMarkers.push(m);
   });
   if(S.boundaryPts.length>=3){
-    boundaryTempPoly=L.polygon(S.boundaryPts,{color:'#86efac',weight:2,fillColor:'#86efac',fillOpacity:0.12,dashArray:'6,4',interactive:false}).addTo(map);
+    boundaryTempPoly=L.polygon(S.boundaryPts,{color:'#86efac',weight:2,fillColor:'#86efac',fillOpacity:0.08,dashArray:'6,4',interactive:false}).addTo(map);
     var ac=polyAcres(S.boundaryPts);
     var ft=polyPerimFt(S.boundaryPts);
-    boundaryTempPoly.bindTooltip(ac.toFixed(2)+' ac\n'+Math.round(ft).toLocaleString()+' ft perim',{permanent:true,direction:'center',className:'uas-tip'});
+    boundaryTempPoly.bindTooltip(ac.toFixed(2)+' ac  |  '+Math.round(ft).toLocaleString()+' ft perim',{permanent:true,direction:'center',className:'uas-tip'});
   }
+  updateCloseBoundaryBtn();
+}
+
+function updateCloseBoundaryBtn(){
+  var btn=document.getElementById('close-boundary-btn');
+  if(!btn)return;
+  var show=S.mode==='boundary'&&S.boundaryPts.length>=3;
+  btn.style.display=show?'block':'none';
 }
 
 function clearBoundaryTemp(){
@@ -1461,15 +1471,16 @@ function finalizeBoundary(){
   var ac=polyAcres(pts);
   var ft=polyPerimFt(pts);
   var id='BND'+Date.now();
-  var lf=L.polygon(pts,{color:'#86efac',weight:2,fillColor:'#86efac',fillOpacity:0.1,interactive:true});
-  var tip=ac.toFixed(2)+' ac  |  '+Math.round(ft).toLocaleString()+' ft';
+  var lf=L.polygon(pts,{color:'#86efac',weight:2,fillColor:'#86efac',fillOpacity:0.08,interactive:false,bubblingMouseEvents:false});
+  var tip=ac.toFixed(2)+' ac  |  '+Math.round(ft).toLocaleString()+' ft perim';
   lf.bindTooltip(tip,{permanent:true,direction:'center',className:'uas-tip'});
-  lf.on('click',function(e){L.DomEvent.stopPropagation(e);});
   lf.addTo(map);
   boundaryPolys.push({id:id,lf:lf,pts:pts,acres:ac,perimFt:ft});
   clearBoundaryTemp();
   S.boundaryPts=[];
+  updateCloseBoundaryBtn();
   renderBoundaryList();
+  // stay in boundary mode so user can draw another immediately
 }
 
 function removeBoundary(id){
@@ -1507,6 +1518,11 @@ function polyPerimFt(pts){
   return m*3.28084;
 }
 
+function flyToBoundary(id){
+  var b=boundaryPolys.find(function(x){return x.id===id;});
+  if(b)map.flyToBounds(b.lf.getBounds(),{padding:[40,40],duration:0.8});
+}
+
 function renderBoundaryList(){
   var el=document.getElementById('boundary-list');
   if(!el)return;
@@ -1516,7 +1532,8 @@ function renderBoundaryList(){
       '<span style="color:var(--grey2);min-width:12px;">'+(i+1)+'</span>'+
       '<span style="color:#86efac;flex:1;">'+b.acres.toFixed(2)+' ac</span>'+
       '<span style="color:var(--grey);font-size:8px;">'+Math.round(b.perimFt).toLocaleString()+' ft</span>'+
-      '<span onclick="removeBoundary(\''+b.id+'\')" style="cursor:pointer;color:var(--red);margin-left:3px;font-size:10px;">✕</span>'+
+      '<span onclick="flyToBoundary(\''+b.id+'\')" style="cursor:pointer;color:var(--grey2);margin-left:3px;font-size:10px;" title="Fly to">📍</span>'+
+      '<span onclick="removeBoundary(\''+b.id+'\')" style="cursor:pointer;color:var(--red);margin-left:2px;font-size:10px;" title="Delete">✕</span>'+
     '</div>';
   }).join('');
 }
