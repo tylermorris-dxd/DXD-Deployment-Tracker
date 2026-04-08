@@ -91,6 +91,7 @@ export default function ProjectView({ projectId, onBack }: Props) {
   const qc = useQueryClient()
   const [activePhaseIdx, setActivePhaseIdx] = useState(0)
   const [viewMode, setViewMode]             = useState<ViewMode>('list')
+  const [opsMaximized, setOpsMaximized]     = useState(false)
 
   const { data: project, isLoading, error } = useQuery({
     queryKey: ['project', projectId],
@@ -167,9 +168,9 @@ export default function ProjectView({ projectId, onBack }: Props) {
   const activePhase = project.phases[activePhaseIdx] ?? project.phases[0]
 
   return (
-    <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 0 40px 0' }}>
+    <div style={{ maxWidth: opsMaximized ? '100%' : 1200, margin: '0 auto', padding: '0 0 40px 0' }}>
       {/* ── Top Bar ────────────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(6,6,8,0.98)', position: 'sticky', top: 0, zIndex: 100 }}>
+      <div style={{ display: opsMaximized ? 'none' : 'flex', alignItems: 'center', gap: 16, padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(6,6,8,0.98)', position: 'sticky', top: 0, zIndex: 100 }}>
         <button style={{ ...s.ghostBtn, flexShrink: 0 }} onClick={onBack}>{Icons.back}<span style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 11, letterSpacing: 1 }}>ALL PROJECTS</span></button>
 
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -211,12 +212,20 @@ export default function ProjectView({ projectId, onBack }: Props) {
         </button>
 
         {/* View mode tab bar */}
-        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
           {TABS.map(tab => (
             <button key={tab.id} style={tabBtn(viewMode === tab.id)} onClick={() => setViewMode(tab.id)}>
               {tab.icon}<span>{tab.label}</span>
             </button>
           ))}
+          {viewMode === 'ops' && (
+            <button
+              onClick={() => setOpsMaximized(true)}
+              title="Maximize ops planner"
+              style={{ marginLeft: 4, padding: '6px 8px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontSize: 13, lineHeight: 1 }}>
+              ⛶
+            </button>
+          )}
         </div>
       </div>
 
@@ -247,8 +256,17 @@ export default function ProjectView({ projectId, onBack }: Props) {
       )}
 
       {/* ── OPS PLANNER — always mounted so iframe state survives tab switches ── */}
-      <div style={{ display: viewMode === 'ops' ? 'block' : 'none' }}>
-        <OpsPlanner site={project.site} name={project.name} />
+      <div style={{ display: viewMode === 'ops' ? 'block' : 'none', position: 'relative' }}>
+        {opsMaximized && (
+          <button
+            onClick={() => setOpsMaximized(false)}
+            title="Restore"
+            style={{ position: 'absolute', top: 10, right: 10, zIndex: 9999, padding: '5px 12px', background: 'rgba(6,6,8,0.9)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, color: 'rgba(255,255,255,0.6)', cursor: 'pointer', fontSize: 11, fontFamily: "'Chakra Petch', sans-serif", fontWeight: 600, letterSpacing: 0.5, display: 'flex', alignItems: 'center', gap: 5 }}>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 10L10 2M10 2H6M10 2V6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M2 2L10 10M10 10H6M10 10V6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            RESTORE
+          </button>
+        )}
+        <OpsPlanner site={project.site} name={project.name} maximized={opsMaximized} />
       </div>
 
       {/* ── Content area ──────────────────────────────────────────────────── */}
