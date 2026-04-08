@@ -246,8 +246,13 @@ export default function ProjectView({ projectId, onBack }: Props) {
         </div>
       )}
 
+      {/* ── OPS PLANNER — always mounted so iframe state survives tab switches ── */}
+      <div style={{ display: viewMode === 'ops' ? 'block' : 'none' }}>
+        <OpsPlanner site={project.site} name={project.name} />
+      </div>
+
       {/* ── Content area ──────────────────────────────────────────────────── */}
-      <div style={{ padding: (viewMode === 'map' || viewMode === 'ops') ? 0 : '24px 24px 0 24px' }}>
+      <div style={{ display: viewMode === 'ops' ? 'none' : 'block', padding: viewMode === 'map' ? 0 : '24px 24px 0 24px' }}>
         {/* LIST view */}
         {viewMode === 'list' && (
           <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: 24 }}>
@@ -317,8 +322,6 @@ export default function ProjectView({ projectId, onBack }: Props) {
         {/* SETTINGS view */}
         {viewMode === 'settings' && <ProjectSettingsView project={project} onUpdate={invalidate} />}
 
-        {/* OPS PLANNER view */}
-        {viewMode === 'ops' && <OpsPlanner site={project.site} name={project.name} />}
       </div>
     </div>
   )
