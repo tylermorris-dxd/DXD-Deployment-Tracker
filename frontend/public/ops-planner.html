@@ -557,7 +557,14 @@ select option{background:var(--blk3);}
           <button class="pact" id="docks-toggle-btn" onclick="toggleSection('docks')">COLLAPSE</button>
         </div>
       </div>
-      <div id="docks-body" style="height:100px;flex-shrink:0;overflow-y:auto;padding:6px 8px;"><div id="dock-list" style="font-size:9px;color:var(--grey2);font-family:'Barlow Condensed',sans-serif;letter-spacing:1px;">NO DOCKS PLACED</div></div>
+      <div id="docks-body" style="height:130px;flex-shrink:0;overflow-y:auto;padding:6px 8px;">
+        <div style="display:flex;align-items:center;gap:5px;margin-bottom:5px;padding-bottom:5px;border-bottom:1px solid var(--bdr);">
+          <span style="font-family:'Barlow Condensed',sans-serif;font-size:8px;letter-spacing:2px;color:var(--grey2);text-transform:uppercase;">RING OPA</span>
+          <input type="range" min="1" max="100" value="35" oninput="setAllRingOpacity(this.value/100)" style="flex:1;accent-color:var(--red);">
+          <span id="dock-opa-lbl" style="font-family:'Barlow Condensed',sans-serif;font-size:8px;color:var(--grey2);min-width:28px;">35%</span>
+        </div>
+        <div id="dock-list" style="font-size:9px;color:var(--grey2);font-family:'Barlow Condensed',sans-serif;letter-spacing:1px;">NO DOCKS PLACED</div>
+      </div>
 
       <div class="sec-hdr" onclick="toggleSection('measures')">
         <div class="sec-title"><span id="measures-arrow">▼</span> 📏 DISTANCES</div>
@@ -987,7 +994,7 @@ function switchSBTab(tab){
 
 // ── Section collapse ──────────────────────────────────────────
 
-var FIXED_HEIGHT_SECS={layers:'180px',docks:'100px',measures:'100px',boundaries:'100px'};
+var FIXED_HEIGHT_SECS={layers:'180px',docks:'130px',measures:'100px',boundaries:'100px'};
 
 function toggleSection(sec){
 
@@ -1215,68 +1222,134 @@ function reorderLayer(id,dir){var idx=S.layers.findIndex(function(l){return l.id
 // ── DOCK PLACEMENT ───────────────────────────────────────────
 
 var DOCK_MODELS={
-  'dji-dock-3':  {label:'DJI DOCK 3',   speedMph:33, launchDelaySec:30, color:'#2dd4bf'},
-  'skydio-x10':  {label:'SKYDIO X10',   speedMph:45, launchDelaySec:20, color:'#f59e0b'},
-  'sunflower':   {label:'SUNFLOWER',    speedMph:9,  launchDelaySec:5,  color:'#a78bfa'}
+  'dji-dock-3':  {label:'DJI DOCK 3',   speedMph:33, launchDelaySec:30, ringsSec:[60,90,120,150,180,210]},
+  'skydio-x10':  {label:'SKYDIO X10',   speedMph:45, launchDelaySec:20, ringsSec:[60,90,120,150,180,210]},
+  'sunflower':   {label:'SUNFLOWER',    speedMph:9,  launchDelaySec:5,  ringsSec:[60,90,120,150,180,210]}
 };
-var DOCK_RING_TIMES=[60,90,120,150,180,210];// seconds
-var DOCK_RING_COLORS=['#FFFFFF','#FF2020','#39FF14','#FF8C00','#60a5fa','#f472b6'];
 var M_PER_MILE=1609.344;
-var dockGroups=[];// {id, leafletLayers:[...], meta}
+var dockGroups=[];
+var dockRingOpa=0.35;// global ring opacity
+
+function dockFlightRadiusM(model,totalSec){
+  var flySec=Math.max(0,totalSec-model.launchDelaySec);
+  return flySec*(model.speedMph*M_PER_MILE/3600);
+}
+
+function makeDroneIcon(col){
+  var c=col||'#FF2020';
+  var svg='<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">'+
+    '<line x1="16" y1="16" x2="5"  y2="5"  stroke="'+c+'" stroke-width="1.8" stroke-linecap="round"/>'+
+    '<line x1="16" y1="16" x2="27" y2="5"  stroke="'+c+'" stroke-width="1.8" stroke-linecap="round"/>'+
+    '<line x1="16" y1="16" x2="5"  y2="27" stroke="'+c+'" stroke-width="1.8" stroke-linecap="round"/>'+
+    '<line x1="16" y1="16" x2="27" y2="27" stroke="'+c+'" stroke-width="1.8" stroke-linecap="round"/>'+
+    '<circle cx="5"  cy="5"  r="4.5" fill="rgba(10,4,4,0.88)" stroke="'+c+'" stroke-width="1.1"/>'+
+    '<circle cx="27" cy="5"  r="4.5" fill="rgba(10,4,4,0.88)" stroke="'+c+'" stroke-width="1.1"/>'+
+    '<circle cx="5"  cy="27" r="4.5" fill="rgba(10,4,4,0.88)" stroke="'+c+'" stroke-width="1.1"/>'+
+    '<circle cx="27" cy="27" r="4.5" fill="rgba(10,4,4,0.88)" stroke="'+c+'" stroke-width="1.1"/>'+
+    '<line x1="2.5" y1="5"   x2="7.5"  y2="5"   stroke="'+c+'" stroke-width="0.8" stroke-linecap="round"/>'+
+    '<line x1="5"   y1="2.5" x2="5"    y2="7.5"  stroke="'+c+'" stroke-width="0.8" stroke-linecap="round"/>'+
+    '<line x1="24.5" y1="5"   x2="29.5" y2="5"   stroke="'+c+'" stroke-width="0.8" stroke-linecap="round"/>'+
+    '<line x1="27"   y1="2.5" x2="27"   y2="7.5"  stroke="'+c+'" stroke-width="0.8" stroke-linecap="round"/>'+
+    '<line x1="2.5" y1="27"  x2="7.5"  y2="27"  stroke="'+c+'" stroke-width="0.8" stroke-linecap="round"/>'+
+    '<line x1="5"   y1="24.5" x2="5"   y2="29.5" stroke="'+c+'" stroke-width="0.8" stroke-linecap="round"/>'+
+    '<line x1="24.5" y1="27"  x2="29.5" y2="27"  stroke="'+c+'" stroke-width="0.8" stroke-linecap="round"/>'+
+    '<line x1="27"   y1="24.5" x2="27"  y2="29.5" stroke="'+c+'" stroke-width="0.8" stroke-linecap="round"/>'+
+    '<circle cx="16" cy="16" r="4.5" fill="rgba(10,4,4,0.92)" stroke="'+c+'" stroke-width="1.4"/>'+
+    '<text x="16" y="19" text-anchor="middle" fill="#fff" font-size="5.5" font-weight="bold" font-family="Courier New,monospace">▶</text>'+
+  '</svg>';
+  return L.divIcon({html:svg,className:'',iconSize:[32,32],iconAnchor:[16,16]});
+}
+
+function fmtTime(sec){return sec>=60?Math.floor(sec/60)+'m'+(sec%60?sec%60+'s':''):sec+'s';}
 
 function placeDock(ll){
   var modelKey=document.getElementById('dock-model').value;
   var model=DOCK_MODELS[modelKey];
-  var speedMs=model.speedMph*M_PER_MILE/3600;
-  var layers=[];
+  var col=document.getElementById('col').value;
   var id='DOCK'+Date.now();
 
-  // Dock icon
-  var iconHtml='<div style="width:28px;height:28px;background:'+model.color+';border:2px solid #fff;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 6px rgba(0,0,0,.8);">🏠</div>';
-  var icon=L.divIcon({html:iconHtml,iconSize:[28,28],iconAnchor:[14,14],className:''});
-  var marker=L.marker(ll,{icon:icon,zIndexOffset:1000});
-  var label=model.label+'\n'+model.speedMph+' MPH';
-  marker.bindTooltip(label,{permanent:true,direction:'top',offset:[0,-16],className:'uas-tip'});
-  marker.addTo(map);
-  layers.push(marker);
+  var marker=L.marker(ll,{icon:makeDroneIcon(col),draggable:true,zIndexOffset:1000}).addTo(map);
 
-  // Flight time rings
-  DOCK_RING_TIMES.forEach(function(sec,i){
-    var flySec=Math.max(0,sec-model.launchDelaySec);
-    var radiusM=flySec*speedMs;
-    if(radiusM<1)return;
-    var col=DOCK_RING_COLORS[i]||'#fff';
-    var ring=L.circle(ll,{radius:radiusM,color:col,weight:1.5,fillOpacity:0,dashArray:'4,6',interactive:false});
-    var ft=Math.round(radiusM*3.28084);
-    ring.bindTooltip(sec+'s / '+ft+'ft',{permanent:false,direction:'right',className:'uas-tip'});
-    ring.addTo(map);
-    layers.push(ring);
+  var rings=model.ringsSec.map(function(sec,i){
+    var r=dockFlightRadiusM(model,sec);
+    return L.circle(ll,{radius:r,color:col,weight:i===0?2.8:2.2,fillColor:col,fillOpacity:dockRingOpa*0.05,opacity:i===0?0.9:0.7,interactive:false}).addTo(map);
   });
 
-  dockGroups.push({id:id,ll:[ll.lat,ll.lng],modelKey:modelKey,layers:layers});
+  var ringLabels=model.ringsSec.map(function(sec){
+    var r=dockFlightRadiusM(model,sec);
+    var offsetLat=ll.lat+(r/111320);
+    var mi=(r/M_PER_MILE).toFixed(2);
+    var txt=fmtTime(sec)+'  '+mi+' mi';
+    var w=Math.ceil(txt.length*5.6+12);
+    var svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+w+'" height="16"><rect x="0.5" y="0.5" width="'+(w-1)+'" height="15" rx="2" fill="#000" stroke="'+col+'" stroke-width="1"/><text x="'+Math.round(w/2)+'" y="11" text-anchor="middle" fill="'+col+'" font-size="9" font-family="Courier New,monospace" font-weight="700">'+txt+'</text></svg>';
+    var lbl=L.divIcon({html:svg,className:'',iconAnchor:[Math.round(w/2),8]});
+    return L.marker([offsetLat,ll.lng],{icon:lbl,interactive:false}).addTo(map);
+  });
+
+  function syncRings(){
+    var p=marker.getLatLng();
+    rings.forEach(function(r){r.setLatLng(p);});
+    ringLabels.forEach(function(lbl,i){
+      var r=dockFlightRadiusM(model,model.ringsSec[i]);
+      lbl.setLatLng([p.lat+(r/111320),p.lng]);
+    });
+  }
+  marker.on('drag',syncRings);
+
+  var ringSummary=model.ringsSec.map(fmtTime).join(' / ');
+  marker.bindPopup(
+    '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:12px;color:#eee;background:#0a0404;padding:7px 12px;border:1px solid '+col+'66;min-width:160px;">'+
+    '<b style="color:'+col+';letter-spacing:2px;">'+model.label+'</b><br/>'+
+    '<span style="color:rgba(255,255,255,.5);font-size:10px;letter-spacing:1px;">'+
+    'LAUNCH DELAY: '+model.launchDelaySec+'s &nbsp;·&nbsp; SPEED: '+model.speedMph+' MPH<br/>'+
+    'RINGS: '+ringSummary+'</span><br/>'+
+    '<span style="opacity:.4;font-size:10px;">DRAG TO REPOSITION</span><br/>'+
+    '<button onclick="removeDock(\''+id+'\')" style="margin-top:6px;width:100%;padding:4px;background:rgba(204,17,17,.12);border:1px solid rgba(204,17,17,.4);color:#ff6b6b;font-family:\'Barlow Condensed\',sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;cursor:pointer;text-transform:uppercase;">✕ REMOVE DOCK</button>'+
+    '</div>',
+    {className:''}
+  );
+
+  dockGroups.push({id:id,modelKey:modelKey,col:col,marker:marker,rings:rings,ringLabels:ringLabels});
   setMode('select');
   renderDockList();
+}
+
+function setAllRingOpacity(opa){
+  dockRingOpa=opa;
+  dockGroups.forEach(function(d){
+    d.rings.forEach(function(r,i){
+      r.setStyle({fillOpacity:opa*0.05,opacity:i===0?Math.min(1,opa*2.6):Math.min(1,opa*2.0)});
+    });
+  });
+  document.getElementById('dock-opa-lbl').textContent=Math.round(opa*100)+'%';
 }
 
 function removeDock(id){
   var idx=dockGroups.findIndex(function(d){return d.id===id;});
   if(idx<0)return;
-  dockGroups[idx].layers.forEach(function(lf){map.removeLayer(lf);});
+  var d=dockGroups[idx];
+  map.removeLayer(d.marker);
+  d.rings.forEach(function(r){map.removeLayer(r);});
+  d.ringLabels.forEach(function(l){map.removeLayer(l);});
   dockGroups.splice(idx,1);
   renderDockList();
 }
+
+function flyToDock(id){var d=dockGroups.find(function(x){return x.id===id;});if(d)map.flyTo(d.marker.getLatLng(),16,{duration:0.8});}
 
 function renderDockList(){
   var el=document.getElementById('dock-list');
   if(!el)return;
   if(!dockGroups.length){el.innerHTML='<div style="font-size:9px;color:var(--grey2);font-family:\'Barlow Condensed\',sans-serif;letter-spacing:1px;">NO DOCKS PLACED</div>';return;}
-  el.innerHTML=dockGroups.map(function(d){
-    var m=DOCK_MODELS[d.modelKey]||{label:d.modelKey,color:'#fff'};
+  el.innerHTML=dockGroups.map(function(d,i){
+    var m=DOCK_MODELS[d.modelKey]||{label:d.modelKey};
+    var ll=d.marker.getLatLng();
     return '<div style="display:flex;align-items:center;gap:4px;padding:3px 5px;background:var(--blk4);border:1px solid var(--bdr);margin-bottom:2px;font-family:\'Barlow Condensed\',sans-serif;font-size:9px;letter-spacing:1px;">'+
-      '<span style="width:8px;height:8px;background:'+m.color+';flex-shrink:0;border-radius:1px;"></span>'+
-      '<span style="flex:1;color:var(--wht);">'+m.label+'</span>'+
-      '<span style="color:var(--grey2);font-size:8px;">'+d.ll[0].toFixed(4)+','+d.ll[1].toFixed(4)+'</span>'+
-      '<span onclick="removeDock(\''+d.id+'\')" style="cursor:pointer;color:var(--red);margin-left:3px;font-size:10px;">✕</span>'+
+      '<span style="width:8px;height:8px;background:'+d.col+';flex-shrink:0;border-radius:1px;"></span>'+
+      '<span style="flex:1;color:var(--wht);">'+(i+1)+' '+m.label+'</span>'+
+      '<span style="color:var(--grey2);font-size:8px;">'+ll.lat.toFixed(4)+','+ll.lng.toFixed(4)+'</span>'+
+      '<span onclick="flyToDock(\''+d.id+'\')" style="cursor:pointer;color:var(--grey2);margin-left:3px;font-size:10px;" title="Fly to">📍</span>'+
+      '<span onclick="removeDock(\''+d.id+'\')" style="cursor:pointer;color:var(--red);margin-left:2px;font-size:10px;">✕</span>'+
     '</div>';
   }).join('');
 }
