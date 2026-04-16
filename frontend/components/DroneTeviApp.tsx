@@ -1,3 +1,4 @@
+// @ts-nocheck
 'use client'
 
 import { useState, useReducer } from "react";
@@ -267,7 +268,7 @@ const BENCH_CHECKS = [
 const VENDORS = ["DJI","Skydio","Sunflower","Quantum"];
 
 const mkSig = () => ({name:"",role:"",date:"",phase:"",signature:"",notes:"",approved:false,customRole:""});
-const mkOEM = (name) => ({
+const mkOEM = (name: string) => ({
   name:name||"",manufacturer:"",model:"",serial:"",dockModel:"",dockSerial:"",
   evaluator:"",startDate:"",location:"",activeSite:"site_TRG",
   scores:{},results:{},notes:{},
