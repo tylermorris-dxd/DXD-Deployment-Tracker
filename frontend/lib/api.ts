@@ -3,6 +3,7 @@ import type {
   TeamMember, AdminTask,
   CreateProject, UpdateProject, UpdatePhase, UpdateTask, UpdateSubtask, UpdateContact,
   EquipmentItem, CreateEquipment, UpdateEquipment,
+  HubSpotDeal, HubSpotActiveDeal, HubSpotStatus,
 } from './types'
 
 class ApiError extends Error {
@@ -114,6 +115,19 @@ export const api = {
       apiFetch<void>(`/equipment/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
     delete: (id: string) =>
       apiFetch<void>(`/equipment/${id}`, { method: 'DELETE' }),
+  },
+
+  hubspot: {
+    getStatus: () => apiFetch<HubSpotStatus>('/hubspot/status'),
+    saveToken: (token: string) =>
+      apiFetch<void>('/hubspot/token', { method: 'PUT', body: JSON.stringify({ token }) }),
+    deleteToken: () => apiFetch<void>('/hubspot/token', { method: 'DELETE' }),
+    getDeals: () => apiFetch<{ results: HubSpotDeal[] }>('/hubspot/deals'),
+    getActive: () => apiFetch<HubSpotActiveDeal[]>('/hubspot/active'),
+    getDeal: (dealId: string) => apiFetch<HubSpotDeal>(`/hubspot/deal/${dealId}`),
+    pinDeal: (dealId: string) =>
+      apiFetch<{ projectId: string; created: boolean }>(`/hubspot/pin/${dealId}`, { method: 'POST' }),
+    unpinDeal: (dealId: string) => apiFetch<void>(`/hubspot/pin/${dealId}`, { method: 'DELETE' }),
   },
 
   claude: (body: unknown) =>

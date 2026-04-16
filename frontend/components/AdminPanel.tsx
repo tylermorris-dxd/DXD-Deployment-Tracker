@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { s } from '@/lib/styles'
 import { Icons } from '@/lib/icons'
-import type { AdminTask, TeamMember } from '@/lib/types'
+import type { AdminTask, TeamMember, HubSpotDeal } from '@/lib/types'
 
 const PRIORITY_COLORS: Record<string, string> = {
   low: '#4CAF50', medium: '#FF9800', high: '#e63946', urgent: '#b91c1c',
@@ -31,7 +31,7 @@ const fieldLabel: React.CSSProperties = {
 
 export default function AdminPanel() {
   const qc = useQueryClient()
-  const [activeTab, setActiveTab] = useState<'tasks' | 'team'>('team')
+  const [activeTab, setActiveTab] = useState<'tasks' | 'team' | 'hubspot'>('team')
 
   // ── Team ────────────────────────────────────────────────────────────────────
   const { data: teamMembers = [] } = useQuery({ queryKey: ['teamMembers'], queryFn: api.team.list })
@@ -104,7 +104,7 @@ export default function AdminPanel() {
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 24, background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: 4 }}>
-        {([{ id: 'team', label: 'TEAM MEMBERS' }, { id: 'tasks', label: 'TASKS' }] as const).map(t => (
+        {([{ id: 'team', label: 'TEAM MEMBERS' }, { id: 'tasks', label: 'TASKS' }, { id: 'hubspot', label: 'HUBSPOT' }] as const).map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id)}
             style={{ flex: 1, padding: '8px 0', border: 'none', borderRadius: 6, cursor: 'pointer', fontFamily: "'Chakra Petch', sans-serif", fontSize: 12, fontWeight: 600, letterSpacing: 1, transition: 'all 0.15s', background: activeTab === t.id ? 'rgba(230,57,70,0.85)' : 'transparent', color: activeTab === t.id ? '#fff' : 'rgba(255,255,255,0.45)' }}>
             {t.label}
@@ -160,6 +160,9 @@ export default function AdminPanel() {
           )}
         </>
       )}
+
+      {/* ── HUBSPOT TAB ── */}
+      {activeTab === 'hubspot' && <HubSpotPanel />}
 
       {/* ── TASKS TAB ── */}
       {activeTab === 'tasks' && (
@@ -273,6 +276,139 @@ export default function AdminPanel() {
             </div>
           )}
         </>
+      )}
+    </div>
+  )
+}
+
+function HubSpotPanel() {
+  const qc = useQueryClient()
+  const [tokenInput, setTokenInput] = useState('')
+  const [showToken, setShowToken] = useState(false)
+
+  const { data: status } = useQuery({ queryKey: ['hubspotStatus'], queryFn: api.hubspot.getStatus })
+  const { data: dealsData, isLoading: dealsLoading } = useQuery({
+    queryKey: ['hubspotDeals'],
+    queryFn: api.hubspot.getDeals,
+    enabled: status?.connected === true,
+  })
+
+  const saveMut = useMutation({
+    mutationFn: () => api.hubspot.saveToken(tokenInput.trim()),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['hubspotStatus'] }); setTokenInput('') },
+  })
+  const disconnectMut = useMutation({
+    mutationFn: api.hubspot.deleteToken,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['hubspotStatus'] })
+      qc.invalidateQueries({ queryKey: ['hubspotDeals'] })
+      qc.invalidateQueries({ queryKey: ['projects'] })
+    },
+  })
+  const pinMut = useMutation({
+    mutationFn: (dealId: string) => api.hubspot.pinDeal(dealId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['hubspotDeals'] })
+      qc.invalidateQueries({ queryKey: ['projects'] })
+    },
+  })
+  const unpinMut = useMutation({
+    mutationFn: (dealId: string) => api.hubspot.unpinDeal(dealId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['hubspotDeals'] })
+      qc.invalidateQueries({ queryKey: ['projects'] })
+    },
+  })
+
+  const deals: HubSpotDeal[] = dealsData?.results ?? []
+
+  if (!status?.connected) {
+    return (
+      <div style={{ ...card, border: '1px solid rgba(255,165,0,0.2)', maxWidth: 480 }}>
+        <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 11, color: '#FF9800', letterSpacing: 1.5, marginBottom: 14 }}>CONNECT HUBSPOT</div>
+        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 16, lineHeight: 1.6 }}>
+          Enter your HubSpot Private App token. You can create one in HubSpot → Settings → Integrations → Private Apps.
+        </div>
+        <label style={fieldLabel}>PRIVATE APP TOKEN</label>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+          <input
+            type={showToken ? 'text' : 'password'}
+            style={{ ...inputSm, flex: 1 }}
+            placeholder="pat-na1-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+            value={tokenInput}
+            onChange={e => setTokenInput(e.target.value)}
+          />
+          <button onClick={() => setShowToken(v => !v)}
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: 'rgba(255,255,255,0.4)', cursor: 'pointer', padding: '0 12px', fontSize: 12 }}>
+            {showToken ? 'HIDE' : 'SHOW'}
+          </button>
+        </div>
+        <button
+          style={{ ...inputSm, width: 'auto', padding: '9px 20px', background: tokenInput.trim() ? 'rgba(255,152,0,0.85)' : 'rgba(255,255,255,0.06)', color: tokenInput.trim() ? '#fff' : 'rgba(255,255,255,0.3)', border: 'none', cursor: tokenInput.trim() ? 'pointer' : 'default', fontFamily: "'Chakra Petch', sans-serif", fontWeight: 700, letterSpacing: 1, borderRadius: 6, fontSize: 12 }}
+          disabled={!tokenInput.trim() || saveMut.isPending}
+          onClick={() => saveMut.mutate()}>
+          {saveMut.isPending ? 'CONNECTING…' : 'CONNECT'}
+        </button>
+        {saveMut.isError && (
+          <div style={{ color: '#ef4444', fontSize: 11, marginTop: 8, fontFamily: "'IBM Plex Mono', monospace" }}>
+            {(saveMut.error as Error).message}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      {/* Connection status bar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, padding: '10px 16px', background: 'rgba(255,152,0,0.08)', border: '1px solid rgba(255,152,0,0.2)', borderRadius: 8 }}>
+        <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#4CAF50', boxShadow: '0 0 6px #4CAF5088', display: 'inline-block', flexShrink: 0 }} />
+        <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 12, fontWeight: 600, letterSpacing: 1, color: '#4CAF50' }}>HUBSPOT CONNECTED</span>
+        <button
+          style={{ marginLeft: 'auto', background: 'none', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: 'rgba(255,255,255,0.35)', cursor: 'pointer', padding: '4px 12px', fontFamily: "'IBM Plex Mono', monospace", fontSize: 10 }}
+          onClick={() => disconnectMut.mutate()}>
+          DISCONNECT
+        </button>
+      </div>
+
+      {/* Deals list */}
+      <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 10, color: 'rgba(255,255,255,0.35)', letterSpacing: 1.5, marginBottom: 12 }}>
+        SELECT DEALS TO TRACK — TOGGLED DEALS APPEAR LIVE IN PROJECTS
+      </div>
+
+      {dealsLoading ? (
+        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: 'rgba(255,255,255,0.3)', padding: '20px 0' }}>Loading deals from HubSpot…</div>
+      ) : deals.length === 0 ? (
+        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: 'rgba(255,255,255,0.3)', padding: '20px 0' }}>No deals found in your HubSpot account.</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 520, overflowY: 'auto' }}>
+          {deals.map((deal: HubSpotDeal) => {
+            const stage = deal.properties.dealstage ?? '—'
+            const amount = deal.properties.amount ? `$${Number(deal.properties.amount).toLocaleString()}` : null
+            const close = deal.properties.closedate ? new Date(deal.properties.closedate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null
+            const isPending = pinMut.isPending || unpinMut.isPending
+            return (
+              <div key={deal.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px', background: deal.pinned ? 'rgba(255,152,0,0.06)' : 'rgba(30,30,34,0.9)', border: deal.pinned ? '1px solid rgba(255,152,0,0.3)' : '1px solid rgba(255,255,255,0.07)', borderRadius: 8 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 13, fontWeight: 600, color: '#f1f1f1', marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {deal.properties.dealname ?? 'Untitled Deal'}
+                  </div>
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>{stage}</span>
+                    {amount && <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>{amount}</span>}
+                    {close && <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: 'rgba(255,255,255,0.25)' }}>Close {close}</span>}
+                  </div>
+                </div>
+                <button
+                  disabled={isPending}
+                  onClick={() => deal.pinned ? unpinMut.mutate(deal.id) : pinMut.mutate(deal.id)}
+                  style={{ flexShrink: 0, padding: '6px 14px', borderRadius: 6, cursor: isPending ? 'default' : 'pointer', fontFamily: "'Chakra Petch', sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: 0.5, transition: 'all 0.15s', background: deal.pinned ? 'rgba(76,175,80,0.15)' : 'rgba(255,152,0,0.15)', color: deal.pinned ? '#4CAF50' : '#FF9800', border: deal.pinned ? '1px solid rgba(76,175,80,0.3)' : '1px solid rgba(255,152,0,0.3)' }}>
+                  {deal.pinned ? '✓ TRACKING' : 'TRACK'}
+                </button>
+              </div>
+            )
+          })}
+        </div>
       )}
     </div>
   )

@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { s, progressColor } from '@/lib/styles'
 import { Icons } from '@/lib/icons'
-import type { ProjectSummary } from '@/lib/types'
+import type { ProjectSummary, HubSpotActiveDeal } from '@/lib/types'
 
 export default function ProjectList({ onSelectProject }: { onSelectProject: (id: string) => void }) {
   const qc = useQueryClient()
@@ -18,6 +18,16 @@ export default function ProjectList({ onSelectProject }: { onSelectProject: (id:
     queryKey: ['projects'],
     queryFn: api.projects.list,
   })
+
+  const { data: activeDeals = [] } = useQuery({
+    queryKey: ['hubspotActive'],
+    queryFn: api.hubspot.getActive,
+    refetchInterval: 60_000,
+  })
+
+  const dealMap = new Map<string, HubSpotActiveDeal>(
+    activeDeals.map((a: HubSpotActiveDeal) => [a.projectId, a])
+  )
 
   const createMutation = useMutation({
     mutationFn: () => api.projects.create({ name: newName.trim(), client: newClient.trim(), site: newSite.trim() }),
@@ -114,7 +124,7 @@ export default function ProjectList({ onSelectProject }: { onSelectProject: (id:
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))', gap: 14 }}>
                 {active.map((p, i) => (
-                  <ProjectCard key={p.id} proj={p} index={i}
+                  <ProjectCard key={p.id} proj={p} index={i} activeDeal={dealMap.get(p.id)}
                     onOpen={() => onSelectProject(p.id)}
                     onDelete={() => { if (window.confirm(`Delete "${p.name}"? This cannot be undone.`)) deleteMutation.mutate(p.id) }} />
                 ))}
@@ -128,7 +138,7 @@ export default function ProjectList({ onSelectProject }: { onSelectProject: (id:
               <SectionHeader label="COMPLETED" count={completed.length} color="#22C55E" />
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))', gap: 14 }}>
                 {completed.map((p, i) => (
-                  <ProjectCard key={p.id} proj={p} index={i} isCompleted
+                  <ProjectCard key={p.id} proj={p} index={i} isCompleted activeDeal={dealMap.get(p.id)}
                     onOpen={() => onSelectProject(p.id)}
                     onDelete={() => { if (window.confirm(`Delete "${p.name}"? This cannot be undone.`)) deleteMutation.mutate(p.id) }} />
                 ))}
@@ -151,15 +161,17 @@ function SectionHeader({ label, count, color }: { label: string; count: number; 
   )
 }
 
-function ProjectCard({ proj, index, isCompleted = false, onOpen, onDelete }: {
+function ProjectCard({ proj, index, isCompleted = false, activeDeal, onOpen, onDelete }: {
   proj: ProjectSummary
   index: number
   isCompleted?: boolean
+  activeDeal?: HubSpotActiveDeal
   onOpen: () => void
   onDelete: () => void
 }) {
   const pct = proj.totalTasks > 0 ? Math.round((proj.doneTasks / proj.totalTasks) * 100) : 0
   const accentColor = isCompleted ? '#22C55E' : progressColor(pct)
+  const hsStage = activeDeal?.deal.properties.dealstage
 
   return (
     <div
@@ -182,17 +194,24 @@ function ProjectCard({ proj, index, isCompleted = false, onOpen, onDelete }: {
       onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLDivElement).style.boxShadow = `0 6px 24px rgba(0,0,0,0.5), 0 0 0 1px ${accentColor}33` }}
       onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.transform = ''; (e.currentTarget as HTMLDivElement).style.boxShadow = '0 2px 16px rgba(0,0,0,0.35)' }}
     >
-      {/* Top row: phase tag + pct + delete */}
+      {/* Top row: phase/hs tag + pct + delete */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-        <span style={{
-          display: 'inline-flex', alignItems: 'center', gap: 6,
-          fontSize: 10, letterSpacing: 1.5, fontWeight: 700, textTransform: 'uppercase',
-          background: `${accentColor}18`, border: `1px solid ${accentColor}44`,
-          borderRadius: 4, padding: '3px 9px', color: accentColor,
-          fontFamily: "'Chakra Petch', sans-serif",
-        }}>
-          {isCompleted ? '✓ COMPLETE' : pct === 0 ? 'PHASE 1' : pct < 30 ? 'PHASE 2' : pct < 60 ? 'PHASE 3' : pct < 85 ? 'PHASE 4' : 'PHASE 5'}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {activeDeal && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 9, letterSpacing: 1, fontWeight: 700, background: 'rgba(255,152,0,0.12)', border: '1px solid rgba(255,152,0,0.35)', borderRadius: 4, padding: '3px 7px', color: '#FF9800', fontFamily: "'Chakra Petch', sans-serif" }}>
+              HS
+            </span>
+          )}
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            fontSize: 10, letterSpacing: 1.5, fontWeight: 700, textTransform: 'uppercase',
+            background: `${accentColor}18`, border: `1px solid ${accentColor}44`,
+            borderRadius: 4, padding: '3px 9px', color: accentColor,
+            fontFamily: "'Chakra Petch', sans-serif",
+          }}>
+            {isCompleted ? '✓ COMPLETE' : hsStage ? hsStage : pct === 0 ? 'PHASE 1' : pct < 30 ? 'PHASE 2' : pct < 60 ? 'PHASE 3' : pct < 85 ? 'PHASE 4' : 'PHASE 5'}
+          </span>
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 15, fontWeight: 700, color: accentColor }}>{pct}%</span>
           <button

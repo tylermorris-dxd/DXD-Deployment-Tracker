@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS settings (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS hubspot_deal_id TEXT UNIQUE;

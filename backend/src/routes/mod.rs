@@ -2,6 +2,7 @@ use axum::Router;
 
 pub mod attachments;
 pub mod equipment;
+pub mod hubspot;
 pub mod misc;
 pub mod projects;
 pub mod tasks;
@@ -16,6 +17,7 @@ pub fn api_router(state: AppState) -> Router {
         .merge(attachments::router())
         .merge(team::router())
         .merge(equipment::router())
+        .merge(hubspot::router())
         .merge(misc::router())
         .with_state(state)
 }

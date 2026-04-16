@@ -115,6 +115,7 @@ pub struct ProjectSummary {
     pub created_at: String,
     pub total_tasks: i64,
     pub done_tasks: i64,
+    pub hubspot_deal_id: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -130,6 +131,7 @@ pub struct ProjectFull {
     pub network_cache: Option<String>,
     pub weather_cache: Option<String>,
     pub phases: Vec<PhaseFull>,
+    pub hubspot_deal_id: Option<String>,
 }
 
 #[derive(Debug, Serialize)]

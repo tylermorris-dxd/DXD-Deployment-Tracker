@@ -23,7 +23,7 @@ pub fn router() -> Router<AppState> {
 async fn list_projects(State(state): State<AppState>) -> Result<Json<Vec<ProjectSummary>>, AppError> {
     let rows = sqlx::query!(
         r#"
-        SELECT p.id, p.name, p.client, p.site, p.created_at,
+        SELECT p.id, p.name, p.client, p.site, p.created_at, p.hubspot_deal_id,
                COUNT(t.id) as total_tasks,
                SUM(CASE WHEN t.completed = TRUE THEN 1 ELSE 0 END) as done_tasks
         FROM projects p
@@ -46,6 +46,7 @@ async fn list_projects(State(state): State<AppState>) -> Result<Json<Vec<Project
             created_at: r.created_at,
             total_tasks: r.total_tasks.unwrap_or(0),
             done_tasks: r.done_tasks.unwrap_or(0),
+            hubspot_deal_id: r.hubspot_deal_id,
         })
         .collect();
 
@@ -129,6 +130,7 @@ async fn create_project(
         created_at,
         total_tasks: template.iter().map(|p| p.tasks.len() as i64).sum(),
         done_tasks: 0,
+        hubspot_deal_id: None,
     };
 
     Ok((StatusCode::CREATED, Json(summary)))
@@ -139,7 +141,7 @@ async fn get_project(
     Path(project_id): Path<String>,
 ) -> Result<Json<ProjectFull>, AppError> {
     let proj = sqlx::query!(
-        "SELECT id, name, client, site, created_at, map_cache, airspace_cache, network_cache, weather_cache FROM projects WHERE id = $1",
+        "SELECT id, name, client, site, created_at, map_cache, airspace_cache, network_cache, weather_cache, hubspot_deal_id FROM projects WHERE id = $1",
         project_id
     )
     .fetch_optional(&state.pool)
@@ -301,6 +303,7 @@ async fn get_project(
         airspace_cache: proj.airspace_cache,
         network_cache: proj.network_cache,
         weather_cache: proj.weather_cache,
+        hubspot_deal_id: proj.hubspot_deal_id,
         phases,
     }))
 }
@@ -351,7 +354,7 @@ async fn update_project(
     }
 
     let row = sqlx::query!(
-        r#"SELECT p.id, p.name, p.client, p.site, p.created_at,
+        r#"SELECT p.id, p.name, p.client, p.site, p.created_at, p.hubspot_deal_id,
                   COUNT(t.id) as total_tasks,
                   SUM(CASE WHEN t.completed = TRUE THEN 1 ELSE 0 END) as done_tasks
            FROM projects p
@@ -373,6 +376,7 @@ async fn update_project(
         created_at: row.created_at,
         total_tasks: row.total_tasks.unwrap_or(0),
         done_tasks: row.done_tasks.unwrap_or(0),
+        hubspot_deal_id: row.hubspot_deal_id,
     }))
 }
 

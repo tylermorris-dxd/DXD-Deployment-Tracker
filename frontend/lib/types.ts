@@ -6,6 +6,7 @@ export interface ProjectSummary {
   createdAt: string
   totalTasks: number
   doneTasks: number
+  hubspotDealId?: string
 }
 
 export interface ProjectFull {
@@ -19,6 +20,35 @@ export interface ProjectFull {
   networkCache: string | null
   weatherCache: string | null
   phases: Phase[]
+  hubspotDealId?: string
+}
+
+// ── HubSpot ───────────────────────────────────────────────────────────────────
+
+export interface HubSpotDealProperties {
+  dealname?: string
+  dealstage?: string
+  amount?: string
+  closedate?: string
+  pipeline?: string
+  description?: string
+  hs_lastmodifieddate?: string
+}
+
+export interface HubSpotDeal {
+  id: string
+  properties: HubSpotDealProperties
+  pinned?: boolean
+  companyDetails?: Array<{ id: string; properties: { name?: string; domain?: string } }>
+}
+
+export interface HubSpotActiveDeal {
+  projectId: string
+  deal: HubSpotDeal
+}
+
+export interface HubSpotStatus {
+  connected: boolean
 }
 
 export interface Phase {
