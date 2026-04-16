@@ -7,9 +7,10 @@ import EquipmentTracker from '@/components/EquipmentTracker'
 import AdminPanel from '@/components/AdminPanel'
 import CostEstimator from '@/components/CostEstimator'
 import DroneTeviApp from '@/components/DroneTeviApp'
+import EventPricingApp from '@/components/EventPricingApp'
 import { s } from '@/lib/styles'
 
-type Tab = 'projects' | 'equipment' | 'admin' | 'cost' | 'product'
+type Tab = 'projects' | 'equipment' | 'admin' | 'cost' | 'product' | 'pricing'
 
 const TAB_LABELS: Record<Tab, string> = {
   projects: 'PROJECTS',
@@ -17,6 +18,7 @@ const TAB_LABELS: Record<Tab, string> = {
   admin: 'ADMIN',
   cost: 'COST ESTIMATOR',
   product: 'PRODUCT',
+  pricing: 'EVENT PRICING',
 }
 
 export default function Home() {
@@ -31,7 +33,7 @@ export default function Home() {
     <>
       <div style={{ maxWidth: 960, margin: '0 auto', padding: '16px 20px 0' }}>
         <div style={{ display: 'flex', gap: 6 }}>
-          {(['projects', 'equipment', 'admin', 'cost', 'product'] as Tab[]).map(t => (
+          {(['projects', 'equipment', 'admin', 'cost', 'product', 'pricing'] as Tab[]).map(t => (
             <button key={t} onClick={() => setTab(t)} style={{
               ...s.ghostBtn,
               ...(tab === t ? { borderColor: '#e63946', color: '#E8ECF4' } : {}),
@@ -46,6 +48,7 @@ export default function Home() {
       {tab === 'admin'     && <AdminPanel />}
       {tab === 'cost'      && <CostEstimator />}
       {tab === 'product'   && <DroneTeviApp />}
+      {tab === 'pricing'   && <EventPricingApp />}
     </>
   )
 }

@@ -1,0 +1,1555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DXD — Deal Operations Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0b0d;
+  --surface:#111318;
+  --surface2:#181c23;
+  --surface3:#1e2330;
+  --border:#252b38;
+  --border2:#2e3547;
+  --red:#D2232A;
+  --red-dim:rgba(210,35,42,0.12);
+  --red-glow:rgba(210,35,42,0.25);
+  --blue:#3b82f6;
+  --blue-dim:rgba(59,130,246,0.12);
+  --green:#22c55e;
+  --green-dim:rgba(34,197,94,0.12);
+  --amber:#f59e0b;
+  --amber-dim:rgba(245,158,11,0.12);
+  --purple:#a855f7;
+  --purple-dim:rgba(168,85,247,0.12);
+  --text:#e8eaf0;
+  --text2:#9aa3b8;
+  --text3:#5a6380;
+  --font:'Syne',sans-serif;
+  --mono:'JetBrains Mono',monospace;
+}
+html{scroll-behavior:smooth}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");pointer-events:none;z-index:0;opacity:.4}
+
+/* TOPBAR — brand hidden since parent app handles navigation */
+.topbar{position:sticky;top:0;z-index:200;background:rgba(10,11,13,0.97);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:0;height:44px}
+.topbar-brand{display:none!important}
+.topbar-nav{display:flex;height:100%;overflow-x:auto;flex:1;padding-left:8px}
+.topbar-nav::-webkit-scrollbar{display:none}
+.tnav{padding:0 14px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;color:var(--text3);border-bottom:2px solid transparent;background:none;border-top:none;border-left:none;border-right:none;height:100%;transition:all .15s;white-space:nowrap}
+.tnav:hover{color:var(--text2)}
+.tnav.on{color:var(--red);border-bottom-color:var(--red)}
+.topbar-actions{display:flex;align-items:center;gap:8px;padding:0 14px;border-left:1px solid var(--border);flex-shrink:0}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:6px;font-family:var(--font);font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;transition:all .15s;border:none}
+.btn-primary{background:var(--red);color:#fff}
+.btn-primary:hover{background:#b81e24;box-shadow:0 0 20px var(--red-glow)}
+.btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border2)}
+.btn-ghost:hover{border-color:var(--text3);color:var(--text)}
+.btn-sm{padding:4px 10px;font-size:10px}
+
+/* SECTIONS */
+.section{display:none;position:relative;z-index:1}
+.section.on{display:block}
+.page{max-width:1400px;margin:0 auto;padding:28px 24px 80px}
+
+/* DASHBOARD */
+.dash-header{margin-bottom:28px}
+.dash-title{font-size:22px;font-weight:800;letter-spacing:-.02em;margin-bottom:4px}
+.dash-sub{font-size:12px;color:var(--text3);font-family:var(--mono)}
+
+/* STAT ROW */
+.stat-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:28px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;position:relative;overflow:hidden}
+.stat-card::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.02) 0%,transparent 60%);pointer-events:none}
+.stat-label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:8px}
+.stat-val{font-size:26px;font-weight:800;letter-spacing:-.03em;line-height:1}
+.stat-sub{font-size:11px;color:var(--text3);margin-top:4px;font-family:var(--mono)}
+.stat-accent{position:absolute;bottom:0;left:0;right:0;height:2px}
+
+/* MAIN GRID */
+.main-grid{display:grid;grid-template-columns:1fr 340px;gap:16px;align-items:start}
+
+/* DEAL CARDS */
+.deal-cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.dcard{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px 20px;cursor:pointer;transition:border-color .15s,transform .15s}
+.dcard:hover{border-color:var(--border2);transform:translateY(-2px)}
+.dcard-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:4px}
+.dcard-name{font-size:14px;font-weight:700;color:var(--text);line-height:1.3}
+.dcard-val{font-size:13px;font-weight:600;color:var(--green);font-family:var(--mono);white-space:nowrap}
+.dcard-company{font-size:12px;color:var(--text3);margin-bottom:10px;font-family:var(--mono)}
+.dcard-tags{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px}
+.dcard-stage-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.dcard-stage-pip{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.dcard-stage-name{font-size:12px;font-weight:600;color:var(--text2)}
+.dcard-stage-phase{font-size:11px;color:var(--text3)}
+.dcard-progress{height:3px;background:var(--surface3);border-radius:2px;margin-bottom:14px;overflow:hidden}
+.dcard-progress-fill{height:100%;border-radius:2px;transition:width .3s}
+.dcard-divider{height:1px;background:var(--border);margin-bottom:12px}
+.dcard-meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.dcard-meta-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
+.dcard-meta-val{font-size:12px;color:var(--text2)}
+.dcard-footer{display:flex;justify-content:space-between;align-items:center}
+.dcard-status{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px}
+.dcard-days{font-size:11px;font-family:var(--mono);color:var(--text3)}
+
+/* KANBAN */
+.kanban-wrap{overflow-x:auto;padding-bottom:8px}
+.kanban-wrap::-webkit-scrollbar{height:4px}
+.kanban-wrap::-webkit-scrollbar-track{background:var(--surface)}
+.kanban-wrap::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.kanban{display:flex;gap:10px;min-width:max-content}
+.kol{width:230px;flex-shrink:0}
+.kol-head{padding:10px 12px;border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:space-between;margin-bottom:1px}
+.kol-title{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.kol-count{font-size:10px;font-weight:600;font-family:var(--mono);opacity:.7}
+.kol-body{background:var(--surface);border:1px solid var(--border);border-radius:0 0 8px 8px;min-height:120px;padding:8px}
+.deal-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px;cursor:pointer;transition:all .15s;position:relative}
+.deal-card:hover{border-color:var(--border2);transform:translateY(-1px);box-shadow:0 4px 20px rgba(0,0,0,.4)}
+.deal-card.flagged{border-left:3px solid var(--red)}
+.deal-card.on-track{border-left:3px solid var(--green)}
+.deal-card.at-risk{border-left:3px solid var(--amber)}
+.dc-name{font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px;line-height:1.3}
+.dc-company{font-size:10px;color:var(--text3);margin-bottom:8px;font-family:var(--mono)}
+.dc-tags{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}
+.dc-meta{display:flex;justify-content:space-between;align-items:center}
+.dc-value{font-size:11px;font-weight:600;font-family:var(--mono);color:var(--green)}
+.dc-owner{font-size:10px;color:var(--text3)}
+.dc-days{font-size:10px;font-family:var(--mono);color:var(--text3)}
+.add-card{width:100%;background:transparent;border:1px dashed var(--border);border-radius:8px;padding:10px;font-family:var(--font);font-size:11px;font-weight:600;color:var(--text3);cursor:pointer;transition:all .15s;letter-spacing:.04em}
+.add-card:hover{border-color:var(--red);color:var(--red)}
+
+/* TAGS */
+.tag{display:inline-block;font-size:9px;font-weight:700;padding:2px 7px;border-radius:4px;letter-spacing:.06em;text-transform:uppercase}
+.tag-red{background:var(--red-dim);color:var(--red)}
+.tag-blue{background:var(--blue-dim);color:var(--blue)}
+.tag-green{background:var(--green-dim);color:var(--green)}
+.tag-amber{background:var(--amber-dim);color:var(--amber)}
+.tag-purple{background:var(--purple-dim);color:var(--purple)}
+.tag-gray{background:rgba(255,255,255,.06);color:var(--text3)}
+
+/* SIDEBAR */
+.sidebar{display:flex;flex-direction:column;gap:12px}
+.widget{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.widget-head{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.widget-title{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text2)}
+.widget-body{padding:12px 16px}
+
+/* HANDOFF ALERTS */
+.handoff-item{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.handoff-item:last-child{border-bottom:none}
+.handoff-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.handoff-text{flex:1}
+.handoff-deal{font-size:12px;font-weight:600;color:var(--text);margin-bottom:2px}
+.handoff-desc{font-size:11px;color:var(--text3);line-height:1.4}
+.handoff-from{font-size:10px;font-family:var(--mono);color:var(--text3);margin-top:3px}
+
+/* ACTIVITY FEED */
+.activity-item{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
+.activity-item:last-child{border-bottom:none}
+.activity-icon{width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
+.activity-body{flex:1}
+.activity-text{font-size:11px;color:var(--text2);line-height:1.4}
+.activity-text strong{color:var(--text)}
+.activity-time{font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:2px}
+
+/* PIPELINE VIEW */
+.pipeline-funnel{display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:24px}
+.pipeline-row{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 16px;cursor:pointer;transition:all .15s}
+.pipeline-row:hover{border-color:var(--border2)}
+.pipeline-stage-num{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;font-family:var(--mono)}
+.pipeline-stage-name{font-size:13px;font-weight:700;color:var(--text);flex:1}
+.pipeline-stage-phase{font-size:10px;color:var(--text3);font-family:var(--mono)}
+.pipeline-bar-wrap{width:200px;height:6px;background:var(--surface3);border-radius:3px;overflow:hidden}
+.pipeline-bar{height:100%;border-radius:3px;transition:width .3s}
+.pipeline-count{font-size:12px;font-weight:600;font-family:var(--mono);color:var(--text2);width:40px;text-align:right}
+.pipeline-value{font-size:11px;font-family:var(--mono);color:var(--green);width:80px;text-align:right}
+
+/* LIST VIEW */
+.list-table{width:100%;border-collapse:collapse}
+.list-table th{text-align:left;padding:10px 14px;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);background:var(--surface)}
+.list-table td{padding:11px 14px;border-bottom:1px solid var(--border);font-size:12px;vertical-align:middle}
+.list-table tr:hover td{background:rgba(255,255,255,.02);cursor:pointer}
+.stage-badge{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;font-family:var(--mono)}
+.stage-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+
+/* DEAL DETAIL PANEL */
+.detail-overlay{position:fixed;inset:0;z-index:300;display:none}
+.detail-overlay.on{display:flex}
+.detail-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px)}
+.detail-panel{position:relative;z-index:1;margin-left:auto;width:680px;height:100vh;background:var(--surface);border-left:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column}
+.dp-head{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:16px;position:sticky;top:0;background:var(--surface);z-index:10}
+.dp-close{width:32px;height:32px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--text3);flex-shrink:0;transition:all .15s}
+.dp-close:hover{border-color:var(--red);color:var(--red)}
+.dp-title{font-size:18px;font-weight:800;letter-spacing:-.01em;margin-bottom:4px}
+.dp-meta{font-size:11px;color:var(--text3);font-family:var(--mono)}
+.dp-body{padding:20px 24px;flex:1}
+
+/* STAGE PROGRESS */
+.stage-progress{margin-bottom:24px}
+.sp-label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:10px}
+.sp-track{display:flex;gap:3px}
+.sp-step{flex:1;height:4px;border-radius:2px;background:var(--surface3);transition:background .3s}
+.sp-step.done{background:var(--green)}
+.sp-step.current{background:var(--red)}
+.sp-step.upcoming{background:var(--surface3)}
+
+/* RACI BLOCK */
+.raci-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:16px}
+.raci-box{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px}
+.raci-box-label{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px}
+.raci-box-val{font-size:11px;color:var(--text2);line-height:1.4}
+
+/* CHECKLIST */
+.checklist-section{margin-bottom:20px}
+.cs-title{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text2);margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.cs-item{display:flex;align-items:flex-start;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.cs-item:last-child{border-bottom:none}
+.cs-check{width:16px;height:16px;border:2px solid var(--border2);border-radius:4px;flex-shrink:0;margin-top:1px;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center}
+.cs-check.checked{background:var(--green);border-color:var(--green)}
+.cs-check.checked::after{content:'✓';font-size:10px;color:#fff;font-weight:700}
+.cs-text{font-size:12px;color:var(--text2);line-height:1.5}
+.cs-text strong{color:var(--text)}
+.cs-text.done-text{text-decoration:line-through;color:var(--text3)}
+
+/* GATE BLOCK */
+.gate-block{background:var(--red-dim);border:1px solid rgba(210,35,42,.2);border-radius:8px;padding:14px 16px;margin-bottom:16px}
+.gate-title{font-size:11px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+.gate-item{font-size:12px;color:var(--text2);padding:3px 0;display:flex;gap:8px;align-items:flex-start}
+.gate-item::before{content:'▸ ';color:var(--red);font-size:10px;margin-top:2px;flex-shrink:0}
+
+/* HANDOFF BLOCK */
+.hblock{background:var(--surface2);border-left:3px solid var(--red);border-radius:0 8px 8px 0;padding:14px 16px;margin-bottom:16px}
+.hblock-title{font-size:10px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+.hblock-desc{font-size:12px;color:var(--text2);line-height:1.5}
+
+/* DELIVERABLE BLOCK */
+.deliv-block{background:var(--green-dim);border:1px solid rgba(34,197,94,.2);border-radius:8px;padding:12px 16px;margin-bottom:16px}
+.deliv-title{font-size:10px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
+.deliv-desc{font-size:12px;color:var(--text2);line-height:1.5}
+
+/* BRANCH BLOCK */
+.branch-block{background:var(--amber-dim);border:1px solid rgba(245,158,11,.2);border-radius:8px;padding:12px 16px;margin-bottom:12px}
+.branch-q{font-size:12px;font-weight:700;color:var(--amber);margin-bottom:6px}
+.branch-opt{font-size:11px;color:var(--text2);padding:2px 0 2px 12px}
+.branch-opt strong{color:var(--text)}
+
+/* PHASE SECTION HEADER */
+.phase-header{padding:12px 16px;border-radius:8px;margin:20px 0 12px;display:flex;align-items:center;gap:10px}
+.phase-header.a{background:var(--red-dim);border:1px solid rgba(210,35,42,.2)}
+.phase-header.b{background:var(--blue-dim);border:1px solid rgba(59,130,246,.2)}
+.phase-header.c{background:var(--green-dim);border:1px solid rgba(34,197,94,.2)}
+.phase-header.d{background:var(--amber-dim);border:1px solid rgba(245,158,11,.2)}
+.phase-header-label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+.phase-header.a .phase-header-label{color:var(--red)}
+.phase-header.b .phase-header-label{color:var(--blue)}
+.phase-header.c .phase-header-label{color:var(--green)}
+.phase-header.d .phase-header-label{color:var(--amber)}
+.phase-header-title{font-size:13px;font-weight:700;color:var(--text)}
+
+/* SECTION DIVIDERS IN DEAL DETAIL */
+.dp-section{margin-bottom:20px}
+.dp-section-title{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+
+/* STAGE NAV IN DETAIL */
+.stage-nav{display:flex;gap:4px;margin-bottom:20px;flex-wrap:wrap}
+.snav-btn{padding:6px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;font-family:var(--font);font-size:10px;font-weight:700;color:var(--text3);cursor:pointer;transition:all .15s;letter-spacing:.04em}
+.snav-btn:hover{border-color:var(--border2);color:var(--text2)}
+.snav-btn.on{background:var(--red-dim);border-color:rgba(210,35,42,.4);color:var(--red)}
+.snav-btn.done{background:var(--green-dim);border-color:rgba(34,197,94,.3);color:var(--green)}
+
+/* NOTES */
+.notes-area{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;font-family:var(--font);font-size:12px;color:var(--text);resize:vertical;min-height:80px;transition:border-color .15s;outline:none}
+.notes-area:focus{border-color:var(--border2)}
+
+/* FORM ELEMENTS */
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.form-group{display:flex;flex-direction:column;gap:6px}
+.form-label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text3)}
+.form-input{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;font-family:var(--font);font-size:12px;color:var(--text);outline:none;transition:border-color .15s}
+.form-input:focus{border-color:var(--border2)}
+.form-select{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;font-family:var(--font);font-size:12px;color:var(--text);outline:none;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%235a6380'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;z-index:400;display:none;align-items:center;justify-content:center}
+.modal-overlay.on{display:flex}
+.modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(4px)}
+.modal{position:relative;z-index:1;background:var(--surface);border:1px solid var(--border);border-radius:12px;width:540px;max-height:90vh;overflow-y:auto}
+.modal-head{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.modal-title{font-size:16px;font-weight:700}
+.modal-body{padding:20px 24px}
+.modal-footer{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
+
+/* HUBSPOT PANEL */
+.hs-status{display:flex;align-items:center;gap:8px;padding:12px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:16px}
+.hs-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.hs-dot.connected{background:var(--green);box-shadow:0 0 8px rgba(34,197,94,.5)}
+.hs-dot.disconnected{background:var(--text3)}
+.hs-info{flex:1}
+.hs-label{font-size:12px;font-weight:600;color:var(--text)}
+.hs-sub{font-size:10px;color:var(--text3);font-family:var(--mono)}
+.hs-field-row{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:11px}
+.hs-field-row:last-child{border-bottom:none}
+.hs-field-dxd{color:var(--text2)}
+.hs-field-hs{color:var(--blue);font-family:var(--mono)}
+.hs-arrow{color:var(--text3);font-size:10px}
+
+/* RACI PAGE */
+.raci-table{width:100%;border-collapse:collapse;font-size:12px}
+.raci-table th{text-align:left;padding:10px 14px;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);background:var(--surface);white-space:nowrap}
+.raci-table td{padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:top;line-height:1.4}
+.raci-table tr:hover td{background:rgba(255,255,255,.02)}
+
+/* SEARCH & FILTER */
+.filter-bar{display:flex;gap:10px;align-items:center;margin-bottom:20px;flex-wrap:wrap}
+.search-input{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px 12px;font-family:var(--font);font-size:12px;color:var(--text);outline:none;width:220px;transition:border-color .15s}
+.search-input:focus{border-color:var(--border2)}
+.filter-chip{padding:6px 12px;background:var(--surface);border:1px solid var(--border);border-radius:20px;font-size:11px;font-weight:600;color:var(--text3);cursor:pointer;transition:all .15s}
+.filter-chip:hover{border-color:var(--border2);color:var(--text2)}
+.filter-chip.on{border-color:var(--red);color:var(--red);background:var(--red-dim)}
+
+/* PROJECT TOOLS BUTTON */
+.btn-tools{background:rgba(68,102,136,.12);color:#6699bb;border:1px solid #446688;}
+.btn-tools:hover{background:rgba(68,102,136,.25);color:#88bbdd;border-color:#6699bb;}
+
+/* SCROLL */
+.dp-body::-webkit-scrollbar,.detail-panel::-webkit-scrollbar{width:4px}
+.dp-body::-webkit-scrollbar-track,.detail-panel::-webkit-scrollbar-track{background:var(--surface)}
+.dp-body::-webkit-scrollbar-thumb,.detail-panel::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+/* RESPONSIVE */
+@media(max-width:900px){
+  .main-grid{grid-template-columns:1fr}
+  .stat-row{grid-template-columns:repeat(2,1fr)}
+  .detail-panel{width:100vw}
+  .raci-grid{grid-template-columns:1fr}
+}
+
+/* ANIMATIONS */
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.section.on{animation:fadeIn .2s ease}
+.deal-card{animation:fadeIn .15s ease}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR — brand hidden, nav tabs only -->
+<div class="topbar">
+  <div class="topbar-brand">
+    <div style="width:28px;height:28px;background:var(--red);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff">DX</div>
+    <span style="font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase">DXD</span>
+    <span style="color:var(--text3);margin:0 6px;font-size:10px">/</span>
+    <span style="font-size:10px;font-weight:600;color:var(--text3);letter-spacing:.08em;text-transform:uppercase">Ops Tracker</span>
+  </div>
+  <div class="topbar-nav">
+    <button class="tnav on" onclick="showSection('dashboard',this)">Dashboard</button>
+    <button class="tnav" onclick="showSection('cards',this)">Deals</button>
+    <button class="tnav" onclick="showSection('kanban',this)">Kanban</button>
+    <button class="tnav" onclick="showSection('pipeline',this)">Pipeline</button>
+    <button class="tnav" onclick="showSection('list',this)">All Deals</button>
+    <button class="tnav" onclick="showSection('raci',this)">RACI Map</button>
+    <button class="tnav" onclick="showSection('hubspot',this)">HubSpot</button>
+  </div>
+  <div class="topbar-actions">
+    <button class="btn btn-ghost btn-sm" onclick="openModal('modal-hubspot')">↻ Sync</button>
+    <button class="btn btn-primary btn-sm" onclick="openModal('modal-new-deal')">+ New Deal</button>
+  </div>
+</div>
+
+<!-- ========== DASHBOARD ========== -->
+<div id="dashboard" class="section on">
+<div class="page">
+  <div class="dash-header">
+    <div class="dash-title">Operations Dashboard</div>
+    <div class="dash-sub" id="dash-date"></div>
+  </div>
+  <div class="stat-row">
+    <div class="stat-card">
+      <div class="stat-label">Active Deals</div>
+      <div class="stat-val" id="stat-active">—</div>
+      <div class="stat-sub" id="stat-active-sub"></div>
+      <div class="stat-accent" style="background:var(--blue)"></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Pipeline Value</div>
+      <div class="stat-val" id="stat-value">—</div>
+      <div class="stat-sub">Total open</div>
+      <div class="stat-accent" style="background:var(--green)"></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Pending Handoffs</div>
+      <div class="stat-val" id="stat-handoffs">—</div>
+      <div class="stat-sub">Need action</div>
+      <div class="stat-accent" style="background:var(--red)"></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">At Risk</div>
+      <div class="stat-val" id="stat-risk">—</div>
+      <div class="stat-sub">Stalled or flagged</div>
+      <div class="stat-accent" style="background:var(--amber)"></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Closed Won (30d)</div>
+      <div class="stat-val" id="stat-won">—</div>
+      <div class="stat-sub" id="stat-won-val"></div>
+      <div class="stat-accent" style="background:var(--purple)"></div>
+    </div>
+  </div>
+
+  <div class="main-grid">
+    <div>
+      <div class="widget" style="margin-bottom:16px">
+        <div class="widget-head">
+          <span class="widget-title">🔴 Critical Handoffs</span>
+          <span class="tag tag-red" id="handoff-count-badge">—</span>
+        </div>
+        <div class="widget-body" id="handoff-list" style="padding:0 16px"></div>
+      </div>
+      <div class="widget" style="margin-bottom:16px">
+        <div class="widget-head">
+          <span class="widget-title">Pipeline by Stage</span>
+          <button class="btn btn-ghost btn-sm" onclick="showSection('pipeline',document.querySelectorAll('.tnav')[4])">View All →</button>
+        </div>
+        <div class="widget-body" id="dash-pipeline"></div>
+      </div>
+    </div>
+    <div class="sidebar">
+      <div class="widget">
+        <div class="widget-head"><span class="widget-title">Recent Activity</span></div>
+        <div class="widget-body" style="padding:0 16px" id="activity-feed"></div>
+      </div>
+      <div class="widget">
+        <div class="widget-head">
+          <span class="widget-title">⚡ Regulatory Tracker</span>
+          <span class="tag tag-amber">Drone Deals</span>
+        </div>
+        <div class="widget-body" id="reg-tracker"></div>
+      </div>
+      <div class="widget">
+        <div class="widget-head"><span class="widget-title">HubSpot Sync</span></div>
+        <div class="widget-body">
+          <div class="hs-status">
+            <div class="hs-dot disconnected" id="hs-dash-dot"></div>
+            <div class="hs-info">
+              <div class="hs-label" id="hs-dash-label">Not connected</div>
+              <div class="hs-sub" id="hs-dash-sub">Configure API token in HubSpot tab</div>
+            </div>
+          </div>
+          <button class="btn btn-ghost btn-sm" style="width:100%" onclick="showSection('hubspot',document.querySelectorAll('.tnav')[6])">Configure →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ========== DEAL CARDS ========== -->
+<div id="cards" class="section">
+<div class="page">
+  <div class="dash-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+    <div>
+      <div class="dash-title">Deals</div>
+      <div class="dash-sub" id="cards-sub"></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <input class="search-input" placeholder="Search deals..." oninput="renderCards()" id="cards-search">
+      <span class="filter-chip on" onclick="cardsFilter(this,'all')" data-f="all">All</span>
+      <span class="filter-chip" onclick="cardsFilter(this,'on-track')" data-f="on-track">On track</span>
+      <span class="filter-chip" onclick="cardsFilter(this,'at-risk')" data-f="at-risk">At risk</span>
+      <span class="filter-chip" onclick="cardsFilter(this,'flagged')" data-f="flagged">Flagged</span>
+    </div>
+  </div>
+  <div class="deal-cards-grid" id="cards-grid"></div>
+</div>
+</div>
+
+<!-- ========== KANBAN ========== -->
+<div id="kanban" class="section">
+<div class="page">
+  <div class="dash-header" style="display:flex;align-items:center;justify-content:space-between">
+    <div>
+      <div class="dash-title">Kanban Board</div>
+      <div class="dash-sub">All active deals by stage</div>
+    </div>
+    <div class="filter-bar" style="margin:0">
+      <input class="search-input" placeholder="Search deals..." oninput="filterKanban(this.value)" id="kanban-search">
+      <span class="filter-chip on" onclick="toggleFilter(this,'all')" data-filter="all">All</span>
+      <span class="filter-chip" onclick="toggleFilter(this,'drone')" data-filter="drone">Drone</span>
+      <span class="filter-chip" onclick="toggleFilter(this,'manned')" data-filter="manned">Manned</span>
+      <span class="filter-chip" onclick="toggleFilter(this,'bespoke')" data-filter="bespoke">Bespoke</span>
+    </div>
+  </div>
+  <div class="kanban-wrap">
+    <div class="kanban" id="kanban-board"></div>
+  </div>
+</div>
+</div>
+
+<!-- ========== PIPELINE ========== -->
+<div id="pipeline" class="section">
+<div class="page">
+  <div class="dash-header">
+    <div class="dash-title">Pipeline Funnel</div>
+    <div class="dash-sub">Deal count and value by stage</div>
+  </div>
+  <div id="pipeline-view"></div>
+</div>
+</div>
+
+<!-- ========== LIST ========== -->
+<div id="list" class="section">
+<div class="page">
+  <div class="dash-header" style="display:flex;align-items:center;justify-content:space-between">
+    <div>
+      <div class="dash-title">All Deals</div>
+      <div class="dash-sub">Full deal registry</div>
+    </div>
+    <div class="filter-bar" style="margin:0">
+      <input class="search-input" placeholder="Search..." oninput="filterList(this.value)" id="list-search">
+    </div>
+  </div>
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden">
+    <table class="list-table" id="list-table">
+      <thead>
+        <tr>
+          <th>Deal Name</th><th>Company</th><th>Stage</th><th>Phase</th><th>Value</th><th>Owner (R)</th><th>Status</th><th>Days in Stage</th>
+        </tr>
+      </thead>
+      <tbody id="list-body"></tbody>
+    </table>
+  </div>
+</div>
+</div>
+
+<!-- ========== RACI MAP ========== -->
+<div id="raci" class="section">
+<div class="page">
+  <div class="dash-header">
+    <div class="dash-title">RACI Map</div>
+    <div class="dash-sub">Who owns what at every stage</div>
+  </div>
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:auto">
+    <table class="raci-table" id="raci-table">
+      <thead>
+        <tr>
+          <th>Stage</th>
+          <th style="color:var(--red)">Responsible (R)</th>
+          <th style="color:var(--blue)">Accountable (A)</th>
+          <th style="color:var(--green)">Consulted (C)</th>
+          <th>Exit Deliverable</th>
+          <th>Key Notes</th>
+        </tr>
+      </thead>
+      <tbody id="raci-body"></tbody>
+    </table>
+  </div>
+</div>
+</div>
+
+<!-- ========== HUBSPOT ========== -->
+<div id="hubspot" class="section">
+<div class="page">
+  <div class="dash-header">
+    <div class="dash-title">HubSpot Integration</div>
+    <div class="dash-sub">Two-way sync configuration</div>
+  </div>
+  <div class="main-grid">
+    <div>
+      <div class="widget" style="margin-bottom:16px">
+        <div class="widget-head"><span class="widget-title">API Configuration</span></div>
+        <div class="widget-body">
+          <div class="form-group" style="margin-bottom:12px">
+            <label class="form-label">HubSpot Private App Token</label>
+            <div style="display:flex;gap:8px">
+              <input class="form-input" id="hs-token" type="password" placeholder="pat-na1-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" style="flex:1">
+              <button class="btn btn-primary" onclick="connectHubSpot()">Connect</button>
+            </div>
+            <div style="font-size:10px;color:var(--text3);margin-top:4px">Settings → Private Apps → Create App in your HubSpot portal. Required scopes: crm.objects.deals.read, crm.objects.deals.write</div>
+          </div>
+          <div class="hs-status" id="hs-config-status">
+            <div class="hs-dot disconnected" id="hs-config-dot"></div>
+            <div class="hs-info">
+              <div class="hs-label" id="hs-config-label">Not connected</div>
+              <div class="hs-sub" id="hs-config-sub">Enter your Private App token above</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="widget" style="margin-bottom:16px">
+        <div class="widget-head">
+          <span class="widget-title">Stage Mapping</span>
+          <span class="tag tag-blue">DXD → HubSpot Pipeline</span>
+        </div>
+        <div class="widget-body">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:12px">Map DXD's 12-stage process to your HubSpot pipeline stages.</div>
+          <div id="stage-mapping-rows"></div>
+        </div>
+      </div>
+      <div class="widget">
+        <div class="widget-head"><span class="widget-title">Sync Log</span></div>
+        <div class="widget-body" id="sync-log">
+          <div style="font-size:12px;color:var(--text3);font-family:var(--mono)">No sync events yet.</div>
+        </div>
+      </div>
+    </div>
+    <div class="sidebar">
+      <div class="widget">
+        <div class="widget-head"><span class="widget-title">Field Mapping</span></div>
+        <div class="widget-body" style="padding:0 16px">
+          <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);padding:10px 0 6px;display:grid;grid-template-columns:1fr 1fr auto;gap:8px">
+            <span>DXD Field</span><span>HubSpot Property</span><span>Sync</span>
+          </div>
+          <div id="field-mapping-rows"></div>
+        </div>
+      </div>
+      <div class="widget">
+        <div class="widget-head"><span class="widget-title">Sync Settings</span></div>
+        <div class="widget-body">
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <label style="display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--text2);cursor:pointer">Auto-sync on stage change<input type="checkbox" checked style="accent-color:var(--red)"></label>
+            <label style="display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--text2);cursor:pointer">Pull new HubSpot deals<input type="checkbox" checked style="accent-color:var(--red)"></label>
+            <label style="display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--text2);cursor:pointer">Sync checklist completion<input type="checkbox" style="accent-color:var(--red)"></label>
+            <label style="display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--text2);cursor:pointer">Alert on HubSpot updates<input type="checkbox" checked style="accent-color:var(--red)"></label>
+          </div>
+          <button class="btn btn-primary" style="width:100%;margin-top:14px" onclick="saveHSSettings()">Save Settings</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ========== DEAL DETAIL PANEL ========== -->
+<div class="detail-overlay" id="detail-overlay">
+  <div class="detail-backdrop" onclick="closeDetail()"></div>
+  <div class="detail-panel" id="detail-panel">
+    <div class="dp-head">
+      <div>
+        <div class="dp-title" id="dp-title">Deal Name</div>
+        <div class="dp-meta" id="dp-meta"></div>
+      </div>
+      <button class="dp-close" onclick="closeDetail()">✕</button>
+    </div>
+    <div class="dp-body" id="dp-body"></div>
+  </div>
+</div>
+
+<!-- ========== NEW DEAL MODAL ========== -->
+<div class="modal-overlay" id="modal-new-deal">
+  <div class="modal-backdrop" onclick="closeModal('modal-new-deal')"></div>
+  <div class="modal">
+    <div class="modal-head">
+      <span class="modal-title">New Deal</span>
+      <button class="dp-close" onclick="closeModal('modal-new-deal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Deal Name *</label><input class="form-input" id="nd-name" placeholder="e.g. Richland County DFR"></div>
+        <div class="form-group"><label class="form-label">Company *</label><input class="form-input" id="nd-company" placeholder="Organization name"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Deal Value ($)</label><input class="form-input" id="nd-value" type="number" placeholder="250000"></div>
+        <div class="form-group"><label class="form-label">BD Lane / Segment</label>
+          <select class="form-select form-input" id="nd-segment">
+            <option value="">Select segment</option>
+            <option>Drone-as-a-Service (DaaS)</option>
+            <option>Manned Guarding</option>
+            <option>Blended (Drone + Manned)</option>
+            <option>Training / Consulting</option>
+            <option>Starter Program</option>
+            <option>DFR (Drone First Responder)</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Starting Stage</label>
+          <select class="form-select form-input" id="nd-stage">
+            <option value="0">Stage 0 — Lead Intake</option>
+            <option value="1">Stage 1 — Qualify</option>
+            <option value="2">Stage 2 — Discover</option>
+            <option value="3">Stage 3 — Demo & Validate</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Capture Owner</label>
+          <select class="form-select form-input" id="nd-owner">
+            <option>Ward Ault</option>
+            <option>Natesh Rao</option>
+            <option>Ross Stinson</option>
+            <option>Tyler Morris</option>
+            <option>Rory O'Flaherty</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label class="form-label">Deal Type</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer"><input type="checkbox" id="nd-drone" style="accent-color:var(--red)"> Involves Drones</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;margin-left:12px"><input type="checkbox" id="nd-manned" style="accent-color:var(--red)"> Manned Guarding</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;margin-left:12px"><input type="checkbox" id="nd-bespoke" style="accent-color:var(--red)"> Bespoke / Layer 3</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;margin-left:12px"><input type="checkbox" id="nd-gov" style="accent-color:var(--red)"> Gov / Defense</label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <textarea class="notes-area" id="nd-notes" placeholder="Initial context, source, relationship notes..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-new-deal')">Cancel</button>
+      <button class="btn btn-primary" onclick="createDeal()">Create Deal</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== HUBSPOT SYNC MODAL ========== -->
+<div class="modal-overlay" id="modal-hubspot">
+  <div class="modal-backdrop" onclick="closeModal('modal-hubspot')"></div>
+  <div class="modal">
+    <div class="modal-head">
+      <span class="modal-title">Sync with HubSpot</span>
+      <button class="dp-close" onclick="closeModal('modal-hubspot')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="sync-modal-content">
+        <div style="font-size:13px;color:var(--text2);margin-bottom:16px">Configure your HubSpot Private App token first to enable live sync.</div>
+        <button class="btn btn-primary" style="width:100%" onclick="closeModal('modal-hubspot');showSection('hubspot',document.querySelectorAll('.tnav')[6])">Go to HubSpot Settings →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// DATA LAYER
+// ============================================================
+
+const STAGE_DEFS = [
+  {n:0,title:'Lead Intake',phase:'Pre',phaseClass:'',color:'#5a6380',colorDim:'rgba(90,99,128,0.12)',
+   r:'Ward Ault',a:'Natesh Rao',c:'—',
+   exit:'CRM Record — Assigned. Lead with source, BD lane, Capture owner, segment, date.',
+   note:'All leads enter CRM through Ward regardless of source.',
+   handoff:null,
+   tasks:{p0:['Lead captured in CRM with source, contact, and description','BD lane identified','Capture owner assigned and notified'],p1:['Hot lead check — if time-sensitive, go directly to Segment Lead'],p2:[]},
+   gates:['Lead has a CRM record with source, contact, and description','Capture owner is assigned and notified','BD lane is identified'],
+   branches:[{q:'Is this a time-sensitive / hot lead?',yes:'Goes directly to Segment Lead for immediate assignment. Ratified at next sync.',no:'Standard triage at Monday Sales Sync.'}]
+  },
+  {n:1,title:'Identify & Qualify',phase:'Phase A',phaseClass:'a',color:'#D2232A',colorDim:'rgba(210,35,42,0.12)',
+   r:'Ward Ault / Capture',a:'Natesh Rao',c:'Erik Larson · Rob Robertson (drone)',
+   exit:'Qualified Opportunity Brief — CRM stage → "Qualified."',
+   note:'Natesh makes Go/No-Go decision. Ward flags the recommendation.',
+   handoff:null,
+   tasks:{p0:['ICP validation — segment, geography, industry fit','Budget confirmed — funded program coverage','Authority identified — buying decision maker engaged','Need validated — specific security pain point','Timeline understood — urgency driver identified','Go/No-Go decision reviewed with Segment Lead'],p1:['Competitive landscape mapped','Internal champion identified','Initial outreach completed'],p2:[]},
+   gates:['Segment Lead has approved Go/No-Go','ICP fit confirmed (segment, geography, budget, authority, need, timeline)','If drones: regulatory feasibility is green or yellow','CRM updated with estimated value, key stakeholders, competitive context'],
+   branches:[{q:'Does this deal involve drones?',yes:'P0: Regulatory feasibility check — airspace classification, restrictions, waiver viability. Consult Rob Robertson. If regulatory is a showstopper, kill the deal here.',no:'Skip drone regulatory items.'},{q:'Is this a government or defense customer?',yes:'P1: Budget cycle timing, political will, NDAA/ITAR implications, security clearance requirements?',no:''}]
+  },
+  {n:2,title:'Discover',phase:'Phase A',phaseClass:'a',color:'#D2232A',colorDim:'rgba(210,35,42,0.12)',
+   r:'Ward Ault (standard) · Natesh (complex)',a:'Natesh Rao',c:'Winston Gamso · Tyler Morris · Erik Larson',
+   exit:'Discovery Report — Customer problem statement, current state, desired outcomes, stakeholder map, constraints, budget indication, preliminary solution direction.',
+   note:'Tyler Morris contributes client intelligence. Solutions joins as SME.',
+   handoff:null,
+   tasks:{p0:['Stakeholder map — economic buyer, technical buyer, champion, procurement, legal','Current state assessment — cameras, SOC, VMS, access control, guard force','Requirements gathered — outcomes, coverage hours, response times, SLA expectations','Budget range validated — surface acceptable price range early','Solutions engaged — attending discovery meetings, framing approaches'],p1:['Decision-making process mapped — how does this customer buy?','Customer pain quantified — cost of current problem'],p2:[]},
+   gates:['Customer problem statement is clear and documented','Requirements are specific enough for Solutions to design against','Budget range is known (at least ballpark)','Solutions person has attended at least one discovery session'],
+   branches:[{q:'Does this deal involve drones?',yes:'P0 Site assessment: airspace classification, flight paths, dock placement, BVLOS determination, network/power. Rob Robertson consulted on waiver feasibility.',no:''},{q:'Is this likely bespoke / needs custom integration?',yes:'P1: Document integration requirements early — VMS type, access control, SIEM, dispatch. Determines if Dean Pratt is needed in Stage 4.',no:''}]
+  },
+  {n:3,title:'Demo & Validate',phase:'Phase A',phaseClass:'a',color:'#D2232A',colorDim:'rgba(210,35,42,0.12)',
+   r:'Ross Stinson (demo) · Natesh Rao (commercial)',a:'Rob Chadwick',c:'Winston Gamso · Rory (blended)',
+   exit:'Validated Opportunity — CRM updated (25-40%). Solutions assigned and briefed for design.',
+   note:'Tyler Morris introduced to client at or immediately after demo. Owns client relationship from this point.',
+   handoff:{title:'Phase A → Phase B Handoff',desc:'Critical transition. Ownership shifts to Solutions for design. Confirm Solutions has Discovery Report + engagement structure decision. Schedule formal handoff — do not just update the CRM.'},
+   tasks:{p0:['Technical demonstration delivered — in-person or virtual. Solutions co-leads technical portions.','Executive alignment confirmed — economic buyer bought in before full solution design','Engagement structure decided — Starter Program (pilot) or direct contract','CRM updated — 25-40% probability. Engagement structure recorded.','Tyler Morris introduced to client'],p1:['Reference customers shared — proof points from similar deployments','Competitive positioning addressed — why DXD vs alternative'],p2:[]},
+   gates:['Customer has seen capability and objections addressed','Economic buyer is aligned','Engagement structure agreed (pilot vs. full)','Solutions has Discovery Report + engagement structure, ready to design'],
+   branches:[{q:'Is this going to be a Starter Program (pilot)?',yes:'P0: Define pilot scope — duration (60-90 days), sites/docks, success metrics, conversion criteria.',no:''}]
+  },
+  {n:4,title:'Design Solution',phase:'Phase B',phaseClass:'b',color:'#3b82f6',colorDim:'rgba(59,130,246,0.12)',
+   r:'Winston Gamso · Dean Pratt (bespoke)',a:'Winston Gamso',c:'Ross Stinson · Erik Larson · Tyler Morris · Danny Gritty',
+   exit:'Solution Design Package — Products/services, integration scope, operational model, SLA framework, timeline, preliminary pricing.',
+   note:'Preliminary pricing must hit 20%+ margin floor. Ross validates operational doctrine in every design before SOW is drafted.',
+   handoff:null,
+   tasks:{p0:['Solution architecture defined — products, services, operational model','SLA framework defined — response times, uptime, coverage, reporting cadence','Preliminary pricing check — does this design hit 20%+ margin?','Implementation timeline estimated — procurement, regulatory, staffing lead times'],p1:['Integration scope documented — VMS, access control, SIEM, dispatch','Ops capacity check initiated — pilot availability, equipment availability'],p2:['Cash flow modeling for hardware-heavy DaaS deals']},
+   gates:['Solution architecture is defined and documented','Preliminary pricing check passed (20%+ margin achievable)','If bespoke: Solution Architect reviewed and approved approach','Implementation timeline is realistic given known constraints'],
+   branches:[{q:'Is this standard (Layer 2) or bespoke (Layer 3)?',yes:'Standard: Select from Base/Mid/Elite bundles. Map requirements to tier.',no:'Bespoke P0: Dean Pratt engaged, custom engineering scope defined, integration architecture documented.'},{q:'Is this a Starter Program?',yes:'Narrower scope: 1-2 docks, single site, 60-90 day window. Define success metrics for conversion.',no:''}]
+  },
+  {n:5,title:'Price, SOW & Approve',phase:'Phase B',phaseClass:'b',color:'#3b82f6',colorDim:'rgba(59,130,246,0.12)',
+   r:'Winston Gamso (SOW) · Ward Ault (package)',a:'Natesh Rao',c:'Tyler Bayne · Mike Egan · Dean Pratt (bespoke)',
+   exit:'Approved SOW + Pricing + Draft Contract — Internally approved scope with validated pricing and margins.',
+   note:'Ward submits package to Mike Egan. Escalation triggers: <20% margin, >$500K, non-standard terms, any bespoke deal.',
+   handoff:null,
+   tasks:{p0:['Pricing built — Layer 1 catalog + Layer 2 bundles, tier discounts applied','Ops validation — Tyler Bayne confirms costs accurate, feasible, capacity available','Finance validation — margin meets 20% floor','SOW drafted — deliverables, SLAs, timeline, roles, payment terms, acceptance criteria','Contract terms prepared — MSA: liability insurance ($5M+), data privacy, termination','Internal approval obtained — Segment Lead reviewed, CRM updated'],p1:['Government procurement terms reviewed if applicable'],p2:['Cash flow modeling for hardware-heavy deals']},
+   gates:['Pricing is built and internally validated (Ops + Finance)','SOW is drafted with all required terms','All required approvals obtained','CRM updated — 50-75% probability'],
+   branches:[{q:'Does this deal trigger escalation?',yes:'Margin <20%: CFO (Mike Egan) review required. Deal >$500K: Executive approval. Non-standard terms: Legal review. Bespoke/Layer 3: CFO approves ALL regardless of margin.',no:''}]
+  },
+  {n:6,title:'Propose & Close',phase:'Phase B',phaseClass:'b',color:'#3b82f6',colorDim:'rgba(59,130,246,0.12)',
+   r:'Natesh Rao (commercial) · Winston Gamso (technical) · Ross Stinson (capability)',a:'Rob Chadwick',c:'Tyler Morris',
+   exit:'Fully Executed Contract + Handoff Package — Signed MSA + SOW. Kickoff scheduled.',
+   note:'Ward Ault prepares full client handoff package for Tyler Morris. Natesh briefs Tyler on relationship context.',
+   handoff:{title:'Phase B → Phase C Handoff (Critical)',desc:'Most important handoff in the journey. Handoff package must include: Signed SOW, customer contacts, site details, special conditions/verbal commitments, regulatory status, customer expectations.'},
+   tasks:{p0:['Proposal presented — Capture + Solutions co-present. Executive summary + technical detail.','Objections handled — references, case studies, competitive positioning','Negotiation completed — redlines addressed within 1 week target','Contract executed — final signatures. CRM → "Closed Won." Billing setup initiated.','Kickoff meeting scheduled — customer, Delivery, Solutions required','Handoff package prepared by Ward Ault'],p1:['Tyler Morris briefed on relationship context by Natesh'],p2:[]},
+   gates:['Contract is signed','Handoff package is complete','Kickoff meeting is scheduled with customer + Delivery + Solutions','CRM → "Closed Won"'],
+   branches:[]
+  },
+  {n:7,title:'Procure & Provision',phase:'Phase C',phaseClass:'c',color:'#22c55e',colorDim:'rgba(34,197,94,0.12)',
+   r:'Danny Gritty (execution) · Tyler Morris (kickoff coordination)',a:'Tyler Bayne',c:'Winston Gamso · Erik Larson · Rob Robertson · James Nguyen',
+   exit:'Procurement Confirmation + Delivery Plan.',
+   note:'Erik Larson drives FAA waiver filing — can take 4-24 weeks. James Nguyen begins pilot workforce mobilization — 2-4+ week lead time.',
+   handoff:null,
+   tasks:{p0:['Customer kickoff meeting completed — timeline, roles, comms cadence, customer readiness','Delivery plan published — milestones, resource allocation, installation schedule, risk register','Equipment ordered — per SOW hardware profile. Vendor lead times confirmed and tracked.','QA & provisioning — receive, inspect, configure, firmware update, stage for deployment'],p1:['Pilot workforce recruitment initiated (James Nguyen) — if drones','State/local guard licensing initiated — if manned guarding'],p2:[]},
+   gates:['Equipment ordered and delivery timeline confirmed','Delivery plan published to customer and internal team','All regulatory applications filed (if applicable) with timelines tracked','Customer confirmed readiness — project sponsor, team, infrastructure'],
+   branches:[{q:'Does this deal involve drones?',yes:'P0: FAA waiver application filed — Erik Larson drives, Rob Robertson owns operational narrative. Track weekly. P1: Pilot workforce recruitment initiated.',no:''},{q:'Is this training/consulting only?',yes:'No procurement needed. Skip to Stage 9 (Train & Test).',no:''}]
+  },
+  {n:8,title:'Deploy & Integrate',phase:'Phase C',phaseClass:'c',color:'#22c55e',colorDim:'rgba(34,197,94,0.12)',
+   r:'Danny Gritty',a:'Tyler Bayne',c:'Dean Pratt (bespoke)',
+   exit:'Deployment Completion Report.',
+   note:'HARD GATE before Stage 9: FAA waiver approved, state licenses obtained, insurance on file, NDAA/ITAR documented. Do not proceed until ALL regulatory approvals confirmed.',
+   handoff:null,
+   tasks:{p0:['Physical installation complete — hardware mounted, cabled, powered','Network integration complete — connectivity confirmed, redundancy tested','Platform commissioned — software configured, cameras/sensors calibrated','System integration tested — all connected systems communicating correctly','Deployment Completion Report generated'],p1:['Bespoke integration troubleshooting — Dean Pratt if applicable'],p2:[]},
+   gates:['If drones: FAA waiver approved','If drones: State licenses obtained','Insurance on file','NDAA/ITAR documented (if gov/defense)','Deployment Completion Report signed'],
+   branches:[{q:'Does this deal involve drones?',yes:'HARD GATE: FAA waiver approved + state licenses + insurance + NDAA/ITAR must ALL be confirmed. Do not proceed to Stage 9 without all four.',no:''}]
+  },
+  {n:9,title:'Train & Test',phase:'Phase C',phaseClass:'c',color:'#22c55e',colorDim:'rgba(34,197,94,0.12)',
+   r:'Danny Gritty (coord) · Jon Beal (training) · James Nguyen (pilots)',a:'Tyler Bayne',c:'Rob Robertson (BVLOS) · Tyler Morris',
+   exit:'Training Certification + UAT Sign-Off.',
+   note:'Three parallel workstreams — Danny must sequence them. They do not self-organize. Public sector/DFR: Jon Beal runs specialized workshop for police/fire.',
+   handoff:null,
+   tasks:{p0:['Jon Beal: Customer and operator training delivered','James Nguyen: Pilot assignment and UAT staffing complete','UAT scenarios defined and executed — all acceptance criteria tested','Customer sign-off on UAT results'],p1:['Rob Robertson: BVLOS-specific curriculum (if applicable)','Public sector workshop delivered (if DFR/police/fire)'],p2:[]},
+   gates:['All three training workstreams sequenced and completed by Danny Gritty','Training certifications issued','UAT sign-off obtained from customer'],
+   branches:[{q:'Is this BVLOS?',yes:'Rob Robertson provides BVLOS-specific curriculum — conditional workstream.',no:''},{q:'Is this a public sector / DFR deployment?',yes:'Jon Beal runs specialized workshop for police/fire personnel.',no:''}]
+  },
+  {n:10,title:'Go-Live (Dual Handoff)',phase:'Phase C',phaseClass:'c',color:'#22c55e',colorDim:'rgba(34,197,94,0.12)',
+   r:'Danny Gritty · Internal PM (checklist)',a:'Tyler Bayne',c:'Mike Egan (billing)',
+   exit:'Customer Acceptance Certificate + Dual Handoff. BOTH Account Ops Manager AND Christian Kellerman must sign.',
+   note:'HANDOFF 1: Account Ops Manager accepts steady-state operational responsibility. HANDOFF 2: Christian Kellerman accepts ongoing technical account relationship. Tyler Bayne validates BOTH sign-offs and formally releases Delivery.',
+   handoff:{title:'Dual Go-Live Handoff (Critical)',desc:'HANDOFF 1: Account Operations Manager signs — accepts steady-state operational responsibility (SLAs, reporting, service-line coordination). HANDOFF 2: Christian Kellerman signs — accepts ongoing technical account relationship. Tyler Bayne validates BOTH. Mike Egan confirms billing activation.'},
+   tasks:{p0:['Customer Acceptance Certificate obtained','HANDOFF 1: Account Ops Manager sign-off — steady-state operational responsibility','HANDOFF 2: Christian Kellerman sign-off — technical account relationship','Tyler Bayne validates both sign-offs and formally releases Delivery','Mike Egan confirms billing activation'],p1:['30-day health check scheduled'],p2:[]},
+   gates:['Customer Acceptance Certificate signed','Account Ops Manager has signed Handoff 1','Christian Kellerman has signed Handoff 2','Tyler Bayne has formally released Delivery','Billing activation confirmed by Mike Egan'],
+   branches:[]
+  },
+  {n:11,title:'Operate & Optimize',phase:'Retain',phaseClass:'d',color:'#f59e0b',colorDim:'rgba(245,158,11,0.12)',
+   r:'Account Ops Manager',a:'Natesh Rao',c:'Christian Kellerman · Tyler Morris · Jeff Ventrella · Rory/Cascadia',
+   exit:'Recurring: Monthly ops reports + QBRs. No single exit.',
+   note:'QBR structure: Account Ops Mgr (ops data + SLA metrics) + Christian Kellerman (tech narrative + expansion signals) + Tyler Morris (relationship context). 30-day health check on all new programs.',
+   handoff:null,
+   tasks:{p0:['Monthly ops reports delivered — SLA performance, incident log, coverage metrics','QBR scheduled and conducted — Ops + Christian + Tyler Morris attending','Service-line routing confirmed — Jeff Ventrella (drone ops), Rory/Cascadia (manned guarding)'],p1:['Expansion signals documented — new sites, capabilities, or renewal indicators','30-day health check completed (new programs)'],p2:[]},
+   gates:[],
+   branches:[]
+  },
+  {n:12,title:'Expand & Renew',phase:'Retain',phaseClass:'d',color:'#f59e0b',colorDim:'rgba(245,158,11,0.12)',
+   r:'Natesh Rao',a:'Rob Chadwick',c:'Christian Kellerman · Ward Ault · Tyler Morris · Account Ops Manager',
+   exit:'Expansion Proposal or Renewal Agreement.',
+   note:'Renewal start: 120 days before expiration. Ward Ault prepares performance package. Expansion paths route back to earlier stages based on type.',
+   handoff:null,
+   tasks:{p0:['Renewal initiated 120 days before expiration','Ward Ault prepares performance package','Natesh owns conversation and close','Expansion path determined — new sites/capabilities (→ Stage 2), Starter → full (→ Stage 4), add-ons (→ Stage 7)'],p1:['Rob Chadwick attends Starter Program conversions as executive sponsor','Ross Stinson and Christian co-present with Natesh for conversions'],p2:[]},
+   gates:['Renewal or expansion proposal prepared','Customer engaged 120+ days before expiration'],
+   branches:[{q:'Expansion type?',yes:'New sites/capabilities → loop to Stage 2. Starter Program → full contract → loop to Stage 4. Simple add-ons → loop to Stage 7.',no:''}]
+  },
+];
+
+const HANDOFF_STAGES = [3, 6, 10];
+const HANDOFF_LABELS = {
+  3: {from:'Capture (Phase A)',to:'Solutions (Phase B)',desc:'Ownership shifts to Solutions for design. Formal handoff conversation required.'},
+  6: {from:'Solutions/Capture (Phase B)',to:'Delivery (Phase C)',desc:'Most critical handoff. Full handoff package must be complete before Delivery begins.'},
+  10: {from:'Delivery (Phase C)',to:'Operations (Steady State)',desc:'Dual sign-off required: Account Ops Manager + Christian Kellerman. Tyler Bayne validates both.'}
+};
+
+let DEALS = [
+  {id:'d1',name:'Halbert National DFR',company:'Halbert National',stage:8,value:485000,segment:'DFR (Drone First Responder)',owner:'Tyler Morris',capture:'Danny Gritty',status:'on-track',isDrone:true,isManned:false,isBespoke:false,isGov:false,daysInStage:5,notes:'FAA waiver filed 3 weeks ago. Tracking weekly with Erik. Deployment on schedule.',checks:{},activity:[{t:'Stage advanced to Deploy & Integrate',d:'2 days ago',icon:'🚀'},{t:'FAA waiver filed',d:'3 weeks ago',icon:'📋'},{t:'Equipment received and provisioned',d:'1 week ago',icon:'📦'}],hsId:'hs-001',lastSync:'2h ago'},
+  {id:'d2',name:'Richland County BVLOS',company:'Richland County Sheriff',stage:7,value:320000,segment:'Drone-as-a-Service (DaaS)',owner:'Tyler Morris',capture:'Ward Ault',status:'at-risk',isDrone:true,isManned:false,isBespoke:false,isGov:true,daysInStage:18,notes:'FAA waiver timeline concern — 18+ weeks estimated. Customer expectations need management. Escalate to Rob Robertson.',checks:{},activity:[{t:'Regulatory risk flagged',d:'Today',icon:'⚠️'},{t:'Kickoff meeting completed',d:'1 week ago',icon:'✅'},{t:'Contract executed',d:'3 weeks ago',icon:'📋'}],hsId:'hs-002',lastSync:'2h ago'},
+  {id:'d3',name:'Tempe GSOC Integration',company:'City of Tempe',stage:11,value:210000,segment:'Drone-as-a-Service (DaaS)',owner:'Jeff Ventrella',capture:'Natesh Rao',status:'on-track',isDrone:true,isManned:false,isBespoke:true,isGov:true,daysInStage:30,notes:'Live and operating. QBR scheduled for Q2. Expansion signals from Jeff.',checks:{},activity:[{t:'Monthly ops report delivered',d:'1 week ago',icon:'📊'},{t:'QBR scheduled for Q2',d:'2 weeks ago',icon:'📅'}],hsId:'hs-003',lastSync:'2h ago'},
+  {id:'d4',name:'Cascadia Blended Guard',company:'Cascadia Security Partners',stage:5,value:650000,segment:'Blended (Drone + Manned)',owner:'Winston Gamso',capture:"Rory O'Flaherty",status:'flagged',isDrone:true,isManned:true,isBespoke:false,isGov:false,daysInStage:12,notes:'Deal >$500K — executive approval required. CFO review pending. Margin at 21% — just above floor.',checks:{},activity:[{t:'Margin check passed at 21%',d:'3 days ago',icon:'💰'},{t:'SOW drafted',d:'1 week ago',icon:'📋'},{t:'Executive approval triggered (>$500K)',d:'3 days ago',icon:'🔴'}],hsId:'hs-004',lastSync:'3h ago'},
+  {id:'d5',name:'Port Authority Pilot',company:'Metro Port Authority',stage:3,value:175000,segment:'Starter Program',owner:'Ross Stinson',capture:'Ward Ault',status:'on-track',isDrone:true,isManned:false,isBespoke:false,isGov:true,daysInStage:4,notes:'Demo scheduled next week. Regulatory feasibility is green. Tyler Morris being introduced at demo.',checks:{},activity:[{t:'Demo scheduled',d:'Today',icon:'🎯'},{t:'Discovery report completed',d:'1 week ago',icon:'✅'}],hsId:'',lastSync:'Never'},
+  {id:'d6',name:'GreenTech Campus DaaS',company:'GreenTech Industries',stage:2,value:290000,segment:'Drone-as-a-Service (DaaS)',owner:'Ward Ault',capture:'Ward Ault',status:'on-track',isDrone:true,isManned:false,isBespoke:false,isGov:false,daysInStage:7,notes:'Discovery in progress. Solutions engaged. Strong ICP fit. Potential bespoke VMS integration TBD.',checks:{},activity:[{t:'Solutions engaged for discovery',d:'3 days ago',icon:'🤝'},{t:'Initial outreach completed',d:'1 week ago',icon:'📧'}],hsId:'',lastSync:'Never'},
+];
+
+let currentDealId = null;
+let currentDetailStage = null;
+let activeFilter = 'all';
+let hsToken = localStorage.getItem('dxd_hs_token') || '';
+let hsConnected = false;
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function showSection(id, el) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('on'));
+  document.querySelectorAll('.tnav').forEach(t => t.classList.remove('on'));
+  document.getElementById(id).classList.add('on');
+  if (el) el.classList.add('on');
+  if (id === 'dashboard') renderDashboard();
+  if (id === 'cards') renderCards();
+  if (id === 'kanban') renderKanban();
+  if (id === 'pipeline') renderPipeline();
+  if (id === 'list') renderList();
+  if (id === 'raci') renderRaci();
+  if (id === 'hubspot') renderHubspot();
+  window.scrollTo(0,0);
+}
+
+function openModal(id) { document.getElementById(id).classList.add('on'); }
+function closeModal(id) { document.getElementById(id).classList.remove('on'); }
+function closeDetail() { document.getElementById('detail-overlay').classList.remove('on'); }
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+function renderDashboard() {
+  const now = new Date();
+  document.getElementById('dash-date').textContent = now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) + ' — Tyler Morris, Deployment Solutions Manager';
+  const active = DEALS.filter(d=>d.stage<11).length;
+  const totalVal = DEALS.filter(d=>d.stage<10).reduce((s,d)=>s+d.value,0);
+  const handoffCount = DEALS.filter(d=>HANDOFF_STAGES.includes(d.stage)).length;
+  const atRisk = DEALS.filter(d=>d.status==='at-risk'||d.status==='flagged').length;
+  const won = DEALS.filter(d=>d.stage>=10).length;
+  const wonVal = DEALS.filter(d=>d.stage>=10).reduce((s,d)=>s+d.value,0);
+  document.getElementById('stat-active').textContent = active;
+  document.getElementById('stat-active-sub').textContent = `${DEALS.length} total deals`;
+  document.getElementById('stat-value').textContent = '$'+formatVal(totalVal);
+  document.getElementById('stat-handoffs').textContent = handoffCount;
+  document.getElementById('stat-risk').textContent = atRisk;
+  document.getElementById('stat-won').textContent = won;
+  document.getElementById('stat-won-val').textContent = '$'+formatVal(wonVal);
+  document.getElementById('handoff-count-badge').textContent = handoffCount;
+
+  const hl = document.getElementById('handoff-list');
+  const handoffDeals = DEALS.filter(d=>HANDOFF_STAGES.includes(d.stage));
+  if (handoffDeals.length === 0) {
+    hl.innerHTML = '<div style="padding:12px 0;font-size:12px;color:var(--text3)">No pending handoffs.</div>';
+  } else {
+    hl.innerHTML = handoffDeals.map(d=>{
+      const h = HANDOFF_LABELS[d.stage];
+      return `<div class="handoff-item" onclick="openDeal('${d.id}')" style="cursor:pointer">
+        <div class="handoff-dot" style="background:var(--red)"></div>
+        <div class="handoff-text">
+          <div class="handoff-deal">${d.name}</div>
+          <div class="handoff-desc">${h.desc}</div>
+          <div class="handoff-from">${h.from} → ${h.to}</div>
+        </div>
+        <div class="tag tag-red">Stage ${d.stage}</div>
+      </div>`;
+    }).join('');
+  }
+
+  const pp = document.getElementById('dash-pipeline');
+  const stageCounts = {};
+  DEALS.forEach(d=>{ if(d.stage<=10) stageCounts[d.stage] = (stageCounts[d.stage]||0)+1; });
+  const maxCount = Math.max(...Object.values(stageCounts),1);
+  const top5 = Object.entries(stageCounts).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  pp.innerHTML = top5.map(([stg,cnt])=>{
+    const s = STAGE_DEFS[+stg];
+    const val = DEALS.filter(d=>d.stage===+stg).reduce((sum,d)=>sum+d.value,0);
+    return `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="showSection('pipeline',document.querySelectorAll('.tnav')[4])">
+      <div style="width:22px;height:22px;border-radius:50%;background:${s.colorDim};color:${s.color};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">${s.n}</div>
+      <div style="flex:1;font-size:12px;color:var(--text2)">${s.title}</div>
+      <div style="width:80px;height:4px;background:var(--surface3);border-radius:2px;overflow:hidden"><div style="height:100%;border-radius:2px;background:${s.color};width:${(cnt/maxCount)*100}%"></div></div>
+      <div style="font-size:11px;font-family:var(--mono);color:var(--text3);width:20px;text-align:right">${cnt}</div>
+      <div style="font-size:10px;font-family:var(--mono);color:var(--green);width:60px;text-align:right">$${formatVal(val)}</div>
+    </div>`;
+  }).join('');
+
+  const af = document.getElementById('activity-feed');
+  const allActivity = [];
+  DEALS.forEach(d=>d.activity.forEach(a=>allActivity.push({...a,deal:d.name,dealId:d.id})));
+  af.innerHTML = allActivity.slice(0,6).map(a=>`
+    <div class="activity-item" onclick="openDeal('${a.dealId}')" style="cursor:pointer">
+      <div class="activity-icon" style="background:var(--surface3)">${a.icon}</div>
+      <div class="activity-body">
+        <div class="activity-text"><strong>${a.deal}</strong> — ${a.t}</div>
+        <div class="activity-time">${a.d}</div>
+      </div>
+    </div>`).join('');
+
+  const rt = document.getElementById('reg-tracker');
+  const droneDeals = DEALS.filter(d=>d.isDrone && d.stage>=7 && d.stage<=8);
+  if (droneDeals.length===0) {
+    rt.innerHTML='<div style="font-size:12px;color:var(--text3)">No active FAA waiver filings.</div>';
+  } else {
+    rt.innerHTML = droneDeals.map(d=>{
+      const age = d.daysInStage;
+      const pct = Math.min((age/112)*100,100);
+      const color = age>60?'var(--red)':age>30?'var(--amber)':'var(--green)';
+      return `<div style="margin-bottom:10px;cursor:pointer" onclick="openDeal('${d.id}')">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:12px;color:var(--text2)">${d.name}</span>
+          <span style="font-size:10px;font-family:var(--mono);color:${color}">Day ${age} / ~112</span>
+        </div>
+        <div style="height:4px;background:var(--surface3);border-radius:2px;overflow:hidden"><div style="height:100%;background:${color};width:${pct}%;border-radius:2px;transition:width .3s"></div></div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px">FAA waiver: 4–24 weeks typical timeline</div>
+      </div>`;
+    }).join('');
+  }
+  updateHSStatusBadges();
+}
+
+function formatVal(v) {
+  if (v>=1000000) return (v/1000000).toFixed(1)+'M';
+  if (v>=1000) return (v/1000).toFixed(0)+'K';
+  return v;
+}
+
+// ============================================================
+// DEAL CARDS VIEW
+// ============================================================
+let cardsActiveFilter = 'all';
+
+function cardsFilter(el, val) {
+  document.querySelectorAll('#cards .filter-chip').forEach(c => c.classList.remove('on'));
+  el.classList.add('on');
+  cardsActiveFilter = val;
+  renderCards();
+}
+
+function renderCards() {
+  const q = (document.getElementById('cards-search') || {}).value || '';
+  const filtered = DEALS.filter(d => {
+    const matchSearch = !q || d.name.toLowerCase().includes(q.toLowerCase()) || d.company.toLowerCase().includes(q.toLowerCase());
+    const matchStatus = cardsActiveFilter === 'all' || d.status === cardsActiveFilter;
+    return matchSearch && matchStatus;
+  });
+  const sub = document.getElementById('cards-sub');
+  if (sub) sub.textContent = `${filtered.length} deal${filtered.length !== 1 ? 's' : ''} · $${formatVal(filtered.reduce((s,d) => s+d.value, 0))} pipeline`;
+  const PHASE_COLOR = {'a':'var(--red)','b':'var(--blue)','c':'var(--green)','d':'var(--amber)','':'var(--text3)'};
+  const PHASE_LABEL = {'a':'Phase A','b':'Phase B','c':'Phase C','d':'Retain','':'Pre-pipeline'};
+  const PHASE_PCT = {0:4,1:12,2:20,3:28,4:38,5:46,6:56,7:64,8:72,9:82,10:90,11:95,12:100};
+  const STATUS_STYLE = {
+    'on-track':{label:'On track',bg:'var(--green-dim)',color:'var(--green)'},
+    'at-risk':{label:'At risk',bg:'var(--amber-dim)',color:'var(--amber)'},
+    'flagged':{label:'Flagged',bg:'var(--red-dim)',color:'var(--red)'},
+  };
+  const TAG_COLORS = {
+    drone:{bg:'var(--blue-dim)',color:'var(--blue)'},
+    manned:{bg:'var(--amber-dim)',color:'var(--amber)'},
+    bespoke:{bg:'var(--purple-dim)',color:'var(--purple)'},
+    gov:{bg:'rgba(255,255,255,.06)',color:'var(--text2)'},
+  };
+  const grid = document.getElementById('cards-grid');
+  if (!grid) return;
+  if (filtered.length === 0) {
+    grid.innerHTML = '<div style="grid-column:1/-1;padding:40px;text-align:center;font-size:13px;color:var(--text3)">No deals match this filter.</div>';
+    return;
+  }
+  grid.innerHTML = filtered.map(d => {
+    const s = STAGE_DEFS[d.stage];
+    const phColor = PHASE_COLOR[s.phaseClass] || 'var(--text3)';
+    const phLabel = PHASE_LABEL[s.phaseClass] || '';
+    const pct = PHASE_PCT[d.stage] || 0;
+    const st = STATUS_STYLE[d.status] || STATUS_STYLE['on-track'];
+    const tags = [
+      d.isDrone ? `<span class="tag" style="background:${TAG_COLORS.drone.bg};color:${TAG_COLORS.drone.color}">Drone</span>` : '',
+      d.isManned ? `<span class="tag" style="background:${TAG_COLORS.manned.bg};color:${TAG_COLORS.manned.color}">Manned</span>` : '',
+      d.isBespoke ? `<span class="tag" style="background:${TAG_COLORS.bespoke.bg};color:${TAG_COLORS.bespoke.color}">Bespoke</span>` : '',
+      d.isGov ? `<span class="tag" style="background:${TAG_COLORS.gov.bg};color:${TAG_COLORS.gov.color}">Gov</span>` : '',
+    ].filter(Boolean).join('');
+    return `<div class="dcard" onclick="openDeal('${d.id}')">
+      <div class="dcard-top"><div class="dcard-name">${d.name}</div><div class="dcard-val">$${formatVal(d.value)}</div></div>
+      <div class="dcard-company">${d.company}</div>
+      <div class="dcard-tags">${tags}</div>
+      <div class="dcard-stage-row">
+        <div class="dcard-stage-pip" style="background:${phColor}"></div>
+        <div><div class="dcard-stage-name">Stage ${d.stage} — ${s.title}</div><div class="dcard-stage-phase" style="color:${phColor}">${phLabel}</div></div>
+      </div>
+      <div class="dcard-progress"><div class="dcard-progress-fill" style="width:${pct}%;background:${phColor}"></div></div>
+      <div class="dcard-divider"></div>
+      <div class="dcard-meta">
+        <div><div class="dcard-meta-label">Owner</div><div class="dcard-meta-val">${d.owner}</div></div>
+        <div><div class="dcard-meta-label">Segment</div><div class="dcard-meta-val">${d.segment}</div></div>
+      </div>
+      <div class="dcard-footer">
+        <span class="dcard-status" style="background:${st.bg};color:${st.color}">${st.label}</span>
+        <span class="dcard-days">Day ${d.daysInStage} in stage</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ============================================================
+// KANBAN
+// ============================================================
+function renderKanban() {
+  const board = document.getElementById('kanban-board');
+  const searchVal = (document.getElementById('kanban-search')||{}).value||'';
+  const filtered = filterDeals(DEALS, activeFilter, searchVal);
+  const byStage = {};
+  STAGE_DEFS.forEach(s=>byStage[s.n]=[]);
+  filtered.forEach(d=>{ if(byStage[d.stage]!==undefined) byStage[d.stage].push(d); });
+  board.innerHTML = STAGE_DEFS.map(s=>{
+    const deals = byStage[s.n]||[];
+    const isHandoff = HANDOFF_STAGES.includes(s.n);
+    return `<div class="kol">
+      <div class="kol-head" style="background:${s.colorDim}">
+        <span class="kol-title" style="color:${s.color}">${s.n}. ${s.title}</span>
+        <span class="kol-count" style="color:${s.color}">${deals.length}${isHandoff?' 🔴':''}</span>
+      </div>
+      <div class="kol-body">
+        ${deals.map(d=>dealCard(d)).join('')}
+        <button class="add-card" onclick="openNewDealAtStage(${s.n})">+ Add deal</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function dealCard(d) {
+  const tags = [
+    d.isDrone?'<span class="tag tag-blue">Drone</span>':'',
+    d.isManned?'<span class="tag tag-amber">Manned</span>':'',
+    d.isBespoke?'<span class="tag tag-purple">Bespoke</span>':'',
+    d.isGov?'<span class="tag tag-gray">Gov</span>':'',
+  ].filter(Boolean).join('');
+  return `<div class="deal-card ${d.status}" onclick="openDeal('${d.id}')">
+    <div class="dc-name">${d.name}</div>
+    <div class="dc-company">${d.company}</div>
+    <div class="dc-tags">${tags}</div>
+    <div class="dc-meta"><span class="dc-value">$${formatVal(d.value)}</span><span class="dc-days">Day ${d.daysInStage}</span></div>
+    <div style="font-size:10px;color:var(--text3);margin-top:4px">${d.owner}</div>
+  </div>`;
+}
+
+function filterDeals(deals, filter, search) {
+  return deals.filter(d=>{
+    const matchSearch = !search || d.name.toLowerCase().includes(search.toLowerCase()) || d.company.toLowerCase().includes(search.toLowerCase());
+    const matchFilter = filter==='all' || (filter==='drone'&&d.isDrone) || (filter==='manned'&&d.isManned) || (filter==='bespoke'&&d.isBespoke);
+    return matchSearch && matchFilter;
+  });
+}
+
+function toggleFilter(el, val) {
+  document.querySelectorAll('#kanban .filter-chip').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+  activeFilter = val;
+  renderKanban();
+}
+function filterKanban(val) { renderKanban(); }
+function filterList(val) { renderList(); }
+
+// ============================================================
+// PIPELINE
+// ============================================================
+function renderPipeline() {
+  const pv = document.getElementById('pipeline-view');
+  const maxDeals = Math.max(...STAGE_DEFS.map(s=>DEALS.filter(d=>d.stage===s.n).length),1);
+  pv.innerHTML = STAGE_DEFS.map(s=>{
+    const deals = DEALS.filter(d=>d.stage===s.n);
+    const val = deals.reduce((sum,d)=>sum+d.value,0);
+    const pct = (deals.length/maxDeals)*100;
+    const isHandoff = HANDOFF_STAGES.includes(s.n);
+    return `<div class="pipeline-row" onclick="openStageDrilldown(${s.n})">
+      <div class="pipeline-stage-num" style="background:${s.colorDim};color:${s.color}">${s.n}</div>
+      <div style="flex:1">
+        <div class="pipeline-stage-name">${s.title} ${isHandoff?'<span class="tag tag-red" style="vertical-align:middle">Handoff</span>':''}</div>
+        <div class="pipeline-stage-phase" style="color:${s.color}">${s.phase} · R: ${s.r}</div>
+      </div>
+      <div class="pipeline-bar-wrap"><div class="pipeline-bar" style="width:${pct}%;background:${s.color}"></div></div>
+      <div class="pipeline-count">${deals.length}</div>
+      <div class="pipeline-value">${val>0?'$'+formatVal(val):''}</div>
+    </div>`;
+  }).join('');
+}
+
+function openStageDrilldown(n) {}
+
+// ============================================================
+// LIST VIEW
+// ============================================================
+function renderList() {
+  const search = (document.getElementById('list-search')||{}).value||'';
+  const filtered = filterDeals(DEALS, 'all', search);
+  const tbody = document.getElementById('list-body');
+  const statusColors = {'on-track':'var(--green)','at-risk':'var(--amber)','flagged':'var(--red)'};
+  const statusLabels = {'on-track':'On Track','at-risk':'At Risk','flagged':'Flagged'};
+  tbody.innerHTML = filtered.map(d=>{
+    const s = STAGE_DEFS[d.stage];
+    return `<tr onclick="openDeal('${d.id}')">
+      <td style="font-weight:600;color:var(--text)">${d.name}</td>
+      <td style="color:var(--text2)">${d.company}</td>
+      <td><div class="stage-badge"><div class="stage-dot" style="background:${s.color}"></div><span style="color:${s.color}">${s.n}. ${s.title}</span></div></td>
+      <td><span class="tag" style="background:${s.colorDim};color:${s.color}">${s.phase}</span></td>
+      <td style="font-family:var(--mono);color:var(--green)">$${formatVal(d.value)}</td>
+      <td style="color:var(--text2)">${d.owner}</td>
+      <td><span style="color:${statusColors[d.status]};font-size:11px;font-weight:600">${statusLabels[d.status]}</span></td>
+      <td style="font-family:var(--mono);color:var(--text3)">${d.daysInStage}d</td>
+    </tr>`;
+  }).join('');
+}
+
+// ============================================================
+// RACI
+// ============================================================
+function renderRaci() {
+  const tbody = document.getElementById('raci-body');
+  const phaseColors = {a:'var(--red)',b:'var(--blue)',c:'var(--green)',d:'var(--amber)','':'var(--text3)'};
+  tbody.innerHTML = STAGE_DEFS.map(s=>{
+    const c = phaseColors[s.phaseClass]||'var(--text3)';
+    return `<tr>
+      <td><div style="display:flex;align-items:center;gap:8px"><span style="width:22px;height:22px;border-radius:50%;background:${s.colorDim};color:${s.color};display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">${s.n}</span><span style="font-weight:600;color:var(--text)">${s.title}</span></div><div style="font-size:10px;color:${c};margin-top:2px;margin-left:30px">${s.phase}</div></td>
+      <td style="color:var(--red)">${s.r}</td>
+      <td style="color:var(--blue)">${s.a}</td>
+      <td style="color:var(--green)">${s.c}</td>
+      <td style="color:var(--text3);font-size:11px">${s.exit}</td>
+      <td style="color:var(--text3);font-size:11px;font-style:italic">${s.note}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ============================================================
+// DEAL DETAIL PANEL
+// ============================================================
+function openDeal(id) {
+  const d = DEALS.find(x=>x.id===id);
+  if (!d) return;
+  currentDealId = id;
+  currentDetailStage = d.stage;
+  document.getElementById('detail-overlay').classList.add('on');
+  renderDetailPanel(d, d.stage);
+}
+
+function renderDetailPanel(d, viewStage) {
+  const s = STAGE_DEFS[viewStage];
+  document.getElementById('dp-title').textContent = d.name;
+  document.getElementById('dp-meta').textContent = `${d.company} · Stage ${d.stage}: ${STAGE_DEFS[d.stage].title} · $${formatVal(d.value)} · ${d.segment}`;
+
+  const stageNavHtml = STAGE_DEFS.map(st=>{
+    const isDone = d.stage > st.n;
+    const isCurrent = d.stage === st.n;
+    return `<button class="snav-btn ${isDone?'done':''} ${isCurrent?'on':''}" onclick="switchDetailStage('${d.id}',${st.n})">${st.n}. ${st.title.split(' ')[0]}</button>`;
+  }).join('');
+
+  const spSteps = STAGE_DEFS.map(st=>`<div class="sp-step ${d.stage>st.n?'done':d.stage===st.n?'current':'upcoming'}"></div>`).join('');
+
+  const raciHtml = `<div class="raci-grid">
+    <div class="raci-box"><div class="raci-box-label" style="color:var(--red)">Responsible (R)</div><div class="raci-box-val">${s.r}</div></div>
+    <div class="raci-box"><div class="raci-box-label" style="color:var(--blue)">Accountable (A)</div><div class="raci-box-val">${s.a}</div></div>
+    <div class="raci-box"><div class="raci-box-label" style="color:var(--green)">Consulted (C)</div><div class="raci-box-val">${s.c}</div></div>
+    <div class="raci-box"><div class="raci-box-label" style="color:var(--text3)">Exit Deliverable</div><div class="raci-box-val">${s.exit}</div></div>
+  </div>`;
+
+  const p0Html = buildChecklist(d, viewStage, 'p0', 'P0 — Universal (Every Deal)', 'tag-red');
+  const p1Html = s.tasks.p1.length ? buildChecklist(d, viewStage, 'p1', 'P1 — Recommended', 'tag-amber') : '';
+  const p2Html = s.tasks.p2.length ? buildChecklist(d, viewStage, 'p2', 'P2 — Best Practice', 'tag-purple') : '';
+
+  const gatesHtml = s.gates.length ? `<div class="gate-block">
+    <div class="gate-title">Exit Gate — Ready for Stage ${viewStage+1}?</div>
+    ${s.gates.map(g=>`<div class="gate-item">${g}</div>`).join('')}
+  </div>` : '';
+
+  const branchHtml = s.branches.map(b=>`<div class="branch-block">
+    <div class="branch-q">? ${b.q}</div>
+    ${b.yes?`<div class="branch-opt"><strong>Yes →</strong> ${b.yes}</div>`:''}
+    ${b.no?`<div class="branch-opt"><strong>No →</strong> ${b.no}</div>`:''}
+  </div>`).join('');
+
+  const handoffHtml = s.handoff ? `<div class="hblock">
+    <div class="hblock-title">🔴 ${s.handoff.title}</div>
+    <div class="hblock-desc">${s.handoff.desc}</div>
+  </div>` : '';
+
+  const delivHtml = `<div class="deliv-block">
+    <div class="deliv-title">Exit Deliverable</div>
+    <div class="deliv-desc">${s.exit}</div>
+  </div>`;
+
+  const actHtml = d.activity.map(a=>`<div class="activity-item">
+    <div class="activity-icon" style="background:var(--surface3)">${a.icon}</div>
+    <div class="activity-body"><div class="activity-text">${a.t}</div><div class="activity-time">${a.d}</div></div>
+  </div>`).join('');
+
+  const hsBadge = d.hsId ? `<span class="tag tag-blue" style="margin-left:8px">HubSpot ${d.hsId}</span><span style="font-size:10px;color:var(--text3);margin-left:6px">Synced ${d.lastSync}</span>` : `<span class="tag tag-gray" style="margin-left:8px">Not in HubSpot</span>`;
+
+  document.getElementById('dp-body').innerHTML = `
+    <div class="stage-progress">
+      <div class="sp-label">Stage Progress — Currently: ${STAGE_DEFS[d.stage].title}</div>
+      <div class="sp-track">${spSteps}</div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;align-items:center">
+      ${d.stage < 12 ? `<button class="btn btn-primary btn-sm" onclick="advanceStage('${d.id}')">→ Advance to Stage ${d.stage+1}</button>` : ''}
+      <button class="btn btn-ghost btn-sm" onclick="syncToHubSpot('${d.id}')">↻ Sync HubSpot</button>
+      <button class="btn btn-ghost btn-tools btn-sm" onclick="openProjectTools('${d.id}')">⚙ Project Tools →</button>
+      ${hsBadge}
+    </div>
+
+    <div class="dp-section-title">View Stage Playbook</div>
+    <div class="stage-nav" style="margin-bottom:16px">${stageNavHtml}</div>
+
+    <div style="background:${s.colorDim};border:1px solid ${s.color}40;border-radius:8px;padding:12px 16px;margin-bottom:16px">
+      <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:${s.color};margin-bottom:4px">${s.phase} · Stage ${viewStage}</div>
+      <div style="font-size:15px;font-weight:700;color:var(--text)">${s.title}</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px">${s.note}</div>
+    </div>
+
+    <div class="dp-section-title">RACI — Who Does What</div>
+    ${raciHtml}
+
+    <div class="dp-section-title">Checklists</div>
+    ${p0Html}${p1Html}${p2Html}
+
+    ${branchHtml.length ? `<div class="dp-section-title">Decision Branches</div>${branchHtml}` : ''}
+    ${handoffHtml}
+    ${gatesHtml}
+    ${delivHtml}
+
+    <div class="dp-section-title">Notes</div>
+    <textarea class="notes-area" onchange="saveNotes('${d.id}',this.value)" placeholder="Add notes about this deal...">${d.notes||''}</textarea>
+
+    <div class="dp-section-title" style="margin-top:16px">Activity Log</div>
+    ${actHtml}
+  `;
+}
+
+function buildChecklist(d, viewStage, tier, label, tagClass) {
+  const s = STAGE_DEFS[viewStage];
+  const items = s.tasks[tier]||[];
+  if (!items.length) return '';
+  if (!d.checks[viewStage]) d.checks[viewStage]={};
+  const parts = label.split('—');
+  return `<div class="checklist-section">
+    <div class="cs-title"><span class="tag ${tagClass}">${parts[0].trim()}</span>${parts[1]?parts[1].trim():''}</div>
+    ${items.map((item,i)=>{
+      const key = `${tier}_${i}`;
+      const isChecked = !!(d.checks[viewStage]||{})[key];
+      return `<div class="cs-item">
+        <div class="cs-check ${isChecked?'checked':''}" onclick="toggleCheck('${d.id}',${viewStage},'${key}',this)"></div>
+        <div class="cs-text ${isChecked?'done-text':''}">${item}</div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function toggleCheck(dealId, stageN, key, el) {
+  const d = DEALS.find(x=>x.id===dealId);
+  if (!d.checks[stageN]) d.checks[stageN]={};
+  d.checks[stageN][key] = !d.checks[stageN][key];
+  el.classList.toggle('checked');
+  const textEl = el.nextElementSibling;
+  if (textEl) textEl.classList.toggle('done-text');
+  logActivity(dealId, `Checklist item ${d.checks[stageN][key]?'completed':'unchecked'}`, '✅');
+}
+
+function switchDetailStage(dealId, stageN) {
+  const d = DEALS.find(x=>x.id===dealId);
+  renderDetailPanel(d, stageN);
+}
+
+function advanceStage(dealId) {
+  const d = DEALS.find(x=>x.id===dealId);
+  if (d.stage < 12) {
+    const oldStage = d.stage;
+    d.stage++;
+    d.daysInStage = 0;
+    logActivity(dealId, `Advanced from Stage ${oldStage}: ${STAGE_DEFS[oldStage].title} → Stage ${d.stage}: ${STAGE_DEFS[d.stage].title}`, '🚀');
+    renderDetailPanel(d, d.stage);
+    addSyncLog(`Deal "${d.name}" stage updated to ${STAGE_DEFS[d.stage].title}`);
+    if (hsConnected) syncDealToHubSpot(d);
+  }
+}
+
+function saveNotes(dealId, val) {
+  const d = DEALS.find(x=>x.id===dealId);
+  d.notes = val;
+}
+
+function logActivity(dealId, text, icon='•') {
+  const d = DEALS.find(x=>x.id===dealId);
+  d.activity.unshift({t:text, d:'Just now', icon});
+}
+
+// ============================================================
+// PROJECT TOOLS — sends message to parent React app
+// ============================================================
+function openProjectTools(dealId) {
+  const d = DEALS.find(x=>x.id===dealId);
+  if (!d) return;
+  window.parent.postMessage({type:'dealProjectTools', dealId: dealId, dealName: d.name}, '*');
+}
+
+// ============================================================
+// DEAL CREATION
+// ============================================================
+function createDeal() {
+  const name = document.getElementById('nd-name').value.trim();
+  const company = document.getElementById('nd-company').value.trim();
+  if (!name||!company) { alert('Deal name and company are required.'); return; }
+  const deal = {
+    id: 'd'+Date.now(),
+    name, company,
+    stage: +document.getElementById('nd-stage').value,
+    value: +document.getElementById('nd-value').value||0,
+    segment: document.getElementById('nd-segment').value||'—',
+    owner: document.getElementById('nd-owner').value,
+    capture: document.getElementById('nd-owner').value,
+    status: 'on-track',
+    isDrone: document.getElementById('nd-drone').checked,
+    isManned: document.getElementById('nd-manned').checked,
+    isBespoke: document.getElementById('nd-bespoke').checked,
+    isGov: document.getElementById('nd-gov').checked,
+    daysInStage: 0,
+    notes: document.getElementById('nd-notes').value,
+    checks: {},
+    activity: [{t:'Deal created',d:'Just now',icon:'📋'}],
+    hsId: '',
+    lastSync: 'Never'
+  };
+  DEALS.push(deal);
+  closeModal('modal-new-deal');
+  renderDashboard();
+  renderKanban();
+  addSyncLog(`New deal created: "${name}"`);
+  if (hsConnected) syncDealToHubSpot(deal);
+}
+
+function openNewDealAtStage(stageN) {
+  openModal('modal-new-deal');
+  document.getElementById('nd-stage').value = stageN;
+}
+
+// ============================================================
+// HUBSPOT INTEGRATION
+// ============================================================
+function renderHubspot() {
+  const smr = document.getElementById('stage-mapping-rows');
+  smr.innerHTML = STAGE_DEFS.map(s=>`
+    <div class="hs-field-row">
+      <span class="hs-field-dxd">${s.n}. ${s.title}</span>
+      <input class="form-input" style="font-size:11px;padding:4px 8px" placeholder="HubSpot stage ID..." value="${getHSStageMapping(s.n)}">
+      <span class="hs-arrow">→</span>
+    </div>`).join('');
+
+  const fmr = document.getElementById('field-mapping-rows');
+  const fields = [
+    ['Deal Name','dealname','→'],['Company','company_name','→'],['Stage','dealstage','→'],
+    ['Deal Value','amount','→'],['Owner','hubspot_owner_id','→'],['Segment','deal_type','→'],
+    ['Drone Deal','drone_deal__c','→'],['Status','hs_deal_stage_probability','→'],
+  ];
+  fmr.innerHTML = fields.map(([dxd,hs,dir])=>`
+    <div class="hs-field-row">
+      <span class="hs-field-dxd">${dxd}</span>
+      <span class="hs-field-hs">${hs}</span>
+      <span class="hs-arrow">${dir}</span>
+    </div>`).join('');
+
+  updateHSStatusBadges();
+}
+
+function getHSStageMapping(n) {
+  const map = {0:'',1:'qualifiedtobuy',2:'presentationscheduled',3:'decisionmakerboughtin',4:'contractsent',5:'contractsent',6:'closedwon',7:'closedwon',8:'closedwon',9:'closedwon',10:'closedwon',11:'closedwon',12:'closedwon'};
+  return map[n]||'';
+}
+
+async function connectHubSpot() {
+  const token = document.getElementById('hs-token').value.trim();
+  if (!token) { alert('Enter your HubSpot Private App token.'); return; }
+  document.getElementById('hs-config-label').textContent = 'Testing connection...';
+  try {
+    const resp = await fetch('https://api.hubapi.com/crm/v3/objects/deals?limit=1', {
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+    });
+    if (resp.ok) {
+      hsToken = token; hsConnected = true;
+      localStorage.setItem('dxd_hs_token', token);
+      document.getElementById('hs-config-dot').className = 'hs-dot connected';
+      document.getElementById('hs-config-label').textContent = 'Connected to HubSpot';
+      document.getElementById('hs-config-sub').textContent = 'Two-way sync active';
+      updateHSStatusBadges();
+      addSyncLog('HubSpot connection established. ✓');
+      pullDealsFromHubSpot(token);
+    } else { throw new Error('Auth failed: ' + resp.status); }
+  } catch(e) {
+    document.getElementById('hs-config-label').textContent = 'Connection failed';
+    document.getElementById('hs-config-sub').textContent = e.message;
+    addSyncLog('⚠️ HubSpot connection failed: ' + e.message);
+  }
+}
+
+async function pullDealsFromHubSpot(token) {
+  try {
+    const resp = await fetch('https://api.hubapi.com/crm/v3/objects/deals?properties=dealname,amount,dealstage,hubspot_owner_id,company_name&limit=50', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!resp.ok) throw new Error('Pull failed');
+    const data = await resp.json();
+    let newCount = 0;
+    (data.results||[]).forEach(hsD => {
+      const existing = DEALS.find(d=>d.hsId===hsD.id);
+      if (!existing) {
+        DEALS.push({
+          id:'hs_'+hsD.id, name: hsD.properties.dealname||'Unnamed',
+          company: hsD.properties.company_name||'—',
+          stage: mapHSStageToLocal(hsD.properties.dealstage), value: +(hsD.properties.amount||0),
+          segment:'—',owner:'—',capture:'—',status:'on-track',
+          isDrone:false,isManned:false,isBespoke:false,isGov:false,daysInStage:0,
+          notes:'Pulled from HubSpot',checks:{},
+          activity:[{t:'Imported from HubSpot',d:'Just now',icon:'📋'}],
+          hsId:hsD.id,lastSync:'Just now'
+        });
+        newCount++;
+      } else { existing.lastSync='Just now'; existing.name=hsD.properties.dealname||existing.name; existing.value=+(hsD.properties.amount||existing.value); }
+    });
+    addSyncLog(`✓ Pulled ${data.results?.length||0} deals from HubSpot. ${newCount} new deals added.`);
+    renderDashboard(); renderList();
+  } catch(e) { addSyncLog('⚠️ Pull failed: '+e.message); }
+}
+
+async function syncDealToHubSpot(deal) {
+  if (!hsConnected || !hsToken) return;
+  const payload = { properties: { dealname: deal.name, amount: deal.value.toString(), dealstage: getHSStageMapping(deal.stage) } };
+  try {
+    let resp;
+    if (!deal.hsId) {
+      resp = await fetch('https://api.hubapi.com/crm/v3/objects/deals', {
+        method:'POST', headers:{'Authorization':`Bearer ${hsToken}`,'Content-Type':'application/json'}, body: JSON.stringify(payload)
+      });
+      if (resp.ok) { const data = await resp.json(); deal.hsId = data.id; deal.lastSync = 'Just now'; addSyncLog(`✓ Synced "${deal.name}" to HubSpot (ID: ${data.id})`); }
+    } else {
+      resp = await fetch(`https://api.hubapi.com/crm/v3/objects/deals/${deal.hsId}`, {
+        method:'PATCH', headers:{'Authorization':`Bearer ${hsToken}`,'Content-Type':'application/json'}, body: JSON.stringify(payload)
+      });
+      if (resp.ok) { deal.lastSync = 'Just now'; addSyncLog(`✓ Updated "${deal.name}" in HubSpot`); }
+    }
+  } catch(e) { addSyncLog(`⚠️ Sync failed for "${deal.name}": ${e.message}`); }
+}
+
+function syncToHubSpot(dealId) {
+  const d = DEALS.find(x=>x.id===dealId);
+  if (!hsConnected) { alert('Configure HubSpot connection first in the HubSpot tab.'); return; }
+  syncDealToHubSpot(d); renderDetailPanel(d, d.stage);
+}
+
+function mapHSStageToLocal(hsStage) {
+  const map = {'qualifiedtobuy':1,'presentationscheduled':2,'decisionmakerboughtin':3,'contractsent':5,'closedwon':10};
+  return map[hsStage]||0;
+}
+
+function addSyncLog(msg) {
+  const sl = document.getElementById('sync-log');
+  if (!sl) return;
+  const entry = document.createElement('div');
+  entry.style.cssText = 'font-size:11px;color:var(--text2);font-family:var(--mono);padding:4px 0;border-bottom:1px solid var(--border)';
+  entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  sl.insertBefore(entry, sl.firstChild);
+}
+
+function saveHSSettings() { addSyncLog('Sync settings saved.'); }
+
+function updateHSStatusBadges() {
+  const dot = document.getElementById('hs-dash-dot');
+  const label = document.getElementById('hs-dash-label');
+  const sub = document.getElementById('hs-dash-sub');
+  if (hsConnected) {
+    if(dot) dot.className='hs-dot connected';
+    if(label) label.textContent='Connected to HubSpot';
+    if(sub) sub.textContent='Two-way sync active';
+  }
+}
+
+// ============================================================
+// INIT
+// ============================================================
+function init() {
+  document.getElementById('dash-date').textContent = new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  renderDashboard();
+  if (hsToken) { const ti = document.getElementById('hs-token'); if (ti) ti.value = hsToken; }
+}
+
+init();
+</script>
+</body>
+</html>
