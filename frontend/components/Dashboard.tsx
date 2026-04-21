@@ -65,9 +65,9 @@ const TOOLTIP_STYLE = {
 const AXIS_TICK = { fill: 'rgba(255,255,255,0.35)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }
 
 export default function Dashboard() {
-  const { data: dealsData, isLoading, error } = useQuery({
-    queryKey: ['hs-deals-dash'],
-    queryFn: () => api.hubspot.getDeals(),
+  const { data: activeData, isLoading, error } = useQuery({
+    queryKey: ['hs-active-dash'],
+    queryFn: () => api.hubspot.getActive(),
     staleTime: 60_000,
     retry: false,
   })
@@ -79,7 +79,9 @@ export default function Dashboard() {
     retry: false,
   })
 
-  const deals: HubSpotDeal[] = dealsData?.results ?? []
+  const deals: HubSpotDeal[] = (activeData ?? [])
+    .map(a => a.deal)
+    .filter(d => d.properties.dealstage !== 'closedlost')
   const owners: HubSpotOwner[] = ownersData?.results ?? []
 
   const ownerMap = new Map<string, string>(
@@ -160,10 +162,10 @@ export default function Dashboard() {
       <div style={{ maxWidth: 960, margin: '32px auto', padding: '0 20px' }}>
         <div style={{ ...card, textAlign: 'center', padding: 40 }}>
           <p style={{ ...chakra, fontSize: 13, color: 'rgba(255,255,255,0.35)', letterSpacing: 2, marginBottom: 8 }}>
-            NO PIPELINE DATA
+            NO ACTIVE DEALS
           </p>
           <p style={{ ...mono, fontSize: 11, color: 'rgba(255,255,255,0.2)' }}>
-            Connect HubSpot in Admin → HubSpot to see dashboard analytics.
+            Pin deals in Admin → HubSpot to see them here. Closed-lost deals are excluded.
           </p>
         </div>
       </div>
