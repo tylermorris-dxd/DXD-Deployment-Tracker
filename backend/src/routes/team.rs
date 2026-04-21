@@ -11,7 +11,7 @@ use crate::{error::AppError, models::*, routes::misc::AppState};
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/team", get(list_team).post(create_member))
-        .route("/team/:id", delete(delete_member))
+        .route("/team/:id", patch(update_member).delete(delete_member))
         .route("/admin-tasks", get(list_admin_tasks).post(create_admin_task))
         .route("/admin-tasks/:id", patch(update_admin_task).delete(delete_admin_task))
 }
@@ -40,6 +40,25 @@ async fn create_member(
     .execute(&state.pool)
     .await?;
     Ok((StatusCode::CREATED, Json(TeamMember { id, name: body.name, role, email })))
+}
+
+async fn update_member(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Json(body): Json<CreateTeamMember>,
+) -> Result<Json<TeamMember>, AppError> {
+    if body.name.trim().is_empty() {
+        return Err(AppError::BadRequest("Name is required".into()));
+    }
+    let role = body.role.unwrap_or_default();
+    let email = body.email.unwrap_or_default();
+    sqlx::query!(
+        "UPDATE team_members SET name = $1, role = $2, email = $3 WHERE id = $4",
+        body.name, role, email, id
+    )
+    .execute(&state.pool)
+    .await?;
+    Ok(Json(TeamMember { id, name: body.name, role, email }))
 }
 
 async fn delete_member(

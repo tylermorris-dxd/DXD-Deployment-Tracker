@@ -34,22 +34,40 @@ export default function AdminPanel() {
   const [activeTab, setActiveTab] = useState<'tasks' | 'team' | 'hubspot'>('team')
 
   // ── Team ────────────────────────────────────────────────────────────────────
+  const DOMAIN = '@deusxdefense.com'
   const { data: teamMembers = [] } = useQuery({ queryKey: ['teamMembers'], queryFn: api.team.list })
   const [memberName, setMemberName] = useState('')
   const [memberRole, setMemberRole] = useState('')
-  const [memberEmail, setMemberEmail] = useState('')
+  const [memberEmailPrefix, setMemberEmailPrefix] = useState('')
+  const [editingMemberId, setEditingMemberId] = useState<string | null>(null)
 
-  const addMemberMut = useMutation({
-    mutationFn: () => api.team.create(memberName.trim(), memberRole.trim(), memberEmail.trim()),
+  const fullEmail = memberEmailPrefix.trim()
+    ? memberEmailPrefix.trim().includes('@') ? memberEmailPrefix.trim() : memberEmailPrefix.trim() + DOMAIN
+    : ''
+
+  const saveMemberMut = useMutation({
+    mutationFn: () => editingMemberId
+      ? api.team.update(editingMemberId, memberName.trim(), memberRole.trim(), fullEmail)
+      : api.team.create(memberName.trim(), memberRole.trim(), fullEmail),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['teamMembers'] })
-      setMemberName(''); setMemberRole(''); setMemberEmail('')
+      setMemberName(''); setMemberRole(''); setMemberEmailPrefix(''); setEditingMemberId(null)
     },
   })
   const deleteMemberMut = useMutation({
     mutationFn: (id: string) => api.team.delete(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['teamMembers'] }),
   })
+
+  const startEditMember = (m: TeamMember) => {
+    setMemberName(m.name)
+    setMemberRole(m.role)
+    setMemberEmailPrefix(m.email.endsWith(DOMAIN) ? m.email.slice(0, -DOMAIN.length) : m.email)
+    setEditingMemberId(m.id)
+  }
+  const cancelEditMember = () => {
+    setMemberName(''); setMemberRole(''); setMemberEmailPrefix(''); setEditingMemberId(null)
+  }
 
   // ── Admin tasks ─────────────────────────────────────────────────────────────
   const { data: adminTasks = [] } = useQuery({ queryKey: ['adminTasks'], queryFn: api.adminTasks.list })
@@ -115,15 +133,17 @@ export default function AdminPanel() {
       {/* ── TEAM TAB ── */}
       {activeTab === 'team' && (
         <>
-          {/* Add member form */}
-          <div style={{ ...card, border: '1px solid rgba(230,57,70,0.2)', marginBottom: 24 }}>
-            <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 11, color: '#e63946', letterSpacing: 1.5, marginBottom: 14 }}>ADD TEAM MEMBER</div>
+          {/* Add / Edit member form */}
+          <div style={{ ...card, border: `1px solid ${editingMemberId ? 'rgba(255,152,0,0.3)' : 'rgba(230,57,70,0.2)'}`, marginBottom: 24 }}>
+            <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 11, color: editingMemberId ? '#FF9800' : '#e63946', letterSpacing: 1.5, marginBottom: 14 }}>
+              {editingMemberId ? 'EDIT TEAM MEMBER' : 'ADD TEAM MEMBER'}
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 12 }}>
               <div>
                 <label style={fieldLabel}>NAME *</label>
                 <input style={inputSm} placeholder="e.g. Tyler Morris" value={memberName}
                   onChange={e => setMemberName(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && memberName.trim() && addMemberMut.mutate()} />
+                  onKeyDown={e => e.key === 'Enter' && memberName.trim() && saveMemberMut.mutate()} />
               </div>
               <div>
                 <label style={fieldLabel}>ROLE</label>
@@ -131,14 +151,28 @@ export default function AdminPanel() {
               </div>
               <div>
                 <label style={fieldLabel}>EMAIL</label>
-                <input style={inputSm} placeholder="e.g. tyler@deusxdefense.com" value={memberEmail} onChange={e => setMemberEmail(e.target.value)} />
+                <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, overflow: 'hidden' }}>
+                  <input
+                    style={{ ...inputSm, border: 'none', background: 'transparent', flex: 1, minWidth: 0 }}
+                    placeholder="tyler.morris"
+                    value={memberEmailPrefix}
+                    onChange={e => setMemberEmailPrefix(e.target.value)}
+                  />
+                  <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: 'rgba(255,255,255,0.3)', paddingRight: 10, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                    {memberEmailPrefix.includes('@') ? '' : '@deusxdefense.com'}
+                  </span>
+                </div>
               </div>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button style={{ ...s.primaryBtn, opacity: memberName.trim() ? 1 : 0.4 }}
-                disabled={!memberName.trim() || addMemberMut.isPending}
-                onClick={() => addMemberMut.mutate()}>
-                {Icons.plus}<span>ADD MEMBER</span>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              {editingMemberId && (
+                <button style={s.ghostBtn} onClick={cancelEditMember}>CANCEL</button>
+              )}
+              <button
+                style={{ ...s.primaryBtn, opacity: memberName.trim() ? 1 : 0.4, background: editingMemberId ? 'rgba(255,152,0,0.85)' : undefined }}
+                disabled={!memberName.trim() || saveMemberMut.isPending}
+                onClick={() => saveMemberMut.mutate()}>
+                {Icons.plus}<span>{editingMemberId ? 'SAVE CHANGES' : 'ADD MEMBER'}</span>
               </button>
             </div>
           </div>
@@ -154,6 +188,8 @@ export default function AdminPanel() {
               {teamMembers.map((m: TeamMember) => (
                 <MemberCard key={m.id} member={m}
                   taskCount={adminTasks.filter(t => t.assignee === m.name).length}
+                  isEditing={editingMemberId === m.id}
+                  onEdit={() => startEditMember(m)}
                   onDelete={() => deleteMemberMut.mutate(m.id)} />
               ))}
             </div>
@@ -435,10 +471,10 @@ function HubSpotPanel() {
   )
 }
 
-function MemberCard({ member, taskCount, onDelete }: { member: TeamMember; taskCount: number; onDelete: () => void }) {
+function MemberCard({ member, taskCount, isEditing, onEdit, onDelete }: { member: TeamMember; taskCount: number; isEditing: boolean; onEdit: () => void; onDelete: () => void }) {
   const initials = member.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
   return (
-    <div style={{ ...card, display: 'flex', alignItems: 'center', gap: 14 }}>
+    <div style={{ ...card, display: 'flex', alignItems: 'center', gap: 14, border: isEditing ? '1px solid rgba(255,152,0,0.4)' : '1px solid rgba(255,255,255,0.07)' }}>
       <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'linear-gradient(135deg, #e63946, #a62633)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Chakra Petch', sans-serif", fontSize: 14, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
         {initials}
       </div>
@@ -449,10 +485,16 @@ function MemberCard({ member, taskCount, onDelete }: { member: TeamMember; taskC
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
         <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, color: 'rgba(255,255,255,0.25)' }}>{taskCount} task{taskCount !== 1 ? 's' : ''}</span>
-        <button onClick={onDelete}
-          style={{ background: 'none', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, cursor: 'pointer', color: 'rgba(255,255,255,0.3)', padding: '3px 8px', fontFamily: "'IBM Plex Mono', monospace", fontSize: 10 }}>
-          REMOVE
-        </button>
+        <div style={{ display: 'flex', gap: 4 }}>
+          <button onClick={onEdit}
+            style={{ background: isEditing ? 'rgba(255,152,0,0.15)' : 'none', border: `1px solid ${isEditing ? 'rgba(255,152,0,0.4)' : 'rgba(255,255,255,0.1)'}`, borderRadius: 4, cursor: 'pointer', color: isEditing ? '#FF9800' : 'rgba(255,255,255,0.3)', padding: '3px 8px', fontFamily: "'IBM Plex Mono', monospace", fontSize: 10 }}>
+            EDIT
+          </button>
+          <button onClick={onDelete}
+            style={{ background: 'none', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, cursor: 'pointer', color: 'rgba(255,255,255,0.3)', padding: '3px 8px', fontFamily: "'IBM Plex Mono', monospace", fontSize: 10 }}>
+            REMOVE
+          </button>
+        </div>
       </div>
     </div>
   )

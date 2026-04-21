@@ -92,6 +92,8 @@ export const api = {
     list: () => apiFetch<TeamMember[]>('/team'),
     create: (name: string, role?: string, email?: string) =>
       apiFetch<TeamMember>('/team', { method: 'POST', body: JSON.stringify({ name, role, email }) }),
+    update: (id: string, name: string, role?: string, email?: string) =>
+      apiFetch<TeamMember>(`/team/${id}`, { method: 'PATCH', body: JSON.stringify({ name, role, email }) }),
     delete: (id: string) => apiFetch<void>(`/team/${id}`, { method: 'DELETE' }),
   },
 
