@@ -3,7 +3,7 @@ import type {
   TeamMember, AdminTask,
   CreateProject, UpdateProject, UpdatePhase, UpdateTask, UpdateSubtask, UpdateContact,
   EquipmentItem, CreateEquipment, UpdateEquipment,
-  HubSpotDeal, HubSpotActiveDeal, HubSpotStatus,
+  HubSpotDeal, HubSpotActiveDeal, HubSpotStatus, HubSpotOwner,
 } from './types'
 
 class ApiError extends Error {
@@ -127,6 +127,7 @@ export const api = {
     getDeals: () => apiFetch<{ results: HubSpotDeal[] }>('/hubspot/deals'),
     getActive: () => apiFetch<HubSpotActiveDeal[]>('/hubspot/active'),
     getDeal: (dealId: string) => apiFetch<HubSpotDeal>(`/hubspot/deal/${dealId}`),
+    getOwners: () => apiFetch<{ results: HubSpotOwner[] }>('/hubspot/owners'),
     pinDeal: (dealId: string) =>
       apiFetch<{ projectId: string; created: boolean }>(`/hubspot/pin/${dealId}`, { method: 'POST' }),
     unpinDeal: (dealId: string) => apiFetch<void>(`/hubspot/pin/${dealId}`, { method: 'DELETE' }),

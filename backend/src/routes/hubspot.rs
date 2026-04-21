@@ -17,6 +17,7 @@ pub fn router() -> Router<AppState> {
         .route("/hubspot/deals", get(list_deals))
         .route("/hubspot/active", get(get_active))
         .route("/hubspot/deal/:deal_id", get(get_deal))
+        .route("/hubspot/owners", get(get_owners))
         .route("/hubspot/pin/:deal_id", post(pin_deal).delete(unpin_deal))
 }
 
@@ -66,7 +67,7 @@ async fn list_deals(State(state): State<AppState>) -> Result<Json<Value>, AppErr
 
     let base = "https://api.hubapi.com/crm/v3/objects/deals\
                 ?limit=100\
-                &properties=dealname,dealstage,amount,closedate,pipeline,hs_lastmodifieddate\
+                &properties=dealname,dealstage,amount,closedate,pipeline,hs_lastmodifieddate,hubspot_owner_id\
                 &associations=companies";
 
     let mut all_deals: Vec<Value> = Vec::new();
@@ -161,7 +162,7 @@ async fn get_active(State(state): State<AppState>) -> Result<Json<Value>, AppErr
         .header("Authorization", format!("Bearer {}", token))
         .json(&json!({
             "inputs": inputs,
-            "properties": ["dealname", "dealstage", "amount", "closedate", "pipeline", "hs_lastmodifieddate"]
+            "properties": ["dealname", "dealstage", "amount", "closedate", "pipeline", "hs_lastmodifieddate", "hubspot_owner_id"]
         }))
         .send()
         .await
@@ -265,6 +266,28 @@ async fn get_deal(
     }
 
     Ok(Json(result))
+}
+
+/// Fetch all HubSpot owners so we can resolve owner IDs to names.
+async fn get_owners(State(state): State<AppState>) -> Result<Json<Value>, AppError> {
+    let token = get_token(&state)
+        .await
+        .ok_or_else(|| AppError::BadRequest("HubSpot not connected".into()))?;
+
+    let resp = state
+        .http
+        .get("https://api.hubapi.com/crm/v3/owners?limit=100")
+        .header("Authorization", format!("Bearer {}", token))
+        .send()
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    let data: Value = resp
+        .json()
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    Ok(Json(data))
 }
 
 /// Create a shadow project linked to this HubSpot deal.

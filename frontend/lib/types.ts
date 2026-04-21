@@ -33,6 +33,7 @@ export interface HubSpotDealProperties {
   pipeline?: string
   description?: string
   hs_lastmodifieddate?: string
+  hubspot_owner_id?: string
 }
 
 export interface HubSpotContact {
@@ -62,6 +63,13 @@ export interface HubSpotActiveDeal {
 
 export interface HubSpotStatus {
   connected: boolean
+}
+
+export interface HubSpotOwner {
+  id: string
+  firstName?: string
+  lastName?: string
+  email?: string
 }
 
 export interface Phase {
