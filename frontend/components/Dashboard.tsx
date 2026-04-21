@@ -1,362 +1,350 @@
 'use client'
 
+import React from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import type { HubSpotDeal, HubSpotOwner } from '@/lib/types'
-import {
-  ResponsiveContainer,
-  BarChart, Bar,
-  AreaChart, Area,
-  XAxis, YAxis,
-  CartesianGrid, Tooltip,
-  Cell,
-} from 'recharts'
+import type { MainTab } from '@/app/page'
 
+// ── Design tokens ─────────────────────────────────────────────────────────────
+const C = {
+  bg:      '#0a0b0d',
+  card:    '#111318',
+  surface2:'#181c23',
+  border:  '#252b38',
+  red:     '#D2232A',
+  green:   '#22c55e',
+  amber:   '#f59e0b',
+  blue:    '#3b82f6',
+  purple:  '#a855f7',
+  text:    '#e8eaf0',
+  text2:   '#9aa3b8',
+  muted:   '#5a6380',
+}
+
+const STAGE_NAMES: Record<number, string> = {
+  1:  'Identify & Qualify',      2:  'Discovery & Assessment',  3:  'Opportunity Capture',
+  4:  'Solution Design',         5:  'Proposal & Scoping',      6:  'Negotiation & Close',
+  7:  'Deployment Prep',         8:  'Site Preparation',        9:  'Installation',
+  10: 'Testing & Validation',    11: 'Ops Transition',          12: 'Active Operations',
+}
+
+const HANDOFF_INFO: Record<number, { from: string; to: string; desc: string }> = {
+  3:  { from: 'Capture',   to: 'Solutions', desc: 'Capture → Solutions handoff required' },
+  6:  { from: 'Solutions', to: 'Delivery',  desc: 'Solutions → Delivery handoff required' },
+  10: { from: 'Delivery',  to: 'Operations',desc: 'Delivery → Ops handoff required' },
+}
+
+function stageColor(n: number) { return n <= 3 ? '#D2232A' : n <= 6 ? '#2563EB' : '#16A34A' }
 function fmtMoney(n: number) {
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`
+  if (n >= 1_000)     return `$${(n / 1_000).toFixed(0)}K`
   return `$${n.toFixed(0)}`
 }
 
-function parseAmt(s?: string) {
-  return parseFloat(s || '0') || 0
+// ── Props ─────────────────────────────────────────────────────────────────────
+interface Props {
+  onOpenDeal:  (id: string) => void
+  onSwitchTab: (tab: MainTab) => void
 }
 
-function fmtDate(iso?: string) {
-  if (!iso) return '—'
-  const d = new Date(iso)
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-}
+// ── Component ─────────────────────────────────────────────────────────────────
+export default function Dashboard({ onOpenDeal, onSwitchTab }: Props) {
+  const { data: projects = [] } = useQuery({
+    queryKey: ['projects'],
+    queryFn:  () => api.projects.list(),
+    staleTime: 30_000,
+  })
 
-const mono: React.CSSProperties = { fontFamily: "'IBM Plex Mono', monospace" }
-const chakra: React.CSSProperties = { fontFamily: "'Chakra Petch', sans-serif" }
+  const { data: activeData = [] } = useQuery({
+    queryKey: ['hs-active'],
+    queryFn:  () => api.hubspot.getActive(),
+    staleTime: 60_000,
+    retry: false,
+  })
 
-const card: React.CSSProperties = {
-  background: 'rgba(28,28,30,0.85)',
-  border: '1px solid rgba(255,255,255,0.07)',
-  borderRadius: 10,
-  padding: '18px 20px',
-}
+  const { data: hsStatus } = useQuery({
+    queryKey: ['hs-status'],
+    queryFn:  () => api.hubspot.getStatus(),
+    staleTime: 300_000,
+    retry: false,
+  })
 
-function KpiCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  const dealMap = new Map(activeData.map(a => [a.projectId, a.deal]))
+  const now = Date.now()
+
+  // ── Stat computations ──────────────────────────────────────────────────────
+  const activeProjects     = projects.filter(p => p.currentStage != null)
+  const pipelineValue      = activeData
+    .filter(a => a.deal.properties.dealstage !== 'closedlost')
+    .reduce((s, a) => s + (parseFloat(a.deal.properties.amount || '0') || 0), 0)
+  const pendingHandoffs    = projects.filter(p => p.currentStage === 3 || p.currentStage === 6 || p.currentStage === 10)
+  const atRisk             = projects.filter(p => {
+    if (!p.currentStage) return false
+    const ageDays = (now - new Date(p.createdAt).getTime()) / 86_400_000
+    return ageDays > 30 && p.totalTasks > 0 && p.doneTasks / p.totalTasks < 0.15
+  })
+  const closedWon30d       = activeData.filter(a => {
+    const d = a.deal.properties
+    if (d.dealstage !== 'closedwon') return false
+    const ms = new Date(d.closedate || '').getTime()
+    return ms > 0 && now - ms <= 30 * 86_400_000
+  })
+  const closedWon30dValue  = closedWon30d.reduce((s, a) => s + (parseFloat(a.deal.properties.amount || '0') || 0), 0)
+
+  // ── Pipeline by stage ──────────────────────────────────────────────────────
+  const stageDist = Array.from({ length: 12 }, (_, i) => {
+    const n = i + 1
+    const ps = projects.filter(p => p.currentStage === n)
+    const val = ps.reduce((s, p) => s + (parseFloat(dealMap.get(p.id)?.properties.amount || '0') || 0), 0)
+    return { n, name: STAGE_NAMES[n] ?? `Stage ${n}`, count: ps.length, value: val, color: stageColor(n), projects: ps }
+  }).filter(s => s.count > 0)
+
+  const maxCount = Math.max(...stageDist.map(s => s.count), 1)
+
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div style={{ ...card, flex: 1 }}>
-      <div style={{ ...mono, fontSize: 9, color: 'rgba(255,255,255,0.35)', letterSpacing: 1.5, marginBottom: 6, textTransform: 'uppercase' }}>
-        {label}
+    <div style={{ maxWidth: 1400, margin: '0 auto', padding: '28px 28px 60px' }}>
+
+      {/* Page header */}
+      <div style={{ marginBottom: 28 }}>
+        <h1 style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 22, color: C.text, letterSpacing: -0.5, marginBottom: 5 }}>
+          Operations Dashboard
+        </h1>
+        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: C.muted }}>
+          {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          <span style={{ margin: '0 8px', opacity: 0.4 }}>·</span>
+          <span style={{ color: C.text2 }}>DXD Defense</span>
+        </div>
       </div>
-      <div style={{ ...chakra, fontSize: 26, fontWeight: 700, color: '#e63946', letterSpacing: 1 }}>
-        {value}
+
+      {/* Stat row */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14, marginBottom: 28 }}>
+        <StatCard label="Active Deals"      value={String(activeProjects.length)}   sub={`${projects.length} total tracked`}                                   color={C.blue}   />
+        <StatCard label="Pipeline Value"    value={fmtMoney(pipelineValue)}          sub="open deals"                                                          color={C.green}  />
+        <StatCard label="Pending Handoffs"  value={String(pendingHandoffs.length)}   sub="at stages 3, 6 & 10"                                                 color={C.red}    />
+        <StatCard label="At Risk"           value={String(atRisk.length)}            sub=">30 days · <15% complete"                                             color={C.amber}  />
+        <StatCard label="Closed Won (30d)"  value={String(closedWon30d.length)}      sub={closedWon30d.length ? fmtMoney(closedWon30dValue) : 'no recent closes'} color={C.purple} />
       </div>
-      {sub && (
-        <div style={{ ...mono, fontSize: 10, color: 'rgba(255,255,255,0.3)', marginTop: 4 }}>{sub}</div>
+
+      {/* Two-column grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 20 }}>
+
+        {/* ── Left column ───────────────────────────────────────────────────── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+          {/* Critical Handoffs */}
+          <Widget>
+            <WHeader title="Critical Handoffs" badge={pendingHandoffs.length} badgeColor={C.red} />
+            {pendingHandoffs.length === 0 ? (
+              <Empty>No pending handoffs — all clear ✓</Empty>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {pendingHandoffs.map(p => {
+                  const stage = p.currentStage!
+                  const info  = HANDOFF_INFO[stage]
+                  const deal  = dealMap.get(p.id)
+                  return (
+                    <div key={p.id} onClick={() => onOpenDeal(p.id)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 8, cursor: 'pointer' }}
+                      onMouseEnter={e => (e.currentTarget.style.borderColor = C.red + '50')}
+                      onMouseLeave={e => (e.currentTarget.style.borderColor = C.border)}
+                    >
+                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.red, flexShrink: 0, boxShadow: `0 0 6px ${C.red}` }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 13, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {deal?.properties.dealname ?? p.name}
+                        </div>
+                        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: C.muted, marginTop: 2 }}>
+                          {info?.desc} · {info?.from} → {info?.to}
+                        </div>
+                      </div>
+                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: C.red, background: 'rgba(210,35,42,0.1)', border: `1px solid rgba(210,35,42,0.25)`, borderRadius: 5, padding: '2px 8px', flexShrink: 0 }}>
+                        S{stage}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </Widget>
+
+          {/* Pipeline by Stage */}
+          <Widget>
+            <WHeader title="Pipeline by Stage" action={{ label: 'View All →', onClick: () => onSwitchTab('pipeline') }} />
+            {stageDist.length === 0 ? (
+              <Empty>No deals with stage data yet</Empty>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                {stageDist.map(s => (
+                  <div key={s.n} onClick={() => onSwitchTab('pipeline')}
+                    style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 10px', borderRadius: 7, cursor: 'pointer' }}
+                    onMouseEnter={e => (e.currentTarget.style.background = C.surface2)}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    <div style={{ width: 24, height: 24, borderRadius: '50%', border: `1.5px solid ${s.color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: s.color, fontWeight: 600 }}>{s.n}</span>
+                    </div>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: C.text2, width: 168, flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</div>
+                    <div style={{ flex: 1, height: 5, background: C.surface2, borderRadius: 3, overflow: 'hidden' }}>
+                      <div style={{ width: `${(s.count / maxCount) * 100}%`, height: '100%', background: s.color, borderRadius: 3, transition: 'width 0.4s' }} />
+                    </div>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: C.text, width: 18, textAlign: 'right', flexShrink: 0 }}>{s.count}</div>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: C.green, width: 52, textAlign: 'right', flexShrink: 0 }}>
+                      {s.value > 0 ? fmtMoney(s.value) : ''}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Widget>
+
+        </div>
+
+        {/* ── Right column ──────────────────────────────────────────────────── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+          {/* Recent Activity */}
+          <Widget>
+            <WHeader title="Recent Activity" />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {activeProjects.slice(0, 5).map(p => {
+                const deal = dealMap.get(p.id)
+                const pct  = p.totalTasks > 0 ? Math.round((p.doneTasks / p.totalTasks) * 100) : 0
+                return (
+                  <div key={p.id} onClick={() => onOpenDeal(p.id)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 7, cursor: 'pointer' }}
+                    onMouseEnter={e => (e.currentTarget.style.background = C.surface2)}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    <div style={{ width: 28, height: 28, borderRadius: 6, background: C.surface2, border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: p.currentStage ? stageColor(p.currentStage) : C.green, fontWeight: 700 }}>
+                        {p.currentStage ?? '✓'}
+                      </span>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 600, fontSize: 12, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {deal?.properties.dealname ?? p.name}
+                      </div>
+                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: C.muted, marginTop: 1 }}>
+                        {p.doneTasks}/{p.totalTasks} tasks · {pct}% complete
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+              {activeProjects.length === 0 && <Empty>No active deals</Empty>}
+            </div>
+          </Widget>
+
+          {/* Regulatory Tracker */}
+          <Widget>
+            <WHeader title="Regulatory Tracker" sub="Drone Deals" />
+            {(() => {
+              const faaDeals = projects.filter(p => p.currentStage === 7 || p.currentStage === 8)
+              if (faaDeals.length === 0) return <Empty>No deals in FAA waiver window</Empty>
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  {faaDeals.map(p => {
+                    const ageDays = Math.round((now - new Date(p.createdAt).getTime()) / 86_400_000)
+                    const pct     = Math.min(ageDays / 112, 1)
+                    const barColor = ageDays > 60 ? C.red : ageDays > 30 ? C.amber : C.green
+                    const deal = dealMap.get(p.id)
+                    return (
+                      <div key={p.id} onClick={() => onOpenDeal(p.id)} style={{ cursor: 'pointer' }}>
+                        <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 600, fontSize: 12, color: C.text, marginBottom: 5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {deal?.properties.dealname ?? p.name}
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: C.muted }}>Day {ageDays} of ~112</span>
+                          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: barColor }}>{Math.round(pct * 100)}%</span>
+                        </div>
+                        <div style={{ height: 4, background: C.surface2, borderRadius: 2, overflow: 'hidden', marginBottom: 3 }}>
+                          <div style={{ width: `${pct * 100}%`, height: '100%', background: barColor, borderRadius: 2 }} />
+                        </div>
+                        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: C.muted }}>FAA waiver: 4–24 weeks typical</div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })()}
+          </Widget>
+
+          {/* HubSpot Sync */}
+          <Widget>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: hsStatus?.connected ? C.green : C.muted, boxShadow: hsStatus?.connected ? `0 0 6px ${C.green}` : 'none', flexShrink: 0 }} />
+              <span style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 14, color: C.text }}>HubSpot Sync</span>
+            </div>
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: C.muted, marginBottom: 14 }}>
+              {hsStatus?.connected ? 'Connected and syncing' : 'Not connected — configure to sync deals'}
+            </div>
+            <button
+              onClick={() => onSwitchTab('hubspot')}
+              style={{ width: '100%', padding: '9px 0', background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 7, color: C.text2, fontFamily: "'JetBrains Mono', monospace", fontSize: 10, cursor: 'pointer', letterSpacing: 0.5, transition: 'border-color 0.15s' }}
+              onMouseEnter={e => (e.currentTarget.style.borderColor = C.text2)}
+              onMouseLeave={e => (e.currentTarget.style.borderColor = C.border)}
+            >
+              Configure HubSpot →
+            </button>
+          </Widget>
+
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Shared sub-components ─────────────────────────────────────────────────────
+
+function StatCard({ label, value, sub, color }: { label: string; value: string; sub: string; color: string }) {
+  return (
+    <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: '18px 18px 0', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', top: 0, right: 0, width: 90, height: 90, background: `radial-gradient(circle at top right, ${color}18, transparent 70%)`, pointerEvents: 'none' }} />
+      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, letterSpacing: 1.5, color: C.muted, textTransform: 'uppercase', marginBottom: 10 }}>{label}</div>
+      <div style={{ fontFamily: 'Syne, sans-serif', fontSize: 26, fontWeight: 800, color: C.text, letterSpacing: -1, lineHeight: 1, marginBottom: 6 }}>{value}</div>
+      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: C.text2, marginBottom: 16 }}>{sub}</div>
+      <div style={{ height: 2, background: color, marginLeft: -18, marginRight: -18 }} />
+    </div>
+  )
+}
+
+function Widget({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: '18px' }}>
+      {children}
+    </div>
+  )
+}
+
+function WHeader({ title, sub, badge, badgeColor, action }: {
+  title: string; sub?: string; badge?: number; badgeColor?: string
+  action?: { label: string; onClick: () => void }
+}) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 14, color: C.text }}>{title}</span>
+        {sub && <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: C.muted }}>({sub})</span>}
+        {badge != null && badge > 0 && (
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: badgeColor ?? C.red, background: `${badgeColor ?? C.red}18`, border: `1px solid ${badgeColor ?? C.red}35`, borderRadius: 10, padding: '1px 7px' }}>
+            {badge}
+          </span>
+        )}
+      </div>
+      {action && (
+        <button onClick={action.onClick} style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: C.muted, background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 5, padding: '3px 9px', cursor: 'pointer', letterSpacing: 0.5 }}>
+          {action.label}
+        </button>
       )}
     </div>
   )
 }
 
-const TOOLTIP_STYLE = {
-  background: 'rgba(18,18,20,0.97)',
-  border: '1px solid rgba(255,255,255,0.1)',
-  borderRadius: 6,
-  fontFamily: "'IBM Plex Mono', monospace",
-  fontSize: 11,
-  color: '#E8ECF4',
-}
-
-const AXIS_TICK = { fill: 'rgba(255,255,255,0.35)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }
-
-export default function Dashboard() {
-  const { data: activeData, isLoading, error } = useQuery({
-    queryKey: ['hs-active-dash'],
-    queryFn: () => api.hubspot.getActive(),
-    staleTime: 60_000,
-    retry: false,
-  })
-
-  const { data: ownersData } = useQuery({
-    queryKey: ['hs-owners'],
-    queryFn: () => api.hubspot.getOwners(),
-    staleTime: 300_000,
-    retry: false,
-  })
-
-  const { data: projects = [] } = useQuery({
-    queryKey: ['projects-dash'],
-    queryFn: () => api.projects.list(),
-    staleTime: 60_000,
-    retry: false,
-  })
-
-  const deals: HubSpotDeal[] = (activeData ?? [])
-    .map(a => a.deal)
-    .filter(d => d.properties.dealstage !== 'closedlost')
-  const owners: HubSpotOwner[] = ownersData?.results ?? []
-
-  const ownerMap = new Map<string, string>(
-    owners.map(o => [
-      o.id,
-      [o.firstName, o.lastName].filter(Boolean).join(' ') || o.email || `Owner ${o.id.slice(-4)}`,
-    ])
-  )
-
-  // ── KPIs ────────────────────────────────────────────────────────────────────
-  const totalValue = deals.reduce((s, d) => s + parseAmt(d.properties.amount), 0)
-  const avgDeal = deals.length ? totalValue / deals.length : 0
-  const now = Date.now()
-  const closingSoon = deals.filter(d => {
-    const ms = new Date(d.properties.closedate || '').getTime()
-    return ms > now && ms - now <= 30 * 86_400_000
-  }).length
-
-  // ── Deals by stage ──────────────────────────────────────────────────────────
-  const stageCount = new Map<string, number>()
-  const stageValue = new Map<string, number>()
-  for (const d of deals) {
-    const stage = d.properties.dealstage || 'Unknown'
-    stageCount.set(stage, (stageCount.get(stage) ?? 0) + 1)
-    stageValue.set(stage, (stageValue.get(stage) ?? 0) + parseAmt(d.properties.amount))
-  }
-  const byStageCount = Array.from(stageCount.entries())
-    .map(([stage, count]) => ({ stage: stage.length > 18 ? stage.slice(0, 16) + '…' : stage, count }))
-    .sort((a, b) => b.count - a.count)
-  const byStageValue = Array.from(stageValue.entries())
-    .map(([stage, value]) => ({ stage: stage.length > 18 ? stage.slice(0, 16) + '…' : stage, value }))
-    .sort((a, b) => b.value - a.value)
-
-  // ── Deals by owner ──────────────────────────────────────────────────────────
-  const ownerCount = new Map<string, number>()
-  for (const d of deals) {
-    const oid = d.properties.hubspot_owner_id
-    const name = oid ? (ownerMap.get(oid) ?? `Owner …${oid.slice(-4)}`) : 'Unassigned'
-    ownerCount.set(name, (ownerCount.get(name) ?? 0) + 1)
-  }
-  const byOwner = Array.from(ownerCount.entries())
-    .map(([owner, count]) => ({ owner: owner.length > 18 ? owner.slice(0, 16) + '…' : owner, count }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 8)
-
-  // ── Value over time (by close month) ────────────────────────────────────────
-  const monthMap = new Map<string, number>()
-  for (const d of deals) {
-    const cd = d.properties.closedate
-    if (!cd) continue
-    const month = cd.slice(0, 7)
-    monthMap.set(month, (monthMap.get(month) ?? 0) + parseAmt(d.properties.amount))
-  }
-  const overTime = Array.from(monthMap.entries())
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([month, value]) => ({ month, value }))
-
-  // ── Stage distribution (internal projects) ──────────────────────────────────
-  const stageDist = Array.from({ length: 12 }, (_, i) => {
-    const n = i + 1
-    const count = projects.filter(p => p.currentStage === n).length
-    const color = n <= 3 ? '#D2232A' : n <= 6 ? '#2563EB' : '#16A34A'
-    return { stage: `S${n}`, count, color }
-  })
-  const trackedCount = projects.filter(p => p.currentStage != null).length
-
-  // ── Timeline ────────────────────────────────────────────────────────────────
-  const timeline = deals
-    .filter(d => d.properties.closedate)
-    .map(d => ({ ...d, closeDateMs: new Date(d.properties.closedate!).getTime() }))
-    .sort((a, b) => a.closeDateMs - b.closeDateMs)
-    .slice(0, 15)
-
-  // ── States ──────────────────────────────────────────────────────────────────
-  if (isLoading) {
-    return (
-      <div style={{ maxWidth: 960, margin: '32px auto', padding: '0 20px', textAlign: 'center' }}>
-        <p style={{ ...mono, fontSize: 11, color: 'rgba(255,255,255,0.3)', letterSpacing: 1 }}>
-          LOADING PIPELINE DATA...
-        </p>
-      </div>
-    )
-  }
-
-  if (error || deals.length === 0) {
-    return (
-      <div style={{ maxWidth: 960, margin: '32px auto', padding: '0 20px' }}>
-        <div style={{ ...card, textAlign: 'center', padding: 40 }}>
-          <p style={{ ...chakra, fontSize: 13, color: 'rgba(255,255,255,0.35)', letterSpacing: 2, marginBottom: 8 }}>
-            NO ACTIVE DEALS
-          </p>
-          <p style={{ ...mono, fontSize: 11, color: 'rgba(255,255,255,0.2)' }}>
-            Pin deals in Admin → HubSpot to see them here. Closed-lost deals are excluded.
-          </p>
-        </div>
-      </div>
-    )
-  }
-
+function Empty({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ maxWidth: 960, margin: '0 auto', padding: '24px 20px 40px' }}>
-
-      {/* KPI row */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
-        <KpiCard label="Total Deals" value={String(deals.length)} />
-        <KpiCard label="Pipeline Value" value={fmtMoney(totalValue)} />
-        <KpiCard label="Avg Deal Size" value={fmtMoney(avgDeal)} />
-        <KpiCard label="Closing ≤ 30 days" value={String(closingSoon)} sub="deals near close" />
-      </div>
-
-      {/* Chart row — stage count + stage value */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
-        <div style={{ ...card, flex: 1 }}>
-          <div style={{ ...mono, fontSize: 9, color: 'rgba(255,255,255,0.35)', letterSpacing: 1.5, marginBottom: 14, textTransform: 'uppercase' }}>
-            Deals by Stage
-          </div>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={byStageCount} margin={{ top: 4, right: 4, left: -16, bottom: 40 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="stage" tick={AXIS_TICK} angle={-35} textAnchor="end" interval={0} />
-              <YAxis tick={AXIS_TICK} allowDecimals={false} />
-              <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
-              <Bar dataKey="count" fill="#e63946" radius={[3, 3, 0, 0]} name="Deals" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div style={{ ...card, flex: 1 }}>
-          <div style={{ ...mono, fontSize: 9, color: 'rgba(255,255,255,0.35)', letterSpacing: 1.5, marginBottom: 14, textTransform: 'uppercase' }}>
-            Total Value by Stage
-          </div>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={byStageValue} margin={{ top: 4, right: 4, left: 8, bottom: 40 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="stage" tick={AXIS_TICK} angle={-35} textAnchor="end" interval={0} />
-              <YAxis tick={AXIS_TICK} tickFormatter={v => fmtMoney(v as number)} width={52} />
-              <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'rgba(255,255,255,0.04)' }} formatter={(v: unknown) => [fmtMoney(v as number), 'Value']} />
-              <Bar dataKey="value" fill="#3b82f6" radius={[3, 3, 0, 0]} name="Value" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Deals by owner */}
-      {byOwner.length > 0 && (
-        <div style={{ ...card, marginBottom: 20 }}>
-          <div style={{ ...mono, fontSize: 9, color: 'rgba(255,255,255,0.35)', letterSpacing: 1.5, marginBottom: 14, textTransform: 'uppercase' }}>
-            Deals by Owner
-          </div>
-          <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={byOwner} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 4 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
-              <XAxis type="number" tick={AXIS_TICK} allowDecimals={false} />
-              <YAxis type="category" dataKey="owner" tick={AXIS_TICK} width={120} />
-              <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
-              <Bar dataKey="count" fill="#f59e0b" radius={[0, 3, 3, 0]} name="Deals" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {/* Value over time */}
-      {overTime.length > 1 && (
-        <div style={{ ...card, marginBottom: 20 }}>
-          <div style={{ ...mono, fontSize: 9, color: 'rgba(255,255,255,0.35)', letterSpacing: 1.5, marginBottom: 14, textTransform: 'uppercase' }}>
-            Deal Value Over Time (by Close Date)
-          </div>
-          <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={overTime} margin={{ top: 4, right: 4, left: 8, bottom: 4 }}>
-              <defs>
-                <linearGradient id="valueGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#e63946" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#e63946" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="month" tick={AXIS_TICK} />
-              <YAxis tick={AXIS_TICK} tickFormatter={v => fmtMoney(v as number)} width={52} />
-              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: unknown) => [fmtMoney(v as number), 'Value']} />
-              <Area type="monotone" dataKey="value" stroke="#e63946" strokeWidth={2} fill="url(#valueGrad)" name="Value" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {/* Pipeline stage distribution */}
-      {trackedCount > 0 && (
-        <div style={{ ...card, marginBottom: 20 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 14 }}>
-            <div style={{ ...mono, fontSize: 9, color: 'rgba(255,255,255,0.35)', letterSpacing: 1.5, textTransform: 'uppercase' }}>
-              Pipeline Stage Distribution
-            </div>
-            <div style={{ ...mono, fontSize: 9, color: 'rgba(255,255,255,0.2)' }}>
-              {trackedCount} active project{trackedCount !== 1 ? 's' : ''}
-            </div>
-          </div>
-          <ResponsiveContainer width="100%" height={160}>
-            <BarChart data={stageDist} margin={{ top: 4, right: 4, left: -20, bottom: 4 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="stage" tick={AXIS_TICK} />
-              <YAxis tick={AXIS_TICK} allowDecimals={false} />
-              <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
-              <Bar dataKey="count" radius={[3, 3, 0, 0]} name="Projects">
-                {stageDist.map((entry, i) => (
-                  <Cell key={i} fill={entry.color} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-          <div style={{ display: 'flex', gap: 16, marginTop: 10 }}>
-            {[{ label: 'Phase A — Capture', color: '#D2232A' }, { label: 'Phase B — Solutions', color: '#2563EB' }, { label: 'Phase C — Delivery/Ops', color: '#16A34A' }].map(l => (
-              <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <div style={{ width: 8, height: 8, borderRadius: 2, background: l.color, flexShrink: 0 }} />
-                <span style={{ ...mono, fontSize: 9, color: 'rgba(255,255,255,0.35)' }}>{l.label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Timeline */}
-      <div style={card}>
-        <div style={{ ...mono, fontSize: 9, color: 'rgba(255,255,255,0.35)', letterSpacing: 1.5, marginBottom: 14, textTransform: 'uppercase' }}>
-          Deal Timeline — Sorted by Close Date
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px 140px 120px', gap: '0 16px', marginBottom: 8 }}>
-          {['DEAL', 'STAGE', 'OWNER', 'CLOSE DATE'].map(h => (
-            <div key={h} style={{ ...mono, fontSize: 9, color: 'rgba(255,255,255,0.25)', letterSpacing: 1 }}>{h}</div>
-          ))}
-        </div>
-        <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', marginBottom: 8 }} />
-        {timeline.map(d => {
-          const urgent = d.closeDateMs - now <= 30 * 86_400_000 && d.closeDateMs > now
-          const oid = d.properties.hubspot_owner_id
-          const ownerName = oid ? (ownerMap.get(oid) ?? `…${oid.slice(-4)}`) : '—'
-          return (
-            <div
-              key={d.id}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 160px 140px 120px',
-                gap: '0 16px',
-                padding: '7px 0',
-                borderBottom: '1px solid rgba(255,255,255,0.04)',
-                background: urgent ? 'rgba(230,57,70,0.05)' : 'transparent',
-              }}
-            >
-              <div style={{ ...mono, fontSize: 11, color: urgent ? '#e63946' : '#E8ECF4', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {urgent && <span style={{ color: '#e63946', marginRight: 6 }}>●</span>}
-                {d.properties.dealname || d.id}
-              </div>
-              <div style={{ ...mono, fontSize: 10, color: 'rgba(255,255,255,0.45)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {d.properties.dealstage || '—'}
-              </div>
-              <div style={{ ...mono, fontSize: 10, color: 'rgba(255,255,255,0.45)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {ownerName}
-              </div>
-              <div style={{ ...mono, fontSize: 10, color: urgent ? '#f59e0b' : 'rgba(255,255,255,0.45)' }}>
-                {fmtDate(d.properties.closedate)}
-              </div>
-            </div>
-          )
-        })}
-        {timeline.length === 0 && (
-          <p style={{ ...mono, fontSize: 11, color: 'rgba(255,255,255,0.2)' }}>No close dates set.</p>
-        )}
-      </div>
+    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: C.muted, padding: '18px 0', textAlign: 'center' }}>
+      {children}
     </div>
   )
 }
