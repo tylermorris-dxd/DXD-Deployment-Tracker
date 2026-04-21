@@ -64,28 +64,51 @@ async fn list_deals(State(state): State<AppState>) -> Result<Json<Value>, AppErr
         .await
         .ok_or_else(|| AppError::BadRequest("HubSpot not connected".into()))?;
 
-    let url = "https://api.hubapi.com/crm/v3/objects/deals\
-               ?limit=100\
-               &properties=dealname,dealstage,amount,closedate,pipeline,hs_lastmodifieddate\
-               &associations=companies";
+    let base = "https://api.hubapi.com/crm/v3/objects/deals\
+                ?limit=100\
+                &properties=dealname,dealstage,amount,closedate,pipeline,hs_lastmodifieddate\
+                &associations=companies";
 
-    let resp = state
-        .http
-        .get(url)
-        .header("Authorization", format!("Bearer {}", token))
-        .send()
-        .await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
+    let mut all_deals: Vec<Value> = Vec::new();
+    let mut after: Option<String> = None;
 
-    if !resp.status().is_success() {
-        let body: Value = resp.json().await.unwrap_or_default();
-        return Err(AppError::Internal(format!("HubSpot API error: {}", body)));
+    loop {
+        let url = match &after {
+            Some(cursor) => format!("{}&after={}", base, cursor),
+            None => base.to_string(),
+        };
+
+        let resp = state
+            .http
+            .get(&url)
+            .header("Authorization", format!("Bearer {}", token))
+            .send()
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        if !resp.status().is_success() {
+            let body: Value = resp.json().await.unwrap_or_default();
+            return Err(AppError::Internal(format!("HubSpot API error: {}", body)));
+        }
+
+        let page: Value = resp
+            .json()
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        if let Some(results) = page["results"].as_array() {
+            all_deals.extend(results.iter().cloned());
+        }
+
+        // Follow cursor — stop when there's no next page
+        after = page["paging"]["next"]["after"]
+            .as_str()
+            .map(|s| s.to_string());
+
+        if after.is_none() {
+            break;
+        }
     }
-
-    let mut data: Value = resp
-        .json()
-        .await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
 
     // Annotate each deal with its pinned status
     let pinned: Vec<String> = sqlx::query_scalar!(
@@ -97,14 +120,16 @@ async fn list_deals(State(state): State<AppState>) -> Result<Json<Value>, AppErr
     .flatten()
     .collect();
 
-    if let Some(results) = data["results"].as_array_mut() {
-        for deal in results.iter_mut() {
+    let annotated: Vec<Value> = all_deals
+        .into_iter()
+        .map(|mut deal| {
             let id = deal["id"].as_str().unwrap_or("").to_string();
             deal["pinned"] = json!(pinned.contains(&id));
-        }
-    }
+            deal
+        })
+        .collect();
 
-    Ok(Json(data))
+    Ok(Json(json!({ "results": annotated })))
 }
 
 /// Returns live HubSpot deal data for all pinned (shadow) projects.
