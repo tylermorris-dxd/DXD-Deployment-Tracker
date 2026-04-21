@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import { api } from '@/lib/api'
-import type { ProjectFull } from '@/lib/types'
+import type { ProjectFull, HubSpotDeal, HubSpotContact } from '@/lib/types'
 
 interface Stakeholder {
   id: string
@@ -16,6 +16,7 @@ interface Stakeholder {
 interface Props {
   project: ProjectFull
   onUpdate: () => void
+  hubspotDeal?: HubSpotDeal
 }
 
 const inputStyle: React.CSSProperties = {
@@ -44,7 +45,8 @@ const labelStyle: React.CSSProperties = {
 
 const empty = { name: '', title: '', company: '', email: '', phone: '' }
 
-export default function StakeholdersView({ project, onUpdate }: Props) {
+export default function StakeholdersView({ project, onUpdate, hubspotDeal }: Props) {
+  const hsContacts: HubSpotContact[] = hubspotDeal?.contactDetails ?? []
   // Use project.stakeholders from cache if available (stored as JSON in a field)
   // For now we manage locally via state seeded from the cache
   const cached: Stakeholder[] = (() => {
@@ -138,6 +140,34 @@ export default function StakeholdersView({ project, onUpdate }: Props) {
         </div>
       )}
 
+      {/* ── HubSpot contacts ── */}
+      {hsContacts.length > 0 && (
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#FF9800', display: 'inline-block' }} />
+            <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: '#FF9800' }}>FROM HUBSPOT</span>
+            <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: 'rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: 10 }}>{hsContacts.length}</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {hsContacts.map((c: HubSpotContact) => {
+              const name = [c.properties.firstname, c.properties.lastname].filter(Boolean).join(' ') || '—'
+              return (
+                <div key={c.id} style={{ background: 'rgba(255,152,0,0.04)', border: '1px solid rgba(255,152,0,0.15)', borderRadius: 10, padding: '14px 20px', display: 'grid', gridTemplateColumns: '2fr 1.5fr 1.5fr 1fr', gap: 12, alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 13, fontWeight: 700, color: '#E8ECF4', letterSpacing: 0.3 }}>{name}</div>
+                    {c.properties.company && <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>{c.properties.company}</div>}
+                  </div>
+                  <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#FF9800' }}>{c.properties.jobtitle || '—'}</div>
+                  <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>{c.properties.email || '—'}</div>
+                  <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>{c.properties.phone || '—'}</div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── Local contacts ── */}
       {stakeholders.length === 0 && !showForm ? (
         <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.07)', borderRadius: 10, padding: '32px 24px', textAlign: 'center', fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: 'rgba(255,255,255,0.2)' }}>
           No contacts yet — click &quot;+ ADD CONTACT&quot; to add a stakeholder.

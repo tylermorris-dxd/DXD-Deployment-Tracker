@@ -219,42 +219,52 @@ async fn get_deal(
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
-    // Try to resolve associated company names
-    if let Some(company_ids) = deal["associations"]["companies"]["results"]
-        .as_array()
-        .map(|arr| {
-            arr.iter()
-                .filter_map(|c| c["id"].as_str())
-                .collect::<Vec<_>>()
-        })
-    {
-        if !company_ids.is_empty() {
-            let company_inputs: Vec<Value> =
-                company_ids.iter().map(|id| json!({ "id": id })).collect();
+    let mut result = deal.clone();
 
-            if let Ok(cr) = state
-                .http
-                .post("https://api.hubapi.com/crm/v3/objects/companies/batch/read")
-                .header("Authorization", format!("Bearer {}", token))
-                .json(&json!({
-                    "inputs": company_inputs,
-                    "properties": ["name", "domain"]
-                }))
-                .send()
-                .await
-            {
-                if let Ok(cd) = cr.json::<Value>().await {
-                    let companies: Vec<Value> =
-                        cd["results"].as_array().cloned().unwrap_or_default();
-                    let mut result = deal.clone();
-                    result["companyDetails"] = json!(companies);
-                    return Ok(Json(result));
-                }
+    // Resolve associated companies
+    let company_ids: Vec<String> = deal["associations"]["companies"]["results"]
+        .as_array()
+        .map(|arr| arr.iter().filter_map(|c| c["id"].as_str().map(String::from)).collect())
+        .unwrap_or_default();
+
+    if !company_ids.is_empty() {
+        let inputs: Vec<Value> = company_ids.iter().map(|id| json!({ "id": id })).collect();
+        if let Ok(resp) = state.http
+            .post("https://api.hubapi.com/crm/v3/objects/companies/batch/read")
+            .header("Authorization", format!("Bearer {}", token))
+            .json(&json!({ "inputs": inputs, "properties": ["name", "domain"] }))
+            .send().await
+        {
+            if let Ok(data) = resp.json::<Value>().await {
+                result["companyDetails"] = data["results"].clone();
             }
         }
     }
 
-    Ok(Json(deal))
+    // Resolve associated contacts
+    let contact_ids: Vec<String> = deal["associations"]["contacts"]["results"]
+        .as_array()
+        .map(|arr| arr.iter().filter_map(|c| c["id"].as_str().map(String::from)).collect())
+        .unwrap_or_default();
+
+    if !contact_ids.is_empty() {
+        let inputs: Vec<Value> = contact_ids.iter().map(|id| json!({ "id": id })).collect();
+        if let Ok(resp) = state.http
+            .post("https://api.hubapi.com/crm/v3/objects/contacts/batch/read")
+            .header("Authorization", format!("Bearer {}", token))
+            .json(&json!({
+                "inputs": inputs,
+                "properties": ["firstname", "lastname", "email", "phone", "jobtitle", "company"]
+            }))
+            .send().await
+        {
+            if let Ok(data) = resp.json::<Value>().await {
+                result["contactDetails"] = data["results"].clone();
+            }
+        }
+    }
+
+    Ok(Json(result))
 }
 
 /// Create a shadow project linked to this HubSpot deal.

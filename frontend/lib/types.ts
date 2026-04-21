@@ -35,11 +35,24 @@ export interface HubSpotDealProperties {
   hs_lastmodifieddate?: string
 }
 
+export interface HubSpotContact {
+  id: string
+  properties: {
+    firstname?: string
+    lastname?: string
+    email?: string
+    phone?: string
+    jobtitle?: string
+    company?: string
+  }
+}
+
 export interface HubSpotDeal {
   id: string
   properties: HubSpotDealProperties
   pinned?: boolean
   companyDetails?: Array<{ id: string; properties: { name?: string; domain?: string } }>
+  contactDetails?: HubSpotContact[]
 }
 
 export interface HubSpotActiveDeal {

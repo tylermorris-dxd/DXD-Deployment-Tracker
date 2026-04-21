@@ -349,7 +349,7 @@ export default function ProjectView({ projectId, onBack }: Props) {
         {viewMode === 'network' && <ConnectivityView project={project} onCacheUpdate={updateNetworkCache} />}
 
         {/* STAKEHOLDERS view */}
-        {viewMode === 'stakeholders' && <StakeholdersView project={project} onUpdate={invalidate} />}
+        {viewMode === 'stakeholders' && <StakeholdersView project={project} onUpdate={invalidate} hubspotDeal={hsDeal} />}
 
         {/* SETTINGS view */}
         {viewMode === 'settings' && <ProjectSettingsView project={project} onUpdate={invalidate} />}
