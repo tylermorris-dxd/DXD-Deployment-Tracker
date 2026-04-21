@@ -60,6 +60,8 @@ async fn create_task(
         has_stakeholders: false,
         has_equipment_picker: false,
         sort_order,
+        role_tag: String::new(),
+        stage_number: None,
         subtasks: vec![],
         stakeholder_contacts: vec![],
         attachments: vec![],
@@ -162,6 +164,8 @@ async fn create_subtask(
         ot_eta: String::new(),
         ot_delivered: String::new(),
         ot_received_by: String::new(),
+        priority: String::new(),
+        condition_key: String::new(),
     })))
 }
 
