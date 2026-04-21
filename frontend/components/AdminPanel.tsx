@@ -320,7 +320,14 @@ function HubSpotPanel() {
     },
   })
 
-  const deals: HubSpotDeal[] = dealsData?.results ?? []
+  const [search, setSearch] = useState('')
+  const allDeals: HubSpotDeal[] = dealsData?.results ?? []
+  const deals = search.trim()
+    ? allDeals.filter(d =>
+        (d.properties.dealname ?? '').toLowerCase().includes(search.toLowerCase()) ||
+        (d.companyDetails?.[0]?.properties?.name ?? '').toLowerCase().includes(search.toLowerCase())
+      )
+    : allDeals
 
   if (!status?.connected) {
     return (
@@ -372,14 +379,28 @@ function HubSpotPanel() {
       </div>
 
       {/* Deals list */}
-      <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 10, color: 'rgba(255,255,255,0.35)', letterSpacing: 1.5, marginBottom: 12 }}>
-        SELECT DEALS TO TRACK — TOGGLED DEALS APPEAR LIVE IN PROJECTS
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 10, color: 'rgba(255,255,255,0.35)', letterSpacing: 1.5 }}>
+          SELECT DEALS TO TRACK — TOGGLED DEALS APPEAR LIVE IN PROJECTS
+        </div>
+        <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: 'rgba(255,255,255,0.2)' }}>
+          {allDeals.length} deals
+        </span>
       </div>
+
+      <input
+        style={{ ...inputSm, marginBottom: 12, width: '100%' }}
+        placeholder="Search by deal name or company…"
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+      />
 
       {dealsLoading ? (
         <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: 'rgba(255,255,255,0.3)', padding: '20px 0' }}>Loading deals from HubSpot…</div>
       ) : deals.length === 0 ? (
-        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: 'rgba(255,255,255,0.3)', padding: '20px 0' }}>No deals found in your HubSpot account.</div>
+        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: 'rgba(255,255,255,0.3)', padding: '20px 0' }}>
+          {search.trim() ? `No deals matching "${search}"` : 'No deals found in your HubSpot account.'}
+        </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 520, overflowY: 'auto' }}>
           {deals.map((deal: HubSpotDeal) => {
