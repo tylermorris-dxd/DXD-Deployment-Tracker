@@ -116,6 +116,7 @@ pub struct ProjectSummary {
     pub total_tasks: i64,
     pub done_tasks: i64,
     pub hubspot_deal_id: Option<String>,
+    pub current_stage: Option<i32>,
 }
 
 #[derive(Debug, Serialize)]
@@ -131,6 +132,7 @@ pub struct ProjectFull {
     pub network_cache: Option<String>,
     pub weather_cache: Option<String>,
     pub phases: Vec<PhaseFull>,
+    pub branch_answers: serde_json::Value,
     pub hubspot_deal_id: Option<String>,
 }
 
@@ -167,6 +169,8 @@ pub struct TaskFull {
     pub has_stakeholders: bool,
     pub has_equipment_picker: bool,
     pub sort_order: i64,
+    pub role_tag: String,
+    pub stage_number: Option<i32>,
     pub subtasks: Vec<SubtaskRow>,
     pub stakeholder_contacts: Vec<ContactRow>,
     pub attachments: Vec<AttachmentMeta>,
@@ -186,6 +190,8 @@ pub struct SubtaskRow {
     pub ot_eta: String,
     pub ot_delivered: String,
     pub ot_received_by: String,
+    pub priority: String,
+    pub condition_key: String,
 }
 
 #[derive(Debug, Serialize)]

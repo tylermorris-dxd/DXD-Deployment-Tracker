@@ -9,6 +9,7 @@ import {
   AreaChart, Area,
   XAxis, YAxis,
   CartesianGrid, Tooltip,
+  Cell,
 } from 'recharts'
 
 function fmtMoney(n: number) {
@@ -79,6 +80,13 @@ export default function Dashboard() {
     retry: false,
   })
 
+  const { data: projects = [] } = useQuery({
+    queryKey: ['projects-dash'],
+    queryFn: () => api.projects.list(),
+    staleTime: 60_000,
+    retry: false,
+  })
+
   const deals: HubSpotDeal[] = (activeData ?? [])
     .map(a => a.deal)
     .filter(d => d.properties.dealstage !== 'closedlost')
@@ -138,6 +146,15 @@ export default function Dashboard() {
   const overTime = Array.from(monthMap.entries())
     .sort((a, b) => a[0].localeCompare(b[0]))
     .map(([month, value]) => ({ month, value }))
+
+  // ── Stage distribution (internal projects) ──────────────────────────────────
+  const stageDist = Array.from({ length: 12 }, (_, i) => {
+    const n = i + 1
+    const count = projects.filter(p => p.currentStage === n).length
+    const color = n <= 3 ? '#D2232A' : n <= 6 ? '#2563EB' : '#16A34A'
+    return { stage: `S${n}`, count, color }
+  })
+  const trackedCount = projects.filter(p => p.currentStage != null).length
 
   // ── Timeline ────────────────────────────────────────────────────────────────
   const timeline = deals
@@ -255,6 +272,41 @@ export default function Dashboard() {
               <Area type="monotone" dataKey="value" stroke="#e63946" strokeWidth={2} fill="url(#valueGrad)" name="Value" />
             </AreaChart>
           </ResponsiveContainer>
+        </div>
+      )}
+
+      {/* Pipeline stage distribution */}
+      {trackedCount > 0 && (
+        <div style={{ ...card, marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 14 }}>
+            <div style={{ ...mono, fontSize: 9, color: 'rgba(255,255,255,0.35)', letterSpacing: 1.5, textTransform: 'uppercase' }}>
+              Pipeline Stage Distribution
+            </div>
+            <div style={{ ...mono, fontSize: 9, color: 'rgba(255,255,255,0.2)' }}>
+              {trackedCount} active project{trackedCount !== 1 ? 's' : ''}
+            </div>
+          </div>
+          <ResponsiveContainer width="100%" height={160}>
+            <BarChart data={stageDist} margin={{ top: 4, right: 4, left: -20, bottom: 4 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+              <XAxis dataKey="stage" tick={AXIS_TICK} />
+              <YAxis tick={AXIS_TICK} allowDecimals={false} />
+              <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
+              <Bar dataKey="count" radius={[3, 3, 0, 0]} name="Projects">
+                {stageDist.map((entry, i) => (
+                  <Cell key={i} fill={entry.color} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+          <div style={{ display: 'flex', gap: 16, marginTop: 10 }}>
+            {[{ label: 'Phase A — Capture', color: '#D2232A' }, { label: 'Phase B — Solutions', color: '#2563EB' }, { label: 'Phase C — Delivery/Ops', color: '#16A34A' }].map(l => (
+              <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <div style={{ width: 8, height: 8, borderRadius: 2, background: l.color, flexShrink: 0 }} />
+                <span style={{ ...mono, fontSize: 9, color: 'rgba(255,255,255,0.35)' }}>{l.label}</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

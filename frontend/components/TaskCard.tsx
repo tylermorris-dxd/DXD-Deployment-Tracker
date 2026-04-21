@@ -12,10 +12,36 @@ interface Props {
   phase: Phase
   projectId: string
   teamMembers: TeamMember[]
+  branchAnswers: Record<string, boolean>
   onDataChange: () => void
 }
 
-export default function TaskCard({ task, phase, projectId, teamMembers, onDataChange }: Props) {
+function isVisible(conditionKey: string, answers: Record<string, boolean>): boolean {
+  if (!conditionKey) return true
+  if (conditionKey.startsWith('!')) return !answers[conditionKey.slice(1)]
+  return !!answers[conditionKey]
+}
+
+function PriorityBadge({ priority }: { priority: string }) {
+  if (priority === 'exit_gate') return (
+    <span style={{ fontSize: 8, padding: '1px 5px', borderRadius: 3, background: 'rgba(234,179,8,0.15)', color: '#EAB308', letterSpacing: 0.5, flexShrink: 0, fontFamily: "'IBM Plex Mono', monospace" }}>EXIT GATE</span>
+  )
+  if (priority === 'handoff') return (
+    <span style={{ fontSize: 8, padding: '1px 5px', borderRadius: 3, background: 'rgba(59,130,246,0.15)', color: '#60A5FA', letterSpacing: 0.5, flexShrink: 0, fontFamily: "'IBM Plex Mono', monospace" }}>HANDOFF</span>
+  )
+  if (priority === 'p0') return (
+    <span style={{ fontSize: 8, padding: '1px 4px', borderRadius: 3, background: 'rgba(239,68,68,0.12)', color: '#ef4444', letterSpacing: 0.5, flexShrink: 0, fontFamily: "'IBM Plex Mono', monospace" }}>P0</span>
+  )
+  if (priority === 'p1') return (
+    <span style={{ fontSize: 8, padding: '1px 4px', borderRadius: 3, background: 'rgba(245,158,11,0.12)', color: '#f59e0b', letterSpacing: 0.5, flexShrink: 0, fontFamily: "'IBM Plex Mono', monospace" }}>P1</span>
+  )
+  if (priority === 'p2') return (
+    <span style={{ fontSize: 8, padding: '1px 4px', borderRadius: 3, background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.3)', letterSpacing: 0.5, flexShrink: 0, fontFamily: "'IBM Plex Mono', monospace" }}>P2</span>
+  )
+  return null
+}
+
+export default function TaskCard({ task, phase, projectId, teamMembers, branchAnswers, onDataChange }: Props) {
   const qc = useQueryClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [expanded, setExpanded] = useState(false)
@@ -119,8 +145,9 @@ export default function TaskCard({ task, phase, projectId, teamMembers, onDataCh
     onSuccess: invalidate,
   })
 
-  const doneSubs = task.subtasks.filter(s => s.isDone).length
-  const totalSubs = task.subtasks.length
+  const visibleSubtasks = task.subtasks.filter(sub => isVisible(sub.conditionKey, branchAnswers))
+  const doneSubs = visibleSubtasks.filter(s => s.isDone).length
+  const totalSubs = visibleSubtasks.length
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
@@ -173,6 +200,11 @@ export default function TaskCard({ task, phase, projectId, teamMembers, onDataCh
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+          {task.roleTag && (
+            <span style={{ ...s.badge, background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.35)', fontSize: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              {task.roleTag}
+            </span>
+          )}
           {totalSubs > 0 && (
             <span style={{ ...s.badge, background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.4)', fontSize: 9 }}>
               {doneSubs}/{totalSubs}
@@ -214,7 +246,7 @@ export default function TaskCard({ task, phase, projectId, teamMembers, onDataCh
           {/* Subtasks */}
           {!task.hasEquipmentPicker && (
             <div style={{ marginTop: 10, marginBottom: 8 }}>
-              {task.subtasks.map(sub => (
+              {visibleSubtasks.map(sub => (
                 <React.Fragment key={sub.id}>
                   <div style={s.subtaskRow}>
                     <input
@@ -237,6 +269,7 @@ export default function TaskCard({ task, phase, projectId, teamMembers, onDataCh
                         {sub.text}
                       </span>
                     )}
+                    <PriorityBadge priority={sub.priority} />
                     {editingSubtask !== sub.id && (
                       <button style={s.iconBtn} onClick={() => { setEditingSubtask(sub.id); setEditSubtaskVal(sub.text) }} title="Edit">
                         {Icons.edit}

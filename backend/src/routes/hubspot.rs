@@ -372,20 +372,20 @@ async fn pin_deal(
 
             sqlx::query!(
                 "INSERT INTO tasks (id, phase_id, project_id, title, is_gate, track_dates, \
-                 has_equipment_picker, has_stakeholders, sort_order) \
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+                 has_equipment_picker, has_stakeholders, sort_order, role_tag, stage_number) \
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
                 task_id, phase_id, project_id, task.title, task.gate,
-                task.track_dates, task.has_equipment_picker, task.has_stakeholders, t_sort
+                task.track_dates, task.has_equipment_picker, task.has_stakeholders, t_sort,
+                task.role_tag, task.stage_number
             )
             .execute(&state.pool)
             .await?;
 
-            for (s_idx, sub_text) in task.subtasks.iter().enumerate() {
-                let sub = sub_text.to_string();
+            for (s_idx, sub) in task.subtasks.iter().enumerate() {
                 let s_sort = s_idx as i32;
                 sqlx::query!(
-                    "INSERT INTO subtasks (task_id, project_id, sort_index, text) VALUES ($1, $2, $3, $4)",
-                    task_id, project_id, s_sort, sub
+                    "INSERT INTO subtasks (task_id, project_id, sort_index, text, priority, condition_key) VALUES ($1, $2, $3, $4, $5, $6)",
+                    task_id, project_id, s_sort, sub.text, sub.priority, sub.condition_key
                 )
                 .execute(&state.pool)
                 .await?;

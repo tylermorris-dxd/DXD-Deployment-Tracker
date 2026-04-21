@@ -4,6 +4,7 @@ use axum::{
     routing::{get, patch, post, delete},
     Json, Router,
 };
+use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::{
@@ -18,6 +19,7 @@ pub fn router() -> Router<AppState> {
         .route("/projects", get(list_projects).post(create_project))
         .route("/projects/:id", get(get_project).patch(update_project).delete(delete_project))
         .route("/projects/:id/phases/:phase_id", patch(update_phase))
+        .route("/projects/:id/branch-answers", patch(update_branch_answers))
 }
 
 async fn list_projects(State(state): State<AppState>) -> Result<Json<Vec<ProjectSummary>>, AppError> {
@@ -25,7 +27,8 @@ async fn list_projects(State(state): State<AppState>) -> Result<Json<Vec<Project
         r#"
         SELECT p.id, p.name, p.client, p.site, p.created_at, p.hubspot_deal_id,
                COUNT(t.id) as total_tasks,
-               SUM(CASE WHEN t.completed = TRUE THEN 1 ELSE 0 END) as done_tasks
+               SUM(CASE WHEN t.completed = TRUE THEN 1 ELSE 0 END) as done_tasks,
+               MIN(CASE WHEN t.completed = FALSE AND t.stage_number IS NOT NULL THEN t.stage_number END) as current_stage
         FROM projects p
         LEFT JOIN phases ph ON ph.project_id = p.id
         LEFT JOIN tasks t ON t.phase_id = ph.id
@@ -47,6 +50,7 @@ async fn list_projects(State(state): State<AppState>) -> Result<Json<Vec<Project
             total_tasks: r.total_tasks.unwrap_or(0),
             done_tasks: r.done_tasks.unwrap_or(0),
             hubspot_deal_id: r.hubspot_deal_id,
+            current_stage: r.current_stage,
         })
         .collect();
 
@@ -92,18 +96,17 @@ async fn create_project(
             let t_sort = t_idx as i32;
 
             sqlx::query!(
-                "INSERT INTO tasks (id, phase_id, project_id, title, is_gate, track_dates, has_equipment_picker, has_stakeholders, sort_order) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-                task_id, phase_id, project_id, task.title, task.gate, task.track_dates, task.has_equipment_picker, task.has_stakeholders, t_sort
+                "INSERT INTO tasks (id, phase_id, project_id, title, is_gate, track_dates, has_equipment_picker, has_stakeholders, sort_order, role_tag, stage_number) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
+                task_id, phase_id, project_id, task.title, task.gate, task.track_dates, task.has_equipment_picker, task.has_stakeholders, t_sort, task.role_tag, task.stage_number
             )
             .execute(&state.pool)
             .await?;
 
-            for (s_idx, sub_text) in task.subtasks.iter().enumerate() {
-                let sub_text = sub_text.to_string();
+            for (s_idx, sub) in task.subtasks.iter().enumerate() {
                 let s_sort = s_idx as i32;
                 sqlx::query!(
-                    "INSERT INTO subtasks (task_id, project_id, sort_index, text) VALUES ($1, $2, $3, $4)",
-                    task_id, project_id, s_sort, sub_text
+                    "INSERT INTO subtasks (task_id, project_id, sort_index, text, priority, condition_key) VALUES ($1, $2, $3, $4, $5, $6)",
+                    task_id, project_id, s_sort, sub.text, sub.priority, sub.condition_key
                 )
                 .execute(&state.pool)
                 .await?;
@@ -131,6 +134,7 @@ async fn create_project(
         total_tasks: template.iter().map(|p| p.tasks.len() as i64).sum(),
         done_tasks: 0,
         hubspot_deal_id: None,
+        current_stage: Some(1),
     };
 
     Ok((StatusCode::CREATED, Json(summary)))
@@ -141,7 +145,7 @@ async fn get_project(
     Path(project_id): Path<String>,
 ) -> Result<Json<ProjectFull>, AppError> {
     let proj = sqlx::query!(
-        "SELECT id, name, client, site, created_at, map_cache, airspace_cache, network_cache, weather_cache, hubspot_deal_id FROM projects WHERE id = $1",
+        "SELECT id, name, client, site, created_at, map_cache, airspace_cache, network_cache, weather_cache, hubspot_deal_id, branch_answers FROM projects WHERE id = $1",
         project_id
     )
     .fetch_optional(&state.pool)
@@ -160,7 +164,8 @@ async fn get_project(
     } else {
         sqlx::query!(
             r#"SELECT id, phase_id, project_id, title, completed, notes, due_date, assignee,
-                      is_gate, is_custom, track_dates, has_stakeholders, has_equipment_picker, sort_order
+                      is_gate, is_custom, track_dates, has_stakeholders, has_equipment_picker, sort_order,
+                      role_tag, stage_number
                FROM tasks WHERE project_id = $1 ORDER BY phase_id, sort_order"#,
             project_id
         )
@@ -174,7 +179,7 @@ async fn get_project(
         vec![]
     } else {
         sqlx::query!(
-            "SELECT id, task_id, sort_index, text, is_done, note, ot_ordered, ot_shipped, ot_eta, ot_delivered, ot_received_by FROM subtasks WHERE project_id = $1 ORDER BY task_id, sort_index",
+            "SELECT id, task_id, sort_index, text, is_done, note, ot_ordered, ot_shipped, ot_eta, ot_delivered, ot_received_by, priority, condition_key FROM subtasks WHERE project_id = $1 ORDER BY task_id, sort_index",
             project_id
         )
         .fetch_all(&state.pool)
@@ -225,6 +230,8 @@ async fn get_project(
                             ot_eta: s.ot_eta.clone(),
                             ot_delivered: s.ot_delivered.clone(),
                             ot_received_by: s.ot_received_by.clone(),
+                            priority: s.priority.clone(),
+                            condition_key: s.condition_key.clone(),
                         })
                         .collect();
 
@@ -270,6 +277,8 @@ async fn get_project(
                         has_stakeholders: t.has_stakeholders,
                         has_equipment_picker: t.has_equipment_picker,
                         sort_order: t.sort_order as i64,
+                        role_tag: t.role_tag.clone(),
+                        stage_number: t.stage_number,
                         subtasks,
                         stakeholder_contacts,
                         attachments,
@@ -304,6 +313,8 @@ async fn get_project(
         network_cache: proj.network_cache,
         weather_cache: proj.weather_cache,
         hubspot_deal_id: proj.hubspot_deal_id,
+        branch_answers: serde_json::from_str(&proj.branch_answers)
+            .unwrap_or_else(|_| serde_json::json!({})),
         phases,
     }))
 }
@@ -356,7 +367,8 @@ async fn update_project(
     let row = sqlx::query!(
         r#"SELECT p.id, p.name, p.client, p.site, p.created_at, p.hubspot_deal_id,
                   COUNT(t.id) as total_tasks,
-                  SUM(CASE WHEN t.completed = TRUE THEN 1 ELSE 0 END) as done_tasks
+                  SUM(CASE WHEN t.completed = TRUE THEN 1 ELSE 0 END) as done_tasks,
+                  MIN(CASE WHEN t.completed = FALSE AND t.stage_number IS NOT NULL THEN t.stage_number END) as current_stage
            FROM projects p
            LEFT JOIN phases ph ON ph.project_id = p.id
            LEFT JOIN tasks t ON t.phase_id = ph.id
@@ -377,6 +389,7 @@ async fn update_project(
         total_tasks: row.total_tasks.unwrap_or(0),
         done_tasks: row.done_tasks.unwrap_or(0),
         hubspot_deal_id: row.hubspot_deal_id,
+        current_stage: row.current_stage,
     }))
 }
 
@@ -426,5 +439,31 @@ async fn update_phase(
             .await?;
     }
 
+    Ok(StatusCode::NO_CONTENT)
+}
+
+#[derive(Deserialize)]
+struct BranchAnswersBody {
+    answers: std::collections::HashMap<String, bool>,
+}
+
+async fn update_branch_answers(
+    State(state): State<AppState>,
+    Path(project_id): Path<String>,
+    Json(body): Json<BranchAnswersBody>,
+) -> Result<StatusCode, AppError> {
+    let json_str = serde_json::to_string(&body.answers)
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    let res = sqlx::query!(
+        "UPDATE projects SET branch_answers = $1 WHERE id = $2",
+        json_str, project_id
+    )
+    .execute(&state.pool)
+    .await?;
+
+    if res.rows_affected() == 0 {
+        return Err(AppError::NotFound);
+    }
     Ok(StatusCode::NO_CONTENT)
 }

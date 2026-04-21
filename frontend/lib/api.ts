@@ -36,6 +36,8 @@ export const api = {
     update: (id: string, body: UpdateProject) =>
       apiFetch<ProjectSummary>(`/projects/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
     delete: (id: string) => apiFetch<void>(`/projects/${id}`, { method: 'DELETE' }),
+    updateBranchAnswers: (id: string, answers: Record<string, boolean>) =>
+      apiFetch<void>(`/projects/${id}/branch-answers`, { method: 'PATCH', body: JSON.stringify({ answers }) }),
   },
 
   phases: {

@@ -7,6 +7,7 @@ export interface ProjectSummary {
   totalTasks: number
   doneTasks: number
   hubspotDealId?: string
+  currentStage?: number | null
 }
 
 export interface ProjectFull {
@@ -20,6 +21,7 @@ export interface ProjectFull {
   networkCache: string | null
   weatherCache: string | null
   phases: Phase[]
+  branchAnswers: Record<string, boolean>
   hubspotDealId?: string
 }
 
@@ -101,6 +103,8 @@ export interface Task {
   hasStakeholders: boolean
   hasEquipmentPicker: boolean
   sortOrder: number
+  roleTag: string
+  stageNumber: number | null
   subtasks: Subtask[]
   stakeholderContacts: Contact[]
   attachments: AttachmentMeta[]
@@ -118,6 +122,8 @@ export interface Subtask {
   otEta: string
   otDelivered: string
   otReceivedBy: string
+  priority: string
+  conditionKey: string
 }
 
 export interface Contact {

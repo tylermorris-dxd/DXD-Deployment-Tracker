@@ -12,10 +12,11 @@ interface Props {
   phase: Phase
   projectId: string
   teamMembers: TeamMember[]
+  branchAnswers: Record<string, boolean>
   onDataChange: () => void
 }
 
-export default function PhasePanel({ phase, projectId, teamMembers, onDataChange }: Props) {
+export default function PhasePanel({ phase, projectId, teamMembers, branchAnswers, onDataChange }: Props) {
   const qc = useQueryClient()
   const [addingTask, setAddingTask] = useState(false)
   const [newTaskTitle, setNewTaskTitle] = useState('')
@@ -90,6 +91,7 @@ export default function PhasePanel({ phase, projectId, teamMembers, onDataChange
           phase={phase}
           projectId={projectId}
           teamMembers={teamMembers}
+          branchAnswers={branchAnswers}
           onDataChange={onDataChange}
         />
       ))}
