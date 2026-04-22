@@ -12,15 +12,13 @@ import AllDealsTable from '@/components/AllDealsTable'
 import EquipmentTracker from '@/components/EquipmentTracker'
 import AdminTasksPanel from '@/components/AdminPanel'
 
-export type MainTab = 'dashboard' | 'deals' | 'kanban' | 'pipeline' | 'all-deals' | 'raci' | 'hubspot'
+export type MainTab = 'dashboard' | 'deals' | 'pipeline' | 'all-deals' | 'hubspot'
 
 const NAV: { id: MainTab; label: string }[] = [
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'deals',     label: 'Deals' },
-  { id: 'kanban',    label: 'Kanban' },
   { id: 'pipeline',  label: 'Pipeline' },
   { id: 'all-deals', label: 'All Deals' },
-  { id: 'raci',      label: 'RACI Map' },
   { id: 'hubspot',   label: 'HubSpot' },
 ]
 
@@ -107,31 +105,22 @@ export default function Home() {
       {/* ── Content ─────────────────────────────────────────────────────────── */}
       {tab === 'dashboard' && <Dashboard onOpenDeal={openDeal} onSwitchTab={setTab} />}
       {tab === 'deals'     && <ProjectList onSelectProject={openDeal} />}
-      {tab === 'kanban'    && <KanbanStub />}
       {tab === 'pipeline'  && <PipelineView onOpenDeal={openDeal} />}
       {tab === 'all-deals' && <AllDealsTable onOpenDeal={openDeal} />}
-      {tab === 'raci'      && <RaciStub />}
       {tab === 'hubspot'   && <AdminPanel />}
       {(tab as string) === 'equipment' && <EquipmentTracker />}
       {(tab as string) === 'admin'     && <AdminTasksPanel />}
 
-      {/* ── Slide-in deal panel ──────────────────────────────────────────────── */}
+      {/* ── Full-page deal view ──────────────────────────────────────────────── */}
       {panelId && (
-        <>
-          <div
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)', zIndex: 300 }}
-            onClick={closeDeal}
-          />
-          <div style={{
-            position: 'fixed', top: 0, right: 0, bottom: 0,
-            width: 680, maxWidth: '95vw',
-            background: C.bg, borderLeft: `1px solid ${C.border}`,
-            zIndex: 301, overflowY: 'auto',
-            animation: 'slideInRight 0.25s ease',
-          }}>
-            <ProjectView projectId={panelId} onBack={closeDeal} />
-          </div>
-        </>
+        <div style={{
+          position: 'fixed', inset: 0,
+          background: C.bg,
+          zIndex: 300, overflowY: 'auto',
+          animation: 'fadeSlideIn 0.2s ease',
+        }}>
+          <ProjectView projectId={panelId} onBack={closeDeal} />
+        </div>
       )}
 
       {/* ── New Deal modal ───────────────────────────────────────────────────── */}
@@ -155,23 +144,6 @@ function ToolsMenuItem({ label, onClick }: { label: string; onClick: () => void 
   )
 }
 
-function KanbanStub() {
-  return (
-    <div style={{ maxWidth: 1400, margin: '0 auto', padding: '80px 28px', textAlign: 'center' }}>
-      <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 20, color: C.text2, marginBottom: 12 }}>Kanban View</div>
-      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: C.muted }}>Open a deal from the Deals tab to access its kanban board</div>
-    </div>
-  )
-}
-
-function RaciStub() {
-  return (
-    <div style={{ maxWidth: 1400, margin: '0 auto', padding: '80px 28px', textAlign: 'center' }}>
-      <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 20, color: C.text2, marginBottom: 12 }}>RACI Map</div>
-      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: C.muted }}>Cross-project responsibility matrix — coming soon</div>
-    </div>
-  )
-}
 
 function NewDealModal({ onClose, onCreated }: { onClose: () => void; onCreated: (id: string) => void }) {
   const [name, setName]     = useState('')
