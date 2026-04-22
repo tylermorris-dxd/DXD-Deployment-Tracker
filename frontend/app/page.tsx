@@ -23,7 +23,7 @@ const NAV: { id: MainTab; label: string }[] = [
   { id: 'hubspot',   label: 'HubSpot' },
 ]
 
-const C = { bg: '#0a0b0d', card: '#111318', border: '#252b38', red: '#D2232A', text: '#e8eaf0', text2: '#9aa3b8', muted: '#5a6380' }
+const C = { bg: 'rgba(10,11,13,0.6)', card: 'rgba(17,19,24,0.75)', border: '#252b38', red: '#D2232A', text: '#e8eaf0', text2: '#9aa3b8', muted: '#5a6380' }
 
 export default function Home() {
   const [tab, setTab]               = useState<MainTab>('dashboard')
@@ -40,7 +40,8 @@ export default function Home() {
       {/* ── Topbar ──────────────────────────────────────────────────────────── */}
       <div style={{
         position: 'sticky', top: 0, height: 52,
-        background: C.bg, borderBottom: `1px solid ${C.border}`,
+        background: 'rgba(10,11,13,0.75)', borderBottom: `1px solid ${C.border}`,
+        backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
         display: 'flex', alignItems: 'center', zIndex: 200,
       }}>
         {/* Brand */}

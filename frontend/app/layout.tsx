@@ -25,10 +25,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <style>{`
           *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
           html, body { height: 100%; }
-          body { background: #0a0b0d; color: #e8eaf0; font-family: 'JetBrains Mono', monospace; }
+          body {
+            background: #0a0b0d; color: #e8eaf0; font-family: 'JetBrains Mono', monospace;
+            background-image: url('/images/dxd-bg.jpg');
+            background-size: cover; background-position: center top;
+            background-attachment: fixed; background-repeat: no-repeat;
+          }
           body::before {
             content: '';
-            position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0.04;
+            position: fixed; inset: 0; z-index: 0; pointer-events: none;
+            background: linear-gradient(135deg, rgba(10,11,13,0.88) 0%, rgba(10,11,13,0.72) 50%, rgba(10,11,13,0.85) 100%);
+          }
+          body::after {
+            content: '';
+            position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0.03;
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
           }
           ::-webkit-scrollbar { width: 5px; height: 5px; }
