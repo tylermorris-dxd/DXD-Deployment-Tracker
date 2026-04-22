@@ -384,7 +384,7 @@ function ExecSummaryBtn({sectionName,contextData}){
   const generate=()=>{
     setLoading(true);setText("");setOpen(true);
     const prompt="You are a drone procurement analyst. Write a concise ONE-PAGE executive summary focused on the "+sectionName+" section of a drone evaluation.\n\nPlatform: "+(oem.name||"Unknown")+" | Model: "+(oem.model||"N/A")+" | Evaluator: "+(oem.evaluator||"N/A")+" | Site: "+activeSite.label+"\nProcurement decision: "+((oem.procurement&&oem.procurement.decision)||"Not yet made")+"\n\nSECTION FOCUS: "+sectionName+"\n"+(contextData||"No additional context.")+"\n\nWrite a professional executive summary with:\n1. SECTION OVERVIEW (2-3 sentences)\n2. KEY FINDINGS (bullet points)\n3. OPERATIONAL IMPACT\n4. RECOMMENDATION (PROCEED / DO NOT PROCEED / CONDITIONAL)\n\nUnder 350 words. Be direct. Plain text only, no markdown symbols.";
-    fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:prompt}]})})
+    fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1000,messages:[{role:"user",content:prompt}]})})
       .then(r=>r.json()).then(data=>{setText((data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n")||"No summary generated.");setLoading(false);})
       .catch(()=>{setText("Error generating summary.");setLoading(false);});
   };
@@ -1141,7 +1141,7 @@ function DemoMissions(){
     setLoading(true);setSummaryText("");setOpen(true);
     const allRes=buildAllResultsCtx();
     const prompt="You are a drone procurement analyst. Write a concise ONE-PAGE executive summary on demo readiness.\n\nPlatform: "+(oem.name||"Unknown")+" | Overall test results: "+allRes+"\nDemo missions: First on Scene, License Plate ID, Heat Signature, Eyes On, Crime Scene, The Perimeter.\n\nWrite:\n1. DEMO READINESS OVERVIEW\n2. PLATFORM STRENGTHS PER MISSION\n3. RISKS OR GAPS\n4. RECOMMENDATION — READY / NOT READY / CONDITIONAL\n\nUnder 350 words. Plain text only.";
-    fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:prompt}]})})
+    fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1000,messages:[{role:"user",content:prompt}]})})
       .then(r=>r.json()).then(data=>{setSummaryText((data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n")||"No summary generated.");setLoading(false);})
       .catch(()=>{setSummaryText("Error generating summary.");setLoading(false);});
   };
