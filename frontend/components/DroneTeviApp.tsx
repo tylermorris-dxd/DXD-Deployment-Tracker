@@ -1,7 +1,7 @@
 // @ts-nocheck
 'use client'
 
-import { useState, useReducer } from "react";
+import { useState, useReducer, createContext, useContext } from "react";
 
 const ROLES = ["Lead Evaluator","Co-Evaluator","Technical Specialist","Safety Officer","Commanding Officer / Approver"];
 const TABS  = ["Overview","Drone","Dock","Sensors","Payload","Reliability","Use Cases","Compare","Weekly Checks","6-Month Plan","Demo Missions","Test Results","Evaluation Checklist","Chief Pilot Final Eval & Sign-Off"];
@@ -370,6 +370,955 @@ function MSButtons({value,onChange,types}){
   );
 }
 
+// ── Context ────────────────────────────────────────────────────────────────
+const TeviCtx = createContext(null);
+
+// ── Module-level extracted components ─────────────────────────────────────
+
+function ExecSummaryBtn({sectionName,contextData}){
+  const {oem}=useContext(TeviCtx);
+  const [open,setOpen]=useState(false);
+  const [loading,setLoading]=useState(false);
+  const [text,setText]=useState("");
+  const activeSite=OPSITES.find(s=>s.key===(oem.activeSite||"site_TRG"))||OPSITES[0];
+  const generate=()=>{
+    setLoading(true);setText("");setOpen(true);
+    const prompt="You are a drone procurement analyst. Write a concise ONE-PAGE executive summary focused on the "+sectionName+" section of a drone evaluation.\n\nPlatform: "+(oem.name||"Unknown")+" | Model: "+(oem.model||"N/A")+" | Evaluator: "+(oem.evaluator||"N/A")+" | Site: "+activeSite.label+"\nProcurement decision: "+((oem.procurement&&oem.procurement.decision)||"Not yet made")+"\n\nSECTION FOCUS: "+sectionName+"\n"+(contextData||"No additional context.")+"\n\nWrite a professional executive summary with:\n1. SECTION OVERVIEW (2-3 sentences)\n2. KEY FINDINGS (bullet points)\n3. OPERATIONAL IMPACT\n4. RECOMMENDATION (PROCEED / DO NOT PROCEED / CONDITIONAL)\n\nUnder 350 words. Be direct. Plain text only, no markdown symbols.";
+    fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:prompt}]})})
+      .then(r=>r.json()).then(data=>{setText((data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n")||"No summary generated.");setLoading(false);})
+      .catch(()=>{setText("Error generating summary.");setLoading(false);});
+  };
+  return(
+    <div style={{marginTop:16}}>
+      <button onClick={generate} disabled={loading} style={{display:"flex",alignItems:"center",gap:8,padding:"9px 18px",borderRadius:8,border:"1px solid rgba(134,239,172,0.45)",background:"rgba(20,83,45,0.35)",color:"#86efac",fontWeight:700,fontSize:12,cursor:loading?"not-allowed":"pointer",opacity:loading?0.6:1}}>
+        {loading?"Generating...":"📋 Generate Executive Summary"}
+      </button>
+      {open&&(
+        <div style={{marginTop:12,background:"rgba(0,0,0,0.5)",borderRadius:10,padding:16,border:"1px solid rgba(134,239,172,0.35)"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+            <span style={{color:"#86efac",fontWeight:700,fontSize:12,letterSpacing:1,textTransform:"uppercase"}}>Executive Summary — {sectionName}</span>
+            <button onClick={()=>setOpen(false)} style={{background:"rgba(127,29,29,0.3)",color:"#fca5a5",border:"1px solid rgba(252,165,165,0.3)",borderRadius:5,padding:"2px 9px",fontSize:11,cursor:"pointer"}}>x</button>
+          </div>
+          {loading?<div style={{textAlign:"center",padding:"20px",color:C.muted,fontSize:13}}>Analyzing data...</div>
+            :<div style={{color:C.text,fontSize:12,lineHeight:1.8,whiteSpace:"pre-wrap"}}>{text}</div>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function OverviewPanel(){
+  const {oem,dispatch}=useContext(TeviCtx);
+  const activeKey=oem.activeSite||"site_TRG";
+  const activeSite=OPSITES.find(s=>s.key===activeKey)||OPSITES[0];
+  return(
+    <div style={{display:"grid",gap:16}}>
+      <div style={{background:C.card,borderRadius:12,padding:20,border:"1px solid rgba(74,158,255,0.25)"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,paddingBottom:12,borderBottom:"1px solid rgba(74,158,255,0.15)"}}>
+          <div style={{width:3,height:20,borderRadius:2,background:"#4a9eff"}}/>
+          <span style={{color:"#4a9eff",fontWeight:700,fontSize:13,letterSpacing:2,textTransform:"uppercase"}}>Platform Identification</span>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
+          {[["name","OEM / Vendor Name"],["manufacturer","Manufacturer"],["model","Drone Model"],["serial","Serial Number"],["dockModel","Dock Model"],["dockSerial","Dock Serial No."],["evaluator","Lead Evaluator"],["startDate","Evaluation Start Date"],["location","Primary Test Location"]].map(([f,l])=>(
+            <div key={f}><label style={lbl}>{l}</label><input value={oem[f]||""} onChange={e=>dispatch({type:"UPD_FIELD",f,v:e.target.value})} style={{...inp,marginTop:4}}/></div>
+          ))}
+        </div>
+      </div>
+      <div style={{background:C.card,borderRadius:12,padding:20,border:"1px solid rgba(74,158,255,0.25)"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16,paddingBottom:12,borderBottom:"1px solid rgba(74,158,255,0.15)"}}>
+          <div style={{width:3,height:20,borderRadius:2,background:"#4a9eff"}}/>
+          <span style={{color:"#4a9eff",fontWeight:700,fontSize:13,letterSpacing:2,textTransform:"uppercase"}}>Test Sites</span>
+          <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:8}}>
+            <span style={{color:C.muted,fontSize:11,fontWeight:600,textTransform:"uppercase"}}>Testing At:</span>
+            <select value={activeKey} onChange={e=>dispatch({type:"UPD_FIELD",f:"activeSite",v:e.target.value})} style={{background:"rgba(74,158,255,0.1)",border:"1px solid rgba(74,158,255,0.4)",borderRadius:6,color:"#4a9eff",padding:"5px 10px",fontSize:12,fontWeight:700,cursor:"pointer"}}>
+              {OPSITES.map(s=><option key={s.key} value={s.key}>{s.badge} — {s.label}</option>)}
+            </select>
+          </div>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:10,padding:"9px 14px",borderRadius:8,background:"rgba(74,158,255,0.08)",border:"1px solid rgba(74,158,255,0.3)",marginBottom:16}}>
+          <span>📍</span>
+          <span style={{color:"#4a9eff",fontWeight:700,fontSize:12}}>CURRENTLY TESTING AT:</span>
+          <span style={{background:"rgba(74,158,255,0.2)",color:"#4a9eff",borderRadius:4,padding:"2px 10px",fontSize:12,fontWeight:800,border:"1px solid rgba(74,158,255,0.4)"}}>{activeSite.badge}</span>
+          <span style={{color:"#fff",fontSize:13,fontWeight:600}}>{activeSite.label}</span>
+          {activeSite.dock&&<span style={{marginLeft:"auto",color:C.muted,fontSize:10,background:"rgba(255,255,255,0.06)",borderRadius:4,padding:"2px 8px",border:"1px solid "+C.border,fontWeight:600}}>DOCK INSTALLED</span>}
+        </div>
+        <div style={{overflowX:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+            <thead><tr style={{background:"rgba(74,158,255,0.06)",borderBottom:"1px solid rgba(74,158,255,0.2)"}}>
+              {["Site","Name","Address / GPS","Dock","Notes","Active"].map(h=><th key={h} style={{padding:"8px 12px",textAlign:"left",color:"#4a9eff",fontSize:11,fontWeight:700,textTransform:"uppercase",whiteSpace:"nowrap"}}>{h}</th>)}
+            </tr></thead>
+            <tbody>
+              {OPSITES.map((s,i)=>{
+                const on=activeKey===s.key;
+                return(
+                  <tr key={s.key} style={{borderBottom:"1px solid rgba(255,255,255,0.04)",background:on?"rgba(74,158,255,0.07)":i%2===0?"transparent":"rgba(255,255,255,0.02)"}}>
+                    <td style={{padding:"8px 12px"}}><span style={{background:on?"rgba(74,158,255,0.2)":"rgba(255,255,255,0.07)",color:on?"#4a9eff":C.muted,borderRadius:4,padding:"2px 10px",fontSize:11,fontWeight:800,border:"1px solid "+(on?"rgba(74,158,255,0.4)":C.border)}}>{s.badge}</span></td>
+                    <td style={{padding:"8px 12px",color:on?"#fff":C.text,fontWeight:on?600:400,whiteSpace:"nowrap"}}>{s.label}</td>
+                    <td style={{padding:"6px 8px"}}><input value={oem[s.key]||""} onChange={e=>dispatch({type:"UPD_FIELD",f:s.key,v:e.target.value})} style={{...inp,minWidth:200,fontSize:12}} placeholder="Address or GPS..."/></td>
+                    <td style={{padding:"8px 12px"}}>{s.dock?<span style={{fontSize:11,fontWeight:700,color:"#86efac",background:"rgba(20,83,45,0.5)",borderRadius:4,padding:"2px 8px",border:"1px solid #166534"}}>YES</span>:<span style={{fontSize:11,color:C.faint,background:"rgba(255,255,255,0.04)",borderRadius:4,padding:"2px 8px",border:"1px solid "+C.border}}>—</span>}</td>
+                    <td style={{padding:"6px 8px"}}><input value={oem[s.key+"_notes"]||""} onChange={e=>dispatch({type:"UPD_FIELD",f:s.key+"_notes",v:e.target.value})} style={{...inp,minWidth:140,fontSize:12}} placeholder="Notes..."/></td>
+                    <td style={{padding:"8px 12px",textAlign:"center"}}><button onClick={()=>dispatch({type:"UPD_FIELD",f:"activeSite",v:s.key})} style={{padding:"4px 14px",borderRadius:6,border:"1px solid "+(on?"#16a34a":C.border),background:on?"rgba(20,83,45,0.6)":"rgba(255,255,255,0.04)",color:on?"#86efac":C.muted,fontWeight:on?700:400,fontSize:11,cursor:"pointer"}}>{on?"✓ Active":"Select"}</button></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function InlineWeather({sectionKey}){
+  const {oem,dispatch}=useContext(TeviCtx);
+  const storeKey="wx_"+sectionKey;
+  const raw=oem.notes[storeKey];
+  const wx=raw?JSON.parse(raw):{metarRaw:"",windDir:"",windSpeed:"",windSpeedMph:"",windGust:"",tempC:"",precipitation:"",skyCover:"",visibility:"",humidity:"",kpIndex:""};
+  const save=obj=>dispatch({type:"UPD_NOTE",id:storeKey,v:JSON.stringify(obj)});
+  const handleMetar=val=>{
+    if(!val.trim()){save({...wx,metarRaw:val});return;}
+    const p=parseMetar(val);
+    save({...wx,metarRaw:val,windDir:p.windDir||wx.windDir,windSpeed:p.windSpeed||wx.windSpeed,windSpeedMph:p.windSpeedMph||wx.windSpeedMph,windGust:p.windGust||wx.windGust,tempC:p.tempC||wx.tempC,precipitation:p.presentWeather||wx.precipitation,skyCover:p.sky1||wx.skyCover,visibility:p.visibility||wx.visibility,humidity:p.relHumidity||wx.humidity});
+  };
+  const windDirOpts=["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW","VRB Variable"];
+  const precipOpts=["None","RA Rain","DZ Drizzle","SN Snow","GR Hail","TSRA Thunderstorm","BR Mist","FG Fog","HZ Haze","FU Smoke"];
+  const skyOpts=["SKC Clear","FEW Few Clouds","SCT Scattered","BKN Broken","OVC Overcast"];
+  const visopts=["10+ SM Clear","7-10 SM Good","5-7 SM Moderate","3-5 SM Reduced","1-3 SM Poor","<1 SM Very Poor"];
+  const sp=[];
+  if(wx.windDir&&wx.windSpeed)sp.push(wx.windDir+" "+wx.windSpeed+"kt"+(wx.windGust?" G"+wx.windGust+"kt":""));
+  if(wx.windSpeedMph)sp.push(wx.windSpeedMph+" mph");
+  if(wx.tempC)sp.push(wx.tempC+"°C");
+  if(wx.skyCover)sp.push(wx.skyCover.split(" ")[0]);
+  if(wx.visibility)sp.push("Vis "+wx.visibility.split(" ")[0]);
+  if(wx.kpIndex)sp.push("Kp "+wx.kpIndex.split(" ")[0]);
+  return(
+    <div style={{marginBottom:16,background:"rgba(56,189,248,0.05)",borderRadius:10,padding:14,border:"1px solid rgba(56,189,248,0.25)"}}>
+      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,flexWrap:"wrap"}}>
+        <span style={{fontSize:14}}>🌤</span>
+        <span style={{color:"#38bdf8",fontWeight:700,fontSize:11,textTransform:"uppercase",letterSpacing:1.2}}>Test Conditions — {sectionKey}</span>
+        {sp.length>0&&<span style={{marginLeft:"auto",fontSize:11,color:"#38bdf8",background:"rgba(56,189,248,0.1)",borderRadius:4,padding:"2px 10px",border:"1px solid rgba(56,189,248,0.3)",whiteSpace:"nowrap"}}>{sp.join(" · ")}</span>}
+      </div>
+      <div style={{marginBottom:10}}>
+        <label style={{...lbl,color:"rgba(56,189,248,0.7)"}}>METAR — Paste to Auto-Fill</label>
+        <input value={wx.metarRaw||""} onChange={e=>handleMetar(e.target.value)} style={{...inp,marginTop:4,fontFamily:"monospace",fontSize:11,borderColor:"rgba(56,189,248,0.25)"}} placeholder="e.g. KLAX 271755Z 25008KT 10SM FEW025 18/10 A2998"/>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8,marginBottom:10}}>
+        <div><label style={{...lbl,color:"rgba(56,189,248,0.7)"}}>Direction</label><select value={wx.windDir||""} onChange={e=>save({...wx,windDir:e.target.value})} style={{...inp,marginTop:4,fontSize:11,cursor:"pointer",borderColor:"rgba(56,189,248,0.25)"}}><option value="">Select...</option>{windDirOpts.map(o=><option key={o}>{o}</option>)}</select></div>
+        <div><label style={{...lbl,color:"rgba(56,189,248,0.7)"}}>Speed (kt)</label><input type="number" value={wx.windSpeed||""} onChange={e=>{const kt=e.target.value;save({...wx,windSpeed:kt,windSpeedMph:kt?(parseFloat(kt)*1.15078).toFixed(1):""});}} style={{...inp,marginTop:4,fontSize:11,borderColor:"rgba(56,189,248,0.25)"}} placeholder="0"/></div>
+        <div><label style={{...lbl,color:"rgba(56,189,248,0.7)"}}>Speed (mph)</label><input value={wx.windSpeedMph||""} onChange={e=>save({...wx,windSpeedMph:e.target.value})} style={{...inp,marginTop:4,fontSize:11,borderColor:"rgba(56,189,248,0.25)"}} placeholder="Auto-calc"/></div>
+        <div><label style={{...lbl,color:"rgba(56,189,248,0.7)"}}>Gust (kt)</label><input type="number" value={wx.windGust||""} onChange={e=>save({...wx,windGust:e.target.value})} style={{...inp,marginTop:4,fontSize:11,borderColor:"rgba(56,189,248,0.25)"}} placeholder="—"/></div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8}}>
+        <div><label style={{...lbl,color:"rgba(56,189,248,0.7)"}}>Cloud Cover</label><select value={wx.skyCover||""} onChange={e=>save({...wx,skyCover:e.target.value})} style={{...inp,marginTop:4,fontSize:11,cursor:"pointer",borderColor:"rgba(56,189,248,0.25)"}}><option value="">Select...</option>{skyOpts.map(o=><option key={o}>{o}</option>)}</select></div>
+        <div><label style={{...lbl,color:"rgba(56,189,248,0.7)"}}>Visibility</label><select value={wx.visibility||""} onChange={e=>save({...wx,visibility:e.target.value})} style={{...inp,marginTop:4,fontSize:11,cursor:"pointer",borderColor:"rgba(56,189,248,0.25)"}}><option value="">Select...</option>{visopts.map(o=><option key={o}>{o}</option>)}</select></div>
+        <div><label style={{...lbl,color:"rgba(56,189,248,0.7)"}}>Precipitation</label><select value={wx.precipitation||""} onChange={e=>save({...wx,precipitation:e.target.value})} style={{...inp,marginTop:4,fontSize:11,cursor:"pointer",borderColor:"rgba(56,189,248,0.25)"}}><option value="">Select...</option>{precipOpts.map(o=><option key={o}>{o}</option>)}</select></div>
+        <div><label style={{...lbl,color:"rgba(56,189,248,0.7)"}}>Temp (°C)</label><input type="number" value={wx.tempC||""} onChange={e=>save({...wx,tempC:e.target.value})} style={{...inp,marginTop:4,fontSize:11,borderColor:"rgba(56,189,248,0.25)"}} placeholder="18"/></div>
+      </div>
+    </div>
+  );
+}
+
+function SecTable({sKey}){
+  const {oem,dispatch}=useContext(TeviCtx);
+  const tcKey=sKey==="Flight Performance"?"Drone":sKey==="Dock Integration"?"Dock":sKey==="Sensors & Payload"?"Sensors":sKey==="Operations & Reliability"?"Reliability":"Drone";
+  const tc=TAB_COLORS[tcKey]||TAB_COLORS["Drone"];
+  const sectionRuns=(oem.testRuns||[]).filter(r=>r.section===sKey);
+  const [activeRun,setActiveRun]=useState(-1);
+  const isMain=activeRun===-1;
+  const getVal=tid=>isMain?oem.results[tid+"_pfn"]||"":(sectionRuns[activeRun]?.results[tid+"_pfn"]||"");
+  const setVal=(tid,v)=>isMain?dispatch({type:"UPD_RESULT",id:tid+"_pfn",v}):dispatch({type:"UPD_RUN_RESULT",ri:activeRun,id:tid+"_pfn",v});
+  const getNote=(tid,sfx)=>isMain?oem.notes[tid+(sfx||"")]||"":(sectionRuns[activeRun]?.notes[tid+(sfx||"")]||"");
+  const setNote=(tid,sfx,v)=>isMain?dispatch({type:"UPD_NOTE",id:tid+(sfx||""),v}):dispatch({type:"UPD_RUN",ri:activeRun,f:"notes",v:{...sectionRuns[activeRun].notes,[tid+(sfx||"")]:v}});
+  return(
+    <div style={{background:C.card,borderRadius:12,padding:18,border:"1px solid "+tc.border}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,paddingBottom:12,borderBottom:"1px solid "+tc.border}}>
+        <div style={{width:3,height:20,borderRadius:2,background:tc.color}}/>
+        <span style={{color:tc.color,fontWeight:700,fontSize:11,textTransform:"uppercase",letterSpacing:1.5}}>{sKey}</span>
+        <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+          <button onClick={()=>setActiveRun(-1)} style={{padding:"3px 10px",borderRadius:5,border:"1px solid "+(isMain?tc.color:C.border),background:isMain?tc.color+"22":"transparent",color:isMain?tc.color:C.muted,fontSize:11,fontWeight:isMain?700:400,cursor:"pointer"}}>Session 1</button>
+          {sectionRuns.map((r,i)=>(
+            <button key={r.id} onClick={()=>setActiveRun(i)} style={{padding:"3px 10px",borderRadius:5,border:"1px solid "+(activeRun===i?tc.color:C.border),background:activeRun===i?tc.color+"22":"transparent",color:activeRun===i?tc.color:C.muted,fontSize:11,fontWeight:activeRun===i?700:400,cursor:"pointer"}}>{r.label||"Run "+(i+2)}</button>
+          ))}
+          <button onClick={()=>{dispatch({type:"ADD_RUN",section:sKey});setActiveRun(sectionRuns.length);}} style={{padding:"3px 10px",borderRadius:5,border:"1px dashed rgba(255,255,255,0.25)",background:"transparent",color:C.muted,fontSize:12,cursor:"pointer",fontWeight:700}}>+ Add Run</button>
+        </div>
+      </div>
+      {!isMain&&sectionRuns[activeRun]&&(
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:8,marginBottom:14,padding:"10px 12px",background:"rgba(255,255,255,0.03)",borderRadius:8,border:"1px solid "+C.border}}>
+          <div><label style={lbl}>Run Label</label><input value={sectionRuns[activeRun].label||""} onChange={e=>dispatch({type:"UPD_RUN",ri:activeRun,f:"label",v:e.target.value})} style={{...inp,marginTop:4,fontSize:11}}/></div>
+          <div><label style={lbl}>Date</label><input type="date" value={sectionRuns[activeRun].date||""} onChange={e=>dispatch({type:"UPD_RUN",ri:activeRun,f:"date",v:e.target.value})} style={{...inp,marginTop:4,fontSize:11}}/></div>
+          <div><label style={lbl}>Time</label><input type="time" value={sectionRuns[activeRun].time||""} onChange={e=>dispatch({type:"UPD_RUN",ri:activeRun,f:"time",v:e.target.value})} style={{...inp,marginTop:4,fontSize:11}}/></div>
+          <div><label style={lbl}>Evaluator</label><input value={sectionRuns[activeRun].evaluator||""} onChange={e=>dispatch({type:"UPD_RUN",ri:activeRun,f:"evaluator",v:e.target.value})} style={{...inp,marginTop:4,fontSize:11}} placeholder="Name..."/></div>
+          <div><label style={lbl}>Weather Summary</label><input value={sectionRuns[activeRun].wxSummary||""} onChange={e=>dispatch({type:"UPD_RUN",ri:activeRun,f:"wxSummary",v:e.target.value})} style={{...inp,marginTop:4,fontSize:11}} placeholder="e.g. 12kt NW"/></div>
+        </div>
+      )}
+      {!isMain&&<div style={{display:"flex",justifyContent:"flex-end",marginBottom:10}}><button onClick={()=>{dispatch({type:"DEL_RUN",ri:activeRun});setActiveRun(-1);}} style={{background:"rgba(127,29,29,0.3)",color:"#fca5a5",border:"1px solid rgba(252,165,165,0.3)",borderRadius:5,padding:"3px 10px",fontSize:11,cursor:"pointer"}}>Delete This Run</button></div>}
+      <div style={{overflowX:"auto"}}>
+        <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+          <thead><tr style={{borderBottom:"1px solid "+tc.border,background:tc.active}}>
+            {["Test","Min. Standard","Pass / Fail / N/A","Tester","Date","Notes"].map(h=><th key={h} style={{padding:"8px 10px",textAlign:"left",color:tc.color,fontWeight:700,fontSize:11,letterSpacing:0.5,textTransform:"uppercase",whiteSpace:"nowrap"}}>{h}</th>)}
+          </tr></thead>
+          <tbody>
+            {(TESTS[sKey]||[]).map((t,i)=>(
+              <tr key={t.id} style={{borderBottom:"1px solid rgba(255,255,255,0.04)",background:i%2===0?"transparent":"rgba(255,255,255,0.02)"}}>
+                <td style={{padding:"7px 10px",color:C.text}}>{t.test}</td>
+                <td style={{padding:"7px 10px",color:C.muted,fontSize:12,whiteSpace:"nowrap"}}>{t.standard}</td>
+                <td style={{padding:"6px 8px"}}><PFButtons value={getVal(t.id)} onChange={v=>setVal(t.id,v)}/></td>
+                <td style={{padding:"6px 8px"}}><input value={getNote(t.id,"_tester")} onChange={e=>setNote(t.id,"_tester",e.target.value)} style={{...inp,width:100}} placeholder="Name..."/></td>
+                <td style={{padding:"6px 8px"}}><input type="date" value={getNote(t.id,"_date")} onChange={e=>setNote(t.id,"_date",e.target.value)} style={{...inp,width:120}}/></td>
+                <td style={{padding:"6px 8px"}}><input value={getNote(t.id,"")} onChange={e=>setNote(t.id,"",e.target.value)} style={{...inp,minWidth:130}} placeholder="Notes..."/></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function SectionSignOff({sectionName}){
+  const {oem,dispatch}=useContext(TeviCtx);
+  const key="section_signoff_"+sectionName;
+  const raw=oem.notes[key];
+  const data=raw?JSON.parse(raw):{name:"",role:"",date:"",signature:"",approved:false};
+  const save=obj=>dispatch({type:"UPD_NOTE",id:key,v:JSON.stringify(obj)});
+  return(
+    <div style={{marginTop:20,background:"rgba(0,0,0,0.4)",borderRadius:12,border:"2px solid "+(data.approved?"rgba(22,101,52,0.7)":C.border),padding:18}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+        <div>
+          <div style={{color:data.approved?"#86efac":C.accent,fontWeight:700,fontSize:12,letterSpacing:2,textTransform:"uppercase"}}>{sectionName} — Section Sign-Off</div>
+          <div style={{color:C.muted,fontSize:11,marginTop:2}}>{data.approved?"This section has been formally approved.":"Complete testing before signing off."}</div>
+        </div>
+        {data.approved&&<div style={{background:"rgba(20,83,45,0.7)",color:"#86efac",borderRadius:6,padding:"4px 14px",fontSize:11,fontWeight:700,border:"1px solid #166534"}}>SECTION APPROVED</div>}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:12}}>
+        <div><label style={lbl}>Evaluator Name</label><input value={data.name||""} onChange={e=>save({...data,name:e.target.value})} style={{...inp,marginTop:4}} placeholder="Full name..."/></div>
+        <div><label style={lbl}>Role</label><select value={data.role||""} onChange={e=>save({...data,role:e.target.value})} style={{...inp,marginTop:4,cursor:"pointer"}}><option value="">Select...</option>{ROLES.map(r=><option key={r}>{r}</option>)}</select></div>
+        <div><label style={lbl}>Date</label><input type="date" value={data.date||""} onChange={e=>save({...data,date:e.target.value})} style={{...inp,marginTop:4}}/></div>
+      </div>
+      <div style={{marginBottom:14}}>
+        <label style={lbl}>Electronic Signature</label>
+        <div style={{position:"relative",marginTop:4}}>
+          <input value={data.signature||""} onChange={e=>save({...data,signature:e.target.value})} style={{...inp,fontSize:15,fontStyle:"italic",fontFamily:"Georgia,serif",letterSpacing:1,paddingLeft:34}} placeholder="Type full name as signature..."/>
+          <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:C.muted,fontSize:13}}>✍</span>
+        </div>
+        {data.signature&&<div style={{marginTop:4,fontSize:11,color:"rgba(200,200,200,0.45)",fontStyle:"italic"}}>Signed: {data.signature} · {data.date||"date not set"}</div>}
+      </div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",borderTop:"1px solid "+C.border,paddingTop:14}}>
+        <div style={{fontSize:11,color:C.muted}}>{data.signature?"Signed by "+data.name+(data.role?" · "+data.role:""):"Signature required before approving."}</div>
+        <button onClick={()=>{if(!data.signature){alert("Please enter a signature.");return;}save({...data,approved:!data.approved});}}
+          style={{padding:"8px 20px",borderRadius:8,border:"2px solid",cursor:"pointer",fontWeight:800,fontSize:13,borderColor:data.approved?"#16a34a":"rgba(200,200,200,0.2)",background:data.approved?"rgba(20,83,45,0.7)":"rgba(255,255,255,0.05)",color:data.approved?"#86efac":C.muted}}>
+          {data.approved?"Approved — Click to Revoke":"Approve This Section"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function PayloadOptions(){
+  const {oem,dispatch}=useContext(TeviCtx);
+  const pt=oem.payloadTests||{};
+  const setPF=(id,field,val)=>dispatch({type:"UPD_FIELD",f:"payloadTests",v:{...pt,[id]:{...pt[id],[field]:val}}});
+  const selected=PAYLOAD_LIST.filter(p=>(pt[p.id]||{}).selected);
+  const grouped={};
+  PAYLOAD_LIST.forEach(p=>{if(!grouped[p.category])grouped[p.category]=[];grouped[p.category].push(p);});
+  const catIcons={"Optical / EO":"📷","Thermal / IR":"🌡","Multispectral":"🔬","LiDAR":"📡","Communication":"📶","Spotlight":"🔦","Speaker":"🔊","Other":"🔧"};
+  return(
+    <div style={{display:"grid",gap:14}}>
+      <div style={{background:C.card,borderRadius:12,padding:"14px 20px",border:"1px solid "+C.border,display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12}}>
+        <div>
+          <div style={{color:"#fff",fontWeight:800,fontSize:15}}>Payload Compatibility & Evaluation</div>
+          <div style={{color:C.muted,fontSize:12,marginTop:3}}>{selected.length} payload{selected.length!==1?"s":""} selected</div>
+        </div>
+      </div>
+      <div style={{background:C.card,borderRadius:12,border:"1px solid "+C.border,overflow:"hidden"}}>
+        <div style={{overflowX:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+            <thead><tr style={{background:"rgba(0,0,0,0.35)",borderBottom:"1px solid "+C.border}}>
+              {["Selected","Payload","Category","Pass / Fail / N/A","Tester","Notes"].map(h=><th key={h} style={{padding:"10px 12px",textAlign:"left",color:C.accent,fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:0.6,whiteSpace:"nowrap"}}>{h}</th>)}
+            </tr></thead>
+            <tbody>
+              {Object.keys(grouped).map(cat=>{
+                const items=grouped[cat];
+                const m=catColors[cat]||{color:C.accent,bg:"rgba(255,255,255,0.06)",border:C.border};
+                return[
+                  <tr key={"cat-"+cat} style={{background:m.bg,borderTop:"1px solid "+m.border,borderBottom:"1px solid "+m.border}}>
+                    <td colSpan={6} style={{padding:"7px 12px"}}><div style={{display:"flex",alignItems:"center",gap:7}}><span style={{fontSize:14}}>{catIcons[cat]||"•"}</span><span style={{color:m.color,fontWeight:700,fontSize:11,textTransform:"uppercase",letterSpacing:1.2}}>{cat}</span></div></td>
+                  </tr>,
+                  ...items.map((p,i)=>{
+                    const sel=(pt[p.id]||{}).selected;const d=pt[p.id]||{};
+                    return(
+                      <tr key={p.id} style={{borderBottom:"1px solid rgba(255,255,255,0.04)",background:sel?m.bg:i%2===0?"transparent":"rgba(255,255,255,0.02)"}}>
+                        <td style={{padding:"8px 12px",textAlign:"center",width:60}}><div onClick={()=>setPF(p.id,"selected",!sel)} style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:22,height:22,borderRadius:6,border:"1px solid "+(sel?m.color:C.border),background:sel?m.color:"transparent",cursor:"pointer"}}>{sel&&<span style={{color:"#000",fontSize:13,fontWeight:900,lineHeight:1}}>✓</span>}</div></td>
+                        <td style={{padding:"8px 12px",color:sel?"#fff":C.text,fontWeight:sel?600:400,cursor:"pointer"}} onClick={()=>setPF(p.id,"selected",!sel)}>{p.label}</td>
+                        <td style={{padding:"8px 12px"}}><span style={{fontSize:10,color:m.color,background:m.bg,border:"1px solid "+m.border,borderRadius:4,padding:"2px 7px",whiteSpace:"nowrap"}}>{cat}</span></td>
+                        <td style={{padding:"6px 10px"}}>{sel?<PFButtons value={d.result||""} onChange={v=>setPF(p.id,"result",v)}/>:<span style={{color:C.faint,fontSize:11}}>Select to enable</span>}</td>
+                        <td style={{padding:"6px 10px"}}>{sel?<input value={d.tester||""} onChange={e=>setPF(p.id,"tester",e.target.value)} style={{...inp,fontSize:11,padding:"4px 7px",width:100}} placeholder="Name..."/>:<span style={{color:C.faint,fontSize:11}}>—</span>}</td>
+                        <td style={{padding:"6px 10px"}}>{sel?<input value={d.notes||""} onChange={e=>setPF(p.id,"notes",e.target.value)} style={{...inp,fontSize:11,padding:"4px 7px",minWidth:160}} placeholder="Notes..."/>:<span style={{color:C.faint,fontSize:11}}>—</span>}</td>
+                      </tr>
+                    );
+                  })
+                ];
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function UseCasesPanel(){
+  const {oem,dispatch}=useContext(TeviCtx);
+  const [activeSection,setActiveSection]=useState("Law Enforcement");
+  const sectionMeta={"Law Enforcement":{color:"#4a9eff",bg:"rgba(74,158,255,0.08)",border:"rgba(74,158,255,0.3)",icon:"🚔"},"Campus Security":{color:"#a78bfa",bg:"rgba(167,139,250,0.08)",border:"rgba(167,139,250,0.3)",icon:"🏛"},"Critical Infrastructure":{color:"#f59e0b",bg:"rgba(245,158,11,0.08)",border:"rgba(245,158,11,0.3)",icon:"🏭"}};
+  const meta=sectionMeta[activeSection];
+  return(
+    <div style={{display:"grid",gap:14}}>
+      <div style={{background:C.card,borderRadius:12,padding:14,border:"1px solid "+C.border}}>
+        <div style={{color:C.muted,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Security Application Tests</div>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{Object.keys(sectionMeta).map(s=>{const m=sectionMeta[s];const active=activeSection===s;return(<button key={s} onClick={()=>setActiveSection(s)} style={{padding:"8px 16px",borderRadius:8,border:"1px solid "+(active?m.border:C.border),background:active?m.bg:"rgba(255,255,255,0.03)",color:"#fff",fontWeight:active?700:400,fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",gap:6,opacity:active?1:0.55}}><span>{m.icon}</span>{s}</button>);})}</div>
+      </div>
+      <div style={{background:C.card,borderRadius:12,border:"1px solid "+meta.border,padding:18}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16,paddingBottom:14,borderBottom:"1px solid "+C.border}}>
+          <span style={{fontSize:22}}>{meta.icon}</span>
+          <div><div style={{color:meta.color,fontSize:15,fontWeight:800}}>{activeSection}</div><div style={{color:C.muted,fontSize:11,marginTop:2}}>Security Application — Scored Tests</div></div>
+        </div>
+        <div style={{overflowX:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+            <thead><tr style={{borderBottom:"1px solid "+C.border}}>{["Test","Min. Standard","Pass / Fail / N/A","Tester","Date","Notes"].map(h=><th key={h} style={{padding:"8px 10px",textAlign:"left",color:C.muted,fontWeight:600,fontSize:11,letterSpacing:0.5,textTransform:"uppercase",whiteSpace:"nowrap"}}>{h}</th>)}</tr></thead>
+            <tbody>{(TESTS[activeSection]||[]).map((t,i)=>(
+              <tr key={t.id} style={{borderBottom:"1px solid rgba(255,255,255,0.04)",background:i%2===0?"transparent":"rgba(255,255,255,0.02)"}}>
+                <td style={{padding:"7px 10px",color:C.text}}>{t.test}</td>
+                <td style={{padding:"7px 10px",color:C.muted,fontSize:12}}>{t.standard}</td>
+                <td style={{padding:"6px 8px"}}><PFButtons value={oem.results[t.id+"_pfn"]||""} onChange={v=>dispatch({type:"UPD_RESULT",id:t.id+"_pfn",v})}/></td>
+                <td style={{padding:"6px 8px"}}><input value={oem.notes[t.id+"_tester"]||""} onChange={e=>dispatch({type:"UPD_NOTE",id:t.id+"_tester",v:e.target.value})} style={{...inp,width:100}} placeholder="Name..."/></td>
+                <td style={{padding:"6px 8px"}}><input type="date" value={oem.notes[t.id+"_date"]||""} onChange={e=>dispatch({type:"UPD_NOTE",id:t.id+"_date",v:e.target.value})} style={{...inp,width:120}}/></td>
+                <td style={{padding:"6px 8px"}}><input value={oem.notes[t.id]||""} onChange={e=>dispatch({type:"UPD_NOTE",id:t.id,v:e.target.value})} style={{...inp,minWidth:130}} placeholder="Notes..."/></td>
+              </tr>
+            ))}</tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WeeklyChecks(){
+  const {oem,dispatch}=useContext(TeviCtx);
+  return(
+    <div>
+      <p style={{color:"#fde68a",fontSize:13,marginBottom:16,fontWeight:600}}>Track weekly pre-flight inspections across all 16 weeks.</p>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12}}>
+        {Array.from({length:16},(_,i)=>i+1).map(w=>{
+          const done=WEEKLY_ITEMS.filter(item=>oem.weeklyChecks[w+"_"+item]).length;
+          const complete=done===WEEKLY_ITEMS.length;
+          return(
+            <div key={w} style={{background:C.card,borderRadius:10,padding:14,border:"1px solid "+(complete?"rgba(134,239,172,0.4)":"rgba(253,230,138,0.2)")}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                <span style={{color:complete?"#86efac":"#fde68a",fontWeight:700,fontSize:13}}>Week {w}</span>
+                <span style={{fontSize:11,color:complete?"#86efac":C.muted,background:complete?"rgba(20,83,45,0.6)":"rgba(255,255,255,0.06)",borderRadius:4,padding:"2px 7px",fontWeight:600,border:"1px solid "+(complete?"#166534":C.border)}}>{done}/{WEEKLY_ITEMS.length}</span>
+              </div>
+              {WEEKLY_ITEMS.map((item,i)=>(
+                <label key={i} style={{display:"flex",alignItems:"flex-start",gap:7,marginBottom:6,cursor:"pointer"}}>
+                  <input type="checkbox" checked={!!oem.weeklyChecks[w+"_"+item]} onChange={()=>dispatch({type:"TOGGLE_WEEK",w,item})} style={{marginTop:2,accentColor:C.accent,flexShrink:0}}/>
+                  <span style={{color:oem.weeklyChecks[w+"_"+item]?C.faint:C.muted,fontSize:11,textDecoration:oem.weeklyChecks[w+"_"+item]?"line-through":"none"}}>{item}</span>
+                </label>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function FinalEvalSignOff(){
+  const {oem,dispatch}=useContext(TeviCtx);
+  const p=oem.procurement;
+  const sigs=oem.signoffs||[];
+  const approved=sigs.filter(s=>s.approved).length;
+  return(
+    <div style={{display:"grid",gap:14}}>
+      <div style={{background:C.card,borderRadius:12,padding:20,border:"1px solid rgba(134,239,172,0.35)"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,paddingBottom:12,borderBottom:"1px solid rgba(134,239,172,0.25)"}}>
+          <div style={{width:3,height:20,borderRadius:2,background:"#86efac"}}/>
+          <span style={{color:"#86efac",fontSize:13,fontWeight:700,letterSpacing:2,textTransform:"uppercase"}}>Final Evaluation Summary</span>
+        </div>
+        <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+          <thead><tr style={{borderBottom:"1px solid "+C.border}}>{["Section","Standard","Status"].map(h=><th key={h} style={{padding:"8px 12px",textAlign:"left",color:C.muted,fontWeight:600,fontSize:11,textTransform:"uppercase"}}>{h}</th>)}</tr></thead>
+          <tbody>{Object.keys(TESTS).map((sec,i)=>{
+            const results=(TESTS[sec]||[]).map(t=>oem.results[t.id+"_pfn"]).filter(Boolean);
+            const anyFail=results.some(r=>r==="Fail");
+            const allDone=results.length===(TESTS[sec]||[]).length;
+            const status=results.length===0?"Pending":anyFail?"FAIL":allDone?"PASS":"In Progress";
+            const sc=status==="PASS"?"#86efac":status==="FAIL"?"#fca5a5":C.muted;
+            const sb=status==="PASS"?"rgba(20,83,45,0.6)":status==="FAIL"?"rgba(127,29,29,0.6)":"rgba(255,255,255,0.05)";
+            const sbrd=status==="PASS"?"#166534":status==="FAIL"?"#991b1b":C.border;
+            return(<tr key={sec} style={{borderBottom:"1px solid rgba(255,255,255,0.03)",background:i%2===0?"transparent":"rgba(255,255,255,0.02)"}}><td style={{padding:"8px 12px",color:C.text}}>{sec}</td><td style={{padding:"8px 12px",color:C.muted,fontSize:12}}>All tests Pass or N/A</td><td style={{padding:"8px 12px"}}><span style={{fontSize:12,fontWeight:700,color:sc,background:sb,borderRadius:4,padding:"2px 10px",border:"1px solid "+sbrd}}>{status}</span></td></tr>);
+          })}</tbody>
+        </table></div>
+      </div>
+      <div style={{background:C.card,borderRadius:12,padding:20,border:"1px solid rgba(244,114,182,0.35)"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,paddingBottom:12,borderBottom:"1px solid rgba(244,114,182,0.25)"}}>
+          <div style={{width:3,height:20,borderRadius:2,background:"#f472b6"}}/>
+          <span style={{color:"#f472b6",fontSize:13,fontWeight:700,letterSpacing:2,textTransform:"uppercase"}}>Procurement Decision</span>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>{[["score","Overall Score/Notes"],["evaluatorName","Lead Evaluator"],["sites","Recommended Sites"],["date","Decision Date"]].map(([f,label])=><div key={f}><label style={lbl}>{label}</label><input value={p[f]||""} onChange={e=>dispatch({type:"UPD_PROC",f,v:e.target.value})} style={{...inp,marginTop:4}}/></div>)}</div>
+        <div style={{marginBottom:12}}><label style={lbl}>Decision</label><div style={{display:"flex",gap:10,marginTop:8}}>{["YES","NO","CONDITIONAL"].map(d=><button key={d} onClick={()=>dispatch({type:"UPD_PROC",f:"decision",v:d})} style={{flex:1,padding:"10px",borderRadius:8,border:"2px solid",cursor:"pointer",fontWeight:800,fontSize:14,borderColor:p.decision===d?(d==="YES"?"#16a34a":d==="NO"?"#dc2626":"#d97706"):C.border,background:p.decision===d?(d==="YES"?"rgba(20,83,45,0.7)":d==="NO"?"rgba(127,29,29,0.7)":"rgba(120,53,15,0.7)"):"rgba(255,255,255,0.04)",color:p.decision===d?(d==="YES"?"#86efac":d==="NO"?"#fca5a5":"#fde68a"):C.muted}}>{d}</button>)}</div></div>
+        <div><label style={lbl}>Conditions / Notes</label><textarea value={p.conditions||""} onChange={e=>dispatch({type:"UPD_PROC",f:"conditions",v:e.target.value})} style={{...inp,marginTop:4,resize:"vertical",minHeight:80}} placeholder="Outstanding conditions..."/></div>
+      </div>
+      <div style={{background:C.card,borderRadius:12,padding:"14px 20px",border:"1px solid "+C.border,display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
+        <div><div style={{color:C.accent,fontWeight:700,fontSize:13,letterSpacing:2,textTransform:"uppercase",marginBottom:4}}>Evaluator Sign-Off</div><div style={{color:C.muted,fontSize:12}}>{approved} of {sigs.length} signed off</div></div>
+        <button onClick={()=>dispatch({type:"ADD_SIG"})} style={{background:"rgba(200,200,200,0.1)",color:"#fff",border:"1px solid "+C.border,borderRadius:7,padding:"7px 14px",fontSize:13,fontWeight:700,cursor:"pointer"}}>+ Add Evaluator</button>
+      </div>
+      {sigs.map((s,si)=>(
+        <div key={si} style={{background:C.card,borderRadius:12,border:"2px solid "+(s.approved?"rgba(22,101,52,0.7)":C.border),padding:20,position:"relative"}}>
+          {s.approved&&<div style={{position:"absolute",top:14,right:52,background:"rgba(20,83,45,0.7)",color:"#86efac",borderRadius:6,padding:"3px 12px",fontSize:11,fontWeight:700,border:"1px solid #166534"}}>SIGNED</div>}
+          <button onClick={()=>dispatch({type:"DEL_SIG",si})} style={{position:"absolute",top:14,right:14,background:"rgba(127,29,29,0.4)",color:"#fca5a5",border:"1px solid #991b1b",borderRadius:5,padding:"3px 8px",fontSize:11,cursor:"pointer"}}>x</button>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:14}}>
+            <div><label style={lbl}>Full Name</label><input value={s.name||""} onChange={e=>dispatch({type:"UPD_SIG",si,f:"name",v:e.target.value})} style={{...inp,marginTop:4}} placeholder="First Last"/></div>
+            <div><label style={lbl}>Role</label><select value={s.role||""} onChange={e=>dispatch({type:"UPD_SIG",si,f:"role",v:e.target.value})} style={{...inp,marginTop:4,cursor:"pointer"}}><option value="">Select...</option>{ROLES.map(r=><option key={r}>{r}</option>)}<option value="custom">Custom...</option></select></div>
+            {s.role==="custom"?<div><label style={lbl}>Custom Role</label><input value={s.customRole||""} onChange={e=>dispatch({type:"UPD_SIG",si,f:"customRole",v:e.target.value})} style={{...inp,marginTop:4}} placeholder="Enter role..."/></div>:<div><label style={lbl}>Date</label><input type="date" value={s.date||""} onChange={e=>dispatch({type:"UPD_SIG",si,f:"date",v:e.target.value})} style={{...inp,marginTop:4}}/></div>}
+          </div>
+          <div style={{marginBottom:14}}><label style={lbl}>Phase / Section</label><input value={s.phase||""} onChange={e=>dispatch({type:"UPD_SIG",si,f:"phase",v:e.target.value})} style={{...inp,marginTop:4}} placeholder="e.g. Phase 1, All Sections"/></div>
+          <div style={{marginBottom:14}}>
+            <label style={lbl}>Electronic Signature</label>
+            <div style={{position:"relative",marginTop:4}}><input value={s.signature||""} onChange={e=>dispatch({type:"UPD_SIG",si,f:"signature",v:e.target.value})} style={{...inp,fontSize:15,fontStyle:"italic",fontFamily:"Georgia,serif",letterSpacing:1,paddingLeft:36}} placeholder="Type full name as signature..."/><span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:C.muted,fontSize:14}}>✍</span></div>
+            {s.signature&&<div style={{marginTop:4,fontSize:11,color:"rgba(200,200,200,0.5)",fontStyle:"italic"}}>Signed: {s.signature} · {s.date||"date not set"}</div>}
+          </div>
+          <div style={{marginBottom:14}}><label style={lbl}>Notes</label><textarea value={s.notes||""} onChange={e=>dispatch({type:"UPD_SIG",si,f:"notes",v:e.target.value})} style={{...inp,marginTop:4,resize:"vertical",minHeight:56}} placeholder="Discrepancies, limiting factors..."/></div>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",borderTop:"1px solid "+C.border,paddingTop:14}}>
+            <div style={{fontSize:11,color:C.muted}}>{s.signature?"Signed by "+s.signature+(s.role&&s.role!=="custom"?" · "+s.role:""):"Signature required before approving."}</div>
+            <button onClick={()=>{if(!s.signature){alert("Please enter a signature.");return;}dispatch({type:"TOGGLE_APPROVED",si});}} style={{padding:"8px 20px",borderRadius:8,border:"2px solid",cursor:"pointer",fontWeight:800,fontSize:13,borderColor:s.approved?"#16a34a":"rgba(200,200,200,0.2)",background:s.approved?"rgba(20,83,45,0.7)":"rgba(255,255,255,0.05)",color:s.approved?"#86efac":C.muted}}>
+              {s.approved?"Approved — Click to Revoke":"Approve and Sign Off"}
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function VendorMatrix(){
+  const {state,dispatch}=useContext(TeviCtx);
+  const [expandedCat,setExpandedCat]=useState(null);
+  const matrixData=(state.oems[0]&&state.oems[0].matrix)||{};
+  const getMV=(catId,rowId,vi)=>matrixData[catId+"_"+rowId+"_"+vi]||"";
+  const setMV=(catId,rowId,vi,val)=>{
+    const next={...matrixData,[catId+"_"+rowId+"_"+vi]:val};
+    dispatch({type:"SET_MATRIX",oems:state.oems.map((o,i)=>i===0?{...o,matrix:next}:o)});
+  };
+  const tColor=v=>v==="Yes"?"#86efac":v==="No"?"#fca5a5":v==="Pending"?"#fde68a":C.muted;
+  const tBg=v=>v==="Yes"?"rgba(20,83,45,0.5)":v==="No"?"rgba(127,29,29,0.5)":v==="Pending"?"rgba(120,53,15,0.5)":"rgba(255,255,255,0.04)";
+  const tBrd=v=>v==="Yes"?"#166534":v==="No"?"#991b1b":v==="Pending"?"#854d0e":C.border;
+  return(
+    <div style={{display:"grid",gap:10}}>
+      {EVAL_MATRIX.map(cat=>{
+        const isOpen=expandedCat===cat.id;
+        return(
+          <div key={cat.id} style={{background:C.card,borderRadius:12,border:"1px solid "+(isOpen?cat.border:C.border),overflow:"hidden"}}>
+            <button onClick={()=>setExpandedCat(e=>e===cat.id?null:cat.id)} style={{width:"100%",background:"transparent",border:"none",cursor:"pointer",padding:"14px 18px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <div style={{display:"flex",alignItems:"center",gap:10}}><div style={{background:cat.bg,border:"1px solid "+cat.border,borderRadius:8,padding:"5px 12px",fontSize:18}}>{cat.icon}</div><div style={{color:cat.color,fontWeight:800,fontSize:14}}>{cat.label}</div></div>
+              <span style={{color:cat.color,fontSize:16,fontWeight:700}}>{isOpen?"▲":"▼"}</span>
+            </button>
+            {isOpen&&<div style={{overflowX:"auto",borderTop:"1px solid "+C.border}}>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+                <thead><tr style={{background:"rgba(0,0,0,0.3)"}}><th style={{padding:"10px 14px",textAlign:"left",color:C.muted,fontWeight:600,fontSize:10,textTransform:"uppercase",minWidth:180,borderBottom:"1px solid "+C.border}}>Criteria</th>{state.oems.map((o,vi)=><th key={vi} style={{padding:"10px 14px",textAlign:"center",color:cat.color,fontWeight:700,fontSize:13,minWidth:160,borderBottom:"1px solid "+C.border,borderLeft:"1px solid rgba(255,255,255,0.05)"}}>{o.name||"Vendor "+(vi+1)}</th>)}</tr></thead>
+                <tbody>{cat.rows.map((row,ri)=>(
+                  <tr key={row.id} style={{borderBottom:"1px solid rgba(255,255,255,0.04)",background:ri%2===0?"transparent":"rgba(255,255,255,0.02)"}}>
+                    <td style={{padding:"9px 14px",color:C.text,whiteSpace:"nowrap"}}>{row.label}</td>
+                    {state.oems.map((_,vi)=>{
+                      const val=getMV(cat.id,row.id,vi);
+                      return(
+                        <td key={vi} style={{padding:"7px 10px",textAlign:"center",borderLeft:"1px solid rgba(255,255,255,0.05)"}}>
+                          {row.type==="toggle"&&<div style={{display:"flex",gap:4,justifyContent:"center"}}>{["Yes","No","Pending"].map(opt=><button key={opt} onClick={()=>setMV(cat.id,row.id,vi,opt)} style={{padding:"3px 8px",borderRadius:5,border:"1px solid "+(val===opt?tBrd(opt):C.border),background:val===opt?tBg(opt):"rgba(255,255,255,0.03)",color:val===opt?tColor(opt):"#fff",fontSize:10,fontWeight:val===opt?700:400,cursor:"pointer",opacity:val===opt?1:0.45}}>{opt}</button>)}</div>}
+                          {row.type==="text"&&<input value={val} onChange={e=>setMV(cat.id,row.id,vi,e.target.value)} style={{...inp,fontSize:11,textAlign:"center",padding:"4px 7px"}} placeholder="—"/>}
+                          {row.type==="dollar"&&<div style={{position:"relative",display:"inline-flex",alignItems:"center"}}><span style={{position:"absolute",left:8,color:C.muted,fontSize:11}}>$</span><input type="number" min="0" value={val} onChange={e=>setMV(cat.id,row.id,vi,e.target.value)} style={{...inp,fontSize:11,textAlign:"right",paddingLeft:18,paddingRight:6,width:120}} placeholder="0"/></div>}
+                          {row.type==="pfn"&&<div style={{display:"flex",gap:4,justifyContent:"center"}}>{["Pass","Fail","N/A"].map(opt=><button key={opt} onClick={()=>setMV(cat.id,row.id,vi,opt)} style={{padding:"3px 8px",borderRadius:5,border:"1px solid "+(val===opt?pfBrd(opt):C.border),background:val===opt?pfBg(opt):"rgba(255,255,255,0.03)",color:val===opt?pfColor(opt):"#fff",fontSize:10,fontWeight:val===opt?700:400,cursor:"pointer",opacity:val===opt?1:0.45,whiteSpace:"nowrap"}}>{opt}</button>)}</div>}
+                          {row.type==="notes"&&<textarea value={val} onChange={e=>setMV(cat.id,row.id,vi,e.target.value)} style={{...inp,fontSize:11,resize:"vertical",minHeight:48,textAlign:"left",lineHeight:1.4}} placeholder="Notes..."/>}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── VendorRating and AccSection extracted as module-level components ────────
+
+function VendorRating({id,types,ac,setAC}){
+  const v=ac[id]||"";
+  const opts=types||[["ms","Met"],["bs","Below"],["na","N/A"]];
+  const col=x=>x==="ms"||x==="yes"||x==="pass"?"#86efac":x==="bs"||x==="no"||x==="fail"?"#fca5a5":x==="part"?"#fde68a":"#888";
+  const bg2=x=>x==="ms"||x==="yes"||x==="pass"?"rgba(20,83,45,0.5)":x==="bs"||x==="no"||x==="fail"?"rgba(127,29,29,0.5)":x==="part"?"rgba(120,53,15,0.5)":"rgba(255,255,255,0.05)";
+  const brd=x=>x==="ms"||x==="yes"||x==="pass"?"#166534":x==="bs"||x==="no"||x==="fail"?"#991b1b":x==="part"?"#854d0e":C.border;
+  return(
+    <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+      <div style={{display:"flex",gap:2}}>
+        {opts.map(([cls,lab])=>(
+          <button key={cls} onClick={()=>setAC(id,cls)}
+            style={{fontSize:10,padding:"2px 5px",borderRadius:4,border:"1px solid "+(v===cls?brd(cls):C.border),background:v===cls?bg2(cls):"rgba(255,255,255,0.03)",color:v===cls?col(cls):C.muted,cursor:"pointer",whiteSpace:"nowrap",fontWeight:v===cls?700:400}}>
+            {lab}
+          </button>
+        ))}
+      </div>
+      {(v==="bs"||v==="no"||v==="fail"||v==="part")&&(
+        <textarea placeholder="Note..." style={{...inp,fontSize:10,minHeight:28,resize:"vertical",width:86,padding:"2px 4px"}}/>
+      )}
+    </div>
+  );
+}
+
+function AccSection({id,num,title,sub,color,bg,border,children,isOpen,onToggle,secPct}){
+  const pctVal=secPct(id);
+  const pctColor=pctVal===100?"#86efac":pctVal>0?"#fbbf24":C.muted;
+  return(
+    <div style={{border:"1px solid "+(isOpen?border:C.border),borderRadius:12,overflow:"hidden",marginBottom:8}}>
+      <button onClick={()=>onToggle(id)} style={{width:"100%",background:isOpen?bg:"rgba(255,255,255,0.02)",border:"none",cursor:"pointer",padding:"11px 16px",display:"flex",alignItems:"center",gap:10,textAlign:"left"}}>
+        <span style={{background:bg,border:"1px solid "+border,borderRadius:5,padding:"2px 9px",fontSize:10,fontWeight:800,color,flexShrink:0}}>{num}</span>
+        <div style={{flex:1}}>
+          <div style={{color:"#fff",fontWeight:600,fontSize:13}}>{title}</div>
+          <div style={{color:C.muted,fontSize:11,marginTop:1}}>{sub}</div>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
+          <span style={{fontSize:11,fontWeight:700,color:pctColor}}>{pctVal}%</span>
+          <span style={{color:C.muted,fontSize:12}}>{isOpen?"▲":"▼"}</span>
+        </div>
+      </button>
+      {isOpen&&<div style={{borderTop:"1px solid "+C.border}}>{children}</div>}
+    </div>
+  );
+}
+
+// ── COMBINED EVALUATION CHECKLIST ─────────────────────────────────────────
+function EvaluationChecklist(){
+  const {oem,dispatch}=useContext(TeviCtx);
+  const [openSec,setOpenSec]=useState("subj");
+  const ac=oem.advChecklist||{};
+  const setAC=(k,v)=>dispatch({type:"UPD_ADV_CHECKLIST",k,v});
+
+  const allVals=Object.values(ac);
+  const rated=allVals.filter(v=>v&&v!=="").length;
+  const total=104;
+  const pct=Math.round(rated/total*100);
+  const pass=allVals.filter(v=>v==="ms"||v==="yes"||v==="pass").length;
+  const fail=allVals.filter(v=>v==="bs"||v==="no"||v==="fail"||v==="part").length;
+  const na=allVals.filter(v=>v==="na").length;
+
+  const secItems={subj:20,comp:32,fmea:16,env:24,bench:12};
+  const secPct=sec=>{
+    const prefix=sec+"-";
+    const done=Object.keys(ac).filter(k=>k.startsWith(prefix)&&ac[k]).length;
+    return Math.round(done/secItems[sec]*100);
+  };
+  const secsDone=["subj","comp","fmea","env","bench"].filter(s=>secPct(s)===100).length;
+
+  const toggle=sec=>setOpenSec(openSec===sec?null:sec);
+
+  const badgeStyle=(bg,color)=>({display:"inline-block",fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:5,background:bg,color,whiteSpace:"nowrap"});
+  const compBadge=t=>(<span style={badgeStyle("rgba(74,158,255,0.15)","#4a9eff")}>{t}</span>);
+  const fmeaBadge=t=>(<span style={badgeStyle("rgba(167,139,250,0.15)","#a78bfa")}>{t}</span>);
+  const benchBadge=t=>(<span style={badgeStyle("rgba(251,191,36,0.15)","#fbbf24")}>{t}</span>);
+
+  const tblHdr=(cols)=>(
+    <thead><tr style={{background:"rgba(0,0,0,0.3)",borderBottom:"1px solid "+C.border}}>
+      {cols.map((c,i)=><th key={i} style={{padding:"8px 10px",textAlign:i===0?"left":"center",color:C.muted,fontSize:10,fontWeight:600,textTransform:"uppercase",letterSpacing:0.5,whiteSpace:"nowrap",minWidth:i===0?180:100}}>{c}</th>)}
+    </tr></thead>
+  );
+
+  const tblRow=(even)=>({borderBottom:"1px solid rgba(255,255,255,0.04)",background:even?"transparent":"rgba(255,255,255,0.02)"});
+
+  return(
+    <div style={{display:"grid",gap:0}}>
+      <div style={{background:C.card,borderRadius:12,padding:"14px 18px",marginBottom:16,border:"1px solid rgba(192,132,252,0.3)"}}>
+        <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",flexWrap:"wrap",gap:12,marginBottom:12}}>
+          <div>
+            <div style={{color:"#c084fc",fontWeight:700,fontSize:13,letterSpacing:2,textTransform:"uppercase"}}>Combined Evaluation Checklist</div>
+            <div style={{color:C.muted,fontSize:11,marginTop:2}}>Subjective · Comparative · FMEA · Environmental · Benchmarks</div>
+          </div>
+          <div style={{textAlign:"right"}}>
+            <div style={{fontSize:26,fontWeight:700,color:"#c084fc"}}>{pct}%</div>
+            <div style={{fontSize:11,color:C.muted}}>completed</div>
+          </div>
+        </div>
+        <div style={{height:5,background:"rgba(255,255,255,0.08)",borderRadius:3,overflow:"hidden",marginBottom:14}}>
+          <div style={{height:"100%",width:pct+"%",background:"#c084fc",borderRadius:3,transition:"width 0.3s"}}/>
+        </div>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          {[["Total Items","104","#c8c8c8"],[`Rated`,rated,"#c084fc"],["Pass / Met",pass,"#86efac"],["Fail / Below",fail,"#fca5a5"],["N/A",na,"#fde68a"],["Sections Done",secsDone+"/5","#38bdf8"]].map(([label,val,col])=>(
+            <div key={label} style={{background:"rgba(255,255,255,0.04)",border:"1px solid "+C.border,borderRadius:8,padding:"7px 12px",textAlign:"center",minWidth:70}}>
+              <div style={{fontSize:18,fontWeight:700,color:col}}>{val}</div>
+              <div style={{fontSize:10,color:C.muted,marginTop:1}}>{label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <AccSection id="subj" num="01" title="Subjective checks" sub="Evaluator judgment — Yes / Partially / No" color="#a78bfa" bg="rgba(167,139,250,0.06)" border="rgba(167,139,250,0.35)" isOpen={openSec==="subj"} onToggle={toggle} secPct={secPct}>
+        <div style={{overflowX:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,tableLayout:"fixed"}}>
+            {tblHdr(["Item","Lead Evaluator","Operators"])}
+            <tbody>
+              {SUBJ_CHECKS.map((item,ii)=>(
+                <tr key={ii} style={tblRow(ii%2===0)}>
+                  <td style={{padding:"8px 10px",color:C.text,fontSize:12}}>{item}</td>
+                  <td style={{padding:"6px 10px",textAlign:"center"}}><VendorRating id={`subj-${ii}-0`} types={[["yes","Yes"],["part","Part"],["no","No"]]} ac={ac} setAC={setAC}/></td>
+                  <td style={{padding:"6px 10px",textAlign:"center"}}><VendorRating id={`subj-${ii}-1`} types={[["yes","Yes"],["part","Part"],["no","No"]]} ac={ac} setAC={setAC}/></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </AccSection>
+
+      <AccSection id="comp" num="02" title="Comparative / Repeatability" sub="Platform comparison, repeatability, and endurance — Met Spec / Below Spec / N/A" color="#4a9eff" bg="rgba(74,158,255,0.06)" border="rgba(74,158,255,0.35)" isOpen={openSec==="comp"} onToggle={toggle} secPct={secPct}>
+        <div style={{overflowX:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,tableLayout:"fixed"}}>
+            {tblHdr(["Test","Type","DJI","Skydio","Sunflower","Quantum"])}
+            <tbody>
+              {COMP_CHECKS.map(grp=>[
+                <tr key={"cat-"+grp.cat} style={{background:"rgba(74,158,255,0.05)",borderBottom:"1px solid rgba(74,158,255,0.15)",borderTop:"1px solid rgba(74,158,255,0.15)"}}>
+                  <td colSpan={6} style={{padding:"5px 10px",fontSize:10,fontWeight:600,color:"#4a9eff",textTransform:"uppercase",letterSpacing:0.8}}>{grp.cat}</td>
+                </tr>,
+                ...grp.items.map((item,ii)=>(
+                  <tr key={item.id} style={tblRow(ii%2===0)}>
+                    <td style={{padding:"8px 10px",color:C.text}}><div style={{fontWeight:500,fontSize:12}}>{item.n}</div><div style={{color:C.muted,fontSize:10,marginTop:2}}>{item.d}</div></td>
+                    <td style={{padding:"6px 10px",textAlign:"center"}}>{compBadge(item.t)}</td>
+                    {VENDORS.map((_,vi)=><td key={vi} style={{padding:"6px 8px",textAlign:"center"}}><VendorRating id={`comp-${item.id}-${vi}`} ac={ac} setAC={setAC}/></td>)}
+                  </tr>
+                ))
+              ])}
+            </tbody>
+          </table>
+        </div>
+      </AccSection>
+
+      <AccSection id="fmea" num="03" title="FMEA — Failure Mode & Effects" sub="Deliberate failure induction and failsafe validation — Met Spec / Below Spec / N/A" color="#a78bfa" bg="rgba(167,139,250,0.06)" border="rgba(167,139,250,0.35)" isOpen={openSec==="fmea"} onToggle={toggle} secPct={secPct}>
+        <div style={{overflowX:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,tableLayout:"fixed"}}>
+            {tblHdr(["Failure Mode","Induced Via","DJI","Skydio","Sunflower","Quantum"])}
+            <tbody>
+              {FMEA_CHECKS.map((item,ii)=>(
+                <tr key={item.id} style={tblRow(ii%2===0)}>
+                  <td style={{padding:"8px 10px",color:C.text}}><div style={{fontWeight:500,fontSize:12}}>{item.n}</div><div style={{color:C.muted,fontSize:10,marginTop:2}}>{item.d}</div></td>
+                  <td style={{padding:"6px 10px",textAlign:"center"}}>{fmeaBadge(item.t)}</td>
+                  {VENDORS.map((_,vi)=><td key={vi} style={{padding:"6px 8px",textAlign:"center"}}><VendorRating id={`fmea-${item.id}-${vi}`} ac={ac} setAC={setAC}/></td>)}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </AccSection>
+
+      <AccSection id="env" num="04" title="Environmental stress" sub="Wind, temperature, and water ingress — measured conditions logged per session" color="#34d399" bg="rgba(52,211,153,0.06)" border="rgba(52,211,153,0.35)" isOpen={openSec==="env"} onToggle={toggle} secPct={secPct}>
+        <div style={{overflowX:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,tableLayout:"fixed"}}>
+            {tblHdr(["Test","Condition Logged","DJI","Skydio","Sunflower","Quantum"])}
+            <tbody>
+              {ENV_CHECKS.map(grp=>[
+                <tr key={"cat-"+grp.cat} style={{background:"rgba(52,211,153,0.05)",borderBottom:"1px solid rgba(52,211,153,0.15)",borderTop:"1px solid rgba(52,211,153,0.15)"}}>
+                  <td colSpan={6} style={{padding:"5px 10px",fontSize:10,fontWeight:600,color:"#34d399",textTransform:"uppercase",letterSpacing:0.8}}>{grp.cat}</td>
+                </tr>,
+                ...grp.items.map((item,ii)=>(
+                  <tr key={item.id} style={tblRow(ii%2===0)}>
+                    <td style={{padding:"8px 10px",color:C.text}}><div style={{fontWeight:500,fontSize:12}}>{item.n}</div><div style={{color:C.muted,fontSize:10,marginTop:2}}>{item.d}</div></td>
+                    <td style={{padding:"6px 8px"}}>
+                      <input style={{...inp,fontSize:11,padding:"3px 6px",borderColor:"rgba(52,211,153,0.25)"}} placeholder={item.ph}/>
+                      <div style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:10,color:"#38bdf8",background:"rgba(56,189,248,0.1)",borderRadius:4,padding:"2px 6px",border:"1px solid rgba(56,189,248,0.3)",cursor:"pointer",marginTop:4,whiteSpace:"nowrap"}}>Link METAR</div>
+                    </td>
+                    {VENDORS.map((_,vi)=><td key={vi} style={{padding:"6px 8px",textAlign:"center"}}><VendorRating id={`env-${item.id}-${vi}`} ac={ac} setAC={setAC}/></td>)}
+                  </tr>
+                ))
+              ])}
+            </tbody>
+          </table>
+        </div>
+      </AccSection>
+
+      <AccSection id="bench" num="05" title="Performance benchmarks" sub="Range and signal integrity at varying distances — Met Spec / Below Spec / N/A" color="#fbbf24" bg="rgba(251,191,36,0.06)" border="rgba(251,191,36,0.35)" isOpen={openSec==="bench"} onToggle={toggle} secPct={secPct}>
+        <div style={{overflowX:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,tableLayout:"fixed"}}>
+            {tblHdr(["Test","Method","DJI","Skydio","Sunflower","Quantum"])}
+            <tbody>
+              {BENCH_CHECKS.map((item,ii)=>(
+                <tr key={item.id} style={tblRow(ii%2===0)}>
+                  <td style={{padding:"8px 10px",color:C.text}}><div style={{fontWeight:500,fontSize:12}}>{item.n}</div><div style={{color:C.muted,fontSize:10,marginTop:2}}>{item.d}</div></td>
+                  <td style={{padding:"6px 10px",textAlign:"center"}}>{benchBadge(item.t)}</td>
+                  {VENDORS.map((_,vi)=><td key={vi} style={{padding:"6px 8px",textAlign:"center"}}><VendorRating id={`bench-${item.id}-${vi}`} ac={ac} setAC={setAC}/></td>)}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </AccSection>
+    </div>
+  );
+}
+
+function SixMonthPlan(){
+  const [expanded,setExpanded]=useState(null);
+  const milestones=[
+    {week:"Wk 1-2",event:"Dock commissioned. Regulatory checklist complete. Baseline flights begin."},
+    {week:"Wk 3-4",event:"Flight, Dock, Sensor tests underway. Weather Log populated."},
+    {week:"Wk 5-6",event:"Reliability and Security baseline tests. Failsafe validation."},
+    {week:"Wk 7-8",event:"Month 2 gate review. Go/No-Go for Phase 2."},
+    {week:"Wk 9-10",event:"Phase 2 opens. Use case missions begin."},
+    {week:"Wk 11-12",event:"Night and thermal ops. Payload testing expanded."},
+    {week:"Wk 13-14",event:"Environmental and RF-contested testing."},
+    {week:"Wk 15-16",event:"Month 4 gate review. Go/No-Go for Phase 3."},
+    {week:"Wk 17-18",event:"Phase 3 endurance cycling. 24-hour op. Multi-mission day."},
+    {week:"Wk 19-20",event:"Flight hours validation. 50+ cycles. Cybersecurity assessment."},
+    {week:"Wk 21-22",event:"Phase 4 opens. All scores finalized."},
+    {week:"Wk 23-24",event:"Final sign-offs. Procurement decision. Program close."},
+  ];
+  const phases=[
+    {id:"p1",month:"Months 1-2",label:"Phase 1",title:"Baseline Testing",color:"#4a9eff",bg:"rgba(74,158,255,0.08)",border:"rgba(74,158,255,0.3)",site:"TRG",gate:"All minimums met · Regulatory compliance confirmed",objective:"Establish baseline performance across all core capability areas.",weekly:["Pre-flight inspection every session","Log METAR in Weather tab","Enter Pass/Fail/N/A in all test tabs","Record tester name and date","Document anomalies","Confirm GCS and GPS before each session","Verify FAA airspace and TFRs"],      monthly:["Review Final Eval tab","Confirm flight hours on pace","Confirm regulatory checklist complete","Lead Evaluator signs off","Month 2 Go/No-Go Gate"]},
+    {id:"p2",month:"Months 3-4",label:"Phase 2",title:"Operational Validation",color:"#a78bfa",bg:"rgba(167,139,250,0.08)",border:"rgba(167,139,250,0.3)",site:"TRG dock",gate:"Use case pass rates 90%+ · No Category 1 failures",objective:"Validate performance across all three security use cases.",weekly:["Use case missions logged","Alert-to-airborne times tracked","Sensor issues logged with root cause","Remote operator comms verified","Evidence chain-of-custody verified"],monthly:["All three use cases flown","Environmental stress completed","Flight hours on pace","Remote operator proficiency confirmed","Interim briefing","Month 4 Go/No-Go Gate"]},
+    {id:"p3",month:"Month 5",label:"Phase 3",title:"Endurance & Integration",color:"#f59e0b",bg:"rgba(245,158,11,0.08)",border:"rgba(245,158,11,0.3)",site:"TRG endurance cycling",gate:"20+ flight hours · 50+ dock cycles · Integration complete",objective:"Accumulate flight hours, stress-test dock automation, confirm integration.",weekly:["Update running flight hours","Log dock cycle count","Document endurance anomalies","Training records current","3 consecutive alert response tests"],      monthly:["20+ flight hours confirmed","50+ dock cycles completed","24-hour autonomous op test","Multi-mission day","System integration confirmed","Cybersecurity assessment done"]},
+    {id:"p4",month:"Month 6",label:"Phase 4",title:"Final Evaluation & Decision",color:"#86efac",bg:"rgba(134,239,172,0.07)",border:"rgba(134,239,172,0.25)",site:"TRG final close-out",      gate:"All sections Pass · Signed decision",objective:"Complete final scoring and produce a signed procurement recommendation.",weekly:["Finalize all section results","Final Eval tab reviewed","Compare tab completed","Discrepancy log closed"],      monthly:["Final evaluation summary complete","All evaluators approve sign-off","Company product briefing","Procurement recommendation archived"]},
+  ];
+  return(
+    <div style={{display:"grid",gap:14}}>
+      <div style={{background:C.card,borderRadius:12,padding:20,border:"1px solid "+C.border}}>
+        <div style={{color:"#fff",fontSize:18,fontWeight:900,letterSpacing:2,textTransform:"uppercase"}}>Six-Month TEVI Program</div>
+        <div style={{color:C.muted,fontSize:13,margin:"6px 0 16px"}}>Testing · Evaluation · Validation · Implementation</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:4}}>{phases.map(p=><div key={p.id} style={{background:p.bg,border:"1px solid "+p.border,borderRadius:7,padding:"8px 12px"}}><div style={{color:p.color,fontWeight:800,fontSize:12}}>{p.month}</div><div style={{color:C.text,fontWeight:700,fontSize:11,marginTop:2}}>{p.label}: {p.title}</div></div>)}</div>
+      </div>
+      {phases.map(p=>(
+        <div key={p.id} style={{background:C.card,borderRadius:12,border:"1px solid "+p.border,overflow:"hidden"}}>
+          <button onClick={()=>setExpanded(e=>e===p.id?null:p.id)} style={{width:"100%",background:"transparent",border:"none",cursor:"pointer",padding:"16px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",textAlign:"left"}}>
+            <div style={{display:"flex",alignItems:"center",gap:14}}><div style={{background:p.bg,border:"1px solid "+p.border,borderRadius:8,padding:"6px 14px",minWidth:90,textAlign:"center"}}><div style={{color:p.color,fontWeight:900,fontSize:13}}>{p.label}</div><div style={{color:p.color,fontSize:10,opacity:0.7}}>{p.month}</div></div><div><div style={{color:"#fff",fontWeight:800,fontSize:15}}>{p.title}</div><div style={{color:C.muted,fontSize:12,marginTop:2}}>{p.site}</div></div></div>
+            <span style={{color:p.color,fontSize:18,fontWeight:700,flexShrink:0}}>{expanded===p.id?"▲":"▼"}</span>
+          </button>
+          {expanded===p.id&&<div style={{padding:"0 20px 20px"}}>
+            <div style={{background:p.bg,border:"1px solid "+p.border,borderRadius:8,padding:"12px 16px",marginBottom:14,marginTop:4}}><div style={{color:p.color,fontWeight:700,fontSize:11,textTransform:"uppercase",marginBottom:6}}>Phase Objective</div><p style={{color:C.text,fontSize:13,margin:0,lineHeight:1.6}}>{p.objective}</p></div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
+              <div style={{background:"rgba(255,255,255,0.03)",borderRadius:8,padding:"14px 16px",border:"1px solid "+C.border}}><div style={{color:C.accent,fontWeight:700,fontSize:11,textTransform:"uppercase",marginBottom:10}}>Weekly Rhythm</div>{p.weekly.map((item,i)=><div key={i} style={{display:"flex",gap:8,marginBottom:7}}><span style={{color:p.color,fontWeight:700,fontSize:12,flexShrink:0}}>→</span><span style={{color:C.muted,fontSize:12,lineHeight:1.5}}>{item}</span></div>)}</div>
+              <div style={{background:"rgba(255,255,255,0.03)",borderRadius:8,padding:"14px 16px",border:"1px solid "+C.border}}><div style={{color:C.accent,fontWeight:700,fontSize:11,textTransform:"uppercase",marginBottom:10}}>Monthly Review & Gate</div>{p.monthly.map((item,i)=><div key={i} style={{display:"flex",gap:8,marginBottom:7}}><span style={{color:i===p.monthly.length-1?"#fde68a":p.color,fontWeight:700,fontSize:12,flexShrink:0}}>{i===p.monthly.length-1?"⚑":"✓"}</span><span style={{color:i===p.monthly.length-1?"#fde68a":C.muted,fontSize:12,lineHeight:1.5,fontWeight:i===p.monthly.length-1?700:400}}>{item}</span></div>)}</div>
+            </div>
+            <div style={{background:"rgba(253,230,138,0.06)",border:"1px solid rgba(253,230,138,0.25)",borderRadius:8,padding:"10px 16px",display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:16,flexShrink:0}}>⚑</span><span style={{color:"#fde68a",fontWeight:700,fontSize:12}}>Go/No-Go Gate: {p.gate}</span></div>
+          </div>}
+        </div>
+      ))}
+      <div style={{background:C.card,borderRadius:12,padding:20,border:"1px solid "+C.border}}>
+        <div style={{color:C.accent,fontSize:13,fontWeight:700,marginBottom:16,letterSpacing:2,textTransform:"uppercase"}}>24-Week Milestone Timeline</div>
+        <div style={{position:"relative"}}>
+          <div style={{position:"absolute",left:52,top:0,bottom:0,width:1,background:"linear-gradient(to bottom,rgba(74,158,255,0.4),rgba(134,239,172,0.4))",zIndex:0}}/>
+          {milestones.map((m,i)=>{
+            const col=i<4?"#4a9eff":i<8?"#a78bfa":i<10?"#f59e0b":"#86efac";
+            return(
+              <div key={i} style={{display:"flex",gap:16,marginBottom:12,position:"relative",zIndex:1}}>
+                <div style={{width:90,flexShrink:0,textAlign:"right"}}>
+                  <span style={{background:"rgba(0,0,0,0.6)",border:"1px solid "+col,borderRadius:5,padding:"2px 8px",fontSize:11,fontWeight:700,color:col,display:"inline-block"}}>{m.week}</span>
+                </div>
+                <div style={{width:10,height:10,borderRadius:"50%",background:col,flexShrink:0,marginTop:4,boxShadow:"0 0 6px "+col}}/>
+                <div style={{background:"rgba(255,255,255,0.03)",borderRadius:7,padding:"6px 12px",border:"1px solid "+C.border,flex:1}}>
+                  <span style={{color:C.text,fontSize:12}}>{m.event}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DemoMissions(){
+  const {oem,buildAllResultsCtx}=useContext(TeviCtx);
+  const [activeM,setActiveM]=useState(null);
+  const [open,setOpen]=useState(false);
+  const [loading,setLoading]=useState(false);
+  const [summaryText,setSummaryText]=useState("");
+  const pColors={DJI:"#4a9eff",Skydio:"#a78bfa","Sunflower Labs":"#fbbf24","Quantum Systems":"#34d399"};
+  const generateDemoSummary=()=>{
+    setLoading(true);setSummaryText("");setOpen(true);
+    const allRes=buildAllResultsCtx();
+    const prompt="You are a drone procurement analyst. Write a concise ONE-PAGE executive summary on demo readiness.\n\nPlatform: "+(oem.name||"Unknown")+" | Overall test results: "+allRes+"\nDemo missions: First on Scene, License Plate ID, Heat Signature, Eyes On, Crime Scene, The Perimeter.\n\nWrite:\n1. DEMO READINESS OVERVIEW\n2. PLATFORM STRENGTHS PER MISSION\n3. RISKS OR GAPS\n4. RECOMMENDATION — READY / NOT READY / CONDITIONAL\n\nUnder 350 words. Plain text only.";
+    fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:prompt}]})})
+      .then(r=>r.json()).then(data=>{setSummaryText((data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n")||"No summary generated.");setLoading(false);})
+      .catch(()=>{setSummaryText("Error generating summary.");setLoading(false);});
+  };
+  return(
+    <div style={{display:"grid",gap:14}}>
+      <div style={{background:C.card,borderRadius:12,padding:20,border:"1px solid rgba(244,114,182,0.3)"}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12}}>
+          <div>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}><div style={{width:3,height:20,borderRadius:2,background:"#f472b6"}}/><span style={{color:"#f472b6",fontWeight:700,fontSize:13,letterSpacing:2,textTransform:"uppercase"}}>Demo Mission Pack</span></div>
+            <div style={{color:C.muted,fontSize:12,paddingLeft:13}}>6 missions · DJI · Skydio · Sunflower Labs · Quantum Systems</div>
+          </div>
+          <button onClick={generateDemoSummary} disabled={loading} style={{display:"flex",alignItems:"center",gap:8,padding:"10px 20px",borderRadius:8,border:"1px solid rgba(134,239,172,0.5)",background:"rgba(20,83,45,0.4)",color:"#86efac",fontWeight:700,fontSize:13,cursor:loading?"not-allowed":"pointer",opacity:loading?0.6:1}}>{loading?"Generating...":"📋 Generate Executive Summary"}</button>
+        </div>
+      </div>
+      {open&&(
+        <div style={{background:C.card,borderRadius:12,padding:20,border:"1px solid rgba(134,239,172,0.4)"}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,paddingBottom:12,borderBottom:"1px solid rgba(134,239,172,0.2)"}}>
+            <div style={{width:3,height:20,borderRadius:2,background:"#86efac"}}/>
+            <span style={{color:"#86efac",fontWeight:700,fontSize:13,letterSpacing:2,textTransform:"uppercase"}}>Executive Summary — Demo Readiness</span>
+            <button onClick={()=>setOpen(false)} style={{marginLeft:"auto",background:"rgba(127,29,29,0.3)",color:"#fca5a5",border:"1px solid rgba(252,165,165,0.3)",borderRadius:5,padding:"3px 10px",fontSize:11,cursor:"pointer"}}>x</button>
+          </div>
+          {loading?<div style={{textAlign:"center",padding:"30px",color:C.muted,fontSize:13}}>Analyzing evaluation data...</div>:<div style={{color:C.text,fontSize:12,lineHeight:1.8,whiteSpace:"pre-wrap"}}>{summaryText}</div>}
+        </div>
+      )}
+      {DEMO_MISSIONS.map(m=>(
+        <div key={m.id} style={{background:C.card,borderRadius:12,border:"1px solid "+(activeM===m.id?m.border:C.border),overflow:"hidden"}}>
+          <button onClick={()=>setActiveM(activeM===m.id?null:m.id)} style={{width:"100%",background:"transparent",border:"none",cursor:"pointer",padding:"16px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",textAlign:"left"}}>
+            <div style={{display:"flex",alignItems:"center",gap:14}}>
+              <div style={{background:m.bg,border:"1px solid "+m.border,borderRadius:8,padding:"8px 14px",textAlign:"center",minWidth:70}}><div style={{fontSize:20}}>{m.icon}</div><div style={{color:m.color,fontWeight:900,fontSize:11,marginTop:2}}>M-{m.num}</div></div>
+              <div><div style={{color:"#fff",fontWeight:800,fontSize:15}}>{m.title}</div><div style={{color:m.color,fontSize:12,marginTop:2,fontWeight:600}}>{m.capability}</div><div style={{color:C.muted,fontSize:11,marginTop:2}}>{m.platforms}</div></div>
+            </div>
+            <span style={{color:m.color,fontSize:18,fontWeight:700,flexShrink:0}}>{activeM===m.id?"▲":"▼"}</span>
+          </button>
+          {activeM===m.id&&(
+            <div style={{padding:"0 20px 20px",borderTop:"1px solid "+C.border}}>
+              <div style={{marginTop:16,padding:"10px 14px",borderRadius:8,background:m.bg,border:"1px solid "+m.border}}><div style={{color:m.color,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Scenario</div><div style={{color:C.text,fontSize:13,lineHeight:1.6}}>{m.scenario}</div></div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginTop:14}}>
+                <div style={{background:"rgba(255,255,255,0.03)",borderRadius:8,padding:"14px 16px",border:"1px solid "+C.border}}>
+                  <div style={{color:C.accent,fontWeight:700,fontSize:11,textTransform:"uppercase",letterSpacing:1,marginBottom:12}}>Demo Flow</div>
+                  {m.flow.map((step,i)=>(
+                    <div key={i} style={{display:"flex",gap:10,marginBottom:10,alignItems:"flex-start"}}>
+                      <span style={{background:m.bg,color:m.color,border:"1px solid "+m.border,borderRadius:4,padding:"1px 6px",fontSize:10,fontWeight:800,flexShrink:0,whiteSpace:"nowrap"}}>{step.t}</span>
+                      <span style={{color:C.muted,fontSize:12,lineHeight:1.5}}>{step.step}</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{background:"rgba(255,255,255,0.03)",borderRadius:8,padding:"14px 16px",border:"1px solid "+C.border}}>
+                  <div style={{color:C.accent,fontWeight:700,fontSize:11,textTransform:"uppercase",letterSpacing:1,marginBottom:12}}>Key Talking Points</div>
+                  {m.talking.map((pt,i)=>(
+                    <div key={i} style={{display:"flex",gap:8,marginBottom:10,alignItems:"flex-start"}}>
+                      <span style={{color:m.color,fontWeight:700,fontSize:14,flexShrink:0,lineHeight:1.4}}>✓</span>
+                      <span style={{color:C.muted,fontSize:12,lineHeight:1.5}}>{pt}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {m.platformNotes&&(
+                <div style={{marginTop:14,background:"rgba(255,255,255,0.03)",borderRadius:8,padding:"14px 16px",border:"1px solid "+C.border}}>
+                  <div style={{color:C.accent,fontWeight:700,fontSize:11,textTransform:"uppercase",letterSpacing:1,marginBottom:12}}>Platform Assignments</div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                    {m.platformNotes.map(pn=>{const pc=pColors[pn.name]||C.accent;return(<div key={pn.name} style={{padding:"10px 12px",borderRadius:7,background:pc+"18",border:"1px solid "+pc+"44"}}><div style={{color:pc,fontWeight:700,fontSize:11,marginBottom:4}}>{pn.name}</div><div style={{color:C.muted,fontSize:11,lineHeight:1.5}}>{pn.note}</div></div>);})}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TestResults(){
+  const {state}=useContext(TeviCtx);
+  const [filterSection,setFilterSection]=useState("All");
+  const [filterVendor,setFilterVendor]=useState("All");
+  const [expandedRun,setExpandedRun]=useState(null);
+  const allSections=Object.keys(TESTS);
+  const allVendorNames=state.oems.map(o=>o.name||"Unknown");
+  const allRuns=[];
+  state.oems.forEach(o=>{
+    allSections.forEach(sec=>{
+      const secTests=TESTS[sec]||[];
+      const hasData=secTests.some(t=>o.results[t.id+"_pfn"]);
+      if(hasData){
+        const pass=secTests.filter(t=>o.results[t.id+"_pfn"]==="Pass").length;
+        const fail=secTests.filter(t=>o.results[t.id+"_pfn"]==="Fail").length;
+        const pending=secTests.filter(t=>!o.results[t.id+"_pfn"]).length;
+        const date=secTests.map(t=>o.notes[t.id+"_date"]||"").filter(Boolean)[0]||"";
+        allRuns.push({runId:o.name+"-"+sec+"-main",vendor:o.name||"Unknown",section:sec,label:"Session 1",date,evaluator:o.evaluator||"",pass,fail,pending,total:secTests.length,tests:secTests,results:o.results,notes:o.notes});
+      }
+    });
+    (o.testRuns||[]).forEach((run,ri)=>{
+      const sec=run.section||"";const secTests=TESTS[sec]||[];
+      const pass=secTests.filter(t=>run.results[t.id+"_pfn"]==="Pass").length;
+      const fail=secTests.filter(t=>run.results[t.id+"_pfn"]==="Fail").length;
+      const pending=secTests.filter(t=>!run.results[t.id+"_pfn"]).length;
+      allRuns.push({runId:run.id,vendor:run.vendor||o.name||"Unknown",section:sec,label:run.label||"Run "+(ri+2),date:run.date||"",evaluator:run.evaluator||"",pass,fail,pending,total:secTests.length,tests:secTests,results:run.results,notes:run.notes||{}});
+    });
+  });
+  const filtered=allRuns.filter(r=>(filterSection==="All"||r.section===filterSection)&&(filterVendor==="All"||r.vendor===filterVendor));
+  filtered.sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+  const statusColor=r=>r.fail>0?"#fca5a5":r.pending===r.total?"#888":r.pending>0?"#fde68a":"#86efac";
+  const statusBg=r=>r.fail>0?"rgba(127,29,29,0.5)":r.pending===r.total?"rgba(255,255,255,0.05)":r.pending>0?"rgba(120,53,15,0.5)":"rgba(20,83,45,0.5)";
+  const statusLabel=r=>r.fail>0?"FAIL":r.pending===r.total?"PENDING":r.pending>0?"IN PROGRESS":"PASS";
+  return(
+    <div style={{display:"grid",gap:14}}>
+      <div style={{background:C.card,borderRadius:12,padding:20,border:"1px solid rgba(251,146,60,0.3)"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,paddingBottom:12,borderBottom:"1px solid rgba(251,146,60,0.2)"}}>
+          <div style={{width:3,height:20,borderRadius:2,background:"#fb923c"}}/>
+          <span style={{color:"#fb923c",fontWeight:700,fontSize:13,letterSpacing:2,textTransform:"uppercase"}}>Test Results Log</span>
+          <span style={{marginLeft:"auto",fontSize:12,color:C.muted}}>{filtered.length} run{filtered.length!==1?"s":""} shown</span>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:14}}>
+          {[["Total Runs",allRuns.length,"#fb923c"],["Passing",allRuns.filter(r=>r.fail===0&&r.pending<r.total).length,"#86efac"],["Has Failures",allRuns.filter(r=>r.fail>0).length,"#fca5a5"],["Pending",allRuns.filter(r=>r.pending===r.total).length,"#888"]].map(([label,val,col])=>(
+            <div key={label} style={{background:"rgba(255,255,255,0.04)",borderRadius:8,padding:"10px 14px",textAlign:"center",border:"1px solid "+C.border}}>
+              <div style={{fontSize:22,fontWeight:900,color:col}}>{val}</div>
+              <div style={{fontSize:10,color:C.muted,textTransform:"uppercase",marginTop:2}}>{label}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
+          <span style={{color:C.muted,fontSize:11,fontWeight:700,textTransform:"uppercase"}}>Filter:</span>
+          <select value={filterSection} onChange={e=>setFilterSection(e.target.value)} style={{...inp,width:"auto",fontSize:12}}><option value="All">All Sections</option>{allSections.map(s=><option key={s}>{s}</option>)}</select>
+          <select value={filterVendor} onChange={e=>setFilterVendor(e.target.value)} style={{...inp,width:"auto",fontSize:12}}><option value="All">All Vendors</option>{allVendorNames.map(v=><option key={v}>{v}</option>)}</select>
+          {(filterSection!=="All"||filterVendor!=="All")&&<button onClick={()=>{setFilterSection("All");setFilterVendor("All");}} style={{background:"rgba(127,29,29,0.3)",color:"#fca5a5",border:"1px solid rgba(252,165,165,0.3)",borderRadius:5,padding:"4px 10px",fontSize:11,cursor:"pointer"}}>Clear Filters</button>}
+        </div>
+      </div>
+      {filtered.length===0&&<div style={{textAlign:"center",padding:"50px 20px",background:C.card,borderRadius:12,border:"1px dashed "+C.border,color:C.faint}}>No test runs logged yet.</div>}
+      {filtered.map(r=>{
+        const key=r.runId;const isOpen=expandedRun===key;
+        const tcKey=r.section==="Flight Performance"?"Drone":r.section==="Dock Integration"?"Dock":r.section==="Sensors & Payload"?"Sensors":r.section==="Operations & Reliability"?"Reliability":"Use Cases";
+        const tc=TAB_COLORS[tcKey]||TAB_COLORS["Drone"];
+        return(
+          <div key={key} style={{background:C.card,borderRadius:12,border:"1px solid "+(isOpen?tc.border:C.border),overflow:"hidden"}}>
+            <div style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",cursor:"pointer"}} onClick={()=>setExpandedRun(isOpen?null:key)}>
+              <span style={{background:tc.active,color:tc.color,border:"1px solid "+tc.border,borderRadius:5,padding:"2px 8px",fontSize:10,fontWeight:800,whiteSpace:"nowrap"}}>{r.section}</span>
+              <span style={{color:"#fff",fontWeight:700,fontSize:13}}>{r.vendor}</span>
+              <span style={{color:C.muted,fontSize:12}}>{r.label}</span>
+              <div style={{flex:1,display:"flex",gap:12,justifyContent:"center"}}>
+                <span style={{color:C.muted,fontSize:11}}>📅 {r.date||"—"}</span>
+                <span style={{color:C.muted,fontSize:11}}>👤 {r.evaluator||"—"}</span>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <div style={{display:"flex",gap:6,fontSize:11}}><span style={{color:"#86efac",fontWeight:700}}>{r.pass}P</span><span style={{color:"#fca5a5",fontWeight:700}}>{r.fail}F</span><span style={{color:C.muted}}>{r.pending}?</span></div>
+                <span style={{background:statusBg(r),color:statusColor(r),border:"1px solid "+statusColor(r),borderRadius:5,padding:"2px 9px",fontSize:11,fontWeight:800,whiteSpace:"nowrap"}}>{statusLabel(r)}</span>
+              </div>
+              <span style={{color:C.muted,fontSize:14}}>{isOpen?"▲":"▼"}</span>
+            </div>
+            {isOpen&&(
+              <div style={{padding:"0 16px 16px",borderTop:"1px solid "+C.border}}>
+                <div style={{overflowX:"auto",marginTop:12}}>
+                  <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+                    <thead><tr style={{borderBottom:"1px solid "+tc.border,background:tc.active}}>{["Test","Min. Standard","Result","Tester","Date","Notes"].map(h=><th key={h} style={{padding:"7px 10px",textAlign:"left",color:tc.color,fontWeight:700,fontSize:11,textTransform:"uppercase",whiteSpace:"nowrap"}}>{h}</th>)}</tr></thead>
+                    <tbody>{(r.tests||[]).map((t,i)=>{
+                      const res=r.results[t.id+"_pfn"]||"";
+                      return(<tr key={t.id} style={{borderBottom:"1px solid rgba(255,255,255,0.04)",background:i%2===0?"transparent":"rgba(255,255,255,0.02)"}}>
+                        <td style={{padding:"6px 10px",color:C.text}}>{t.test}</td>
+                        <td style={{padding:"6px 10px",color:C.muted,fontSize:11}}>{t.standard}</td>
+                        <td style={{padding:"6px 8px"}}>{res?<span style={{background:pfBg(res),color:pfColor(res),border:"1px solid "+pfBrd(res),borderRadius:4,padding:"2px 8px",fontSize:11,fontWeight:700}}>{res}</span>:<span style={{color:C.faint,fontSize:11}}>—</span>}</td>
+                        <td style={{padding:"6px 10px",color:C.muted,fontSize:11}}>{r.notes[t.id+"_tester"]||"—"}</td>
+                        <td style={{padding:"6px 10px",color:C.muted,fontSize:11,whiteSpace:"nowrap"}}>{r.notes[t.id+"_date"]||"—"}</td>
+                        <td style={{padding:"6px 10px",color:C.muted,fontSize:11}}>{r.notes[t.id]||"—"}</td>
+                      </tr>);
+                    })}</tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Main App ───────────────────────────────────────────────────────────────
 export default function DroneTeviApp(){
   const [state,dispatch]=useReducer(reducer,{oems:[mkOEM("DJI"),mkOEM("SKYDIO"),mkOEM("Sunflower"),mkOEM("Quantum Systems")],activeOEM:0});
   const [tab,setTab]=useState("Overview");
@@ -377,943 +1326,8 @@ export default function DroneTeviApp(){
   const [newName,setNewName]=useState("");
   const oem=state.oems[state.activeOEM];
 
-  const handleMetarPaste=(li,val)=>{
-    if(!val.trim()){dispatch({type:"UPD_LOG",li,f:"metarRaw",v:val});return;}
-    const parsed=parseMetar(val);
-    Object.keys(parsed).forEach(f=>dispatch({type:"UPD_LOG",li,f,v:parsed[f]}));
-  };
-
   const buildTestCtx=sectionKey=>"Tests: "+TESTS[sectionKey].map(t=>t.test+": "+(oem.results[t.id+"_pfn"]||"Pending")).join(", ");
   const buildAllResultsCtx=()=>Object.keys(TESTS).map(sec=>{const r=(TESTS[sec]||[]).map(t=>oem.results[t.id+"_pfn"]).filter(Boolean);return sec+": "+r.filter(v=>v==="Pass").length+"P/"+r.filter(v=>v==="Fail").length+"F";}).join(", ");
-
-  function ExecSummaryBtn({sectionName,contextData}){
-    const [open,setOpen]=useState(false);
-    const [loading,setLoading]=useState(false);
-    const [text,setText]=useState("");
-    const activeSite=OPSITES.find(s=>s.key===(oem.activeSite||"site_TRG"))||OPSITES[0];
-    const generate=()=>{
-      setLoading(true);setText("");setOpen(true);
-      const prompt="You are a drone procurement analyst. Write a concise ONE-PAGE executive summary focused on the "+sectionName+" section of a drone evaluation.\n\nPlatform: "+(oem.name||"Unknown")+" | Model: "+(oem.model||"N/A")+" | Evaluator: "+(oem.evaluator||"N/A")+" | Site: "+activeSite.label+"\nProcurement decision: "+((oem.procurement&&oem.procurement.decision)||"Not yet made")+"\n\nSECTION FOCUS: "+sectionName+"\n"+(contextData||"No additional context.")+"\n\nWrite a professional executive summary with:\n1. SECTION OVERVIEW (2-3 sentences)\n2. KEY FINDINGS (bullet points)\n3. OPERATIONAL IMPACT\n4. RECOMMENDATION (PROCEED / DO NOT PROCEED / CONDITIONAL)\n\nUnder 350 words. Be direct. Plain text only, no markdown symbols.";
-      fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:prompt}]})})
-        .then(r=>r.json()).then(data=>{setText((data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n")||"No summary generated.");setLoading(false);})
-        .catch(()=>{setText("Error generating summary.");setLoading(false);});
-    };
-    return(
-      <div style={{marginTop:16}}>
-        <button onClick={generate} disabled={loading} style={{display:"flex",alignItems:"center",gap:8,padding:"9px 18px",borderRadius:8,border:"1px solid rgba(134,239,172,0.45)",background:"rgba(20,83,45,0.35)",color:"#86efac",fontWeight:700,fontSize:12,cursor:loading?"not-allowed":"pointer",opacity:loading?0.6:1}}>
-          {loading?"Generating...":"📋 Generate Executive Summary"}
-        </button>
-        {open&&(
-          <div style={{marginTop:12,background:"rgba(0,0,0,0.5)",borderRadius:10,padding:16,border:"1px solid rgba(134,239,172,0.35)"}}>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-              <span style={{color:"#86efac",fontWeight:700,fontSize:12,letterSpacing:1,textTransform:"uppercase"}}>Executive Summary — {sectionName}</span>
-              <button onClick={()=>setOpen(false)} style={{background:"rgba(127,29,29,0.3)",color:"#fca5a5",border:"1px solid rgba(252,165,165,0.3)",borderRadius:5,padding:"2px 9px",fontSize:11,cursor:"pointer"}}>x</button>
-            </div>
-            {loading?<div style={{textAlign:"center",padding:"20px",color:C.muted,fontSize:13}}>Analyzing data...</div>
-              :<div style={{color:C.text,fontSize:12,lineHeight:1.8,whiteSpace:"pre-wrap"}}>{text}</div>}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  function Overview(){
-    const activeKey=oem.activeSite||"site_TRG";
-    const activeSite=OPSITES.find(s=>s.key===activeKey)||OPSITES[0];
-    return(
-      <div style={{display:"grid",gap:16}}>
-        <div style={{background:C.card,borderRadius:12,padding:20,border:"1px solid rgba(74,158,255,0.25)"}}>
-          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,paddingBottom:12,borderBottom:"1px solid rgba(74,158,255,0.15)"}}>
-            <div style={{width:3,height:20,borderRadius:2,background:"#4a9eff"}}/>
-            <span style={{color:"#4a9eff",fontWeight:700,fontSize:13,letterSpacing:2,textTransform:"uppercase"}}>Platform Identification</span>
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
-            {[["name","OEM / Vendor Name"],["manufacturer","Manufacturer"],["model","Drone Model"],["serial","Serial Number"],["dockModel","Dock Model"],["dockSerial","Dock Serial No."],["evaluator","Lead Evaluator"],["startDate","Evaluation Start Date"],["location","Primary Test Location"]].map(([f,l])=>(
-              <div key={f}><label style={lbl}>{l}</label><input value={oem[f]||""} onChange={e=>dispatch({type:"UPD_FIELD",f,v:e.target.value})} style={{...inp,marginTop:4}}/></div>
-            ))}
-          </div>
-        </div>
-        <div style={{background:C.card,borderRadius:12,padding:20,border:"1px solid rgba(74,158,255,0.25)"}}>
-          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16,paddingBottom:12,borderBottom:"1px solid rgba(74,158,255,0.15)"}}>
-            <div style={{width:3,height:20,borderRadius:2,background:"#4a9eff"}}/>
-            <span style={{color:"#4a9eff",fontWeight:700,fontSize:13,letterSpacing:2,textTransform:"uppercase"}}>Test Sites</span>
-            <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:8}}>
-              <span style={{color:C.muted,fontSize:11,fontWeight:600,textTransform:"uppercase"}}>Testing At:</span>
-              <select value={activeKey} onChange={e=>dispatch({type:"UPD_FIELD",f:"activeSite",v:e.target.value})} style={{background:"rgba(74,158,255,0.1)",border:"1px solid rgba(74,158,255,0.4)",borderRadius:6,color:"#4a9eff",padding:"5px 10px",fontSize:12,fontWeight:700,cursor:"pointer"}}>
-                {OPSITES.map(s=><option key={s.key} value={s.key}>{s.badge} — {s.label}</option>)}
-              </select>
-            </div>
-          </div>
-          <div style={{display:"flex",alignItems:"center",gap:10,padding:"9px 14px",borderRadius:8,background:"rgba(74,158,255,0.08)",border:"1px solid rgba(74,158,255,0.3)",marginBottom:16}}>
-            <span>📍</span>
-            <span style={{color:"#4a9eff",fontWeight:700,fontSize:12}}>CURRENTLY TESTING AT:</span>
-            <span style={{background:"rgba(74,158,255,0.2)",color:"#4a9eff",borderRadius:4,padding:"2px 10px",fontSize:12,fontWeight:800,border:"1px solid rgba(74,158,255,0.4)"}}>{activeSite.badge}</span>
-            <span style={{color:"#fff",fontSize:13,fontWeight:600}}>{activeSite.label}</span>
-            {activeSite.dock&&<span style={{marginLeft:"auto",color:C.muted,fontSize:10,background:"rgba(255,255,255,0.06)",borderRadius:4,padding:"2px 8px",border:"1px solid "+C.border,fontWeight:600}}>DOCK INSTALLED</span>}
-          </div>
-          <div style={{overflowX:"auto"}}>
-            <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
-              <thead><tr style={{background:"rgba(74,158,255,0.06)",borderBottom:"1px solid rgba(74,158,255,0.2)"}}>
-                {["Site","Name","Address / GPS","Dock","Notes","Active"].map(h=><th key={h} style={{padding:"8px 12px",textAlign:"left",color:"#4a9eff",fontSize:11,fontWeight:700,textTransform:"uppercase",whiteSpace:"nowrap"}}>{h}</th>)}
-              </tr></thead>
-              <tbody>
-                {OPSITES.map((s,i)=>{
-                  const on=activeKey===s.key;
-                  return(
-                    <tr key={s.key} style={{borderBottom:"1px solid rgba(255,255,255,0.04)",background:on?"rgba(74,158,255,0.07)":i%2===0?"transparent":"rgba(255,255,255,0.02)"}}>
-                      <td style={{padding:"8px 12px"}}><span style={{background:on?"rgba(74,158,255,0.2)":"rgba(255,255,255,0.07)",color:on?"#4a9eff":C.muted,borderRadius:4,padding:"2px 10px",fontSize:11,fontWeight:800,border:"1px solid "+(on?"rgba(74,158,255,0.4)":C.border)}}>{s.badge}</span></td>
-                      <td style={{padding:"8px 12px",color:on?"#fff":C.text,fontWeight:on?600:400,whiteSpace:"nowrap"}}>{s.label}</td>
-                      <td style={{padding:"6px 8px"}}><input value={oem[s.key]||""} onChange={e=>dispatch({type:"UPD_FIELD",f:s.key,v:e.target.value})} style={{...inp,minWidth:200,fontSize:12}} placeholder="Address or GPS..."/></td>
-                      <td style={{padding:"8px 12px"}}>{s.dock?<span style={{fontSize:11,fontWeight:700,color:"#86efac",background:"rgba(20,83,45,0.5)",borderRadius:4,padding:"2px 8px",border:"1px solid #166534"}}>YES</span>:<span style={{fontSize:11,color:C.faint,background:"rgba(255,255,255,0.04)",borderRadius:4,padding:"2px 8px",border:"1px solid "+C.border}}>—</span>}</td>
-                      <td style={{padding:"6px 8px"}}><input value={oem[s.key+"_notes"]||""} onChange={e=>dispatch({type:"UPD_FIELD",f:s.key+"_notes",v:e.target.value})} style={{...inp,minWidth:140,fontSize:12}} placeholder="Notes..."/></td>
-                      <td style={{padding:"8px 12px",textAlign:"center"}}><button onClick={()=>dispatch({type:"UPD_FIELD",f:"activeSite",v:s.key})} style={{padding:"4px 14px",borderRadius:6,border:"1px solid "+(on?"#16a34a":C.border),background:on?"rgba(20,83,45,0.6)":"rgba(255,255,255,0.04)",color:on?"#86efac":C.muted,fontWeight:on?700:400,fontSize:11,cursor:"pointer"}}>{on?"✓ Active":"Select"}</button></td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  function InlineWeather({sectionKey}){
-    const storeKey="wx_"+sectionKey;
-    const raw=oem.notes[storeKey];
-    const wx=raw?JSON.parse(raw):{metarRaw:"",windDir:"",windSpeed:"",windSpeedMph:"",windGust:"",tempC:"",precipitation:"",skyCover:"",visibility:"",humidity:"",kpIndex:""};
-    const save=obj=>dispatch({type:"UPD_NOTE",id:storeKey,v:JSON.stringify(obj)});
-    const handleMetar=val=>{
-      if(!val.trim()){save({...wx,metarRaw:val});return;}
-      const p=parseMetar(val);
-      save({...wx,metarRaw:val,windDir:p.windDir||wx.windDir,windSpeed:p.windSpeed||wx.windSpeed,windSpeedMph:p.windSpeedMph||wx.windSpeedMph,windGust:p.windGust||wx.windGust,tempC:p.tempC||wx.tempC,precipitation:p.presentWeather||wx.precipitation,skyCover:p.sky1||wx.skyCover,visibility:p.visibility||wx.visibility,humidity:p.relHumidity||wx.humidity});
-    };
-    const windDirOpts=["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW","VRB Variable"];
-    const precipOpts=["None","RA Rain","DZ Drizzle","SN Snow","GR Hail","TSRA Thunderstorm","BR Mist","FG Fog","HZ Haze","FU Smoke"];
-    const skyOpts=["SKC Clear","FEW Few Clouds","SCT Scattered","BKN Broken","OVC Overcast"];
-    const visopts=["10+ SM Clear","7-10 SM Good","5-7 SM Moderate","3-5 SM Reduced","1-3 SM Poor","<1 SM Very Poor"];
-    const sp=[];
-    if(wx.windDir&&wx.windSpeed)sp.push(wx.windDir+" "+wx.windSpeed+"kt"+(wx.windGust?" G"+wx.windGust+"kt":""));
-    if(wx.windSpeedMph)sp.push(wx.windSpeedMph+" mph");
-    if(wx.tempC)sp.push(wx.tempC+"°C");
-    if(wx.skyCover)sp.push(wx.skyCover.split(" ")[0]);
-    if(wx.visibility)sp.push("Vis "+wx.visibility.split(" ")[0]);
-    if(wx.kpIndex)sp.push("Kp "+wx.kpIndex.split(" ")[0]);
-    return(
-      <div style={{marginBottom:16,background:"rgba(56,189,248,0.05)",borderRadius:10,padding:14,border:"1px solid rgba(56,189,248,0.25)"}}>
-        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,flexWrap:"wrap"}}>
-          <span style={{fontSize:14}}>🌤</span>
-          <span style={{color:"#38bdf8",fontWeight:700,fontSize:11,textTransform:"uppercase",letterSpacing:1.2}}>Test Conditions — {sectionKey}</span>
-          {sp.length>0&&<span style={{marginLeft:"auto",fontSize:11,color:"#38bdf8",background:"rgba(56,189,248,0.1)",borderRadius:4,padding:"2px 10px",border:"1px solid rgba(56,189,248,0.3)",whiteSpace:"nowrap"}}>{sp.join(" · ")}</span>}
-        </div>
-        <div style={{marginBottom:10}}>
-          <label style={{...lbl,color:"rgba(56,189,248,0.7)"}}>METAR — Paste to Auto-Fill</label>
-          <input value={wx.metarRaw||""} onChange={e=>handleMetar(e.target.value)} style={{...inp,marginTop:4,fontFamily:"monospace",fontSize:11,borderColor:"rgba(56,189,248,0.25)"}} placeholder="e.g. KLAX 271755Z 25008KT 10SM FEW025 18/10 A2998"/>
-        </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8,marginBottom:10}}>
-          <div><label style={{...lbl,color:"rgba(56,189,248,0.7)"}}>Direction</label><select value={wx.windDir||""} onChange={e=>save({...wx,windDir:e.target.value})} style={{...inp,marginTop:4,fontSize:11,cursor:"pointer",borderColor:"rgba(56,189,248,0.25)"}}><option value="">Select...</option>{windDirOpts.map(o=><option key={o}>{o}</option>)}</select></div>
-          <div><label style={{...lbl,color:"rgba(56,189,248,0.7)"}}>Speed (kt)</label><input type="number" value={wx.windSpeed||""} onChange={e=>{const kt=e.target.value;save({...wx,windSpeed:kt,windSpeedMph:kt?(parseFloat(kt)*1.15078).toFixed(1):""});}} style={{...inp,marginTop:4,fontSize:11,borderColor:"rgba(56,189,248,0.25)"}} placeholder="0"/></div>
-          <div><label style={{...lbl,color:"rgba(56,189,248,0.7)"}}>Speed (mph)</label><input value={wx.windSpeedMph||""} onChange={e=>save({...wx,windSpeedMph:e.target.value})} style={{...inp,marginTop:4,fontSize:11,borderColor:"rgba(56,189,248,0.25)"}} placeholder="Auto-calc"/></div>
-          <div><label style={{...lbl,color:"rgba(56,189,248,0.7)"}}>Gust (kt)</label><input type="number" value={wx.windGust||""} onChange={e=>save({...wx,windGust:e.target.value})} style={{...inp,marginTop:4,fontSize:11,borderColor:"rgba(56,189,248,0.25)"}} placeholder="—"/></div>
-        </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8}}>
-          <div><label style={{...lbl,color:"rgba(56,189,248,0.7)"}}>Cloud Cover</label><select value={wx.skyCover||""} onChange={e=>save({...wx,skyCover:e.target.value})} style={{...inp,marginTop:4,fontSize:11,cursor:"pointer",borderColor:"rgba(56,189,248,0.25)"}}><option value="">Select...</option>{skyOpts.map(o=><option key={o}>{o}</option>)}</select></div>
-          <div><label style={{...lbl,color:"rgba(56,189,248,0.7)"}}>Visibility</label><select value={wx.visibility||""} onChange={e=>save({...wx,visibility:e.target.value})} style={{...inp,marginTop:4,fontSize:11,cursor:"pointer",borderColor:"rgba(56,189,248,0.25)"}}><option value="">Select...</option>{visopts.map(o=><option key={o}>{o}</option>)}</select></div>
-          <div><label style={{...lbl,color:"rgba(56,189,248,0.7)"}}>Precipitation</label><select value={wx.precipitation||""} onChange={e=>save({...wx,precipitation:e.target.value})} style={{...inp,marginTop:4,fontSize:11,cursor:"pointer",borderColor:"rgba(56,189,248,0.25)"}}><option value="">Select...</option>{precipOpts.map(o=><option key={o}>{o}</option>)}</select></div>
-          <div><label style={{...lbl,color:"rgba(56,189,248,0.7)"}}>Temp (°C)</label><input type="number" value={wx.tempC||""} onChange={e=>save({...wx,tempC:e.target.value})} style={{...inp,marginTop:4,fontSize:11,borderColor:"rgba(56,189,248,0.25)"}} placeholder="18"/></div>
-        </div>
-      </div>
-    );
-  }
-
-  function SecTable({sKey}){
-    const tcKey=sKey==="Flight Performance"?"Drone":sKey==="Dock Integration"?"Dock":sKey==="Sensors & Payload"?"Sensors":sKey==="Operations & Reliability"?"Reliability":"Drone";
-    const tc=TAB_COLORS[tcKey]||TAB_COLORS["Drone"];
-    const sectionRuns=(oem.testRuns||[]).filter(r=>r.section===sKey);
-    const [activeRun,setActiveRun]=useState(-1);
-    const isMain=activeRun===-1;
-    const getVal=tid=>isMain?oem.results[tid+"_pfn"]||"":(sectionRuns[activeRun]?.results[tid+"_pfn"]||"");
-    const setVal=(tid,v)=>isMain?dispatch({type:"UPD_RESULT",id:tid+"_pfn",v}):dispatch({type:"UPD_RUN_RESULT",ri:activeRun,id:tid+"_pfn",v});
-    const getNote=(tid,sfx)=>isMain?oem.notes[tid+(sfx||"")]||"":(sectionRuns[activeRun]?.notes[tid+(sfx||"")]||"");
-    const setNote=(tid,sfx,v)=>isMain?dispatch({type:"UPD_NOTE",id:tid+(sfx||""),v}):dispatch({type:"UPD_RUN",ri:activeRun,f:"notes",v:{...sectionRuns[activeRun].notes,[tid+(sfx||"")]:v}});
-    return(
-      <div style={{background:C.card,borderRadius:12,padding:18,border:"1px solid "+tc.border}}>
-        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,paddingBottom:12,borderBottom:"1px solid "+tc.border}}>
-          <div style={{width:3,height:20,borderRadius:2,background:tc.color}}/>
-          <span style={{color:tc.color,fontWeight:700,fontSize:11,textTransform:"uppercase",letterSpacing:1.5}}>{sKey}</span>
-          <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
-            <button onClick={()=>setActiveRun(-1)} style={{padding:"3px 10px",borderRadius:5,border:"1px solid "+(isMain?tc.color:C.border),background:isMain?tc.color+"22":"transparent",color:isMain?tc.color:C.muted,fontSize:11,fontWeight:isMain?700:400,cursor:"pointer"}}>Session 1</button>
-            {sectionRuns.map((r,i)=>(
-              <button key={r.id} onClick={()=>setActiveRun(i)} style={{padding:"3px 10px",borderRadius:5,border:"1px solid "+(activeRun===i?tc.color:C.border),background:activeRun===i?tc.color+"22":"transparent",color:activeRun===i?tc.color:C.muted,fontSize:11,fontWeight:activeRun===i?700:400,cursor:"pointer"}}>{r.label||"Run "+(i+2)}</button>
-            ))}
-            <button onClick={()=>{dispatch({type:"ADD_RUN",section:sKey});setActiveRun(sectionRuns.length);}} style={{padding:"3px 10px",borderRadius:5,border:"1px dashed rgba(255,255,255,0.25)",background:"transparent",color:C.muted,fontSize:12,cursor:"pointer",fontWeight:700}}>+ Add Run</button>
-          </div>
-        </div>
-        {!isMain&&sectionRuns[activeRun]&&(
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:8,marginBottom:14,padding:"10px 12px",background:"rgba(255,255,255,0.03)",borderRadius:8,border:"1px solid "+C.border}}>
-            <div><label style={lbl}>Run Label</label><input value={sectionRuns[activeRun].label||""} onChange={e=>dispatch({type:"UPD_RUN",ri:activeRun,f:"label",v:e.target.value})} style={{...inp,marginTop:4,fontSize:11}}/></div>
-            <div><label style={lbl}>Date</label><input type="date" value={sectionRuns[activeRun].date||""} onChange={e=>dispatch({type:"UPD_RUN",ri:activeRun,f:"date",v:e.target.value})} style={{...inp,marginTop:4,fontSize:11}}/></div>
-            <div><label style={lbl}>Time</label><input type="time" value={sectionRuns[activeRun].time||""} onChange={e=>dispatch({type:"UPD_RUN",ri:activeRun,f:"time",v:e.target.value})} style={{...inp,marginTop:4,fontSize:11}}/></div>
-            <div><label style={lbl}>Evaluator</label><input value={sectionRuns[activeRun].evaluator||""} onChange={e=>dispatch({type:"UPD_RUN",ri:activeRun,f:"evaluator",v:e.target.value})} style={{...inp,marginTop:4,fontSize:11}} placeholder="Name..."/></div>
-            <div><label style={lbl}>Weather Summary</label><input value={sectionRuns[activeRun].wxSummary||""} onChange={e=>dispatch({type:"UPD_RUN",ri:activeRun,f:"wxSummary",v:e.target.value})} style={{...inp,marginTop:4,fontSize:11}} placeholder="e.g. 12kt NW"/></div>
-          </div>
-        )}
-        {!isMain&&<div style={{display:"flex",justifyContent:"flex-end",marginBottom:10}}><button onClick={()=>{dispatch({type:"DEL_RUN",ri:activeRun});setActiveRun(-1);}} style={{background:"rgba(127,29,29,0.3)",color:"#fca5a5",border:"1px solid rgba(252,165,165,0.3)",borderRadius:5,padding:"3px 10px",fontSize:11,cursor:"pointer"}}>Delete This Run</button></div>}
-        <div style={{overflowX:"auto"}}>
-          <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
-            <thead><tr style={{borderBottom:"1px solid "+tc.border,background:tc.active}}>
-              {["Test","Min. Standard","Pass / Fail / N/A","Tester","Date","Notes"].map(h=><th key={h} style={{padding:"8px 10px",textAlign:"left",color:tc.color,fontWeight:700,fontSize:11,letterSpacing:0.5,textTransform:"uppercase",whiteSpace:"nowrap"}}>{h}</th>)}
-            </tr></thead>
-            <tbody>
-              {(TESTS[sKey]||[]).map((t,i)=>(
-                <tr key={t.id} style={{borderBottom:"1px solid rgba(255,255,255,0.04)",background:i%2===0?"transparent":"rgba(255,255,255,0.02)"}}>
-                  <td style={{padding:"7px 10px",color:C.text}}>{t.test}</td>
-                  <td style={{padding:"7px 10px",color:C.muted,fontSize:12,whiteSpace:"nowrap"}}>{t.standard}</td>
-                  <td style={{padding:"6px 8px"}}><PFButtons value={getVal(t.id)} onChange={v=>setVal(t.id,v)}/></td>
-                  <td style={{padding:"6px 8px"}}><input value={getNote(t.id,"_tester")} onChange={e=>setNote(t.id,"_tester",e.target.value)} style={{...inp,width:100}} placeholder="Name..."/></td>
-                  <td style={{padding:"6px 8px"}}><input type="date" value={getNote(t.id,"_date")} onChange={e=>setNote(t.id,"_date",e.target.value)} style={{...inp,width:120}}/></td>
-                  <td style={{padding:"6px 8px"}}><input value={getNote(t.id,"")} onChange={e=>setNote(t.id,"",e.target.value)} style={{...inp,minWidth:130}} placeholder="Notes..."/></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    );
-  }
-
-  function SectionSignOff({sectionName}){
-    const key="section_signoff_"+sectionName;
-    const raw=oem.notes[key];
-    const data=raw?JSON.parse(raw):{name:"",role:"",date:"",signature:"",approved:false};
-    const save=obj=>dispatch({type:"UPD_NOTE",id:key,v:JSON.stringify(obj)});
-    return(
-      <div style={{marginTop:20,background:"rgba(0,0,0,0.4)",borderRadius:12,border:"2px solid "+(data.approved?"rgba(22,101,52,0.7)":C.border),padding:18}}>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
-          <div>
-            <div style={{color:data.approved?"#86efac":C.accent,fontWeight:700,fontSize:12,letterSpacing:2,textTransform:"uppercase"}}>{sectionName} — Section Sign-Off</div>
-            <div style={{color:C.muted,fontSize:11,marginTop:2}}>{data.approved?"This section has been formally approved.":"Complete testing before signing off."}</div>
-          </div>
-          {data.approved&&<div style={{background:"rgba(20,83,45,0.7)",color:"#86efac",borderRadius:6,padding:"4px 14px",fontSize:11,fontWeight:700,border:"1px solid #166534"}}>SECTION APPROVED</div>}
-        </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:12}}>
-          <div><label style={lbl}>Evaluator Name</label><input value={data.name||""} onChange={e=>save({...data,name:e.target.value})} style={{...inp,marginTop:4}} placeholder="Full name..."/></div>
-          <div><label style={lbl}>Role</label><select value={data.role||""} onChange={e=>save({...data,role:e.target.value})} style={{...inp,marginTop:4,cursor:"pointer"}}><option value="">Select...</option>{ROLES.map(r=><option key={r}>{r}</option>)}</select></div>
-          <div><label style={lbl}>Date</label><input type="date" value={data.date||""} onChange={e=>save({...data,date:e.target.value})} style={{...inp,marginTop:4}}/></div>
-        </div>
-        <div style={{marginBottom:14}}>
-          <label style={lbl}>Electronic Signature</label>
-          <div style={{position:"relative",marginTop:4}}>
-            <input value={data.signature||""} onChange={e=>save({...data,signature:e.target.value})} style={{...inp,fontSize:15,fontStyle:"italic",fontFamily:"Georgia,serif",letterSpacing:1,paddingLeft:34}} placeholder="Type full name as signature..."/>
-            <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:C.muted,fontSize:13}}>✍</span>
-          </div>
-          {data.signature&&<div style={{marginTop:4,fontSize:11,color:"rgba(200,200,200,0.45)",fontStyle:"italic"}}>Signed: {data.signature} · {data.date||"date not set"}</div>}
-        </div>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",borderTop:"1px solid "+C.border,paddingTop:14}}>
-          <div style={{fontSize:11,color:C.muted}}>{data.signature?"Signed by "+data.name+(data.role?" · "+data.role:""):"Signature required before approving."}</div>
-          <button onClick={()=>{if(!data.signature){alert("Please enter a signature.");return;}save({...data,approved:!data.approved});}}
-            style={{padding:"8px 20px",borderRadius:8,border:"2px solid",cursor:"pointer",fontWeight:800,fontSize:13,borderColor:data.approved?"#16a34a":"rgba(200,200,200,0.2)",background:data.approved?"rgba(20,83,45,0.7)":"rgba(255,255,255,0.05)",color:data.approved?"#86efac":C.muted}}>
-            {data.approved?"Approved — Click to Revoke":"Approve This Section"}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  function PayloadOptions(){
-    const pt=oem.payloadTests||{};
-    const setPF=(id,field,val)=>dispatch({type:"UPD_FIELD",f:"payloadTests",v:{...pt,[id]:{...pt[id],[field]:val}}});
-    const selected=PAYLOAD_LIST.filter(p=>(pt[p.id]||{}).selected);
-    const grouped={};
-    PAYLOAD_LIST.forEach(p=>{if(!grouped[p.category])grouped[p.category]=[];grouped[p.category].push(p);});
-    const catIcons={"Optical / EO":"📷","Thermal / IR":"🌡","Multispectral":"🔬","LiDAR":"📡","Communication":"📶","Spotlight":"🔦","Speaker":"🔊","Other":"🔧"};
-    return(
-      <div style={{display:"grid",gap:14}}>
-        <div style={{background:C.card,borderRadius:12,padding:"14px 20px",border:"1px solid "+C.border,display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12}}>
-          <div>
-            <div style={{color:"#fff",fontWeight:800,fontSize:15}}>Payload Compatibility & Evaluation</div>
-            <div style={{color:C.muted,fontSize:12,marginTop:3}}>{selected.length} payload{selected.length!==1?"s":""} selected</div>
-          </div>
-        </div>
-        <div style={{background:C.card,borderRadius:12,border:"1px solid "+C.border,overflow:"hidden"}}>
-          <div style={{overflowX:"auto"}}>
-            <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
-              <thead><tr style={{background:"rgba(0,0,0,0.35)",borderBottom:"1px solid "+C.border}}>
-                {["Selected","Payload","Category","Pass / Fail / N/A","Tester","Notes"].map(h=><th key={h} style={{padding:"10px 12px",textAlign:"left",color:C.accent,fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:0.6,whiteSpace:"nowrap"}}>{h}</th>)}
-              </tr></thead>
-              <tbody>
-                {Object.keys(grouped).map(cat=>{
-                  const items=grouped[cat];
-                  const m=catColors[cat]||{color:C.accent,bg:"rgba(255,255,255,0.06)",border:C.border};
-                  return[
-                    <tr key={"cat-"+cat} style={{background:m.bg,borderTop:"1px solid "+m.border,borderBottom:"1px solid "+m.border}}>
-                      <td colSpan={6} style={{padding:"7px 12px"}}><div style={{display:"flex",alignItems:"center",gap:7}}><span style={{fontSize:14}}>{catIcons[cat]||"•"}</span><span style={{color:m.color,fontWeight:700,fontSize:11,textTransform:"uppercase",letterSpacing:1.2}}>{cat}</span></div></td>
-                    </tr>,
-                    ...items.map((p,i)=>{
-                      const sel=(pt[p.id]||{}).selected;const d=pt[p.id]||{};
-                      return(
-                        <tr key={p.id} style={{borderBottom:"1px solid rgba(255,255,255,0.04)",background:sel?m.bg:i%2===0?"transparent":"rgba(255,255,255,0.02)"}}>
-                          <td style={{padding:"8px 12px",textAlign:"center",width:60}}><div onClick={()=>setPF(p.id,"selected",!sel)} style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:22,height:22,borderRadius:6,border:"1px solid "+(sel?m.color:C.border),background:sel?m.color:"transparent",cursor:"pointer"}}>{sel&&<span style={{color:"#000",fontSize:13,fontWeight:900,lineHeight:1}}>✓</span>}</div></td>
-                          <td style={{padding:"8px 12px",color:sel?"#fff":C.text,fontWeight:sel?600:400,cursor:"pointer"}} onClick={()=>setPF(p.id,"selected",!sel)}>{p.label}</td>
-                          <td style={{padding:"8px 12px"}}><span style={{fontSize:10,color:m.color,background:m.bg,border:"1px solid "+m.border,borderRadius:4,padding:"2px 7px",whiteSpace:"nowrap"}}>{cat}</span></td>
-                          <td style={{padding:"6px 10px"}}>{sel?<PFButtons value={d.result||""} onChange={v=>setPF(p.id,"result",v)}/>:<span style={{color:C.faint,fontSize:11}}>Select to enable</span>}</td>
-                          <td style={{padding:"6px 10px"}}>{sel?<input value={d.tester||""} onChange={e=>setPF(p.id,"tester",e.target.value)} style={{...inp,fontSize:11,padding:"4px 7px",width:100}} placeholder="Name..."/>:<span style={{color:C.faint,fontSize:11}}>—</span>}</td>
-                          <td style={{padding:"6px 10px"}}>{sel?<input value={d.notes||""} onChange={e=>setPF(p.id,"notes",e.target.value)} style={{...inp,fontSize:11,padding:"4px 7px",minWidth:160}} placeholder="Notes..."/>:<span style={{color:C.faint,fontSize:11}}>—</span>}</td>
-                        </tr>
-                      );
-                    })
-                  ];
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  function UseCases(){
-    const [activeSection,setActiveSection]=useState("Law Enforcement");
-    const sectionMeta={"Law Enforcement":{color:"#4a9eff",bg:"rgba(74,158,255,0.08)",border:"rgba(74,158,255,0.3)",icon:"🚔"},"Campus Security":{color:"#a78bfa",bg:"rgba(167,139,250,0.08)",border:"rgba(167,139,250,0.3)",icon:"🏛"},"Critical Infrastructure":{color:"#f59e0b",bg:"rgba(245,158,11,0.08)",border:"rgba(245,158,11,0.3)",icon:"🏭"}};
-    const meta=sectionMeta[activeSection];
-    return(
-      <div style={{display:"grid",gap:14}}>
-        <div style={{background:C.card,borderRadius:12,padding:14,border:"1px solid "+C.border}}>
-          <div style={{color:C.muted,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Security Application Tests</div>
-          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{Object.keys(sectionMeta).map(s=>{const m=sectionMeta[s];const active=activeSection===s;return(<button key={s} onClick={()=>setActiveSection(s)} style={{padding:"8px 16px",borderRadius:8,border:"1px solid "+(active?m.border:C.border),background:active?m.bg:"rgba(255,255,255,0.03)",color:"#fff",fontWeight:active?700:400,fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",gap:6,opacity:active?1:0.55}}><span>{m.icon}</span>{s}</button>);})}</div>
-        </div>
-        <div style={{background:C.card,borderRadius:12,border:"1px solid "+meta.border,padding:18}}>
-          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16,paddingBottom:14,borderBottom:"1px solid "+C.border}}>
-            <span style={{fontSize:22}}>{meta.icon}</span>
-            <div><div style={{color:meta.color,fontSize:15,fontWeight:800}}>{activeSection}</div><div style={{color:C.muted,fontSize:11,marginTop:2}}>Security Application — Scored Tests</div></div>
-          </div>
-          <div style={{overflowX:"auto"}}>
-            <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
-              <thead><tr style={{borderBottom:"1px solid "+C.border}}>{["Test","Min. Standard","Pass / Fail / N/A","Tester","Date","Notes"].map(h=><th key={h} style={{padding:"8px 10px",textAlign:"left",color:C.muted,fontWeight:600,fontSize:11,letterSpacing:0.5,textTransform:"uppercase",whiteSpace:"nowrap"}}>{h}</th>)}</tr></thead>
-              <tbody>{(TESTS[activeSection]||[]).map((t,i)=>(
-                <tr key={t.id} style={{borderBottom:"1px solid rgba(255,255,255,0.04)",background:i%2===0?"transparent":"rgba(255,255,255,0.02)"}}>
-                  <td style={{padding:"7px 10px",color:C.text}}>{t.test}</td>
-                  <td style={{padding:"7px 10px",color:C.muted,fontSize:12}}>{t.standard}</td>
-                  <td style={{padding:"6px 8px"}}><PFButtons value={oem.results[t.id+"_pfn"]||""} onChange={v=>dispatch({type:"UPD_RESULT",id:t.id+"_pfn",v})}/></td>
-                  <td style={{padding:"6px 8px"}}><input value={oem.notes[t.id+"_tester"]||""} onChange={e=>dispatch({type:"UPD_NOTE",id:t.id+"_tester",v:e.target.value})} style={{...inp,width:100}} placeholder="Name..."/></td>
-                  <td style={{padding:"6px 8px"}}><input type="date" value={oem.notes[t.id+"_date"]||""} onChange={e=>dispatch({type:"UPD_NOTE",id:t.id+"_date",v:e.target.value})} style={{...inp,width:120}}/></td>
-                  <td style={{padding:"6px 8px"}}><input value={oem.notes[t.id]||""} onChange={e=>dispatch({type:"UPD_NOTE",id:t.id,v:e.target.value})} style={{...inp,minWidth:130}} placeholder="Notes..."/></td>
-                </tr>
-              ))}</tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  function WeeklyChecks(){
-    return(
-      <div>
-        <p style={{color:"#fde68a",fontSize:13,marginBottom:16,fontWeight:600}}>Track weekly pre-flight inspections across all 16 weeks.</p>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12}}>
-          {Array.from({length:16},(_,i)=>i+1).map(w=>{
-            const done=WEEKLY_ITEMS.filter(item=>oem.weeklyChecks[w+"_"+item]).length;
-            const complete=done===WEEKLY_ITEMS.length;
-            return(
-              <div key={w} style={{background:C.card,borderRadius:10,padding:14,border:"1px solid "+(complete?"rgba(134,239,172,0.4)":"rgba(253,230,138,0.2)")}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-                  <span style={{color:complete?"#86efac":"#fde68a",fontWeight:700,fontSize:13}}>Week {w}</span>
-                  <span style={{fontSize:11,color:complete?"#86efac":C.muted,background:complete?"rgba(20,83,45,0.6)":"rgba(255,255,255,0.06)",borderRadius:4,padding:"2px 7px",fontWeight:600,border:"1px solid "+(complete?"#166534":C.border)}}>{done}/{WEEKLY_ITEMS.length}</span>
-                </div>
-                {WEEKLY_ITEMS.map((item,i)=>(
-                  <label key={i} style={{display:"flex",alignItems:"flex-start",gap:7,marginBottom:6,cursor:"pointer"}}>
-                    <input type="checkbox" checked={!!oem.weeklyChecks[w+"_"+item]} onChange={()=>dispatch({type:"TOGGLE_WEEK",w,item})} style={{marginTop:2,accentColor:C.accent,flexShrink:0}}/>
-                    <span style={{color:oem.weeklyChecks[w+"_"+item]?C.faint:C.muted,fontSize:11,textDecoration:oem.weeklyChecks[w+"_"+item]?"line-through":"none"}}>{item}</span>
-                  </label>
-                ))}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
-
-  function FinalEvalSignOff(){
-    const p=oem.procurement;
-    const sigs=oem.signoffs||[];
-    const approved=sigs.filter(s=>s.approved).length;
-    return(
-      <div style={{display:"grid",gap:14}}>
-        <div style={{background:C.card,borderRadius:12,padding:20,border:"1px solid rgba(134,239,172,0.35)"}}>
-          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,paddingBottom:12,borderBottom:"1px solid rgba(134,239,172,0.25)"}}>
-            <div style={{width:3,height:20,borderRadius:2,background:"#86efac"}}/>
-            <span style={{color:"#86efac",fontSize:13,fontWeight:700,letterSpacing:2,textTransform:"uppercase"}}>Final Evaluation Summary</span>
-          </div>
-          <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
-            <thead><tr style={{borderBottom:"1px solid "+C.border}}>{["Section","Standard","Status"].map(h=><th key={h} style={{padding:"8px 12px",textAlign:"left",color:C.muted,fontWeight:600,fontSize:11,textTransform:"uppercase"}}>{h}</th>)}</tr></thead>
-            <tbody>{Object.keys(TESTS).map((sec,i)=>{
-              const results=(TESTS[sec]||[]).map(t=>oem.results[t.id+"_pfn"]).filter(Boolean);
-              const anyFail=results.some(r=>r==="Fail");
-              const allDone=results.length===(TESTS[sec]||[]).length;
-              const status=results.length===0?"Pending":anyFail?"FAIL":allDone?"PASS":"In Progress";
-              const sc=status==="PASS"?"#86efac":status==="FAIL"?"#fca5a5":C.muted;
-              const sb=status==="PASS"?"rgba(20,83,45,0.6)":status==="FAIL"?"rgba(127,29,29,0.6)":"rgba(255,255,255,0.05)";
-              const sbrd=status==="PASS"?"#166534":status==="FAIL"?"#991b1b":C.border;
-              return(<tr key={sec} style={{borderBottom:"1px solid rgba(255,255,255,0.03)",background:i%2===0?"transparent":"rgba(255,255,255,0.02)"}}><td style={{padding:"8px 12px",color:C.text}}>{sec}</td><td style={{padding:"8px 12px",color:C.muted,fontSize:12}}>All tests Pass or N/A</td><td style={{padding:"8px 12px"}}><span style={{fontSize:12,fontWeight:700,color:sc,background:sb,borderRadius:4,padding:"2px 10px",border:"1px solid "+sbrd}}>{status}</span></td></tr>);
-            })}</tbody>
-          </table></div>
-        </div>
-        <div style={{background:C.card,borderRadius:12,padding:20,border:"1px solid rgba(244,114,182,0.35)"}}>
-          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,paddingBottom:12,borderBottom:"1px solid rgba(244,114,182,0.25)"}}>
-            <div style={{width:3,height:20,borderRadius:2,background:"#f472b6"}}/>
-            <span style={{color:"#f472b6",fontSize:13,fontWeight:700,letterSpacing:2,textTransform:"uppercase"}}>Procurement Decision</span>
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>{[["score","Overall Score/Notes"],["evaluatorName","Lead Evaluator"],["sites","Recommended Sites"],["date","Decision Date"]].map(([f,label])=><div key={f}><label style={lbl}>{label}</label><input value={p[f]||""} onChange={e=>dispatch({type:"UPD_PROC",f,v:e.target.value})} style={{...inp,marginTop:4}}/></div>)}</div>
-          <div style={{marginBottom:12}}><label style={lbl}>Decision</label><div style={{display:"flex",gap:10,marginTop:8}}>{["YES","NO","CONDITIONAL"].map(d=><button key={d} onClick={()=>dispatch({type:"UPD_PROC",f:"decision",v:d})} style={{flex:1,padding:"10px",borderRadius:8,border:"2px solid",cursor:"pointer",fontWeight:800,fontSize:14,borderColor:p.decision===d?(d==="YES"?"#16a34a":d==="NO"?"#dc2626":"#d97706"):C.border,background:p.decision===d?(d==="YES"?"rgba(20,83,45,0.7)":d==="NO"?"rgba(127,29,29,0.7)":"rgba(120,53,15,0.7)"):"rgba(255,255,255,0.04)",color:p.decision===d?(d==="YES"?"#86efac":d==="NO"?"#fca5a5":"#fde68a"):C.muted}}>{d}</button>)}</div></div>
-          <div><label style={lbl}>Conditions / Notes</label><textarea value={p.conditions||""} onChange={e=>dispatch({type:"UPD_PROC",f:"conditions",v:e.target.value})} style={{...inp,marginTop:4,resize:"vertical",minHeight:80}} placeholder="Outstanding conditions..."/></div>
-        </div>
-        <div style={{background:C.card,borderRadius:12,padding:"14px 20px",border:"1px solid "+C.border,display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
-          <div><div style={{color:C.accent,fontWeight:700,fontSize:13,letterSpacing:2,textTransform:"uppercase",marginBottom:4}}>Evaluator Sign-Off</div><div style={{color:C.muted,fontSize:12}}>{approved} of {sigs.length} signed off</div></div>
-          <button onClick={()=>dispatch({type:"ADD_SIG"})} style={{background:"rgba(200,200,200,0.1)",color:"#fff",border:"1px solid "+C.border,borderRadius:7,padding:"7px 14px",fontSize:13,fontWeight:700,cursor:"pointer"}}>+ Add Evaluator</button>
-        </div>
-        {sigs.map((s,si)=>(
-          <div key={si} style={{background:C.card,borderRadius:12,border:"2px solid "+(s.approved?"rgba(22,101,52,0.7)":C.border),padding:20,position:"relative"}}>
-            {s.approved&&<div style={{position:"absolute",top:14,right:52,background:"rgba(20,83,45,0.7)",color:"#86efac",borderRadius:6,padding:"3px 12px",fontSize:11,fontWeight:700,border:"1px solid #166534"}}>SIGNED</div>}
-            <button onClick={()=>dispatch({type:"DEL_SIG",si})} style={{position:"absolute",top:14,right:14,background:"rgba(127,29,29,0.4)",color:"#fca5a5",border:"1px solid #991b1b",borderRadius:5,padding:"3px 8px",fontSize:11,cursor:"pointer"}}>x</button>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:14}}>
-              <div><label style={lbl}>Full Name</label><input value={s.name||""} onChange={e=>dispatch({type:"UPD_SIG",si,f:"name",v:e.target.value})} style={{...inp,marginTop:4}} placeholder="First Last"/></div>
-              <div><label style={lbl}>Role</label><select value={s.role||""} onChange={e=>dispatch({type:"UPD_SIG",si,f:"role",v:e.target.value})} style={{...inp,marginTop:4,cursor:"pointer"}}><option value="">Select...</option>{ROLES.map(r=><option key={r}>{r}</option>)}<option value="custom">Custom...</option></select></div>
-              {s.role==="custom"?<div><label style={lbl}>Custom Role</label><input value={s.customRole||""} onChange={e=>dispatch({type:"UPD_SIG",si,f:"customRole",v:e.target.value})} style={{...inp,marginTop:4}} placeholder="Enter role..."/></div>:<div><label style={lbl}>Date</label><input type="date" value={s.date||""} onChange={e=>dispatch({type:"UPD_SIG",si,f:"date",v:e.target.value})} style={{...inp,marginTop:4}}/></div>}
-            </div>
-            <div style={{marginBottom:14}}><label style={lbl}>Phase / Section</label><input value={s.phase||""} onChange={e=>dispatch({type:"UPD_SIG",si,f:"phase",v:e.target.value})} style={{...inp,marginTop:4}} placeholder="e.g. Phase 1, All Sections"/></div>
-            <div style={{marginBottom:14}}>
-              <label style={lbl}>Electronic Signature</label>
-              <div style={{position:"relative",marginTop:4}}><input value={s.signature||""} onChange={e=>dispatch({type:"UPD_SIG",si,f:"signature",v:e.target.value})} style={{...inp,fontSize:15,fontStyle:"italic",fontFamily:"Georgia,serif",letterSpacing:1,paddingLeft:36}} placeholder="Type full name as signature..."/><span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:C.muted,fontSize:14}}>✍</span></div>
-              {s.signature&&<div style={{marginTop:4,fontSize:11,color:"rgba(200,200,200,0.5)",fontStyle:"italic"}}>Signed: {s.signature} · {s.date||"date not set"}</div>}
-            </div>
-            <div style={{marginBottom:14}}><label style={lbl}>Notes</label><textarea value={s.notes||""} onChange={e=>dispatch({type:"UPD_SIG",si,f:"notes",v:e.target.value})} style={{...inp,marginTop:4,resize:"vertical",minHeight:56}} placeholder="Discrepancies, limiting factors..."/></div>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",borderTop:"1px solid "+C.border,paddingTop:14}}>
-              <div style={{fontSize:11,color:C.muted}}>{s.signature?"Signed by "+s.signature+(s.role&&s.role!=="custom"?" · "+s.role:""):"Signature required before approving."}</div>
-              <button onClick={()=>{if(!s.signature){alert("Please enter a signature.");return;}dispatch({type:"TOGGLE_APPROVED",si});}} style={{padding:"8px 20px",borderRadius:8,border:"2px solid",cursor:"pointer",fontWeight:800,fontSize:13,borderColor:s.approved?"#16a34a":"rgba(200,200,200,0.2)",background:s.approved?"rgba(20,83,45,0.7)":"rgba(255,255,255,0.05)",color:s.approved?"#86efac":C.muted}}>
-                {s.approved?"Approved — Click to Revoke":"Approve and Sign Off"}
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  function VendorMatrix(){
-    const [expandedCat,setExpandedCat]=useState(null);
-    const matrixData=(state.oems[0]&&state.oems[0].matrix)||{};
-    const getMV=(catId,rowId,vi)=>matrixData[catId+"_"+rowId+"_"+vi]||"";
-    const setMV=(catId,rowId,vi,val)=>{
-      const next={...matrixData,[catId+"_"+rowId+"_"+vi]:val};
-      dispatch({type:"SET_MATRIX",oems:state.oems.map((o,i)=>i===0?{...o,matrix:next}:o)});
-    };
-    const tColor=v=>v==="Yes"?"#86efac":v==="No"?"#fca5a5":v==="Pending"?"#fde68a":C.muted;
-    const tBg=v=>v==="Yes"?"rgba(20,83,45,0.5)":v==="No"?"rgba(127,29,29,0.5)":v==="Pending"?"rgba(120,53,15,0.5)":"rgba(255,255,255,0.04)";
-    const tBrd=v=>v==="Yes"?"#166534":v==="No"?"#991b1b":v==="Pending"?"#854d0e":C.border;
-    return(
-      <div style={{display:"grid",gap:10}}>
-        {EVAL_MATRIX.map(cat=>{
-          const isOpen=expandedCat===cat.id;
-          return(
-            <div key={cat.id} style={{background:C.card,borderRadius:12,border:"1px solid "+(isOpen?cat.border:C.border),overflow:"hidden"}}>
-              <button onClick={()=>setExpandedCat(e=>e===cat.id?null:cat.id)} style={{width:"100%",background:"transparent",border:"none",cursor:"pointer",padding:"14px 18px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                <div style={{display:"flex",alignItems:"center",gap:10}}><div style={{background:cat.bg,border:"1px solid "+cat.border,borderRadius:8,padding:"5px 12px",fontSize:18}}>{cat.icon}</div><div style={{color:cat.color,fontWeight:800,fontSize:14}}>{cat.label}</div></div>
-                <span style={{color:cat.color,fontSize:16,fontWeight:700}}>{isOpen?"▲":"▼"}</span>
-              </button>
-              {isOpen&&<div style={{overflowX:"auto",borderTop:"1px solid "+C.border}}>
-                <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-                  <thead><tr style={{background:"rgba(0,0,0,0.3)"}}><th style={{padding:"10px 14px",textAlign:"left",color:C.muted,fontWeight:600,fontSize:10,textTransform:"uppercase",minWidth:180,borderBottom:"1px solid "+C.border}}>Criteria</th>{state.oems.map((o,vi)=><th key={vi} style={{padding:"10px 14px",textAlign:"center",color:cat.color,fontWeight:700,fontSize:13,minWidth:160,borderBottom:"1px solid "+C.border,borderLeft:"1px solid rgba(255,255,255,0.05)"}}>{o.name||"Vendor "+(vi+1)}</th>)}</tr></thead>
-                  <tbody>{cat.rows.map((row,ri)=>(
-                    <tr key={row.id} style={{borderBottom:"1px solid rgba(255,255,255,0.04)",background:ri%2===0?"transparent":"rgba(255,255,255,0.02)"}}>
-                      <td style={{padding:"9px 14px",color:C.text,whiteSpace:"nowrap"}}>{row.label}</td>
-                      {state.oems.map((_,vi)=>{
-                        const val=getMV(cat.id,row.id,vi);
-                        return(
-                          <td key={vi} style={{padding:"7px 10px",textAlign:"center",borderLeft:"1px solid rgba(255,255,255,0.05)"}}>
-                            {row.type==="toggle"&&<div style={{display:"flex",gap:4,justifyContent:"center"}}>{["Yes","No","Pending"].map(opt=><button key={opt} onClick={()=>setMV(cat.id,row.id,vi,opt)} style={{padding:"3px 8px",borderRadius:5,border:"1px solid "+(val===opt?tBrd(opt):C.border),background:val===opt?tBg(opt):"rgba(255,255,255,0.03)",color:val===opt?tColor(opt):"#fff",fontSize:10,fontWeight:val===opt?700:400,cursor:"pointer",opacity:val===opt?1:0.45}}>{opt}</button>)}</div>}
-                            {row.type==="text"&&<input value={val} onChange={e=>setMV(cat.id,row.id,vi,e.target.value)} style={{...inp,fontSize:11,textAlign:"center",padding:"4px 7px"}} placeholder="—"/>}
-                            {row.type==="dollar"&&<div style={{position:"relative",display:"inline-flex",alignItems:"center"}}><span style={{position:"absolute",left:8,color:C.muted,fontSize:11}}>$</span><input type="number" min="0" value={val} onChange={e=>setMV(cat.id,row.id,vi,e.target.value)} style={{...inp,fontSize:11,textAlign:"right",paddingLeft:18,paddingRight:6,width:120}} placeholder="0"/></div>}
-                            {row.type==="pfn"&&<div style={{display:"flex",gap:4,justifyContent:"center"}}>{["Pass","Fail","N/A"].map(opt=><button key={opt} onClick={()=>setMV(cat.id,row.id,vi,opt)} style={{padding:"3px 8px",borderRadius:5,border:"1px solid "+(val===opt?pfBrd(opt):C.border),background:val===opt?pfBg(opt):"rgba(255,255,255,0.03)",color:val===opt?pfColor(opt):"#fff",fontSize:10,fontWeight:val===opt?700:400,cursor:"pointer",opacity:val===opt?1:0.45,whiteSpace:"nowrap"}}>{opt}</button>)}</div>}
-                            {row.type==="notes"&&<textarea value={val} onChange={e=>setMV(cat.id,row.id,vi,e.target.value)} style={{...inp,fontSize:11,resize:"vertical",minHeight:48,textAlign:"left",lineHeight:1.4}} placeholder="Notes..."/>}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}</tbody>
-                </table>
-              </div>}
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
-
-  // ── COMBINED EVALUATION CHECKLIST ─────────────────────────────────────────
-  function EvaluationChecklist(){
-    const [openSec,setOpenSec]=useState("subj");
-    const ac=oem.advChecklist||{};
-    const setAC=(k,v)=>dispatch({type:"UPD_ADV_CHECKLIST",k,v});
-
-    const allVals=Object.values(ac);
-    const rated=allVals.filter(v=>v&&v!=="").length;
-    const total=104;
-    const pct=Math.round(rated/total*100);
-    const pass=allVals.filter(v=>v==="ms"||v==="yes"||v==="pass").length;
-    const fail=allVals.filter(v=>v==="bs"||v==="no"||v==="fail"||v==="part").length;
-    const na=allVals.filter(v=>v==="na").length;
-
-    const secItems={subj:20,comp:32,fmea:16,env:24,bench:12};
-    const secPct=sec=>{
-      const prefix=sec+"-";
-      const done=Object.keys(ac).filter(k=>k.startsWith(prefix)&&ac[k]).length;
-      return Math.round(done/secItems[sec]*100);
-    };
-    const secsDone=["subj","comp","fmea","env","bench"].filter(s=>secPct(s)===100).length;
-
-    const toggle=sec=>setOpenSec(openSec===sec?null:sec);
-
-    const badgeStyle=(bg,color)=>({display:"inline-block",fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:5,background:bg,color,whiteSpace:"nowrap"});
-    const compBadge=t=>(<span style={badgeStyle("rgba(74,158,255,0.15)","#4a9eff")}>{t}</span>);
-    const fmeaBadge=t=>(<span style={badgeStyle("rgba(167,139,250,0.15)","#a78bfa")}>{t}</span>);
-    const benchBadge=t=>(<span style={badgeStyle("rgba(251,191,36,0.15)","#fbbf24")}>{t}</span>);
-
-    function VendorRating({id,types}){
-      const v=ac[id]||"";
-      const opts=types||[["ms","Met"],["bs","Below"],["na","N/A"]];
-      const col=x=>x==="ms"||x==="yes"||x==="pass"?"#86efac":x==="bs"||x==="no"||x==="fail"?"#fca5a5":x==="part"?"#fde68a":"#888";
-      const bg2=x=>x==="ms"||x==="yes"||x==="pass"?"rgba(20,83,45,0.5)":x==="bs"||x==="no"||x==="fail"?"rgba(127,29,29,0.5)":x==="part"?"rgba(120,53,15,0.5)":"rgba(255,255,255,0.05)";
-      const brd=x=>x==="ms"||x==="yes"||x==="pass"?"#166534":x==="bs"||x==="no"||x==="fail"?"#991b1b":x==="part"?"#854d0e":C.border;
-      return(
-        <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
-          <div style={{display:"flex",gap:2}}>
-            {opts.map(([cls,lab])=>(
-              <button key={cls} onClick={()=>setAC(id,cls)}
-                style={{fontSize:10,padding:"2px 5px",borderRadius:4,border:"1px solid "+(v===cls?brd(cls):C.border),background:v===cls?bg2(cls):"rgba(255,255,255,0.03)",color:v===cls?col(cls):C.muted,cursor:"pointer",whiteSpace:"nowrap",fontWeight:v===cls?700:400}}>
-                {lab}
-              </button>
-            ))}
-          </div>
-          {(v==="bs"||v==="no"||v==="fail"||v==="part")&&(
-            <textarea placeholder="Note..." style={{...inp,fontSize:10,minHeight:28,resize:"vertical",width:86,padding:"2px 4px"}}/>
-          )}
-        </div>
-      );
-    }
-
-    function AccSection({id,num,title,sub,color,bg,border,children}){
-      const isOpen=openSec===id;
-      const pctVal=secPct(id);
-      const pctColor=pctVal===100?"#86efac":pctVal>0?"#fbbf24":C.muted;
-      return(
-        <div style={{border:"1px solid "+(isOpen?border:C.border),borderRadius:12,overflow:"hidden",marginBottom:8}}>
-          <button onClick={()=>toggle(id)} style={{width:"100%",background:isOpen?bg:"rgba(255,255,255,0.02)",border:"none",cursor:"pointer",padding:"11px 16px",display:"flex",alignItems:"center",gap:10,textAlign:"left"}}>
-            <span style={{background:bg,border:"1px solid "+border,borderRadius:5,padding:"2px 9px",fontSize:10,fontWeight:800,color,flexShrink:0}}>{num}</span>
-            <div style={{flex:1}}>
-              <div style={{color:"#fff",fontWeight:600,fontSize:13}}>{title}</div>
-              <div style={{color:C.muted,fontSize:11,marginTop:1}}>{sub}</div>
-            </div>
-            <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
-              <span style={{fontSize:11,fontWeight:700,color:pctColor}}>{pctVal}%</span>
-              <span style={{color:C.muted,fontSize:12}}>{isOpen?"▲":"▼"}</span>
-            </div>
-          </button>
-          {isOpen&&<div style={{borderTop:"1px solid "+C.border}}>{children}</div>}
-        </div>
-      );
-    }
-
-    const tblHdr=(cols)=>(
-      <thead><tr style={{background:"rgba(0,0,0,0.3)",borderBottom:"1px solid "+C.border}}>
-        {cols.map((c,i)=><th key={i} style={{padding:"8px 10px",textAlign:i===0?"left":"center",color:C.muted,fontSize:10,fontWeight:600,textTransform:"uppercase",letterSpacing:0.5,whiteSpace:"nowrap",minWidth:i===0?180:100}}>{c}</th>)}
-      </tr></thead>
-    );
-
-    const tblRow=(even)=>({borderBottom:"1px solid rgba(255,255,255,0.04)",background:even?"transparent":"rgba(255,255,255,0.02)"});
-
-    return(
-      <div style={{display:"grid",gap:0}}>
-        <div style={{background:C.card,borderRadius:12,padding:"14px 18px",marginBottom:16,border:"1px solid rgba(192,132,252,0.3)"}}>
-          <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",flexWrap:"wrap",gap:12,marginBottom:12}}>
-            <div>
-              <div style={{color:"#c084fc",fontWeight:700,fontSize:13,letterSpacing:2,textTransform:"uppercase"}}>Combined Evaluation Checklist</div>
-              <div style={{color:C.muted,fontSize:11,marginTop:2}}>Subjective · Comparative · FMEA · Environmental · Benchmarks</div>
-            </div>
-            <div style={{textAlign:"right"}}>
-              <div style={{fontSize:26,fontWeight:700,color:"#c084fc"}}>{pct}%</div>
-              <div style={{fontSize:11,color:C.muted}}>completed</div>
-            </div>
-          </div>
-          <div style={{height:5,background:"rgba(255,255,255,0.08)",borderRadius:3,overflow:"hidden",marginBottom:14}}>
-            <div style={{height:"100%",width:pct+"%",background:"#c084fc",borderRadius:3,transition:"width 0.3s"}}/>
-          </div>
-          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-            {[["Total Items","104","#c8c8c8"],[`Rated`,rated,"#c084fc"],["Pass / Met",pass,"#86efac"],["Fail / Below",fail,"#fca5a5"],["N/A",na,"#fde68a"],["Sections Done",secsDone+"/5","#38bdf8"]].map(([label,val,col])=>(
-              <div key={label} style={{background:"rgba(255,255,255,0.04)",border:"1px solid "+C.border,borderRadius:8,padding:"7px 12px",textAlign:"center",minWidth:70}}>
-                <div style={{fontSize:18,fontWeight:700,color:col}}>{val}</div>
-                <div style={{fontSize:10,color:C.muted,marginTop:1}}>{label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <AccSection id="subj" num="01" title="Subjective checks" sub="Evaluator judgment — Yes / Partially / No" color="#a78bfa" bg="rgba(167,139,250,0.06)" border="rgba(167,139,250,0.35)">
-          <div style={{overflowX:"auto"}}>
-            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,tableLayout:"fixed"}}>
-              {tblHdr(["Item","Lead Evaluator","Operators"])}
-              <tbody>
-                {SUBJ_CHECKS.map((item,ii)=>(
-                  <tr key={ii} style={tblRow(ii%2===0)}>
-                    <td style={{padding:"8px 10px",color:C.text,fontSize:12}}>{item}</td>
-                    <td style={{padding:"6px 10px",textAlign:"center"}}><VendorRating id={`subj-${ii}-0`} types={[["yes","Yes"],["part","Part"],["no","No"]]}/></td>
-                    <td style={{padding:"6px 10px",textAlign:"center"}}><VendorRating id={`subj-${ii}-1`} types={[["yes","Yes"],["part","Part"],["no","No"]]}/></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </AccSection>
-
-        <AccSection id="comp" num="02" title="Comparative / Repeatability" sub="Platform comparison, repeatability, and endurance — Met Spec / Below Spec / N/A" color="#4a9eff" bg="rgba(74,158,255,0.06)" border="rgba(74,158,255,0.35)">
-          <div style={{overflowX:"auto"}}>
-            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,tableLayout:"fixed"}}>
-              {tblHdr(["Test","Type","DJI","Skydio","Sunflower","Quantum"])}
-              <tbody>
-                {COMP_CHECKS.map(grp=>[
-                  <tr key={"cat-"+grp.cat} style={{background:"rgba(74,158,255,0.05)",borderBottom:"1px solid rgba(74,158,255,0.15)",borderTop:"1px solid rgba(74,158,255,0.15)"}}>
-                    <td colSpan={6} style={{padding:"5px 10px",fontSize:10,fontWeight:600,color:"#4a9eff",textTransform:"uppercase",letterSpacing:0.8}}>{grp.cat}</td>
-                  </tr>,
-                  ...grp.items.map((item,ii)=>(
-                    <tr key={item.id} style={tblRow(ii%2===0)}>
-                      <td style={{padding:"8px 10px",color:C.text}}><div style={{fontWeight:500,fontSize:12}}>{item.n}</div><div style={{color:C.muted,fontSize:10,marginTop:2}}>{item.d}</div></td>
-                      <td style={{padding:"6px 10px",textAlign:"center"}}>{compBadge(item.t)}</td>
-                      {VENDORS.map((_,vi)=><td key={vi} style={{padding:"6px 8px",textAlign:"center"}}><VendorRating id={`comp-${item.id}-${vi}`}/></td>)}
-                    </tr>
-                  ))
-                ])}
-              </tbody>
-            </table>
-          </div>
-        </AccSection>
-
-        <AccSection id="fmea" num="03" title="FMEA — Failure Mode & Effects" sub="Deliberate failure induction and failsafe validation — Met Spec / Below Spec / N/A" color="#a78bfa" bg="rgba(167,139,250,0.06)" border="rgba(167,139,250,0.35)">
-          <div style={{overflowX:"auto"}}>
-            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,tableLayout:"fixed"}}>
-              {tblHdr(["Failure Mode","Induced Via","DJI","Skydio","Sunflower","Quantum"])}
-              <tbody>
-                {FMEA_CHECKS.map((item,ii)=>(
-                  <tr key={item.id} style={tblRow(ii%2===0)}>
-                    <td style={{padding:"8px 10px",color:C.text}}><div style={{fontWeight:500,fontSize:12}}>{item.n}</div><div style={{color:C.muted,fontSize:10,marginTop:2}}>{item.d}</div></td>
-                    <td style={{padding:"6px 10px",textAlign:"center"}}>{fmeaBadge(item.t)}</td>
-                    {VENDORS.map((_,vi)=><td key={vi} style={{padding:"6px 8px",textAlign:"center"}}><VendorRating id={`fmea-${item.id}-${vi}`}/></td>)}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </AccSection>
-
-        <AccSection id="env" num="04" title="Environmental stress" sub="Wind, temperature, and water ingress — measured conditions logged per session" color="#34d399" bg="rgba(52,211,153,0.06)" border="rgba(52,211,153,0.35)">
-          <div style={{overflowX:"auto"}}>
-            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,tableLayout:"fixed"}}>
-              {tblHdr(["Test","Condition Logged","DJI","Skydio","Sunflower","Quantum"])}
-              <tbody>
-                {ENV_CHECKS.map(grp=>[
-                  <tr key={"cat-"+grp.cat} style={{background:"rgba(52,211,153,0.05)",borderBottom:"1px solid rgba(52,211,153,0.15)",borderTop:"1px solid rgba(52,211,153,0.15)"}}>
-                    <td colSpan={6} style={{padding:"5px 10px",fontSize:10,fontWeight:600,color:"#34d399",textTransform:"uppercase",letterSpacing:0.8}}>{grp.cat}</td>
-                  </tr>,
-                  ...grp.items.map((item,ii)=>(
-                    <tr key={item.id} style={tblRow(ii%2===0)}>
-                      <td style={{padding:"8px 10px",color:C.text}}><div style={{fontWeight:500,fontSize:12}}>{item.n}</div><div style={{color:C.muted,fontSize:10,marginTop:2}}>{item.d}</div></td>
-                      <td style={{padding:"6px 8px"}}>
-                        <input style={{...inp,fontSize:11,padding:"3px 6px",borderColor:"rgba(52,211,153,0.25)"}} placeholder={item.ph}/>
-                        <div style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:10,color:"#38bdf8",background:"rgba(56,189,248,0.1)",borderRadius:4,padding:"2px 6px",border:"1px solid rgba(56,189,248,0.3)",cursor:"pointer",marginTop:4,whiteSpace:"nowrap"}}>Link METAR</div>
-                      </td>
-                      {VENDORS.map((_,vi)=><td key={vi} style={{padding:"6px 8px",textAlign:"center"}}><VendorRating id={`env-${item.id}-${vi}`}/></td>)}
-                    </tr>
-                  ))
-                ])}
-              </tbody>
-            </table>
-          </div>
-        </AccSection>
-
-        <AccSection id="bench" num="05" title="Performance benchmarks" sub="Range and signal integrity at varying distances — Met Spec / Below Spec / N/A" color="#fbbf24" bg="rgba(251,191,36,0.06)" border="rgba(251,191,36,0.35)">
-          <div style={{overflowX:"auto"}}>
-            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,tableLayout:"fixed"}}>
-              {tblHdr(["Test","Method","DJI","Skydio","Sunflower","Quantum"])}
-              <tbody>
-                {BENCH_CHECKS.map((item,ii)=>(
-                  <tr key={item.id} style={tblRow(ii%2===0)}>
-                    <td style={{padding:"8px 10px",color:C.text}}><div style={{fontWeight:500,fontSize:12}}>{item.n}</div><div style={{color:C.muted,fontSize:10,marginTop:2}}>{item.d}</div></td>
-                    <td style={{padding:"6px 10px",textAlign:"center"}}>{benchBadge(item.t)}</td>
-                    {VENDORS.map((_,vi)=><td key={vi} style={{padding:"6px 8px",textAlign:"center"}}><VendorRating id={`bench-${item.id}-${vi}`}/></td>)}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </AccSection>
-      </div>
-    );
-  }
-
-  function SixMonthPlan(){
-    const [expanded,setExpanded]=useState(null);
-    const milestones=[
-      {week:"Wk 1-2",event:"Dock commissioned. Regulatory checklist complete. Baseline flights begin."},
-      {week:"Wk 3-4",event:"Flight, Dock, Sensor tests underway. Weather Log populated."},
-      {week:"Wk 5-6",event:"Reliability and Security baseline tests. Failsafe validation."},
-      {week:"Wk 7-8",event:"Month 2 gate review. Go/No-Go for Phase 2."},
-      {week:"Wk 9-10",event:"Phase 2 opens. Use case missions begin."},
-      {week:"Wk 11-12",event:"Night and thermal ops. Payload testing expanded."},
-      {week:"Wk 13-14",event:"Environmental and RF-contested testing."},
-      {week:"Wk 15-16",event:"Month 4 gate review. Go/No-Go for Phase 3."},
-      {week:"Wk 17-18",event:"Phase 3 endurance cycling. 24-hour op. Multi-mission day."},
-      {week:"Wk 19-20",event:"Flight hours validation. 50+ cycles. Cybersecurity assessment."},
-      {week:"Wk 21-22",event:"Phase 4 opens. All scores finalized."},
-      {week:"Wk 23-24",event:"Final sign-offs. Procurement decision. Program close."},
-    ];
-    const phases=[
-      {id:"p1",month:"Months 1-2",label:"Phase 1",title:"Baseline Testing",color:"#4a9eff",bg:"rgba(74,158,255,0.08)",border:"rgba(74,158,255,0.3)",site:"TRG",gate:"All minimums met · Regulatory compliance confirmed",objective:"Establish baseline performance across all core capability areas.",weekly:["Pre-flight inspection every session","Log METAR in Weather tab","Enter Pass/Fail/N/A in all test tabs","Record tester name and date","Document anomalies","Confirm GCS and GPS before each session","Verify FAA airspace and TFRs"],      monthly:["Review Final Eval tab","Confirm flight hours on pace","Confirm regulatory checklist complete","Lead Evaluator signs off","Month 2 Go/No-Go Gate"]},
-      {id:"p2",month:"Months 3-4",label:"Phase 2",title:"Operational Validation",color:"#a78bfa",bg:"rgba(167,139,250,0.08)",border:"rgba(167,139,250,0.3)",site:"TRG dock",gate:"Use case pass rates 90%+ · No Category 1 failures",objective:"Validate performance across all three security use cases.",weekly:["Use case missions logged","Alert-to-airborne times tracked","Sensor issues logged with root cause","Remote operator comms verified","Evidence chain-of-custody verified"],monthly:["All three use cases flown","Environmental stress completed","Flight hours on pace","Remote operator proficiency confirmed","Interim briefing","Month 4 Go/No-Go Gate"]},
-      {id:"p3",month:"Month 5",label:"Phase 3",title:"Endurance & Integration",color:"#f59e0b",bg:"rgba(245,158,11,0.08)",border:"rgba(245,158,11,0.3)",site:"TRG endurance cycling",gate:"20+ flight hours · 50+ dock cycles · Integration complete",objective:"Accumulate flight hours, stress-test dock automation, confirm integration.",weekly:["Update running flight hours","Log dock cycle count","Document endurance anomalies","Training records current","3 consecutive alert response tests"],      monthly:["20+ flight hours confirmed","50+ dock cycles completed","24-hour autonomous op test","Multi-mission day","System integration confirmed","Cybersecurity assessment done"]},
-      {id:"p4",month:"Month 6",label:"Phase 4",title:"Final Evaluation & Decision",color:"#86efac",bg:"rgba(134,239,172,0.07)",border:"rgba(134,239,172,0.25)",site:"TRG final close-out",      gate:"All sections Pass · Signed decision",objective:"Complete final scoring and produce a signed procurement recommendation.",weekly:["Finalize all section results","Final Eval tab reviewed","Compare tab completed","Discrepancy log closed"],      monthly:["Final evaluation summary complete","All evaluators approve sign-off","Company product briefing","Procurement recommendation archived"]},
-    ];
-    return(
-      <div style={{display:"grid",gap:14}}>
-        <div style={{background:C.card,borderRadius:12,padding:20,border:"1px solid "+C.border}}>
-          <div style={{color:"#fff",fontSize:18,fontWeight:900,letterSpacing:2,textTransform:"uppercase"}}>Six-Month TEVI Program</div>
-          <div style={{color:C.muted,fontSize:13,margin:"6px 0 16px"}}>Testing · Evaluation · Validation · Implementation</div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:4}}>{phases.map(p=><div key={p.id} style={{background:p.bg,border:"1px solid "+p.border,borderRadius:7,padding:"8px 12px"}}><div style={{color:p.color,fontWeight:800,fontSize:12}}>{p.month}</div><div style={{color:C.text,fontWeight:700,fontSize:11,marginTop:2}}>{p.label}: {p.title}</div></div>)}</div>
-        </div>
-        {phases.map(p=>(
-          <div key={p.id} style={{background:C.card,borderRadius:12,border:"1px solid "+p.border,overflow:"hidden"}}>
-            <button onClick={()=>setExpanded(e=>e===p.id?null:p.id)} style={{width:"100%",background:"transparent",border:"none",cursor:"pointer",padding:"16px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",textAlign:"left"}}>
-              <div style={{display:"flex",alignItems:"center",gap:14}}><div style={{background:p.bg,border:"1px solid "+p.border,borderRadius:8,padding:"6px 14px",minWidth:90,textAlign:"center"}}><div style={{color:p.color,fontWeight:900,fontSize:13}}>{p.label}</div><div style={{color:p.color,fontSize:10,opacity:0.7}}>{p.month}</div></div><div><div style={{color:"#fff",fontWeight:800,fontSize:15}}>{p.title}</div><div style={{color:C.muted,fontSize:12,marginTop:2}}>{p.site}</div></div></div>
-              <span style={{color:p.color,fontSize:18,fontWeight:700,flexShrink:0}}>{expanded===p.id?"▲":"▼"}</span>
-            </button>
-            {expanded===p.id&&<div style={{padding:"0 20px 20px"}}>
-              <div style={{background:p.bg,border:"1px solid "+p.border,borderRadius:8,padding:"12px 16px",marginBottom:14,marginTop:4}}><div style={{color:p.color,fontWeight:700,fontSize:11,textTransform:"uppercase",marginBottom:6}}>Phase Objective</div><p style={{color:C.text,fontSize:13,margin:0,lineHeight:1.6}}>{p.objective}</p></div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
-                <div style={{background:"rgba(255,255,255,0.03)",borderRadius:8,padding:"14px 16px",border:"1px solid "+C.border}}><div style={{color:C.accent,fontWeight:700,fontSize:11,textTransform:"uppercase",marginBottom:10}}>Weekly Rhythm</div>{p.weekly.map((item,i)=><div key={i} style={{display:"flex",gap:8,marginBottom:7}}><span style={{color:p.color,fontWeight:700,fontSize:12,flexShrink:0}}>→</span><span style={{color:C.muted,fontSize:12,lineHeight:1.5}}>{item}</span></div>)}</div>
-                <div style={{background:"rgba(255,255,255,0.03)",borderRadius:8,padding:"14px 16px",border:"1px solid "+C.border}}><div style={{color:C.accent,fontWeight:700,fontSize:11,textTransform:"uppercase",marginBottom:10}}>Monthly Review & Gate</div>{p.monthly.map((item,i)=><div key={i} style={{display:"flex",gap:8,marginBottom:7}}><span style={{color:i===p.monthly.length-1?"#fde68a":p.color,fontWeight:700,fontSize:12,flexShrink:0}}>{i===p.monthly.length-1?"⚑":"✓"}</span><span style={{color:i===p.monthly.length-1?"#fde68a":C.muted,fontSize:12,lineHeight:1.5,fontWeight:i===p.monthly.length-1?700:400}}>{item}</span></div>)}</div>
-              </div>
-              <div style={{background:"rgba(253,230,138,0.06)",border:"1px solid rgba(253,230,138,0.25)",borderRadius:8,padding:"10px 16px",display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:16,flexShrink:0}}>⚑</span><span style={{color:"#fde68a",fontWeight:700,fontSize:12}}>Go/No-Go Gate: {p.gate}</span></div>
-            </div>}
-          </div>
-        ))}
-        <div style={{background:C.card,borderRadius:12,padding:20,border:"1px solid "+C.border}}>
-          <div style={{color:C.accent,fontSize:13,fontWeight:700,marginBottom:16,letterSpacing:2,textTransform:"uppercase"}}>24-Week Milestone Timeline</div>
-          <div style={{position:"relative"}}>
-            <div style={{position:"absolute",left:52,top:0,bottom:0,width:1,background:"linear-gradient(to bottom,rgba(74,158,255,0.4),rgba(134,239,172,0.4))",zIndex:0}}/>
-            {milestones.map((m,i)=>{
-              const col=i<4?"#4a9eff":i<8?"#a78bfa":i<10?"#f59e0b":"#86efac";
-              return(
-                <div key={i} style={{display:"flex",gap:16,marginBottom:12,position:"relative",zIndex:1}}>
-                  <div style={{width:90,flexShrink:0,textAlign:"right"}}>
-                    <span style={{background:"rgba(0,0,0,0.6)",border:"1px solid "+col,borderRadius:5,padding:"2px 8px",fontSize:11,fontWeight:700,color:col,display:"inline-block"}}>{m.week}</span>
-                  </div>
-                  <div style={{width:10,height:10,borderRadius:"50%",background:col,flexShrink:0,marginTop:4,boxShadow:"0 0 6px "+col}}/>
-                  <div style={{background:"rgba(255,255,255,0.03)",borderRadius:7,padding:"6px 12px",border:"1px solid "+C.border,flex:1}}>
-                    <span style={{color:C.text,fontSize:12}}>{m.event}</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  function DemoMissions(){
-    const [activeM,setActiveM]=useState(null);
-    const [open,setOpen]=useState(false);
-    const [loading,setLoading]=useState(false);
-    const [summaryText,setSummaryText]=useState("");
-    const pColors={DJI:"#4a9eff",Skydio:"#a78bfa","Sunflower Labs":"#fbbf24","Quantum Systems":"#34d399"};
-    const generateDemoSummary=()=>{
-      setLoading(true);setSummaryText("");setOpen(true);
-      const allRes=buildAllResultsCtx();
-      const prompt="You are a drone procurement analyst. Write a concise ONE-PAGE executive summary on demo readiness.\n\nPlatform: "+(oem.name||"Unknown")+" | Overall test results: "+allRes+"\nDemo missions: First on Scene, License Plate ID, Heat Signature, Eyes On, Crime Scene, The Perimeter.\n\nWrite:\n1. DEMO READINESS OVERVIEW\n2. PLATFORM STRENGTHS PER MISSION\n3. RISKS OR GAPS\n4. RECOMMENDATION — READY / NOT READY / CONDITIONAL\n\nUnder 350 words. Plain text only.";
-      fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:prompt}]})})
-        .then(r=>r.json()).then(data=>{setSummaryText((data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n")||"No summary generated.");setLoading(false);})
-        .catch(()=>{setSummaryText("Error generating summary.");setLoading(false);});
-    };
-    return(
-      <div style={{display:"grid",gap:14}}>
-        <div style={{background:C.card,borderRadius:12,padding:20,border:"1px solid rgba(244,114,182,0.3)"}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12}}>
-            <div>
-              <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}><div style={{width:3,height:20,borderRadius:2,background:"#f472b6"}}/><span style={{color:"#f472b6",fontWeight:700,fontSize:13,letterSpacing:2,textTransform:"uppercase"}}>Demo Mission Pack</span></div>
-              <div style={{color:C.muted,fontSize:12,paddingLeft:13}}>6 missions · DJI · Skydio · Sunflower Labs · Quantum Systems</div>
-            </div>
-            <button onClick={generateDemoSummary} disabled={loading} style={{display:"flex",alignItems:"center",gap:8,padding:"10px 20px",borderRadius:8,border:"1px solid rgba(134,239,172,0.5)",background:"rgba(20,83,45,0.4)",color:"#86efac",fontWeight:700,fontSize:13,cursor:loading?"not-allowed":"pointer",opacity:loading?0.6:1}}>{loading?"Generating...":"📋 Generate Executive Summary"}</button>
-          </div>
-        </div>
-        {open&&(
-          <div style={{background:C.card,borderRadius:12,padding:20,border:"1px solid rgba(134,239,172,0.4)"}}>
-            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,paddingBottom:12,borderBottom:"1px solid rgba(134,239,172,0.2)"}}>
-              <div style={{width:3,height:20,borderRadius:2,background:"#86efac"}}/>
-              <span style={{color:"#86efac",fontWeight:700,fontSize:13,letterSpacing:2,textTransform:"uppercase"}}>Executive Summary — Demo Readiness</span>
-              <button onClick={()=>setOpen(false)} style={{marginLeft:"auto",background:"rgba(127,29,29,0.3)",color:"#fca5a5",border:"1px solid rgba(252,165,165,0.3)",borderRadius:5,padding:"3px 10px",fontSize:11,cursor:"pointer"}}>x</button>
-            </div>
-            {loading?<div style={{textAlign:"center",padding:"30px",color:C.muted,fontSize:13}}>Analyzing evaluation data...</div>:<div style={{color:C.text,fontSize:12,lineHeight:1.8,whiteSpace:"pre-wrap"}}>{summaryText}</div>}
-          </div>
-        )}
-        {DEMO_MISSIONS.map(m=>(
-          <div key={m.id} style={{background:C.card,borderRadius:12,border:"1px solid "+(activeM===m.id?m.border:C.border),overflow:"hidden"}}>
-            <button onClick={()=>setActiveM(activeM===m.id?null:m.id)} style={{width:"100%",background:"transparent",border:"none",cursor:"pointer",padding:"16px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",textAlign:"left"}}>
-              <div style={{display:"flex",alignItems:"center",gap:14}}>
-                <div style={{background:m.bg,border:"1px solid "+m.border,borderRadius:8,padding:"8px 14px",textAlign:"center",minWidth:70}}><div style={{fontSize:20}}>{m.icon}</div><div style={{color:m.color,fontWeight:900,fontSize:11,marginTop:2}}>M-{m.num}</div></div>
-                <div><div style={{color:"#fff",fontWeight:800,fontSize:15}}>{m.title}</div><div style={{color:m.color,fontSize:12,marginTop:2,fontWeight:600}}>{m.capability}</div><div style={{color:C.muted,fontSize:11,marginTop:2}}>{m.platforms}</div></div>
-              </div>
-              <span style={{color:m.color,fontSize:18,fontWeight:700,flexShrink:0}}>{activeM===m.id?"▲":"▼"}</span>
-            </button>
-            {activeM===m.id&&(
-              <div style={{padding:"0 20px 20px",borderTop:"1px solid "+C.border}}>
-                <div style={{marginTop:16,padding:"10px 14px",borderRadius:8,background:m.bg,border:"1px solid "+m.border}}><div style={{color:m.color,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Scenario</div><div style={{color:C.text,fontSize:13,lineHeight:1.6}}>{m.scenario}</div></div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginTop:14}}>
-                  <div style={{background:"rgba(255,255,255,0.03)",borderRadius:8,padding:"14px 16px",border:"1px solid "+C.border}}>
-                    <div style={{color:C.accent,fontWeight:700,fontSize:11,textTransform:"uppercase",letterSpacing:1,marginBottom:12}}>Demo Flow</div>
-                    {m.flow.map((step,i)=>(
-                      <div key={i} style={{display:"flex",gap:10,marginBottom:10,alignItems:"flex-start"}}>
-                        <span style={{background:m.bg,color:m.color,border:"1px solid "+m.border,borderRadius:4,padding:"1px 6px",fontSize:10,fontWeight:800,flexShrink:0,whiteSpace:"nowrap"}}>{step.t}</span>
-                        <span style={{color:C.muted,fontSize:12,lineHeight:1.5}}>{step.step}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div style={{background:"rgba(255,255,255,0.03)",borderRadius:8,padding:"14px 16px",border:"1px solid "+C.border}}>
-                    <div style={{color:C.accent,fontWeight:700,fontSize:11,textTransform:"uppercase",letterSpacing:1,marginBottom:12}}>Key Talking Points</div>
-                    {m.talking.map((pt,i)=>(
-                      <div key={i} style={{display:"flex",gap:8,marginBottom:10,alignItems:"flex-start"}}>
-                        <span style={{color:m.color,fontWeight:700,fontSize:14,flexShrink:0,lineHeight:1.4}}>✓</span>
-                        <span style={{color:C.muted,fontSize:12,lineHeight:1.5}}>{pt}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                {m.platformNotes&&(
-                  <div style={{marginTop:14,background:"rgba(255,255,255,0.03)",borderRadius:8,padding:"14px 16px",border:"1px solid "+C.border}}>
-                    <div style={{color:C.accent,fontWeight:700,fontSize:11,textTransform:"uppercase",letterSpacing:1,marginBottom:12}}>Platform Assignments</div>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                      {m.platformNotes.map(pn=>{const pc=pColors[pn.name]||C.accent;return(<div key={pn.name} style={{padding:"10px 12px",borderRadius:7,background:pc+"18",border:"1px solid "+pc+"44"}}><div style={{color:pc,fontWeight:700,fontSize:11,marginBottom:4}}>{pn.name}</div><div style={{color:C.muted,fontSize:11,lineHeight:1.5}}>{pn.note}</div></div>);})}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  function TestResults(){
-    const [filterSection,setFilterSection]=useState("All");
-    const [filterVendor,setFilterVendor]=useState("All");
-    const [expandedRun,setExpandedRun]=useState(null);
-    const allSections=Object.keys(TESTS);
-    const allVendorNames=state.oems.map(o=>o.name||"Unknown");
-    const allRuns=[];
-    state.oems.forEach(o=>{
-      allSections.forEach(sec=>{
-        const secTests=TESTS[sec]||[];
-        const hasData=secTests.some(t=>o.results[t.id+"_pfn"]);
-        if(hasData){
-          const pass=secTests.filter(t=>o.results[t.id+"_pfn"]==="Pass").length;
-          const fail=secTests.filter(t=>o.results[t.id+"_pfn"]==="Fail").length;
-          const pending=secTests.filter(t=>!o.results[t.id+"_pfn"]).length;
-          const date=secTests.map(t=>o.notes[t.id+"_date"]||"").filter(Boolean)[0]||"";
-          allRuns.push({runId:o.name+"-"+sec+"-main",vendor:o.name||"Unknown",section:sec,label:"Session 1",date,evaluator:o.evaluator||"",pass,fail,pending,total:secTests.length,tests:secTests,results:o.results,notes:o.notes});
-        }
-      });
-      (o.testRuns||[]).forEach((run,ri)=>{
-        const sec=run.section||"";const secTests=TESTS[sec]||[];
-        const pass=secTests.filter(t=>run.results[t.id+"_pfn"]==="Pass").length;
-        const fail=secTests.filter(t=>run.results[t.id+"_pfn"]==="Fail").length;
-        const pending=secTests.filter(t=>!run.results[t.id+"_pfn"]).length;
-        allRuns.push({runId:run.id,vendor:run.vendor||o.name||"Unknown",section:sec,label:run.label||"Run "+(ri+2),date:run.date||"",evaluator:run.evaluator||"",pass,fail,pending,total:secTests.length,tests:secTests,results:run.results,notes:run.notes||{}});
-      });
-    });
-    const filtered=allRuns.filter(r=>(filterSection==="All"||r.section===filterSection)&&(filterVendor==="All"||r.vendor===filterVendor));
-    filtered.sort((a,b)=>(b.date||"").localeCompare(a.date||""));
-    const statusColor=r=>r.fail>0?"#fca5a5":r.pending===r.total?"#888":r.pending>0?"#fde68a":"#86efac";
-    const statusBg=r=>r.fail>0?"rgba(127,29,29,0.5)":r.pending===r.total?"rgba(255,255,255,0.05)":r.pending>0?"rgba(120,53,15,0.5)":"rgba(20,83,45,0.5)";
-    const statusLabel=r=>r.fail>0?"FAIL":r.pending===r.total?"PENDING":r.pending>0?"IN PROGRESS":"PASS";
-    return(
-      <div style={{display:"grid",gap:14}}>
-        <div style={{background:C.card,borderRadius:12,padding:20,border:"1px solid rgba(251,146,60,0.3)"}}>
-          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,paddingBottom:12,borderBottom:"1px solid rgba(251,146,60,0.2)"}}>
-            <div style={{width:3,height:20,borderRadius:2,background:"#fb923c"}}/>
-            <span style={{color:"#fb923c",fontWeight:700,fontSize:13,letterSpacing:2,textTransform:"uppercase"}}>Test Results Log</span>
-            <span style={{marginLeft:"auto",fontSize:12,color:C.muted}}>{filtered.length} run{filtered.length!==1?"s":""} shown</span>
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:14}}>
-            {[["Total Runs",allRuns.length,"#fb923c"],["Passing",allRuns.filter(r=>r.fail===0&&r.pending<r.total).length,"#86efac"],["Has Failures",allRuns.filter(r=>r.fail>0).length,"#fca5a5"],["Pending",allRuns.filter(r=>r.pending===r.total).length,"#888"]].map(([label,val,col])=>(
-              <div key={label} style={{background:"rgba(255,255,255,0.04)",borderRadius:8,padding:"10px 14px",textAlign:"center",border:"1px solid "+C.border}}>
-                <div style={{fontSize:22,fontWeight:900,color:col}}>{val}</div>
-                <div style={{fontSize:10,color:C.muted,textTransform:"uppercase",marginTop:2}}>{label}</div>
-              </div>
-            ))}
-          </div>
-          <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
-            <span style={{color:C.muted,fontSize:11,fontWeight:700,textTransform:"uppercase"}}>Filter:</span>
-            <select value={filterSection} onChange={e=>setFilterSection(e.target.value)} style={{...inp,width:"auto",fontSize:12}}><option value="All">All Sections</option>{allSections.map(s=><option key={s}>{s}</option>)}</select>
-            <select value={filterVendor} onChange={e=>setFilterVendor(e.target.value)} style={{...inp,width:"auto",fontSize:12}}><option value="All">All Vendors</option>{allVendorNames.map(v=><option key={v}>{v}</option>)}</select>
-            {(filterSection!=="All"||filterVendor!=="All")&&<button onClick={()=>{setFilterSection("All");setFilterVendor("All");}} style={{background:"rgba(127,29,29,0.3)",color:"#fca5a5",border:"1px solid rgba(252,165,165,0.3)",borderRadius:5,padding:"4px 10px",fontSize:11,cursor:"pointer"}}>Clear Filters</button>}
-          </div>
-        </div>
-        {filtered.length===0&&<div style={{textAlign:"center",padding:"50px 20px",background:C.card,borderRadius:12,border:"1px dashed "+C.border,color:C.faint}}>No test runs logged yet.</div>}
-        {filtered.map(r=>{
-          const key=r.runId;const isOpen=expandedRun===key;
-          const tcKey=r.section==="Flight Performance"?"Drone":r.section==="Dock Integration"?"Dock":r.section==="Sensors & Payload"?"Sensors":r.section==="Operations & Reliability"?"Reliability":"Use Cases";
-          const tc=TAB_COLORS[tcKey]||TAB_COLORS["Drone"];
-          return(
-            <div key={key} style={{background:C.card,borderRadius:12,border:"1px solid "+(isOpen?tc.border:C.border),overflow:"hidden"}}>
-              <div style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",cursor:"pointer"}} onClick={()=>setExpandedRun(isOpen?null:key)}>
-                <span style={{background:tc.active,color:tc.color,border:"1px solid "+tc.border,borderRadius:5,padding:"2px 8px",fontSize:10,fontWeight:800,whiteSpace:"nowrap"}}>{r.section}</span>
-                <span style={{color:"#fff",fontWeight:700,fontSize:13}}>{r.vendor}</span>
-                <span style={{color:C.muted,fontSize:12}}>{r.label}</span>
-                <div style={{flex:1,display:"flex",gap:12,justifyContent:"center"}}>
-                  <span style={{color:C.muted,fontSize:11}}>📅 {r.date||"—"}</span>
-                  <span style={{color:C.muted,fontSize:11}}>👤 {r.evaluator||"—"}</span>
-                </div>
-                <div style={{display:"flex",alignItems:"center",gap:8}}>
-                  <div style={{display:"flex",gap:6,fontSize:11}}><span style={{color:"#86efac",fontWeight:700}}>{r.pass}P</span><span style={{color:"#fca5a5",fontWeight:700}}>{r.fail}F</span><span style={{color:C.muted}}>{r.pending}?</span></div>
-                  <span style={{background:statusBg(r),color:statusColor(r),border:"1px solid "+statusColor(r),borderRadius:5,padding:"2px 9px",fontSize:11,fontWeight:800,whiteSpace:"nowrap"}}>{statusLabel(r)}</span>
-                </div>
-                <span style={{color:C.muted,fontSize:14}}>{isOpen?"▲":"▼"}</span>
-              </div>
-              {isOpen&&(
-                <div style={{padding:"0 16px 16px",borderTop:"1px solid "+C.border}}>
-                  <div style={{overflowX:"auto",marginTop:12}}>
-                    <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-                      <thead><tr style={{borderBottom:"1px solid "+tc.border,background:tc.active}}>{["Test","Min. Standard","Result","Tester","Date","Notes"].map(h=><th key={h} style={{padding:"7px 10px",textAlign:"left",color:tc.color,fontWeight:700,fontSize:11,textTransform:"uppercase",whiteSpace:"nowrap"}}>{h}</th>)}</tr></thead>
-                      <tbody>{(r.tests||[]).map((t,i)=>{
-                        const res=r.results[t.id+"_pfn"]||"";
-                        return(<tr key={t.id} style={{borderBottom:"1px solid rgba(255,255,255,0.04)",background:i%2===0?"transparent":"rgba(255,255,255,0.02)"}}>
-                          <td style={{padding:"6px 10px",color:C.text}}>{t.test}</td>
-                          <td style={{padding:"6px 10px",color:C.muted,fontSize:11}}>{t.standard}</td>
-                          <td style={{padding:"6px 8px"}}>{res?<span style={{background:pfBg(res),color:pfColor(res),border:"1px solid "+pfBrd(res),borderRadius:4,padding:"2px 8px",fontSize:11,fontWeight:700}}>{res}</span>:<span style={{color:C.faint,fontSize:11}}>—</span>}</td>
-                          <td style={{padding:"6px 10px",color:C.muted,fontSize:11}}>{r.notes[t.id+"_tester"]||"—"}</td>
-                          <td style={{padding:"6px 10px",color:C.muted,fontSize:11,whiteSpace:"nowrap"}}>{r.notes[t.id+"_date"]||"—"}</td>
-                          <td style={{padding:"6px 10px",color:C.muted,fontSize:11}}>{r.notes[t.id]||"—"}</td>
-                        </tr>);
-                      })}</tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
 
   const droneCtx=buildTestCtx("Flight Performance");
   const dockCtx=buildTestCtx("Dock Integration");
@@ -1330,65 +1344,84 @@ export default function DroneTeviApp(){
   const pt=oem.payloadTests||{};
   const payloadCtx="Selected: "+Object.keys(pt).filter(k=>pt[k].selected).map(k=>k+": "+(pt[k].result||"Pending")).join(", ")||"None selected";
 
-  const tabContent={
-    "Overview":()=>{const ctx="Platform: "+(oem.name||"Unknown")+", Model: "+(oem.model||"N/A")+", Active Site: "+((OPSITES.find(s=>s.key===(oem.activeSite||"site_TRG"))||OPSITES[0]).label);return(<div><ExecSummaryBtn sectionName="Platform Overview" contextData={ctx}/><div style={{marginTop:16}}><Overview/></div></div>);},
-    "Drone":()=>(<div><ExecSummaryBtn sectionName="Drone / Flight Performance" contextData={droneCtx}/><div style={{marginTop:16}}><InlineWeather sectionKey="Flight Performance"/><SecTable sKey="Flight Performance"/></div><SectionSignOff sectionName="Drone"/></div>),
-    "Dock":()=>(<div><ExecSummaryBtn sectionName="Dock Integration" contextData={dockCtx}/><div style={{marginTop:16}}><InlineWeather sectionKey="Dock Integration"/><SecTable sKey="Dock Integration"/></div><SectionSignOff sectionName="Dock"/></div>),
-    "Sensors":()=>(<div><ExecSummaryBtn sectionName="Sensors and Payload" contextData={sensorsCtx}/><div style={{marginTop:16}}><InlineWeather sectionKey="Sensors & Payload"/><SecTable sKey="Sensors & Payload"/></div><SectionSignOff sectionName="Sensors"/></div>),
-    "Payload":()=>(<div><ExecSummaryBtn sectionName="Payload Compatibility" contextData={payloadCtx}/><div style={{marginTop:16}}><InlineWeather sectionKey="Payload"/><PayloadOptions/></div><SectionSignOff sectionName="Payload"/></div>),
-    "Reliability":()=>(<div><ExecSummaryBtn sectionName="Operations and Reliability" contextData={reliabilityCtx}/><div style={{marginTop:16}}><InlineWeather sectionKey="Operations & Reliability"/><SecTable sKey="Operations & Reliability"/></div><SectionSignOff sectionName="Reliability"/></div>),
-    "Use Cases":()=>(<div><ExecSummaryBtn sectionName="Use Cases" contextData={useCasesCtx}/><div style={{marginTop:16}}><UseCases/></div><SectionSignOff sectionName="Use Cases"/></div>),
-    "Test Results":()=>(<div><ExecSummaryBtn sectionName="Test Results Log" contextData={buildAllResultsCtx()}/><div style={{marginTop:16}}><TestResults/></div></div>),
-    "Chief Pilot Final Eval & Sign-Off":()=>(<div><ExecSummaryBtn sectionName="Final Evaluation" contextData={finalCtx}/><div style={{marginTop:16}}><FinalEvalSignOff/></div></div>),
-    "Evaluation Checklist":()=>{const ctx="5 sections: Subjective, Comparative, FMEA, Environmental, Benchmarks. Vendors: "+state.oems.map(o=>o.name||"Unknown").join(", ");return(<div><ExecSummaryBtn sectionName="Combined Evaluation Checklist" contextData={ctx}/><div style={{marginTop:16}}><EvaluationChecklist/></div></div>);},
-    "Compare":()=>{const ctx="Vendors: "+state.oems.map(o=>o.name||"Unknown").join(", ")+". Results: "+buildAllResultsCtx();return(<div><ExecSummaryBtn sectionName="Vendor Comparison Matrix" contextData={ctx}/><div style={{marginTop:16}}><VendorMatrix/></div></div>);},
-    "Weekly Checks":()=>(<div><ExecSummaryBtn sectionName="Weekly Inspection Compliance" contextData={wkCtx}/><div style={{marginTop:16}}><WeeklyChecks/></div><SectionSignOff sectionName="Weekly Checks"/></div>),
-    "6-Month Plan":SixMonthPlan,
-    "Demo Missions":DemoMissions,
-  };
-  const ActiveTab=tabContent[tab]||tabContent["Overview"];
+  function renderActiveTab(){
+    switch(tab){
+      case "Overview":
+        return(<div><ExecSummaryBtn sectionName="Platform Overview" contextData={"Platform: "+(oem.name||"Unknown")+", Model: "+(oem.model||"N/A")+", Active Site: "+((OPSITES.find(s=>s.key===(oem.activeSite||"site_TRG"))||OPSITES[0]).label)}/><div style={{marginTop:16}}><OverviewPanel/></div></div>);
+      case "Drone":
+        return(<div><ExecSummaryBtn sectionName="Drone / Flight Performance" contextData={droneCtx}/><div style={{marginTop:16}}><InlineWeather sectionKey="Flight Performance"/><SecTable sKey="Flight Performance"/></div><SectionSignOff sectionName="Drone"/></div>);
+      case "Dock":
+        return(<div><ExecSummaryBtn sectionName="Dock Integration" contextData={dockCtx}/><div style={{marginTop:16}}><InlineWeather sectionKey="Dock Integration"/><SecTable sKey="Dock Integration"/></div><SectionSignOff sectionName="Dock"/></div>);
+      case "Sensors":
+        return(<div><ExecSummaryBtn sectionName="Sensors and Payload" contextData={sensorsCtx}/><div style={{marginTop:16}}><InlineWeather sectionKey="Sensors & Payload"/><SecTable sKey="Sensors & Payload"/></div><SectionSignOff sectionName="Sensors"/></div>);
+      case "Payload":
+        return(<div><ExecSummaryBtn sectionName="Payload Compatibility" contextData={payloadCtx}/><div style={{marginTop:16}}><InlineWeather sectionKey="Payload"/><PayloadOptions/></div><SectionSignOff sectionName="Payload"/></div>);
+      case "Reliability":
+        return(<div><ExecSummaryBtn sectionName="Operations and Reliability" contextData={reliabilityCtx}/><div style={{marginTop:16}}><InlineWeather sectionKey="Operations & Reliability"/><SecTable sKey="Operations & Reliability"/></div><SectionSignOff sectionName="Reliability"/></div>);
+      case "Use Cases":
+        return(<div><ExecSummaryBtn sectionName="Use Cases" contextData={useCasesCtx}/><div style={{marginTop:16}}><UseCasesPanel/></div><SectionSignOff sectionName="Use Cases"/></div>);
+      case "Test Results":
+        return(<div><ExecSummaryBtn sectionName="Test Results Log" contextData={buildAllResultsCtx()}/><div style={{marginTop:16}}><TestResults/></div></div>);
+      case "Chief Pilot Final Eval & Sign-Off":
+        return(<div><ExecSummaryBtn sectionName="Final Evaluation" contextData={finalCtx}/><div style={{marginTop:16}}><FinalEvalSignOff/></div></div>);
+      case "Evaluation Checklist":
+        return(<div><ExecSummaryBtn sectionName="Combined Evaluation Checklist" contextData={"5 sections: Subjective, Comparative, FMEA, Environmental, Benchmarks. Vendors: "+state.oems.map(o=>o.name||"Unknown").join(", ")}/><div style={{marginTop:16}}><EvaluationChecklist/></div></div>);
+      case "Compare":
+        return(<div><ExecSummaryBtn sectionName="Vendor Comparison Matrix" contextData={"Vendors: "+state.oems.map(o=>o.name||"Unknown").join(", ")+". Results: "+buildAllResultsCtx()}/><div style={{marginTop:16}}><VendorMatrix/></div></div>);
+      case "Weekly Checks":
+        return(<div><ExecSummaryBtn sectionName="Weekly Inspection Compliance" contextData={wkCtx}/><div style={{marginTop:16}}><WeeklyChecks/></div><SectionSignOff sectionName="Weekly Checks"/></div>);
+      case "6-Month Plan":
+        return(<SixMonthPlan/>);
+      case "Demo Missions":
+        return(<DemoMissions/>);
+      default:
+        return(<div><ExecSummaryBtn sectionName="Platform Overview" contextData={"Platform: "+(oem.name||"Unknown")+", Model: "+(oem.model||"N/A")+", Active Site: "+((OPSITES.find(s=>s.key===(oem.activeSite||"site_TRG"))||OPSITES[0]).label)}/><div style={{marginTop:16}}><OverviewPanel/></div></div>);
+    }
+  }
 
   return(
-    <div style={{background:"#000",minHeight:"100vh",fontFamily:"'Inter',system-ui,sans-serif",color:C.text}}>
-      <div style={{position:"fixed",inset:0,zIndex:0,pointerEvents:"none",background:"radial-gradient(ellipse 90% 55% at 25% 75%,rgba(170,170,170,0.11) 0%,transparent 55%),radial-gradient(ellipse 65% 45% at 72% 35%,rgba(140,140,140,0.09) 0%,transparent 50%)"}}/>
-      <div style={{position:"relative",zIndex:1}}>
-        <div style={{background:"rgba(0,0,0,0.82)",backdropFilter:"blur(16px)",borderBottom:"1px solid "+C.border,padding:"13px 24px",display:"flex",alignItems:"center"}}>
-          <div style={{display:"flex",alignItems:"center",gap:12}}>
-            <div style={{background:"rgba(204,34,0,0.15)",border:"1px solid rgba(204,34,0,0.35)",borderRadius:8,padding:"6px 10px",fontSize:18}}>🚁</div>
-            <div><div style={{fontSize:16,fontWeight:800,color:"#fff",letterSpacing:2}}>DRONE TEVI PLATFORM</div><div style={{fontSize:10,color:C.muted,letterSpacing:2}}>TESTING · EVALUATION · VALIDATION · IMPLEMENTATION</div></div>
+    <TeviCtx.Provider value={{oem,dispatch,state,buildAllResultsCtx}}>
+      <div style={{background:"#000",minHeight:"100vh",fontFamily:"'Inter',system-ui,sans-serif",color:C.text}}>
+        <div style={{position:"fixed",inset:0,zIndex:0,pointerEvents:"none",background:"radial-gradient(ellipse 90% 55% at 25% 75%,rgba(170,170,170,0.11) 0%,transparent 55%),radial-gradient(ellipse 65% 45% at 72% 35%,rgba(140,140,140,0.09) 0%,transparent 50%)"}}/>
+        <div style={{position:"relative",zIndex:1}}>
+          <div style={{background:"rgba(0,0,0,0.82)",backdropFilter:"blur(16px)",borderBottom:"1px solid "+C.border,padding:"13px 24px",display:"flex",alignItems:"center"}}>
+            <div style={{display:"flex",alignItems:"center",gap:12}}>
+              <div style={{background:"rgba(204,34,0,0.15)",border:"1px solid rgba(204,34,0,0.35)",borderRadius:8,padding:"6px 10px",fontSize:18}}>🚁</div>
+              <div><div style={{fontSize:16,fontWeight:800,color:"#fff",letterSpacing:2}}>DRONE TEVI PLATFORM</div><div style={{fontSize:10,color:C.muted,letterSpacing:2}}>TESTING · EVALUATION · VALIDATION · IMPLEMENTATION</div></div>
+            </div>
+          </div>
+          <div style={{background:"rgba(0,0,0,0.75)",backdropFilter:"blur(12px)",borderBottom:"1px solid "+C.border,padding:"0 24px",display:"flex",alignItems:"center",gap:4,overflowX:"auto"}}>
+            {state.oems.map((o,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:3}}>
+                <button onClick={()=>{dispatch({type:"SET_ACTIVE",idx:i});if(tab==="Compare")setTab("Overview");}}
+                  style={{padding:"10px 18px",background:"transparent",color:"#fff",border:"none",cursor:"pointer",fontSize:13,fontWeight:700,borderBottom:state.activeOEM===i&&tab!=="Compare"?"2px solid #fff":"2px solid transparent",whiteSpace:"nowrap",opacity:state.activeOEM===i&&tab!=="Compare"?1:0.55}}>
+                  {o.name||"Vendor "+(i+1)}
+                </button>
+                {state.oems.length>1&&<button onClick={()=>{if(window.confirm("Remove "+o.name+"?"))dispatch({type:"DEL_OEM",idx:i});}} style={{background:"none",border:"none",color:C.faint,cursor:"pointer",fontSize:12,padding:"2px 4px"}}>x</button>}
+              </div>
+            ))}
+            <button onClick={()=>setTab("Compare")} style={{padding:"10px 16px",background:"transparent",color:"#fff",border:"none",borderBottom:tab==="Compare"?"2px solid #fff":"2px solid transparent",cursor:"pointer",fontSize:13,fontWeight:700,whiteSpace:"nowrap",opacity:tab==="Compare"?1:0.55}}>Compare</button>
+            {addingOEM?(
+              <div style={{display:"flex",alignItems:"center",gap:6,padding:"4px 0"}}>
+                <input autoFocus value={newName} onChange={e=>setNewName(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&newName.trim()){dispatch({type:"ADD_OEM",name:newName.trim()});setNewName("");setAddingOEM(false);}if(e.key==="Escape"){setAddingOEM(false);setNewName("");}}} style={{...inp,width:130,border:"1px solid "+C.accent}} placeholder="Vendor name"/>
+                <button onClick={()=>{if(newName.trim()){dispatch({type:"ADD_OEM",name:newName.trim()});setNewName("");setAddingOEM(false);}}} style={{background:"rgba(200,200,200,0.15)",color:C.text,border:"1px solid "+C.border,borderRadius:5,padding:"5px 10px",cursor:"pointer",fontSize:13}}>Add</button>
+              </div>
+            ):(
+              <button onClick={()=>setAddingOEM(true)} style={{padding:"8px 14px",background:"transparent",color:C.muted,border:"1px dashed "+C.faint,borderRadius:6,cursor:"pointer",fontSize:12,fontWeight:700,marginLeft:4,whiteSpace:"nowrap"}}>+ Add Vendor</button>
+            )}
+          </div>
+          <div style={{background:"rgba(0,0,0,0.6)",backdropFilter:"blur(8px)",borderBottom:"1px solid "+C.border,padding:"0 24px",display:"flex",overflowX:"auto"}}>
+            {TABS.map(t=>{
+              const tc=TAB_COLORS[t]||{color:"#fff",active:"rgba(255,255,255,0.1)",border:"rgba(255,255,255,0.3)"};
+              const active=tab===t;
+              return(<button key={t} onClick={()=>setTab(t)} style={{padding:"9px 14px",background:active?tc.active:"transparent",color:active?tc.color:"#fff",border:"none",borderBottom:active?"2px solid "+tc.color:"2px solid transparent",borderRadius:active?"6px 6px 0 0":"0",cursor:"pointer",fontSize:12,fontWeight:active?700:400,whiteSpace:"nowrap",opacity:active?1:0.5,transition:"all 0.15s"}}>{t}</button>);
+            })}
+          </div>
+          <div style={{padding:"20px 24px",maxWidth:1400,margin:"0 auto"}}>
+            {renderActiveTab()}
           </div>
         </div>
-        <div style={{background:"rgba(0,0,0,0.75)",backdropFilter:"blur(12px)",borderBottom:"1px solid "+C.border,padding:"0 24px",display:"flex",alignItems:"center",gap:4,overflowX:"auto"}}>
-          {state.oems.map((o,i)=>(
-            <div key={i} style={{display:"flex",alignItems:"center",gap:3}}>
-              <button onClick={()=>{dispatch({type:"SET_ACTIVE",idx:i});if(tab==="Compare")setTab("Overview");}}
-                style={{padding:"10px 18px",background:"transparent",color:"#fff",border:"none",cursor:"pointer",fontSize:13,fontWeight:700,borderBottom:state.activeOEM===i&&tab!=="Compare"?"2px solid #fff":"2px solid transparent",whiteSpace:"nowrap",opacity:state.activeOEM===i&&tab!=="Compare"?1:0.55}}>
-                {o.name||"Vendor "+(i+1)}
-              </button>
-              {state.oems.length>1&&<button onClick={()=>{if(window.confirm("Remove "+o.name+"?"))dispatch({type:"DEL_OEM",idx:i});}} style={{background:"none",border:"none",color:C.faint,cursor:"pointer",fontSize:12,padding:"2px 4px"}}>x</button>}
-            </div>
-          ))}
-          <button onClick={()=>setTab("Compare")} style={{padding:"10px 16px",background:"transparent",color:"#fff",border:"none",borderBottom:tab==="Compare"?"2px solid #fff":"2px solid transparent",cursor:"pointer",fontSize:13,fontWeight:700,whiteSpace:"nowrap",opacity:tab==="Compare"?1:0.55}}>Compare</button>
-          {addingOEM?(
-            <div style={{display:"flex",alignItems:"center",gap:6,padding:"4px 0"}}>
-              <input autoFocus value={newName} onChange={e=>setNewName(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&newName.trim()){dispatch({type:"ADD_OEM",name:newName.trim()});setNewName("");setAddingOEM(false);}if(e.key==="Escape"){setAddingOEM(false);setNewName("");}}} style={{...inp,width:130,border:"1px solid "+C.accent}} placeholder="Vendor name"/>
-              <button onClick={()=>{if(newName.trim()){dispatch({type:"ADD_OEM",name:newName.trim()});setNewName("");setAddingOEM(false);}}} style={{background:"rgba(200,200,200,0.15)",color:C.text,border:"1px solid "+C.border,borderRadius:5,padding:"5px 10px",cursor:"pointer",fontSize:13}}>Add</button>
-            </div>
-          ):(
-            <button onClick={()=>setAddingOEM(true)} style={{padding:"8px 14px",background:"transparent",color:C.muted,border:"1px dashed "+C.faint,borderRadius:6,cursor:"pointer",fontSize:12,fontWeight:700,marginLeft:4,whiteSpace:"nowrap"}}>+ Add Vendor</button>
-          )}
-        </div>
-        <div style={{background:"rgba(0,0,0,0.6)",backdropFilter:"blur(8px)",borderBottom:"1px solid "+C.border,padding:"0 24px",display:"flex",overflowX:"auto"}}>
-          {TABS.map(t=>{
-            const tc=TAB_COLORS[t]||{color:"#fff",active:"rgba(255,255,255,0.1)",border:"rgba(255,255,255,0.3)"};
-            const active=tab===t;
-            return(<button key={t} onClick={()=>setTab(t)} style={{padding:"9px 14px",background:active?tc.active:"transparent",color:active?tc.color:"#fff",border:"none",borderBottom:active?"2px solid "+tc.color:"2px solid transparent",borderRadius:active?"6px 6px 0 0":"0",cursor:"pointer",fontSize:12,fontWeight:active?700:400,whiteSpace:"nowrap",opacity:active?1:0.5,transition:"all 0.15s"}}>{t}</button>);
-          })}
-        </div>
-        <div style={{padding:"20px 24px",maxWidth:1400,margin:"0 auto"}}>
-          <ActiveTab/>
-        </div>
       </div>
-    </div>
+    </TeviCtx.Provider>
   );
 }
