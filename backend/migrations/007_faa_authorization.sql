@@ -1,0 +1,3 @@
+ALTER TABLE projects
+ADD COLUMN IF NOT EXISTS faa_authorization_required BOOLEAN NOT NULL DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS faa_auth_started_at TEXT;

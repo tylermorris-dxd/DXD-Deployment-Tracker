@@ -8,6 +8,8 @@ export interface ProjectSummary {
   doneTasks: number
   hubspotDealId?: string
   currentStage?: number | null
+  faaAuthorizationRequired: boolean
+  faaAuthStartedAt: string | null
 }
 
 export interface ProjectFull {
@@ -23,6 +25,8 @@ export interface ProjectFull {
   phases: Phase[]
   branchAnswers: Record<string, boolean>
   hubspotDealId?: string
+  faaAuthorizationRequired: boolean
+  faaAuthStartedAt: string | null
 }
 
 // ── HubSpot ───────────────────────────────────────────────────────────────────
@@ -178,6 +182,7 @@ export interface UpdateProject {
   airspaceCache?: string | null
   networkCache?: string | null
   weatherCache?: string | null
+  faaAuthorizationRequired?: boolean
 }
 
 export interface UpdatePhase {

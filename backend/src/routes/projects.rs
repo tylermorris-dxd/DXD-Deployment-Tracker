@@ -26,6 +26,7 @@ async fn list_projects(State(state): State<AppState>) -> Result<Json<Vec<Project
     let rows = sqlx::query!(
         r#"
         SELECT p.id, p.name, p.client, p.site, p.created_at, p.hubspot_deal_id,
+               p.faa_authorization_required, p.faa_auth_started_at,
                COUNT(t.id) as total_tasks,
                SUM(CASE WHEN t.completed = TRUE THEN 1 ELSE 0 END) as done_tasks,
                MIN(CASE WHEN t.completed = FALSE AND t.stage_number IS NOT NULL THEN t.stage_number END) as current_stage
@@ -51,6 +52,8 @@ async fn list_projects(State(state): State<AppState>) -> Result<Json<Vec<Project
             done_tasks: r.done_tasks.unwrap_or(0),
             hubspot_deal_id: r.hubspot_deal_id,
             current_stage: r.current_stage,
+            faa_authorization_required: r.faa_authorization_required,
+            faa_auth_started_at: r.faa_auth_started_at,
         })
         .collect();
 
@@ -135,6 +138,8 @@ async fn create_project(
         done_tasks: 0,
         hubspot_deal_id: None,
         current_stage: Some(1),
+        faa_authorization_required: false,
+        faa_auth_started_at: None,
     };
 
     Ok((StatusCode::CREATED, Json(summary)))
@@ -145,7 +150,7 @@ async fn get_project(
     Path(project_id): Path<String>,
 ) -> Result<Json<ProjectFull>, AppError> {
     let proj = sqlx::query!(
-        "SELECT id, name, client, site, created_at, map_cache, airspace_cache, network_cache, weather_cache, hubspot_deal_id, branch_answers FROM projects WHERE id = $1",
+        "SELECT id, name, client, site, created_at, map_cache, airspace_cache, network_cache, weather_cache, hubspot_deal_id, branch_answers, faa_authorization_required, faa_auth_started_at FROM projects WHERE id = $1",
         project_id
     )
     .fetch_optional(&state.pool)
@@ -315,6 +320,8 @@ async fn get_project(
         hubspot_deal_id: proj.hubspot_deal_id,
         branch_answers: serde_json::from_str(&proj.branch_answers)
             .unwrap_or_else(|_| serde_json::json!({})),
+        faa_authorization_required: proj.faa_authorization_required,
+        faa_auth_started_at: proj.faa_auth_started_at,
         phases,
     }))
 }
@@ -363,9 +370,28 @@ async fn update_project(
             .execute(&state.pool)
             .await?;
     }
+    if let Some(faa_req) = body.faa_authorization_required {
+        if faa_req {
+            let now = chrono::Utc::now().to_rfc3339();
+            sqlx::query!(
+                "UPDATE projects SET faa_authorization_required = TRUE, faa_auth_started_at = COALESCE(faa_auth_started_at, $1) WHERE id = $2",
+                now, project_id
+            )
+            .execute(&state.pool)
+            .await?;
+        } else {
+            sqlx::query!(
+                "UPDATE projects SET faa_authorization_required = FALSE, faa_auth_started_at = NULL WHERE id = $1",
+                project_id
+            )
+            .execute(&state.pool)
+            .await?;
+        }
+    }
 
     let row = sqlx::query!(
         r#"SELECT p.id, p.name, p.client, p.site, p.created_at, p.hubspot_deal_id,
+                  p.faa_authorization_required, p.faa_auth_started_at,
                   COUNT(t.id) as total_tasks,
                   SUM(CASE WHEN t.completed = TRUE THEN 1 ELSE 0 END) as done_tasks,
                   MIN(CASE WHEN t.completed = FALSE AND t.stage_number IS NOT NULL THEN t.stage_number END) as current_stage
@@ -390,6 +416,8 @@ async fn update_project(
         done_tasks: row.done_tasks.unwrap_or(0),
         hubspot_deal_id: row.hubspot_deal_id,
         current_stage: row.current_stage,
+        faa_authorization_required: row.faa_authorization_required,
+        faa_auth_started_at: row.faa_auth_started_at,
     }))
 }
 

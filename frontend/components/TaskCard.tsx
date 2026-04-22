@@ -18,8 +18,10 @@ interface Props {
 
 function isVisible(conditionKey: string, answers: Record<string, boolean>): boolean {
   if (!conditionKey) return true
-  if (conditionKey.startsWith('!')) return !answers[conditionKey.slice(1)]
-  return !!answers[conditionKey]
+  const key = conditionKey.startsWith('!') ? conditionKey.slice(1) : conditionKey
+  if (!(key in answers)) return true
+  if (conditionKey.startsWith('!')) return !answers[key]
+  return !!answers[key]
 }
 
 function PriorityBadge({ priority }: { priority: string }) {

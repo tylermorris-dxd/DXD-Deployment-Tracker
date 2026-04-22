@@ -20,6 +20,7 @@ pub struct UpdateProject {
     pub airspace_cache: Option<serde_json::Value>,
     pub network_cache: Option<serde_json::Value>,
     pub weather_cache: Option<serde_json::Value>,
+    pub faa_authorization_required: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -117,6 +118,8 @@ pub struct ProjectSummary {
     pub done_tasks: i64,
     pub hubspot_deal_id: Option<String>,
     pub current_stage: Option<i32>,
+    pub faa_authorization_required: bool,
+    pub faa_auth_started_at: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -134,6 +137,8 @@ pub struct ProjectFull {
     pub phases: Vec<PhaseFull>,
     pub branch_answers: serde_json::Value,
     pub hubspot_deal_id: Option<String>,
+    pub faa_authorization_required: bool,
+    pub faa_auth_started_at: Option<String>,
 }
 
 #[derive(Debug, Serialize)]

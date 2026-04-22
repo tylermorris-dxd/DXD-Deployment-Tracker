@@ -121,6 +121,11 @@ export default function ProjectView({ projectId, onBack }: Props) {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['projects'] }); onBack() },
   })
 
+  const toggleFaa = useMutation({
+    mutationFn: (val: boolean) => api.projects.update(projectId, { faaAuthorizationRequired: val }),
+    onSuccess: () => { invalidate(); qc.invalidateQueries({ queryKey: ['projects'] }) },
+  })
+
   // ── Cache update helpers — write JSON string to DB then re-fetch ──────────
   const updateMapCache = useCallback(async (data: unknown) => {
     try {
@@ -238,6 +243,26 @@ export default function ProjectView({ projectId, onBack }: Props) {
             <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, fontWeight: 700, color: '#E53935', lineHeight: 1 }}>{overallPct}%</span>
           </div>
         </div>
+
+        {/* FAA Authorization toggle */}
+        <button
+          onClick={() => toggleFaa.mutate(!project.faaAuthorizationRequired)}
+          disabled={toggleFaa.isPending}
+          title={project.faaAuthorizationRequired ? 'FAA authorization active — click to disable' : 'Enable FAA authorization tracking'}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', flexShrink: 0,
+            background: project.faaAuthorizationRequired ? 'rgba(37,99,235,0.15)' : 'rgba(255,255,255,0.04)',
+            border: `1px solid ${project.faaAuthorizationRequired ? 'rgba(37,99,235,0.5)' : 'rgba(255,255,255,0.1)'}`,
+            borderRadius: 7, cursor: 'pointer', transition: 'all 0.2s',
+          }}
+        >
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path d="M6 1l1.5 3h3l-2.5 2 1 3L6 7.5 3 9l1-3L1.5 4h3L6 1z" stroke={project.faaAuthorizationRequired ? '#3b82f6' : 'rgba(255,255,255,0.35)'} strokeWidth="1.2" strokeLinejoin="round" fill={project.faaAuthorizationRequired ? 'rgba(37,99,235,0.3)' : 'none'}/>
+          </svg>
+          <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, letterSpacing: 0.8, color: project.faaAuthorizationRequired ? '#3b82f6' : 'rgba(255,255,255,0.35)', textTransform: 'uppercase' }}>
+            FAA Auth
+          </span>
+        </button>
 
         {/* Delete project */}
         <button

@@ -10,6 +10,7 @@ import AdminPanel from '@/components/AdminPanel'
 import PipelineView from '@/components/PipelineView'
 import AllDealsTable from '@/components/AllDealsTable'
 import EquipmentTracker from '@/components/EquipmentTracker'
+import CostEstimator from '@/components/CostEstimator'
 import AdminTasksPanel from '@/components/AdminPanel'
 
 export type MainTab = 'dashboard' | 'deals' | 'pipeline' | 'all-deals' | 'hubspot'
@@ -110,6 +111,7 @@ export default function Home() {
       {tab === 'hubspot'   && <AdminPanel />}
       {(tab as string) === 'equipment' && <EquipmentTracker />}
       {(tab as string) === 'admin'     && <AdminTasksPanel />}
+      {(tab as string) === 'cost'      && <CostEstimator />}
 
       {/* ── Full-page deal view ──────────────────────────────────────────────── */}
       {panelId && (

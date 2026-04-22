@@ -238,14 +238,15 @@ export default function Dashboard({ onOpenDeal, onSwitchTab }: Props) {
 
           {/* Regulatory Tracker */}
           <Widget>
-            <WHeader title="Regulatory Tracker" sub="Drone Deals" />
+            <WHeader title="Regulatory Tracker" sub="FAA Auth" />
             {(() => {
-              const faaDeals = projects.filter(p => p.currentStage === 7 || p.currentStage === 8)
-              if (faaDeals.length === 0) return <Empty>No deals in FAA waiver window</Empty>
+              const faaDeals = projects.filter(p => p.faaAuthorizationRequired)
+              if (faaDeals.length === 0) return <Empty>No FAA authorization tracked — enable per deal</Empty>
               return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                   {faaDeals.map(p => {
-                    const ageDays = Math.round((now - new Date(p.createdAt).getTime()) / 86_400_000)
+                    const startMs = p.faaAuthStartedAt ? new Date(p.faaAuthStartedAt).getTime() : new Date(p.createdAt).getTime()
+                    const ageDays = Math.round((now - startMs) / 86_400_000)
                     const pct     = Math.min(ageDays / 112, 1)
                     const barColor = ageDays > 60 ? C.red : ageDays > 30 ? C.amber : C.green
                     const deal = dealMap.get(p.id)
