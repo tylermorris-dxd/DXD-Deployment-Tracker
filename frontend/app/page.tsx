@@ -12,8 +12,9 @@ import AllDealsTable from '@/components/AllDealsTable'
 import EquipmentTracker from '@/components/EquipmentTracker'
 import CostEstimator from '@/components/CostEstimator'
 import DroneTeviApp from '@/components/DroneTeviApp'
+import EventPricingApp from '@/components/EventPricingApp'
 
-export type MainTab = 'dashboard' | 'deals' | 'pipeline' | 'all-deals' | 'admin' | 'equipment' | 'cost' | 'product'
+export type MainTab = 'dashboard' | 'deals' | 'pipeline' | 'all-deals' | 'admin' | 'equipment' | 'cost' | 'product' | 'events'
 
 const MENU_ITEMS: { id: MainTab; label: string; dividerBefore?: boolean }[] = [
   { id: 'dashboard',  label: 'Dashboard' },
@@ -23,6 +24,7 @@ const MENU_ITEMS: { id: MainTab; label: string; dividerBefore?: boolean }[] = [
   { id: 'admin',      label: 'Admin',          dividerBefore: true },
   { id: 'equipment',  label: 'Equipment' },
   { id: 'cost',       label: 'Cost Estimator' },
+  { id: 'events',     label: 'Event Pricing' },
   { id: 'product',    label: 'Products' },
 ]
 
@@ -128,6 +130,7 @@ export default function Home() {
       {tab === 'equipment' && <EquipmentTracker />}
       {tab === 'cost'      && <CostEstimator />}
       {tab === 'product'   && <DroneTeviApp />}
+      {tab === 'events'    && <EventPricingApp />}
 
       {/* ── Full-page deal view ──────────────────────────────────────────────── */}
       {panelId && (
