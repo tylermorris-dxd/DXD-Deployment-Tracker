@@ -59,7 +59,6 @@ export default function ProjectList({ onSelectProject }: { onSelectProject: (id:
           <img src="/images/logo.png" alt="DXD" style={s.logoImg} />
           <div>
             <div style={s.logoTitle}>DEUS X DEFENSE</div>
-            <div style={s.logoSub}>DRONE DEPLOYMENT OPS</div>
           </div>
         </div>
         <button style={s.primaryBtn} onClick={() => setShowNew(!showNew)}>

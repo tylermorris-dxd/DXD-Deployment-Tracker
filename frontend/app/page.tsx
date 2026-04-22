@@ -46,14 +46,8 @@ export default function Home() {
       }}>
         {/* Brand */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 20px', borderRight: `1px solid ${C.border}`, height: '100%', flexShrink: 0 }}>
-          <div style={{ width: 28, height: 28, background: C.red, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <span style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 11, color: '#fff' }}>DX</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-            <span style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 13, color: C.text, letterSpacing: 2 }}>DXD</span>
-            <span style={{ color: C.muted, fontSize: 16, lineHeight: 1, marginTop: -1 }}>/</span>
-            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: C.muted, letterSpacing: 1, textTransform: 'uppercase' }}>Ops Tracker</span>
-          </div>
+          <img src="/images/logo.png" alt="DXD" style={{ height: 32, width: 'auto', flexShrink: 0 }} />
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: C.muted, letterSpacing: 1, textTransform: 'uppercase' }}>Ops Tracker</span>
         </div>
 
         {/* Nav tabs */}
