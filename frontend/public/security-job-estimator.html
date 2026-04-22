@@ -494,81 +494,113 @@
 
   /* ── PRINT STYLES ── */
   @media print {
-    body { background: #fff !important; color: #000 !important; font-size: 11px; }
+    @page { margin: 0.4in 0.4in 0.4in 0.4in; size: letter landscape; }
+
+    * { animation: none !important; transition: none !important; }
+    body { background: #fff !important; color: #111 !important; font-size: 9px !important; }
     body::before, body::after { display: none !important; }
 
+    /* ── header: slim single line ── */
     header { background: #fff !important; border-bottom: 2px solid #C8102E !important; }
-    header::before { background: #C8102E !important; box-shadow: none !important; }
-    .header-inner { padding: 12px 24px 12px 28px !important; }
-
-    .logo-box { border-color: #C8102E !important; background: rgba(200,16,46,0.05) !important; }
-    .logo-box .logo-dxd { color: #000 !important; }
-    .logo-box .logo-sub { color: #C8102E !important; }
-    .header-text h1 { color: #000 !important; }
-    .header-text .sub { color: #555 !important; }
-    .header-meta { color: #555 !important; }
-    .header-meta .doc-id { color: #C8102E !important; }
+    header::before { display: none !important; }
+    .header-inner { padding: 6px 12px !important; gap: 12px !important; }
+    .logo-box { width: 42px !important; height: 34px !important; border-color: #C8102E !important; background: none !important; }
+    .logo-box::before { display: none !important; }
+    .logo-box .logo-dxd { font-size: 11px !important; color: #000 !important; }
+    .logo-box .logo-sub { font-size: 6px !important; color: #C8102E !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .header-divider { height: 28px !important; }
+    .header-text h1 { font-size: 12px !important; color: #000 !important; letter-spacing: 1px !important; }
+    .header-text .sub { font-size: 7.5px !important; color: #555 !important; }
+    .header-right { gap: 8px !important; }
+    .header-meta { font-size: 7.5px !important; color: #555 !important; line-height: 1.5 !important; }
+    .header-meta .doc-id { color: #C8102E !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .pdf-btn { display: none !important; }
 
-    .legend-bar { background: #f5f5f5 !important; border-color: #ddd !important; color: #555 !important; }
-    .legend-dot { box-shadow: none !important; }
+    /* ── hide decorative / non-data elements ── */
+    .legend-bar { display: none !important; }
+    .note-box { display: none !important; }
+    footer { display: none !important; }
+    .equip-group-header { display: none !important; }
+    .add-line-btn, .remove-line-btn { display: none !important; }
+    .card::before { display: none !important; }
+    .card-header-icon { display: none !important; }
 
-    main { padding: 16px 24px !important; }
+    /* ── breakdown band: compact summary strip ── */
+    .breakdown-band {
+      margin-bottom: 6px !important;
+      background: #eee !important;
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    .breakdown-cell { padding: 5px 10px !important; background: #f8f8f8 !important; }
+    .breakdown-cell .bc-label { font-size: 7px !important; color: #666 !important; }
+    .breakdown-cell .bc-value { font-size: 13px !important; color: #111 !important; }
+    .breakdown-cell .bc-value.is-red { color: #C8102E !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .breakdown-cell .bc-sub { font-size: 7px !important; color: #666 !important; }
 
-    .card { background: #fff !important; border: 1px solid #ddd !important; break-inside: avoid; }
-    .card::before { background: linear-gradient(90deg, #C8102E 0%, transparent 60%) !important; }
-    .card-header { background: rgba(200,16,46,0.06) !important; border-color: #ddd !important; }
-    .card-header-icon { background: #C8102E !important; box-shadow: none !important; }
-    .card-title { color: #000 !important; }
+    /* ── main layout ── */
+    main { padding: 6px 0 0 0 !important; max-width: 100% !important; }
+    .grid-2 { gap: 8px !important; margin-bottom: 6px !important; }
 
-    .cost-table .section-label { background: #f5f5f5 !important; color: #555 !important; border-color: #ddd !important; }
+    /* ── cards ── */
+    .card { background: #fff !important; border: 1px solid #ccc !important; }
+    .card-header { padding: 5px 10px !important; background: #f2f2f2 !important; border-color: #ccc !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .card-title { font-size: 8.5px !important; color: #000 !important; letter-spacing: 1px !important; }
+
+    /* ── table rows — very compact ── */
+    .cost-table td { padding: 3px 10px !important; font-size: 9px !important; }
     .cost-table td.row-label { color: #333 !important; }
     .cost-table tr.data-row { border-color: #eee !important; }
-
-    input.cell-input, select.cell-select {
-      background: #eef4ff !important;
-      border: 1px solid #3A7BD5 !important;
-      color: #1a4fa0 !important;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
+    .cost-table .section-label {
+      padding: 3px 10px !important; font-size: 7px !important;
+      background: #f2f2f2 !important; color: #666 !important; border-color: #ddd !important;
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
     }
 
-    .calc-val { color: #555 !important; }
+    /* ── inputs: show as plain values ── */
+    input.cell-input, select.cell-select {
+      background: #eef3ff !important;
+      border: 1px solid #3A7BD5 !important;
+      color: #1a4fa0 !important;
+      font-size: 9px !important;
+      padding: 2px 6px !important;
+      width: 80px !important;
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    input.label-input {
+      border: none !important;
+      border-bottom: 1px solid #ddd !important;
+      color: #333 !important;
+      font-size: 9px !important;
+      padding: 1px 3px !important;
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
 
-    .output-row td { background: rgba(200,16,46,0.06) !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .output-row td.row-label { color: #000 !important; }
-    .output-val { color: #C8102E !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .calc-val { font-size: 9px !important; color: #555 !important; }
 
-    .breakdown-band { background: #eee !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .breakdown-cell { background: #fafafa !important; }
-    .breakdown-cell .bc-label { color: #666 !important; }
-    .breakdown-cell .bc-value { color: #000 !important; }
-    .breakdown-cell .bc-value.is-red { color: #C8102E !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .breakdown-cell .bc-value.is-blue { color: #1a4fa0 !important; }
-    .breakdown-cell .bc-sub { color: #666 !important; }
+    .output-row td {
+      background: rgba(200,16,46,0.07) !important;
+      padding: 4px 10px !important;
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    .output-row td.row-label { color: #000 !important; font-weight: 600 !important; }
+    .output-val { font-size: 10px !important; color: #C8102E !important; font-weight: 700 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
+    /* ── equipment rows always visible ── */
+    .equip-rows { display: table-row-group !important; }
+
+    /* ── total banner ── */
     .total-banner {
+      padding: 8px 14px !important;
       background: #fff !important;
       border: 2px solid #C8102E !important;
       box-shadow: none !important;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
     }
-    .total-banner::before { background: #C8102E !important; box-shadow: none !important; }
+    .total-banner::before { background: #C8102E !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .total-banner::after { display: none !important; }
-    .total-label { color: #000 !important; }
-    .total-sub { color: #555 !important; }
-    .total-value { color: #C8102E !important; text-shadow: none !important; }
-
-    .note-box { background: #f9f9f9 !important; border-color: #ccc !important; color: #555 !important; }
-
-    footer { background: #fff !important; border-color: #ddd !important; color: #555 !important; }
-    footer .accent { color: #C8102E !important; }
-
-    .equip-group-header { background: #f5f5f5 !important; color: #555 !important; border-color: #ddd !important; }
-    .equip-rows { display: table-row-group !important; }
-    .add-line-btn, .remove-line-btn { display: none !important; }
-    input.label-input { border-bottom-color: #ccc !important; color: #333 !important; }
+    .total-label { font-size: 10px !important; color: #000 !important; }
+    .total-sub { font-size: 8px !important; color: #555 !important; }
+    .total-value { font-size: 20px !important; color: #C8102E !important; text-shadow: none !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   }
 </style>
 </head>
