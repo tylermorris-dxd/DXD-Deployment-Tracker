@@ -130,7 +130,7 @@ export default function Home() {
       {panelId && (
         <div style={{
           position: 'fixed', inset: 0,
-          background: C.bg,
+          background: '#0a0b0d',
           zIndex: 300, overflowY: 'auto',
           animation: 'fadeSlideIn 0.2s ease',
         }}>
