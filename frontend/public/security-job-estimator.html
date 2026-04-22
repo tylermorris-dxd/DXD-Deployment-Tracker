@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DXD · Security Job Costing Model</title>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --red:       #C8102E;
+    --red-dim:   #8B0A1F;
+    --red-glow:  rgba(200,16,46,0.18);
+    --dark:      #080808;
+    --surface:   #0F0F0F;
+    --panel:     #141414;
+    --card:      #181818;
+    --border:    #242424;
+    --border-hi: #333;
+    --white:     #F2F2F2;
+    --gray:      #666;
+    --gray-hi:   #999;
+    --blue:      #3A7BD5;
+    --blue-dim:  rgba(58,123,213,0.12);
+    --green:     #1DB954;
+    --mono:      'IBM Plex Mono', monospace;
+    --head:      'Chakra Petch', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--dark);
+    color: var(--white);
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.5;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px);
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9998;
+    opacity: 0.4;
+  }
+
+  /* ── HEADER ── */
+  header {
+    position: relative;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0;
+    overflow: hidden;
+  }
+
+  header::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--red);
+    box-shadow: 0 0 16px var(--red);
+  }
+
+  .header-inner {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 18px 32px 18px 40px;
+  }
+
+  .logo-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 54px;
+    border: 1px solid var(--red);
+    background: rgba(200,16,46,0.06);
+    flex-shrink: 0;
+    position: relative;
+  }
+
+  .logo-box::before {
+    content: '';
+    position: absolute;
+    inset: 2px;
+    border: 1px solid rgba(200,16,46,0.2);
+  }
+
+  .logo-box .logo-dxd {
+    font-family: var(--head);
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--white);
+    letter-spacing: 2px;
+    line-height: 1;
+  }
+
+  .logo-box .logo-sub {
+    font-family: var(--mono);
+    font-size: 7px;
+    color: var(--red);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-top: 3px;
+  }
+
+  .header-divider { width: 1px; height: 48px; background: var(--border-hi); flex-shrink: 0; }
+
+  .header-text h1 {
+    font-family: var(--head);
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--white);
+    line-height: 1.2;
+  }
+
+  .header-text .sub {
+    font-size: 10px;
+    color: var(--gray);
+    letter-spacing: 1px;
+    margin-top: 3px;
+    text-transform: uppercase;
+  }
+
+  .header-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .header-meta {
+    text-align: right;
+    font-size: 10px;
+    color: var(--gray);
+    letter-spacing: 0.5px;
+    line-height: 1.8;
+  }
+
+  .header-meta .doc-id { color: var(--red); font-weight: 500; letter-spacing: 1px; }
+
+  .pdf-btn {
+    padding: 9px 20px;
+    background: var(--red);
+    border: none;
+    color: #fff;
+    font-family: var(--head);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s, box-shadow 0.15s;
+  }
+
+  .pdf-btn:hover { background: #a00d24; box-shadow: 0 0 16px rgba(200,16,46,0.4); }
+
+  /* ── LEGEND BAR ── */
+  .legend-bar {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 8px 32px 8px 40px;
+    display: flex;
+    gap: 28px;
+    align-items: center;
+    font-size: 10px;
+    letter-spacing: 0.5px;
+    color: var(--gray-hi);
+  }
+
+  .legend-item { display: flex; align-items: center; gap: 7px; }
+
+  .legend-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+  /* ── MAIN ── */
+  main { padding: 24px 32px 40px 32px; max-width: 1400px; margin: 0 auto; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+
+  @media (max-width: 900px) {
+    .grid-2 { grid-template-columns: 1fr; }
+    main { padding: 16px; }
+    .header-inner { padding: 14px 16px 14px 24px; gap: 14px; }
+  }
+
+  /* ── CARDS ── */
+  .card { background: var(--card); border: 1px solid var(--border); position: relative; overflow: hidden; }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, var(--red) 0%, transparent 60%);
+  }
+
+  .card-header {
+    padding: 12px 16px 10px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(200,16,46,0.04);
+  }
+
+  .card-header-icon { width: 4px; height: 18px; background: var(--red); box-shadow: 0 0 8px var(--red); flex-shrink: 0; }
+
+  .card-title {
+    font-family: var(--head);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--white);
+  }
+
+  .card-body { padding: 0; }
+
+  /* ── TABLES ── */
+  .cost-table { width: 100%; border-collapse: collapse; }
+
+  .cost-table .section-label {
+    padding: 8px 16px 5px;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--gray);
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .cost-table tr.data-row { border-bottom: 1px solid rgba(36,36,36,0.8); transition: background 0.12s; }
+  .cost-table tr.data-row:hover { background: rgba(255,255,255,0.025); }
+  .cost-table td { padding: 9px 16px; vertical-align: middle; }
+  .cost-table td.row-label { color: var(--gray-hi); font-size: 11.5px; font-family: var(--mono); letter-spacing: 0.3px; }
+  .cost-table td.row-value { text-align: right; white-space: nowrap; min-width: 100px; }
+
+  input.cell-input {
+    background: var(--blue-dim);
+    border: 1px solid rgba(58,123,213,0.35);
+    color: var(--blue);
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    text-align: right;
+    padding: 4px 8px;
+    width: 100px;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    -moz-appearance: textfield;
+  }
+
+  input.cell-input::-webkit-outer-spin-button,
+  input.cell-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+  input.cell-input:focus { border-color: var(--blue); box-shadow: 0 0 0 2px rgba(58,123,213,0.2); }
+
+  .calc-val { font-size: 12px; color: var(--gray-hi); font-weight: 400; font-family: var(--mono); }
+
+  .output-row td { background: rgba(200,16,46,0.05) !important; }
+  .output-row td.row-label { color: var(--white); font-weight: 500; }
+  .output-val { font-size: 13px; color: var(--red); font-weight: 600; font-family: var(--mono); }
+
+  select.cell-select {
+    background: var(--blue-dim);
+    border: 1px solid rgba(58,123,213,0.35);
+    color: var(--blue);
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    padding: 4px 8px;
+    width: 100px;
+    outline: none;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    text-align: right;
+  }
+
+  select.cell-select:focus { border-color: var(--blue); box-shadow: 0 0 0 2px rgba(58,123,213,0.2); }
+
+  /* ── TOTAL BANNER ── */
+  .total-banner {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-top: 2px solid var(--red);
+    box-shadow: 0 0 30px rgba(200,16,46,0.1), inset 0 1px 0 rgba(200,16,46,0.15);
+    padding: 20px 28px;
+    display: flex;
+    align-items: center;
+    gap: 0;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .total-banner::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--red);
+    box-shadow: 0 0 20px var(--red);
+  }
+
+  .total-banner::after {
+    content: '';
+    position: absolute;
+    right: -80px; top: -80px;
+    width: 200px; height: 200px;
+    background: radial-gradient(circle, rgba(200,16,46,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .total-label { font-family: var(--head); font-size: 13px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--white); flex: 1; }
+  .total-sub { font-size: 10px; color: var(--gray); letter-spacing: 0.5px; font-family: var(--mono); flex: 2; }
+
+  .total-value {
+    font-family: var(--head);
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--red);
+    letter-spacing: 1px;
+    text-shadow: 0 0 20px rgba(200,16,46,0.5);
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+  }
+
+  .total-value.pulse { animation: pulseNum 0.4s ease; }
+
+  @keyframes pulseNum {
+    0%   { text-shadow: 0 0 20px rgba(200,16,46,0.5); }
+    50%  { text-shadow: 0 0 40px rgba(200,16,46,0.9), 0 0 80px rgba(200,16,46,0.4); }
+    100% { text-shadow: 0 0 20px rgba(200,16,46,0.5); }
+  }
+
+  /* ── BREAKDOWN BAND ── */
+  .breakdown-band {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+
+  .breakdown-cell { background: var(--card); padding: 14px 18px; display: flex; flex-direction: column; gap: 4px; transition: background 0.15s; }
+  .breakdown-cell:hover { background: rgba(255,255,255,0.02); }
+  .breakdown-cell .bc-label { font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--gray); font-family: var(--mono); }
+  .breakdown-cell .bc-value { font-family: var(--head); font-size: 18px; font-weight: 600; color: var(--white); transition: color 0.3s; }
+  .breakdown-cell .bc-value.is-red { color: var(--red); }
+  .breakdown-cell .bc-value.is-blue { color: var(--blue); }
+  .breakdown-cell .bc-sub { font-size: 10px; color: var(--gray); font-family: var(--mono); }
+
+  /* ── NOTE BOX ── */
+  .note-box {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--gray);
+    padding: 10px 14px;
+    font-size: 10.5px;
+    color: var(--gray-hi);
+    letter-spacing: 0.3px;
+    line-height: 1.7;
+    margin-top: 14px;
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 12px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 9px;
+    letter-spacing: 1px;
+    color: var(--gray);
+    text-transform: uppercase;
+    background: var(--surface);
+  }
+
+  footer span.accent { color: var(--red); }
+
+  /* ── ANIMATIONS ── */
+  .card { animation: fadeIn 0.4s ease both; }
+  .card:nth-child(2) { animation-delay: 0.08s; }
+  .total-banner { animation: fadeIn 0.4s 0.18s ease both; }
+  .breakdown-band { animation: fadeIn 0.4s 0.06s ease both; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .flash { animation: flashVal 0.35s ease; }
+
+  @keyframes flashVal {
+    0%   { opacity: 1; }
+    30%  { opacity: 0.4; color: var(--white); }
+    100% { opacity: 1; }
+  }
+
+  /* ── EQUIPMENT SECTION ── */
+  .equip-group { overflow: hidden; }
+
+  .equip-group-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 16px;
+    cursor: pointer;
+    user-select: none;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--gray-hi);
+    transition: background 0.12s;
+  }
+
+  .equip-group-header:hover { background: rgba(255,255,255,0.03); }
+
+  .equip-arrow { transition: transform 0.2s; font-size: 8px; color: var(--gray); }
+  .equip-arrow.open { transform: rotate(90deg); }
+  .equip-rows { display: none; }
+  .equip-rows.open { display: table-row-group; }
+  .equip-toggle-hint { margin-left: auto; font-size: 9px; color: var(--gray); letter-spacing: 1px; }
+
+  input.label-input {
+    background: transparent;
+    border: none;
+    border-bottom: 1px dashed var(--border-hi);
+    color: var(--gray-hi);
+    font-family: var(--mono);
+    font-size: 11.5px;
+    padding: 2px 4px;
+    width: 100%;
+    outline: none;
+    transition: border-color 0.15s, color 0.15s;
+  }
+
+  input.label-input::placeholder { color: var(--gray); opacity: 0.7; }
+  input.label-input:focus { border-bottom-color: var(--blue); color: var(--white); }
+
+  .remove-line-btn {
+    background: none;
+    border: none;
+    color: var(--gray);
+    font-size: 14px;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+    opacity: 0;
+    transition: color 0.15s, opacity 0.15s;
+    flex-shrink: 0;
+  }
+
+  tr.data-row:hover .remove-line-btn { opacity: 1; }
+  .remove-line-btn:hover { color: var(--red); }
+
+  .add-line-btn {
+    background: none;
+    border: 1px dashed var(--border-hi);
+    color: var(--gray-hi);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    padding: 5px 14px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+  }
+
+  .add-line-btn:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-dim); }
+
+  /* ── PRINT STYLES ── */
+  @media print {
+    body { background: #fff !important; color: #000 !important; font-size: 11px; }
+    body::before, body::after { display: none !important; }
+
+    header { background: #fff !important; border-bottom: 2px solid #C8102E !important; }
+    header::before { background: #C8102E !important; box-shadow: none !important; }
+    .header-inner { padding: 12px 24px 12px 28px !important; }
+
+    .logo-box { border-color: #C8102E !important; background: rgba(200,16,46,0.05) !important; }
+    .logo-box .logo-dxd { color: #000 !important; }
+    .logo-box .logo-sub { color: #C8102E !important; }
+    .header-text h1 { color: #000 !important; }
+    .header-text .sub { color: #555 !important; }
+    .header-meta { color: #555 !important; }
+    .header-meta .doc-id { color: #C8102E !important; }
+    .pdf-btn { display: none !important; }
+
+    .legend-bar { background: #f5f5f5 !important; border-color: #ddd !important; color: #555 !important; }
+    .legend-dot { box-shadow: none !important; }
+
+    main { padding: 16px 24px !important; }
+
+    .card { background: #fff !important; border: 1px solid #ddd !important; break-inside: avoid; }
+    .card::before { background: linear-gradient(90deg, #C8102E 0%, transparent 60%) !important; }
+    .card-header { background: rgba(200,16,46,0.06) !important; border-color: #ddd !important; }
+    .card-header-icon { background: #C8102E !important; box-shadow: none !important; }
+    .card-title { color: #000 !important; }
+
+    .cost-table .section-label { background: #f5f5f5 !important; color: #555 !important; border-color: #ddd !important; }
+    .cost-table td.row-label { color: #333 !important; }
+    .cost-table tr.data-row { border-color: #eee !important; }
+
+    input.cell-input, select.cell-select {
+      background: #eef4ff !important;
+      border: 1px solid #3A7BD5 !important;
+      color: #1a4fa0 !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .calc-val { color: #555 !important; }
+
+    .output-row td { background: rgba(200,16,46,0.06) !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .output-row td.row-label { color: #000 !important; }
+    .output-val { color: #C8102E !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+    .breakdown-band { background: #eee !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .breakdown-cell { background: #fafafa !important; }
+    .breakdown-cell .bc-label { color: #666 !important; }
+    .breakdown-cell .bc-value { color: #000 !important; }
+    .breakdown-cell .bc-value.is-red { color: #C8102E !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .breakdown-cell .bc-value.is-blue { color: #1a4fa0 !important; }
+    .breakdown-cell .bc-sub { color: #666 !important; }
+
+    .total-banner {
+      background: #fff !important;
+      border: 2px solid #C8102E !important;
+      box-shadow: none !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .total-banner::before { background: #C8102E !important; box-shadow: none !important; }
+    .total-banner::after { display: none !important; }
+    .total-label { color: #000 !important; }
+    .total-sub { color: #555 !important; }
+    .total-value { color: #C8102E !important; text-shadow: none !important; }
+
+    .note-box { background: #f9f9f9 !important; border-color: #ccc !important; color: #555 !important; }
+
+    footer { background: #fff !important; border-color: #ddd !important; color: #555 !important; }
+    footer .accent { color: #C8102E !important; }
+
+    .equip-group-header { background: #f5f5f5 !important; color: #555 !important; border-color: #ddd !important; }
+    .equip-rows { display: table-row-group !important; }
+    .add-line-btn, .remove-line-btn { display: none !important; }
+    input.label-input { border-bottom-color: #ccc !important; color: #333 !important; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="logo-box">
+      <span class="logo-dxd">DXD</span>
+      <span class="logo-sub">Defense</span>
+    </div>
+    <div class="header-divider"></div>
+    <div class="header-text">
+      <h1>Security Job Costing Model</h1>
+      <div class="sub">UAS Deployment · Cost Breakdown Sheet · Internal Use Only</div>
+    </div>
+    <div class="header-right">
+      <div class="header-meta">
+        <div class="doc-id">DXD-FIN-JOBCOST-001</div>
+        <div id="current-date"></div>
+        <div>Rob Tesh / Leadership</div>
+      </div>
+      <button class="pdf-btn" onclick="exportPDF()">&#8595; Download PDF</button>
+    </div>
+  </div>
+</header>
+
+<div class="legend-bar">
+  <div class="legend-item">
+    <div class="legend-dot" style="background:var(--blue);box-shadow:0 0 6px var(--blue)"></div>
+    <span>Blue = editable inputs</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-dot" style="background:var(--gray-hi)"></div>
+    <span>Gray = calculated</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-dot" style="background:var(--red);box-shadow:0 0 6px var(--red)"></div>
+    <span>Red = billable outputs</span>
+  </div>
+  <div class="legend-item" style="margin-left:auto;color:var(--gray);font-size:9px;letter-spacing:1px">
+    ALL VALUES ARE MONTHLY · COSTS IN USD
+  </div>
+</div>
+
+<main>
+
+  <div class="breakdown-band">
+    <div class="breakdown-cell">
+      <span class="bc-label">Pilot Cost / Drone / Mo</span>
+      <span class="bc-value is-red" id="bb-pilot">—</span>
+      <span class="bc-sub" id="bb-pilot-sub">— drones</span>
+    </div>
+    <div class="breakdown-cell">
+      <span class="bc-label">Equipment Cost / Mo</span>
+      <span class="bc-value" id="bb-equip">—</span>
+      <span class="bc-sub">Amortized over <span id="bb-amort">24</span> months</span>
+    </div>
+    <div class="breakdown-cell">
+      <span class="bc-label">Service Charge / Mo</span>
+      <span class="bc-value" id="bb-service">—</span>
+      <span class="bc-sub">Billable incl. margin</span>
+    </div>
+    <div class="breakdown-cell">
+      <span class="bc-label">Total Monthly Billable</span>
+      <span class="bc-value is-red" id="bb-total">—</span>
+      <span class="bc-sub">Pilot + Equipment + Service</span>
+    </div>
+  </div>
+
+  <div class="grid-2">
+
+    <!-- CHART 1: PILOT COST -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-icon"></div>
+        <span class="card-title">Chart 1 — Pilot Cost / Drone / Month</span>
+      </div>
+      <div class="card-body">
+        <table class="cost-table">
+          <tbody>
+            <tr><td colspan="2" class="section-label">Inputs</td></tr>
+            <tr class="data-row">
+              <td class="row-label">Pilot hourly rate (1099, no overhead)</td>
+              <td class="row-value"><input type="number" class="cell-input" id="pilotRate" value="35.00" step="0.50" min="0"></td>
+            </tr>
+            <tr class="data-row">
+              <td class="row-label">Drones flown simultaneously</td>
+              <td class="row-value"><input type="number" class="cell-input" id="numDrones" value="4" step="1" min="1"></td>
+            </tr>
+            <tr class="data-row">
+              <td class="row-label">Hours worked per day</td>
+              <td class="row-value"><input type="number" class="cell-input" id="hoursDay" value="8.00" step="0.5" min="1"></td>
+            </tr>
+            <tr class="data-row">
+              <td class="row-label">Working days per month</td>
+              <td class="row-value"><input type="number" class="cell-input" id="workDays" value="22" step="1" min="1" max="31"></td>
+            </tr>
+            <tr class="data-row">
+              <td class="row-label">Margin %</td>
+              <td class="row-value"><input type="number" class="cell-input" id="pilotMargin" value="30" step="1" min="0" max="100"></td>
+            </tr>
+            <tr><td colspan="2" class="section-label">Calculations</td></tr>
+            <tr class="data-row">
+              <td class="row-label">Total pilot hours / month</td>
+              <td class="row-value"><span class="calc-val" id="totalHours">176.00</span></td>
+            </tr>
+            <tr class="data-row">
+              <td class="row-label">Effective cost per drone / hour</td>
+              <td class="row-value"><span class="calc-val" id="costPerDroneHour">$8.75</span></td>
+            </tr>
+            <tr class="data-row">
+              <td class="row-label">Cost per drone / month (base)</td>
+              <td class="row-value"><span class="calc-val" id="costPerDroneMonth">$1,540</span></td>
+            </tr>
+            <tr class="data-row">
+              <td class="row-label">Margin per drone / month</td>
+              <td class="row-value"><span class="calc-val" id="marginPerDrone">$462</span></td>
+            </tr>
+            <tr class="data-row output-row">
+              <td class="row-label">&#9658;&nbsp; Billable Pilot Cost / Drone / Month</td>
+              <td class="row-value"><span class="output-val" id="billablePilotPerDrone">$2,002</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- CHART 2: EQUIPMENT COST -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-icon"></div>
+        <span class="card-title">Chart 2 — Equipment Cost / Month</span>
+      </div>
+      <div class="card-body">
+        <table class="cost-table">
+          <tbody>
+            <tr><td colspan="2" class="section-label">Inputs</td></tr>
+            <tr class="data-row">
+              <td class="row-label">Amortization period (months)</td>
+              <td class="row-value">
+                <select class="cell-select" id="amortPeriod">
+                  <option value="12">12 months</option>
+                  <option value="24" selected>24 months</option>
+                  <option value="36">36 months</option>
+                </select>
+              </td>
+            </tr>
+            <tr class="data-row">
+              <td class="row-label">Equipment margin %</td>
+              <td class="row-value"><input type="number" class="cell-input" id="equipMargin" value="30" step="1" min="0" max="100"></td>
+            </tr>
+
+            <tr>
+              <td colspan="2" style="padding:0">
+                <div class="equip-group-header" id="equipToggle" onclick="toggleEquip(this)">
+                  <span class="equip-arrow open">&#9658;</span>
+                  Fleet Equipment — Acquisition Cost
+                  <span class="equip-toggle-hint" id="equipHint">click to collapse</span>
+                </div>
+              </td>
+            </tr>
+            <tbody class="equip-rows open" id="equipRows"></tbody>
+            <tr id="addLineRow">
+              <td colspan="2" style="padding:6px 16px 6px 28px;">
+                <button class="add-line-btn" onclick="addEquipLine()">+ Add Line Item</button>
+              </td>
+            </tr>
+
+            <tr><td colspan="2" class="section-label">Monthly Service Charge</td></tr>
+            <tr class="data-row">
+              <td class="row-label">Service charge margin %</td>
+              <td class="row-value"><input type="number" class="cell-input" id="serviceChargeMargin" value="30" step="1" min="0" max="100"></td>
+            </tr>
+            <tbody id="serviceRows"></tbody>
+            <tr id="addServiceRow">
+              <td colspan="2" style="padding:6px 16px 6px 28px;">
+                <button class="add-line-btn" onclick="addServiceLine()">+ Add Service Line</button>
+              </td>
+            </tr>
+            <tr class="data-row">
+              <td class="row-label">Total service charges (base)</td>
+              <td class="row-value"><span class="calc-val" id="totalServiceBase">$0.00</span></td>
+            </tr>
+            <tr class="data-row">
+              <td class="row-label">Margin on service charges / month</td>
+              <td class="row-value"><span class="calc-val" id="serviceChargeMarginAmt">$0.00</span></td>
+            </tr>
+            <tr class="data-row output-row">
+              <td class="row-label">&#9658;&nbsp; Billable Service Charge / Month</td>
+              <td class="row-value"><span class="output-val" id="billableServiceCharge">$0.00</span></td>
+            </tr>
+
+            <tr><td colspan="2" class="section-label">Summary</td></tr>
+            <tr class="data-row">
+              <td class="row-label">Total fleet equipment cost</td>
+              <td class="row-value"><span class="calc-val" id="totalEquipCost">$0</span></td>
+            </tr>
+            <tr class="data-row">
+              <td class="row-label">Monthly amortized cost (base)</td>
+              <td class="row-value"><span class="calc-val" id="monthlyAmort">$0</span></td>
+            </tr>
+            <tr class="data-row">
+              <td class="row-label">Margin on equipment / month</td>
+              <td class="row-value"><span class="calc-val" id="equipMarginAmt">$0</span></td>
+            </tr>
+            <tr class="data-row output-row">
+              <td class="row-label">&#9658;&nbsp; Billable Equipment Cost / Month</td>
+              <td class="row-value"><span class="output-val" id="billableEquip">$0</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="total-banner">
+    <div class="total-label">Total Monthly Billable</div>
+    <div class="total-sub">Pilot cost (per drone) + Billable equipment + Billable service charge</div>
+    <div class="total-value" id="grandTotal">—</div>
+  </div>
+
+  <div class="note-box">
+    <strong>Amortization:</strong> Change amortization period to 12, 24, or 36 months to model different equipment cost scenarios.
+    Equipment line items are currently $0 — populate fleet acquisition costs to see full monthly billable.
+    All costs are monthly. Margin % applied as markup on base cost.
+  </div>
+
+</main>
+
+<footer>
+  <span>Deus X Defense · <span class="accent">Internal Use Only</span> · Not for Distribution</span>
+  <span id="footer-date"></span>
+  <span class="accent">DXD-FIN-JOBCOST-001</span>
+</footer>
+
+<script>
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
+  document.getElementById('current-date').textContent = dateStr;
+  document.getElementById('footer-date').textContent = now.toISOString().slice(0,10);
+
+  const fmt  = (n, d=0)  => '$' + n.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const fmtN = (n, d=2)  =>       n.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+
+  function flash(el) { el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
+
+  function setVal(id, text) {
+    const el = document.getElementById(id);
+    if (el && el.textContent !== text) { el.textContent = text; flash(el); }
+  }
+
+  function exportPDF() {
+    const prev = document.title;
+    document.title = 'DXD Security Job Costing Model';
+    window.print();
+    setTimeout(() => { document.title = prev; }, 2000);
+  }
+
+  function recalc() {
+    const rate    = parseFloat(document.getElementById('pilotRate').value)    || 0;
+    const drones  = parseFloat(document.getElementById('numDrones').value)    || 0;
+    const hpd     = parseFloat(document.getElementById('hoursDay').value)     || 0;
+    const days    = parseFloat(document.getElementById('workDays').value)     || 0;
+    const pMargin = parseFloat(document.getElementById('pilotMargin').value)  / 100 || 0;
+
+    const totalHours            = hpd * days;
+    const effectivePerDroneHour = drones > 0 ? rate / drones : 0;
+    const costPerDroneMonth     = effectivePerDroneHour * hpd * days;
+    const marginPerDrone        = costPerDroneMonth * pMargin;
+    const billablePilot         = costPerDroneMonth + marginPerDrone;
+
+    setVal('totalHours',            fmtN(totalHours, 2));
+    setVal('costPerDroneHour',      fmt(effectivePerDroneHour, 2));
+    setVal('costPerDroneMonth',     fmt(costPerDroneMonth, 0));
+    setVal('marginPerDrone',        fmt(marginPerDrone, 0));
+    setVal('billablePilotPerDrone', fmt(billablePilot, 0));
+
+    const amort   = parseInt(document.getElementById('amortPeriod').value)   || 24;
+    const eMargin = parseFloat(document.getElementById('equipMargin').value) / 100 || 0;
+
+    const totalEquip     = Array.from(document.querySelectorAll('.equip-input')).reduce((s, el) => s + (parseFloat(el.value) || 0), 0);
+    const monthlyBase    = amort > 0 ? totalEquip / amort : 0;
+    const equipMarginAmt = monthlyBase * eMargin;
+    const billableEquip  = monthlyBase + equipMarginAmt;
+
+    setVal('totalEquipCost', fmt(totalEquip, 2));
+    setVal('monthlyAmort',   fmt(monthlyBase, 2));
+    setVal('equipMarginAmt', fmt(equipMarginAmt, 2));
+    setVal('billableEquip',  fmt(billableEquip, 2));
+
+    const scMargin        = parseFloat(document.getElementById('serviceChargeMargin').value) / 100 || 0;
+    const scBase          = Array.from(document.querySelectorAll('.service-input')).reduce((s, el) => s + (parseFloat(el.value) || 0), 0);
+    const scMarginAmt     = scBase * scMargin;
+    const billableService = scBase + scMarginAmt;
+
+    setVal('totalServiceBase',       fmt(scBase, 2));
+    setVal('serviceChargeMarginAmt', fmt(scMarginAmt, 2));
+    setVal('billableServiceCharge',  fmt(billableService, 2));
+
+    const grandTotal = billablePilot + billableEquip + billableService;
+
+    setVal('bb-pilot', fmt(billablePilot, 0));
+    document.getElementById('bb-pilot-sub').textContent = `${drones} drone${drones !== 1 ? 's' : ''} × ${fmt(billablePilot, 0)}`;
+    setVal('bb-equip',   fmt(billableEquip, 2));
+    setVal('bb-service', fmt(billableService, 2));
+    document.getElementById('bb-amort').textContent = amort;
+
+    const gtEl  = document.getElementById('grandTotal');
+    const newGT = fmt(grandTotal, 2);
+    if (gtEl.textContent !== newGT) {
+      gtEl.textContent = newGT;
+      gtEl.classList.remove('pulse');
+      void gtEl.offsetWidth;
+      gtEl.classList.add('pulse');
+    }
+    setVal('bb-total', newGT);
+  }
+
+  document.querySelectorAll('input.cell-input, select.cell-select').forEach(el => {
+    el.addEventListener('input', recalc);
+    el.addEventListener('change', recalc);
+  });
+
+  function toggleEquip(header) {
+    const arrow = header.querySelector('.equip-arrow');
+    const hint  = document.getElementById('equipHint');
+    const rows  = document.getElementById('equipRows');
+    const open  = rows.classList.toggle('open');
+    arrow.classList.toggle('open', open);
+    hint.textContent = open ? 'click to collapse' : 'click to expand';
+  }
+
+  let lineCount = 0;
+  const defaultLines = [
+    'Drone units (fleet)',
+    'Docking stations / charging',
+    'Ground control station(s)',
+    'Communications / RF gear',
+    'Batteries & power systems',
+    'Sensors / payload hardware',
+    'Transport / cases / accessories',
+    'Spare parts / contingency',
+  ];
+
+  function createEquipRow(labelVal) {
+    lineCount++;
+    const id = `equip_line_${lineCount}`;
+    const tr = document.createElement('tr');
+    tr.className = 'data-row';
+    tr.innerHTML = `
+      <td class="row-label" style="padding:0">
+        <div style="display:flex;align-items:center;gap:6px;padding:9px 16px 9px 28px;">
+          <button class="remove-line-btn" onclick="removeEquipLine(this)" title="Remove line">&times;</button>
+          <input type="text" class="label-input" placeholder="Line item description…" value="${(labelVal||'').replace(/"/g,'&quot;')}">
+        </div>
+      </td>
+      <td class="row-value">
+        <input type="number" class="cell-input equip-input" id="${id}" placeholder="0" min="0" step="100">
+      </td>`;
+    tr.querySelector('.equip-input').addEventListener('input', recalc);
+    tr.querySelector('.equip-input').addEventListener('change', recalc);
+    return tr;
+  }
+
+  function addEquipLine(labelVal) {
+    const tbody = document.getElementById('equipRows');
+    const row   = createEquipRow(labelVal || '');
+    tbody.appendChild(row);
+    recalc();
+    if (!labelVal) row.querySelector('.label-input').focus();
+  }
+
+  function removeEquipLine(btn) { btn.closest('tr').remove(); recalc(); }
+
+  defaultLines.forEach(label => addEquipLine(label));
+
+  let svcLineCount = 0;
+  const defaultServiceLines = [
+    'Remote monitoring / SOC coverage',
+    'Software platform / data license',
+    'Field support / maintenance',
+  ];
+
+  function createServiceRow(labelVal) {
+    svcLineCount++;
+    const id = `svc_line_${svcLineCount}`;
+    const tr = document.createElement('tr');
+    tr.className = 'data-row';
+    tr.innerHTML = `
+      <td class="row-label" style="padding:0">
+        <div style="display:flex;align-items:center;gap:6px;padding:9px 16px 9px 28px;">
+          <button class="remove-line-btn" onclick="removeServiceLine(this)" title="Remove line">&times;</button>
+          <input type="text" class="label-input" placeholder="Service description…" value="${(labelVal||'').replace(/"/g,'&quot;')}">
+        </div>
+      </td>
+      <td class="row-value">
+        <input type="number" class="cell-input service-input" id="${id}" placeholder="0" min="0" step="50">
+      </td>`;
+    tr.querySelector('.service-input').addEventListener('input', recalc);
+    tr.querySelector('.service-input').addEventListener('change', recalc);
+    return tr;
+  }
+
+  function addServiceLine(labelVal) {
+    const tbody = document.getElementById('serviceRows');
+    const row   = createServiceRow(labelVal || '');
+    tbody.appendChild(row);
+    recalc();
+    if (!labelVal) row.querySelector('.label-input').focus();
+  }
+
+  function removeServiceLine(btn) { btn.closest('tr').remove(); recalc(); }
+
+  defaultServiceLines.forEach(label => addServiceLine(label));
+
+  recalc();
+</script>
+</body>
+</html>

@@ -13,19 +13,21 @@ import EquipmentTracker from '@/components/EquipmentTracker'
 import CostEstimator from '@/components/CostEstimator'
 import DroneTeviApp from '@/components/DroneTeviApp'
 import EventPricingApp from '@/components/EventPricingApp'
+import SecurityJobEstimator from '@/components/SecurityJobEstimator'
 
-export type MainTab = 'dashboard' | 'deals' | 'pipeline' | 'all-deals' | 'admin' | 'equipment' | 'cost' | 'product' | 'events'
+export type MainTab = 'dashboard' | 'deals' | 'pipeline' | 'all-deals' | 'admin' | 'equipment' | 'cost' | 'product' | 'events' | 'security-est'
 
 const MENU_ITEMS: { id: MainTab; label: string; dividerBefore?: boolean }[] = [
-  { id: 'dashboard',  label: 'Dashboard' },
-  { id: 'deals',      label: 'Deals' },
-  { id: 'pipeline',   label: 'Pipeline' },
-  { id: 'all-deals',  label: 'All Deals' },
-  { id: 'admin',      label: 'Admin',          dividerBefore: true },
-  { id: 'equipment',  label: 'Equipment' },
-  { id: 'cost',       label: 'Cost Estimator' },
-  { id: 'events',     label: 'Event Pricing' },
-  { id: 'product',    label: 'Products' },
+  { id: 'dashboard',    label: 'Dashboard' },
+  { id: 'deals',        label: 'Deals' },
+  { id: 'pipeline',     label: 'Pipeline' },
+  { id: 'all-deals',    label: 'All Deals' },
+  { id: 'admin',        label: 'Admin',               dividerBefore: true },
+  { id: 'equipment',    label: 'Equipment' },
+  { id: 'cost',         label: 'Cost Estimator' },
+  { id: 'security-est', label: 'Security Job Estimator' },
+  { id: 'events',       label: 'Event Pricing' },
+  { id: 'product',      label: 'Products' },
 ]
 
 const C = { bg: 'rgba(10,11,13,0.6)', card: 'rgba(17,19,24,0.75)', border: '#252b38', red: '#D2232A', text: '#e8eaf0', text2: '#9aa3b8', muted: '#5a6380' }
@@ -130,7 +132,8 @@ export default function Home() {
       {tab === 'equipment' && <EquipmentTracker />}
       {tab === 'cost'      && <CostEstimator />}
       {tab === 'product'   && <DroneTeviApp />}
-      {tab === 'events'    && <EventPricingApp />}
+      {tab === 'security-est' && <SecurityJobEstimator />}
+      {tab === 'events'       && <EventPricingApp />}
 
       {/* ── Full-page deal view ──────────────────────────────────────────────── */}
       {panelId && (
