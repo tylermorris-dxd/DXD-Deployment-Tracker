@@ -34,7 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           body::before {
             content: '';
             position: fixed; inset: 0; z-index: 0; pointer-events: none;
-            background: linear-gradient(135deg, rgba(10,11,13,0.88) 0%, rgba(10,11,13,0.72) 50%, rgba(10,11,13,0.85) 100%);
+            background: linear-gradient(135deg, rgba(10,11,13,0.70) 0%, rgba(10,11,13,0.52) 50%, rgba(10,11,13,0.68) 100%);
           }
           body::after {
             content: '';
