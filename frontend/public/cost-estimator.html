@@ -3,215 +3,372 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>DXD Job Costing Sheet - Deployments</title>
+<title>DXD — Job Costing Sheet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:Segoe UI,Arial,sans-serif;font-size:13px;background:#f5f5f5;padding:16px;}
-h1{text-align:center;font-size:22px;margin-bottom:2px;}
-.subtitle{text-align:center;color:#888;font-size:13px;margin-bottom:16px;}
+:root{
+  --bg:#0a0b0d;--card:#111318;--surface2:#181c23;--border:#252b38;
+  --red:#D2232A;--green:#22c55e;--blue:#2563EB;--amber:#f59e0b;
+  --text:#e8eaf0;--text2:#9aa3b8;--muted:#5a6380;
+  --font-mono:'JetBrains Mono',monospace;--font-sans:'Syne',sans-serif;
+}
+html,body{background:var(--bg);color:var(--text);font-family:var(--font-mono);font-size:12px;min-height:100%;}
+body{padding:0 0 60px 0;}
+
+/* ── Topbar ── */
+.topbar{
+  position:sticky;top:0;z-index:100;
+  background:rgba(10,11,13,0.92);border-bottom:1px solid var(--border);
+  backdrop-filter:blur(12px);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 24px;height:52px;
+}
+.topbar-brand{display:flex;align-items:center;gap:10px;}
+.topbar-brand img{height:30px;width:auto;}
+.topbar-title{font-family:var(--font-sans);font-weight:800;font-size:14px;color:var(--text);letter-spacing:0.5px;}
+.topbar-sub{font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-top:1px;}
+.topbar-actions{display:flex;align-items:center;gap:8px;}
+.btn-pdf{
+  display:flex;align-items:center;gap:6px;
+  padding:8px 18px;background:var(--red);border:none;border-radius:7px;
+  color:#fff;font-family:var(--font-sans);font-weight:700;font-size:11px;
+  letter-spacing:0.5px;cursor:pointer;transition:opacity 0.15s;
+}
+.btn-pdf:hover{opacity:0.85;}
+.btn-pdf svg{flex-shrink:0;}
+
+/* ── Layout ── */
+.page{max-width:1400px;margin:0 auto;padding:24px 24px 0;}
+.section-title{
+  font-family:var(--font-sans);font-weight:800;font-size:18px;
+  color:var(--text);margin-bottom:6px;letter-spacing:-0.5px;
+}
+.section-sub{font-size:10px;color:var(--muted);margin-bottom:24px;letter-spacing:0.5px;}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
-.card{border:1px solid #ddd;border-radius:6px;overflow:hidden;background:#fff;}
+
+/* ── Cards ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:16px;}
 table{width:100%;border-collapse:collapse;}
-td{padding:4px 8px;vertical-align:middle;}
-.sh td{color:#fff;font-weight:bold;padding:6px 10px;font-size:13px;}
-.sh-red td{background:#c8102e;}.sh-green td{background:#2e7d32;}.sh-blue td{background:#1565c0;}
-.sh-purple td{background:#6a1550;}.sh-gray td{background:#37474f;}.sh-teal td{background:#00695c;}
-.sh-orange td{background:#e65100;}.sh-navy td{background:#1a237e;}.sh-brown td{background:#4e342e;}
-.sh-indigo td{background:#283593;}
-.lbl-row td{background:#f0f0f0;font-weight:bold;font-size:11px;color:#444;text-align:right;}
+td{padding:7px 12px;vertical-align:middle;border-bottom:1px solid rgba(255,255,255,0.04);}
+tr:last-child td{border-bottom:none;}
+
+/* ── Section headers ── */
+.sh td{font-family:var(--font-sans);font-weight:700;font-size:11px;letter-spacing:1.2px;text-transform:uppercase;padding:10px 14px;border-bottom:1px solid rgba(0,0,0,0.2);}
+.sh-red td{background:rgba(210,35,42,0.85);color:#fff;}
+.sh-green td{background:rgba(34,197,94,0.2);color:#4ade80;}
+.sh-blue td{background:rgba(37,99,235,0.25);color:#60a5fa;}
+.sh-purple td{background:rgba(168,85,247,0.2);color:#c084fc;}
+.sh-gray td{background:rgba(90,99,128,0.25);color:var(--text2);}
+.sh-teal td{background:rgba(20,184,166,0.2);color:#2dd4bf;}
+.sh-orange td{background:rgba(249,115,22,0.2);color:#fb923c;}
+.sh-navy td{background:rgba(30,64,175,0.25);color:#93c5fd;}
+.sh-brown td{background:rgba(180,83,9,0.2);color:#fcd34d;}
+.sh-indigo td{background:rgba(99,102,241,0.2);color:#a5b4fc;}
+
+/* ── Label rows ── */
+.lbl-row td{background:rgba(255,255,255,0.03);font-size:10px;color:var(--muted);text-align:right;letter-spacing:0.5px;text-transform:uppercase;}
 .lbl-row td:first-child{text-align:left;}
-.total-row td{background:#e8f5e9;font-weight:bold;font-size:13px;}
-.total-row td:last-child{text-align:right;}
-.total-red td{background:#ffd6d6;}
-.pl-pos td{background:#c8e6c9;font-weight:bold;font-size:14px;color:#1b5e20;}
-.pl-neg td{background:#ffcdd2;font-weight:bold;font-size:14px;color:#b71c1c;}
+
+/* ── Total rows ── */
+.total-row td{background:rgba(255,255,255,0.05);font-family:var(--font-sans);font-weight:700;font-size:13px;color:var(--text);}
+.total-row td:last-child{text-align:right;color:var(--green);}
+.total-red td:last-child{color:#f87171!important;}
+.pl-pos td{background:rgba(34,197,94,0.1);font-weight:700;font-size:14px;color:var(--green);}
+.pl-neg td{background:rgba(239,68,68,0.1);font-weight:700;font-size:14px;color:#f87171;}
 .pl-pos td:last-child,.pl-neg td:last-child{text-align:right;}
-.note-row td{background:#fffde7;font-size:11px;color:#888;padding-left:20px;}
-input[type=text],input[type=date],input[type=number]{width:100%;border:1px solid #bbb;border-radius:3px;padding:3px 6px;font-size:12px;background:#fffde7;text-align:right;}
-input[type=text]{text-align:left;}input[type=date]{text-align:left;}
-select{width:100%;border:1px solid #bbb;border-radius:3px;padding:3px 6px;font-size:12px;background:#fffde7;}
-.right{text-align:right;font-weight:bold;}.muted{color:#888;font-size:11px;}
-.pl-summary{border:2px solid #c8102e;border-radius:6px;padding:14px;background:#fff8f8;}
-.pl-summary h3{color:#c8102e;font-size:14px;margin-bottom:10px;}
-.pl-line{display:flex;justify-content:space-between;margin-bottom:6px;font-weight:bold;}
-.pl-margin{margin-top:8px;padding-top:6px;border-top:1px solid #ddd;font-size:11px;color:#888;}
+.note-row td{background:rgba(255,255,255,0.02);font-size:10px;color:var(--muted);padding-left:20px;font-style:italic;}
+
+/* ── Inputs ── */
+input[type=text],input[type=date],input[type=number]{
+  width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:5px;
+  padding:5px 8px;font-size:11px;font-family:var(--font-mono);
+  color:var(--text);text-align:right;outline:none;transition:border-color 0.15s;
+}
+input[type=text],input[type=date]{text-align:left;}
+input:focus{border-color:var(--red);}
+select{
+  width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:5px;
+  padding:5px 28px 5px 8px;font-size:11px;font-family:var(--font-mono);
+  color:var(--text);outline:none;appearance:none;-webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath d='M2 4l3 3 3-3' stroke='rgba(255,255,255,0.35)' stroke-width='1.3' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 8px center;
+}
+select option{background:var(--card);}
+
+/* ── Buttons ── */
+.btn-add{
+  background:transparent;color:var(--text2);border:1px dashed var(--border);
+  border-radius:6px;cursor:pointer;padding:5px 14px;font-size:11px;
+  font-family:var(--font-mono);transition:all 0.15s;
+}
+.btn-add:hover{border-color:var(--red);color:var(--red);}
+.btn-remove{
+  background:rgba(210,35,42,0.15);color:#f87171;border:1px solid rgba(210,35,42,0.3);
+  border-radius:4px;cursor:pointer;padding:3px 8px;font-size:11px;font-family:var(--font-mono);
+  white-space:nowrap;transition:all 0.15s;
+}
+.btn-remove:hover{background:rgba(210,35,42,0.3);}
+.btn-hide{
+  background:rgba(255,255,255,0.06);color:var(--muted);border:1px solid var(--border);
+  border-radius:4px;cursor:pointer;padding:3px 7px;font-size:10px;font-family:var(--font-mono);
+  white-space:nowrap;transition:all 0.15s;
+}
+.btn-hide:hover{border-color:var(--amber);color:var(--amber);}
+.btn-hide.hidden{background:rgba(245,158,11,0.15);color:var(--amber);border-color:rgba(245,158,11,0.4);}
+
+/* ── P&L Summary card ── */
+.pl-summary{
+  background:var(--card);border:1px solid rgba(210,35,42,0.3);border-radius:10px;
+  padding:18px;flex:1;
+}
+.pl-summary h3{font-family:var(--font-sans);font-weight:800;font-size:14px;color:var(--red);margin-bottom:14px;}
+.pl-line{display:flex;justify-content:space-between;margin-bottom:8px;font-size:12px;}
+.pl-line span:first-child{color:var(--text2);}
+.pl-margin{margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:10px;color:var(--muted);}
+
+/* Target margin section */
+.target-section{margin-top:14px;padding-top:14px;border-top:1px dashed var(--border);}
+.target-label{font-size:10px;color:var(--muted);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:8px;}
+.target-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.target-row input{width:70px!important;text-align:right!important;}
+.margin-status{padding:6px 10px;border-radius:6px;font-size:11px;font-weight:600;text-align:center;margin-top:8px;}
+.margin-ok{background:rgba(34,197,94,0.12);color:var(--green);border:1px solid rgba(34,197,94,0.25);}
+.margin-low{background:rgba(239,68,68,0.12);color:#f87171;border:1px solid rgba(239,68,68,0.25);}
+
+/* ── Misc ── */
+.right{text-align:right;font-weight:600;}
+.muted{color:var(--muted);font-size:10px;}
 .qty-group{display:flex;gap:4px;align-items:center;flex-wrap:wrap;}
 .qty-group input{width:60px!important;}
+.qty-group span{color:var(--muted);font-size:10px;white-space:nowrap;}
 .pill-row{display:flex;gap:4px;align-items:center;}
 .pill-row input{flex:1;}
-.btn-remove{background:#c8102e;color:#fff;border:none;border-radius:3px;cursor:pointer;padding:2px 7px;font-size:12px;white-space:nowrap;}
-.btn-hide{background:#888;color:#fff;border:none;border-radius:3px;cursor:pointer;padding:2px 6px;font-size:11px;white-space:nowrap;}
-.btn-hide.hidden{background:#f0a500;}
-.btn-add{background:#1565c0;color:#fff;border:none;border-radius:4px;cursor:pointer;padding:4px 12px;font-size:12px;margin:2px;}
-.btn-print{display:block;margin:14px auto 4px;background:#37474f;color:#fff;border:none;border-radius:5px;padding:8px 28px;font-size:14px;cursor:pointer;}
-.footer{text-align:center;color:#aaa;font-size:11px;margin-top:8px;}
-.airline-tag{display:inline-block;font-size:10px;font-weight:bold;border-radius:3px;padding:1px 5px;color:#fff;margin-right:4px;}
-.wn{background:#e87722;}.aa{background:#0078d2;}.dl{background:#003a70;}.ua{background:#005dab;}
-.row-muted td{opacity:0.35;}
+.row-muted td{opacity:0.25;}
 .row-muted input,.row-muted select{pointer-events:none;}
-@media print{.btn-print,.btn-add,.btn-remove,.btn-hide{display:none;}body{background:#fff;padding:0;}
-.row-muted{display:none;}}
+.airline-tag{display:inline-block;font-size:9px;font-weight:700;border-radius:3px;padding:1px 5px;color:#fff;margin-right:3px;}
+.wn{background:#e87722;}.aa{background:#0078d2;}.dl{background:#003a70;}.ua{background:#005dab;}
+td[style*="font-weight:bold"]{color:var(--text);}
+
+/* ── Print / PDF ── */
+@media print{
+  :root{--bg:#fff;--card:#fff;--surface2:#f8f8f8;--border:#ddd;--text:#111;--text2:#444;--muted:#888;}
+  html,body{background:#fff;color:#111;font-size:11px;}
+  .topbar,.btn-add,.btn-remove,.btn-hide,.btn-pdf{display:none!important;}
+  .page{padding:0;max-width:100%;}
+  .sh-red td{background:#c8102e!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .sh-green td{background:#2e7d32!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .sh-blue td{background:#1565c0!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .sh-purple td{background:#6a1550!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .sh-gray td{background:#455a64!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .sh-teal td{background:#00695c!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .sh-orange td{background:#e65100!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .sh-navy td{background:#1a237e!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .sh-brown td{background:#4e342e!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .sh-indigo td{background:#283593!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .total-row td{background:#f5f5f5!important;color:#111!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .pl-summary{border:2px solid #c8102e;background:#fff!important;}
+  .card{border:1px solid #ccc;background:#fff!important;}
+  input,select{background:#fff!important;border:1px solid #ccc!important;color:#111!important;}
+  .row-muted{display:none!important;}
+  .lbl-row td{background:#f0f0f0!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .pl-pos td{background:#e8f5e9!important;color:#1b5e20!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .pl-neg td{background:#ffcdd2!important;color:#b71c1c!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .print-header{display:block!important;}
+}
+.print-header{display:none;text-align:center;margin-bottom:20px;padding:16px 0 12px;border-bottom:2px solid #c8102e;}
+.print-header h1{font-size:20px;font-weight:800;color:#c8102e;}
+.print-header p{font-size:11px;color:#666;margin-top:4px;}
 </style>
 </head>
 <body>
-<h1>DXD Job Costing Sheet - Deployments</h1>
-<div class="subtitle">For Internal Use Only (Template)</div>
 
-<div class="grid2">
-  <div class="card">
-    <table><tbody>
-      <tr class="sh sh-green"><td colspan="2">Customer Information</td></tr>
-      <tr><td style="font-weight:bold;width:130px">Customer</td><td><input type="text" id="customer" value=""></td></tr>
-      <tr><td style="font-weight:bold">Address</td><td><input type="text" id="address" value=""></td></tr>
-      <tr><td style="font-weight:bold">Client POC</td><td><input type="text" id="clientPOC" value=""></td></tr>
-      <tr class="sh sh-blue"><td colspan="2">DXD Stakeholders</td></tr>
-      <tbody id="stakeholderBody"></tbody>
-      <tr><td colspan="2" style="padding:6px 8px"><button class="btn-add" onclick="addStakeholder()">+ Add Stakeholder</button></td></tr>
-      <tr class="sh sh-purple"><td colspan="2">DXD Operations Team</td></tr>
-      <tbody id="opsLeadBody"></tbody>
-      <tbody id="pilotBody"></tbody>
-      <tr><td colspan="2" style="padding:6px 8px"><button class="btn-add" onclick="addPilot()">+ Add Team Member</button></td></tr>
-      <tr class="sh sh-gray"><td colspan="2">Deployment Details</td></tr>
-      <tr><td style="font-weight:bold">Start Date</td><td><input type="date" id="startDate" value=""></td></tr>
-      <tr><td style="font-weight:bold">End Date</td><td><input type="date" id="endDate" value=""></td></tr>
-      <tr class="sh sh-gray"><td colspan="2">Assets Deployed</td></tr>
-      <tr class="lbl-row"><td>Category</td><td>Qty &amp; Description</td></tr>
-      <tbody id="assetBody"></tbody>
-      <tr><td colspan="2" style="padding:6px 8px"><button class="btn-add" onclick="addAsset()">+ Add Asset</button></td></tr>
-    </tbody></table>
+<!-- Topbar -->
+<div class="topbar">
+  <div class="topbar-brand">
+    <img src="/images/logo.png" alt="DXD" onerror="this.style.display='none'">
+    <div>
+      <div class="topbar-title">Job Costing Sheet</div>
+      <div class="topbar-sub">Deployments · Internal Use Only</div>
+    </div>
   </div>
-
-  <div style="display:flex;flex-direction:column;gap:12px;">
-    <div class="card">
-      <table><tbody>
-        <tr class="sh sh-green"><td colspan="2">Deployment Revenue</td></tr>
-        <tr class="lbl-row"><td>Line Item</td><td>Amount ($)</td></tr>
-        <tr><td>Deployment Revenue</td><td><input type="number" id="rev1" value="0" min="0" oninput="calc()"></td></tr>
-        <tr><td>Other Revenue</td><td><input type="number" id="rev2" value="0" min="0" oninput="calc()"></td></tr>
-        <tr class="total-row"><td><b>Total Deployment Revenue</b></td><td id="totalRev">$0.00</td></tr>
-      </tbody></table>
-    </div>
-    <div class="pl-summary">
-      <h3>P&amp;L Summary</h3>
-      <div class="pl-line"><span>Total Revenue</span><span id="plRev" style="color:#2e7d32">$0.00</span></div>
-      <div class="pl-line"><span>Total Cost</span><span id="plCost" style="color:#c8102e">$0.00</span></div>
-      <div class="pl-line"><span>Deployment P/L</span><span id="plNet">$0.00</span></div>
-      <div class="pl-margin" id="plMargin">Actual Margin: 0.0%</div>
-      <div style="margin-top:12px;padding-top:10px;border-top:2px dashed #e0c0c0;">
-        <div style="font-weight:bold;font-size:12px;color:#555;margin-bottom:6px;">&#127919; Target Profit Margin</div>
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-          <input type="number" id="targetMargin" value="20" min="0" max="100" oninput="calc()" style="width:70px;border:1px solid #bbb;border-radius:3px;padding:3px 6px;font-size:13px;background:#fffde7;text-align:right;">
-          <span style="font-size:13px;font-weight:bold;color:#555;">%</span>
-          <span style="font-size:11px;color:#888;">desired margin</span>
-        </div>
-        <div class="pl-line" style="margin-bottom:4px;"><span style="font-size:12px;">Min. Price to Hit Target</span><span id="minPrice" style="color:#1565c0;font-size:13px;">$0.00</span></div>
-        <div class="pl-line" style="margin-bottom:4px;"><span style="font-size:12px;">vs. Your Current Price</span><span id="priceDiff" style="font-size:13px;">$0.00</span></div>
-        <div id="marginStatus" style="margin-top:6px;padding:5px 8px;border-radius:4px;font-size:12px;font-weight:bold;text-align:center;background:#e8f5e9;color:#2e7d32;">&#10003; On target</div>
-      </div>
-    </div>
+  <div class="topbar-actions">
+    <button class="btn-pdf" onclick="exportPDF()">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 10.5v1.5h10v-1.5M7 1v8M4 6l3 3 3-3" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Download PDF
+    </button>
   </div>
 </div>
 
-<div class="card"><table><tbody>
+<div class="page">
+  <!-- Print-only header -->
+  <div class="print-header">
+    <h1>DXD — Job Costing Sheet</h1>
+    <p>Deus X Defense · Deployments · Internal Use Only</p>
+  </div>
 
-  <!-- LABOR -->
-  <tr class="sh sh-red"><td colspan="6">Labor Costs</td></tr>
-  <tr class="lbl-row"><td>Role</td><td>Rate ($/hr)</td><td># People</td><td>Hrs/Day</td><td># Days</td><td>Total</td></tr>
-  <tr><td>Base Robot Cost</td><td colspan="4"></td><td><input type="number" id="robotCost" value="0" min="0" oninput="calc()"></td></tr>
-  <tbody id="laborBody"></tbody>
-  <tr><td colspan="6" style="padding:6px 8px"><button class="btn-add" onclick="addLaborRow()">+ Add Labor Role</button></td></tr>
-  <tr class="total-row"><td colspan="5"><b>Total Labor Cost</b></td><td id="totalLabor">$0.00</td></tr>
+  <div class="section-title">Job Costing Sheet</div>
+  <div class="section-sub">All fields are editable · Values calculate automatically · Hidden rows are excluded from totals</div>
 
-  <!-- AIRFARE & BAGGAGE -->
-  <tr class="sh sh-navy"><td colspan="8">Airfare &amp; Baggage Costs</td></tr>
-  <tr class="lbl-row">
-    <td>Traveler / Description</td><td>Airline</td><td>Ticket ($)</td>
-    <td># Bags</td><td>Bag Cost</td><td>Bag Breakdown</td><td># People</td><td>Row Total</td>
-  </tr>
-  <tbody id="flightBody"></tbody>
-  <tr><td colspan="7" style="padding:6px 8px"><button class="btn-add" onclick="addFlight()">+ Add Flight</button></td></tr>
-  <tr class="note-row"><td colspan="8">&#128161; Bag fees calculated per airline's exact fee schedule. Southwest: bags 1-2 free, bag 3+ $75. American: bag 1 $40, bag 2 $45, bag 3+ $150, oversize $200. Delta: bag 1 $35, bag 2 $45, bag 3+ $150, oversize $200. United: bag 1 $35, bag 2 $45, bag 3+ $200, oversize $200.</td></tr>
-  <tr class="total-row"><td colspan="7"><b>Total Airfare &amp; Baggage Cost</b></td><td id="totalAir">$0.00</td></tr>
+  <div class="grid2">
+    <!-- Left: Customer + Team + Details -->
+    <div class="card">
+      <table><tbody>
+        <tr class="sh sh-green"><td colspan="2">Customer Information</td></tr>
+        <tr><td style="font-weight:bold;width:130px;color:var(--text2);">Customer</td><td><input type="text" id="customer" placeholder="Client name"></td></tr>
+        <tr><td style="font-weight:bold;color:var(--text2);">Address</td><td><input type="text" id="address" placeholder="Site address"></td></tr>
+        <tr><td style="font-weight:bold;color:var(--text2);">Client POC</td><td><input type="text" id="clientPOC" placeholder="Point of contact"></td></tr>
+        <tr class="sh sh-blue"><td colspan="2">DXD Stakeholders</td></tr>
+        <tbody id="stakeholderBody"></tbody>
+        <tr><td colspan="2" style="padding:8px 12px"><button class="btn-add" onclick="addStakeholder()">+ Add Stakeholder</button></td></tr>
+        <tr class="sh sh-purple"><td colspan="2">DXD Operations Team</td></tr>
+        <tbody id="opsLeadBody"></tbody>
+        <tbody id="pilotBody"></tbody>
+        <tr><td colspan="2" style="padding:8px 12px"><button class="btn-add" onclick="addPilot()">+ Add Team Member</button></td></tr>
+        <tr class="sh sh-gray"><td colspan="2">Deployment Details</td></tr>
+        <tr><td style="font-weight:bold;color:var(--text2);">Start Date</td><td><input type="date" id="startDate"></td></tr>
+        <tr><td style="font-weight:bold;color:var(--text2);">End Date</td><td><input type="date" id="endDate"></td></tr>
+        <tr class="sh sh-gray"><td colspan="2">Assets Deployed</td></tr>
+        <tr class="lbl-row"><td>Category</td><td>Qty &amp; Description</td></tr>
+        <tbody id="assetBody"></tbody>
+        <tr><td colspan="2" style="padding:8px 12px"><button class="btn-add" onclick="addAsset()">+ Add Asset</button></td></tr>
+      </tbody></table>
+    </div>
 
-  <!-- GROUND TRAVEL -->
-  <tr class="sh sh-red"><td colspan="6">Ground Travel Costs</td></tr>
-  <tr class="lbl-row"><td>Item</td><td>Rate / Cost Each ($)</td><td colspan="3">Quantity</td><td>Total</td></tr>
-  <tr><td>Ops Mileage</td><td><input type="number" id="mileRate" value="0.50" min="0" step="0.01" oninput="calc()"></td><td colspan="3"><div class="qty-group"><input type="number" id="miles" value="0" min="0" oninput="calc()"><span>miles</span></div></td><td class="right" id="mileTotal">$0.00</td></tr>
-  <tr><td>Ops Gas (flat)</td><td colspan="4"></td><td><input type="number" id="gas" value="0" min="0" oninput="calc()"></td></tr>
-  <tr><td>Parking - Hotel</td><td><input type="number" id="parkHotelRate" value="20" min="0" oninput="calc()"></td><td colspan="3"><div class="qty-group"><input type="number" id="parkHotelCars" value="1" min="0" oninput="calc()"><span>cars x</span><input type="number" id="parkHotelDays" value="7" min="0" oninput="calc()"><span>days</span></div></td><td class="right" id="parkHotelTotal">$0.00</td></tr>
-  <tr><td>Parking - Venue / Event Site</td><td><input type="number" id="parkVenueRate" value="30" min="0" oninput="calc()"></td><td colspan="3"><div class="qty-group"><input type="number" id="parkVenueCars" value="1" min="0" oninput="calc()"><span>cars x</span><input type="number" id="parkVenueDays" value="7" min="0" oninput="calc()"><span>days</span></div></td><td class="right" id="parkVenueTotal">$0.00</td></tr>
-  <tr><td>Tolls</td><td><input type="number" id="tollRate" value="5" min="0" oninput="calc()"></td><td colspan="3"><div class="qty-group"><input type="number" id="tollTrips" value="0" min="0" oninput="calc()"><span>trips</span></div></td><td class="right" id="tollTotal">$0.00</td></tr>
-  <tr class="lbl-row"><td>Rental Car Description</td><td>Rate/Day ($)</td><td colspan="3"># Days</td><td>Total</td></tr>
-  <tbody id="carBody"></tbody>
-  <tr><td colspan="6" style="padding:6px 8px"><button class="btn-add" onclick="addCar()">+ Add Rental Car</button></td></tr>
-  <tr class="total-row"><td colspan="5"><b>Total Ground Travel Cost</b></td><td id="totalGround">$0.00</td></tr>
+    <!-- Right: Revenue + P&L -->
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div class="card">
+        <table><tbody>
+          <tr class="sh sh-green"><td colspan="2">Deployment Revenue</td></tr>
+          <tr class="lbl-row"><td>Line Item</td><td>Amount ($)</td></tr>
+          <tr><td style="color:var(--text2);">Deployment Revenue</td><td><input type="number" id="rev1" value="0" min="0" oninput="calc()"></td></tr>
+          <tr><td style="color:var(--text2);">Other Revenue</td><td><input type="number" id="rev2" value="0" min="0" oninput="calc()"></td></tr>
+          <tr class="total-row"><td>Total Deployment Revenue</td><td id="totalRev">$0.00</td></tr>
+        </tbody></table>
+      </div>
 
-  <!-- LODGING & PER DIEM -->
-  <tr class="sh sh-teal"><td colspan="6">Lodging &amp; Per Diem</td></tr>
-  <tr class="lbl-row"><td>Hotel / Property Name</td><td>Rate/Night ($)</td><td colspan="3"># Rooms &amp; Nights</td><td>Total</td></tr>
-  <tbody id="hotelBody"></tbody>
-  <tr><td colspan="6" style="padding:6px 8px"><button class="btn-add" onclick="addHotel()">+ Add Hotel</button></td></tr>
-  <tr><td>Per Diem</td><td><input type="number" id="pdRate" value="75" min="0" oninput="calc()"></td><td colspan="3"><div class="qty-group"><input type="number" id="pdPeople" value="1" min="0" oninput="calc()"><span>ppl x</span><input type="number" id="pdDays" value="7" min="0" oninput="calc()"><span>days</span></div></td><td class="right" id="pdTotal">$0.00</td></tr>
-  <tr class="total-row"><td colspan="5"><b>Total Lodging &amp; Per Diem</b></td><td id="totalLodge">$0.00</td></tr>
+      <div class="pl-summary">
+        <h3>P&amp;L Summary</h3>
+        <div class="pl-line"><span>Total Revenue</span><span id="plRev" style="color:var(--green);font-weight:700;">$0.00</span></div>
+        <div class="pl-line"><span>Total Cost</span><span id="plCost" style="color:#f87171;font-weight:700;">$0.00</span></div>
+        <div class="pl-line"><span>Deployment P/L</span><span id="plNet" style="font-weight:700;">$0.00</span></div>
+        <div class="pl-margin" id="plMargin">Actual Margin: 0.0%</div>
+        <div class="target-section">
+          <div class="target-label">🎯 Target Profit Margin</div>
+          <div class="target-row">
+            <input type="number" id="targetMargin" value="20" min="0" max="100" oninput="calc()" style="width:70px;">
+            <span style="color:var(--text2);font-weight:700;">%</span>
+            <span style="color:var(--muted);font-size:10px;">desired margin</span>
+          </div>
+          <div class="pl-line"><span>Min. Price to Hit Target</span><span id="minPrice" style="color:var(--blue);font-weight:700;">$0.00</span></div>
+          <div class="pl-line"><span>vs. Your Current Price</span><span id="priceDiff" style="font-weight:700;">$0.00</span></div>
+          <div id="marginStatus" class="margin-status margin-ok">✓ On target</div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-  <!-- EQUIPMENT RENTAL -->
-  <tr class="sh sh-orange"><td colspan="6">Equipment Rental</td></tr>
-  <tr class="lbl-row"><td>Item / Description</td><td>Cost Per Day ($)</td><td colspan="3">Quantity &amp; Days</td><td>Total</td></tr>
-  <tbody id="equipBody"></tbody>
-  <tr><td colspan="6" style="padding:6px 8px"><button class="btn-add" onclick="addEquip()">+ Add Equipment Row</button></td></tr>
-  <tr class="total-row"><td colspan="5"><b>Total Equipment Rental Cost</b></td><td id="totalEquip">$0.00</td></tr>
+  <!-- Cost sections -->
+  <div class="card"><table><tbody>
 
-  <!-- SOFTWARE -->
-  <tr class="sh sh-indigo"><td colspan="6">Software &amp; Subscription Costs</td></tr>
-  <tr class="lbl-row"><td>Program / Tool</td><td>Cost ($)</td><td>Billing Cycle</td><td colspan="2"># Licenses</td><td>Total</td></tr>
-  <tbody id="softBody"></tbody>
-  <tr><td colspan="6" style="padding:6px 8px"><button class="btn-add" onclick="addSoftware()">+ Add Software Row</button></td></tr>
-  <tr class="total-row"><td colspan="5"><b>Total Software &amp; Subscription Cost</b></td><td id="totalSoft">$0.00</td></tr>
+    <!-- LABOR -->
+    <tr class="sh sh-red"><td colspan="6">Labor Costs</td></tr>
+    <tr class="lbl-row"><td>Role</td><td>Rate ($/hr)</td><td># People</td><td>Hrs/Day</td><td># Days</td><td>Total</td></tr>
+    <tr><td style="color:var(--text2);">Base Robot Cost</td><td colspan="4"></td><td><input type="number" id="robotCost" value="0" min="0" oninput="calc()"></td></tr>
+    <tbody id="laborBody"></tbody>
+    <tr><td colspan="6" style="padding:8px 12px"><button class="btn-add" onclick="addLaborRow()">+ Add Labor Role</button></td></tr>
+    <tr class="total-row"><td colspan="5">Total Labor Cost</td><td id="totalLabor">$0.00</td></tr>
 
-  <!-- REGULATORY -->
-  <tr class="sh sh-brown"><td colspan="6">Regulatory, Venue &amp; Credentialing Costs</td></tr>
-  <tr class="lbl-row"><td>Item Description</td><td>Cost Each ($)</td><td colspan="3">Quantity &amp; Unit</td><td>Total</td></tr>
-  <tbody id="regBody"></tbody>
-  <tr><td colspan="6" style="padding:6px 8px"><button class="btn-add" onclick="addRegRow()">+ Add Regulatory / Venue Item</button></td></tr>
-  <tr class="total-row"><td colspan="5"><b>Total Regulatory &amp; Venue Cost</b></td><td id="totalReg">$0.00</td></tr>
+    <!-- AIRFARE -->
+    <tr class="sh sh-navy"><td colspan="8">Airfare &amp; Baggage Costs</td></tr>
+    <tr class="lbl-row"><td>Traveler / Description</td><td>Airline</td><td>Ticket ($)</td><td># Bags</td><td>Bag Cost</td><td>Bag Breakdown</td><td># People</td><td>Row Total</td></tr>
+    <tbody id="flightBody"></tbody>
+    <tr><td colspan="7" style="padding:8px 12px"><button class="btn-add" onclick="addFlight()">+ Add Flight</button></td></tr>
+    <tr class="note-row"><td colspan="8">Bag fees per airline schedule. Southwest: bags 1–2 free, bag 3+ $75. American: bag 1 $40, bag 2 $45, bag 3+ $150. Delta: bag 1 $35, bag 2 $45, bag 3+ $150. United: bag 1 $35, bag 2 $45, bag 3+ $200.</td></tr>
+    <tr class="total-row"><td colspan="7">Total Airfare &amp; Baggage Cost</td><td id="totalAir">$0.00</td></tr>
 
-  <!-- SHIPPING -->
-  <tr class="sh sh-gray"><td colspan="6">Shipping Costs</td></tr>
-  <tr class="lbl-row"><td>Direction</td><td>Cost ($)</td><td colspan="4"></td></tr>
-  <tr><td>Delivery (Outbound)</td><td><input type="number" id="shipOut" value="0" min="0" oninput="calc()"></td><td colspan="4"></td></tr>
-  <tr><td>Return (Inbound)</td><td><input type="number" id="shipIn" value="0" min="0" oninput="calc()"></td><td colspan="4"></td></tr>
-  <tr class="total-row"><td colspan="5"><b>Total Shipping Cost</b></td><td id="totalShip">$0.00</td></tr>
+    <!-- GROUND -->
+    <tr class="sh sh-red"><td colspan="6">Ground Travel Costs</td></tr>
+    <tr class="lbl-row"><td>Item</td><td>Rate / Cost Each ($)</td><td colspan="3">Quantity</td><td>Total</td></tr>
+    <tr><td style="color:var(--text2);">Ops Mileage</td><td><input type="number" id="mileRate" value="0.50" min="0" step="0.01" oninput="calc()"></td><td colspan="3"><div class="qty-group"><input type="number" id="miles" value="0" min="0" oninput="calc()"><span>miles</span></div></td><td class="right" id="mileTotal">$0.00</td></tr>
+    <tr><td style="color:var(--text2);">Ops Gas (flat)</td><td colspan="4"></td><td><input type="number" id="gas" value="0" min="0" oninput="calc()"></td></tr>
+    <tr><td style="color:var(--text2);">Parking – Hotel</td><td><input type="number" id="parkHotelRate" value="20" min="0" oninput="calc()"></td><td colspan="3"><div class="qty-group"><input type="number" id="parkHotelCars" value="1" min="0" oninput="calc()"><span>cars ×</span><input type="number" id="parkHotelDays" value="7" min="0" oninput="calc()"><span>days</span></div></td><td class="right" id="parkHotelTotal">$0.00</td></tr>
+    <tr><td style="color:var(--text2);">Parking – Venue</td><td><input type="number" id="parkVenueRate" value="30" min="0" oninput="calc()"></td><td colspan="3"><div class="qty-group"><input type="number" id="parkVenueCars" value="1" min="0" oninput="calc()"><span>cars ×</span><input type="number" id="parkVenueDays" value="7" min="0" oninput="calc()"><span>days</span></div></td><td class="right" id="parkVenueTotal">$0.00</td></tr>
+    <tr><td style="color:var(--text2);">Tolls</td><td><input type="number" id="tollRate" value="5" min="0" oninput="calc()"></td><td colspan="3"><div class="qty-group"><input type="number" id="tollTrips" value="0" min="0" oninput="calc()"><span>trips</span></div></td><td class="right" id="tollTotal">$0.00</td></tr>
+    <tr class="lbl-row"><td>Rental Car Description</td><td>Rate/Day ($)</td><td colspan="3"># Days</td><td>Total</td></tr>
+    <tbody id="carBody"></tbody>
+    <tr><td colspan="6" style="padding:8px 12px"><button class="btn-add" onclick="addCar()">+ Add Rental Car</button></td></tr>
+    <tr class="total-row"><td colspan="5">Total Ground Travel Cost</td><td id="totalGround">$0.00</td></tr>
 
-  <!-- OTHER -->
-  <tr class="sh sh-gray"><td colspan="6">Other / Miscellaneous Costs</td></tr>
-  <tbody id="miscBody"></tbody>
-  <tr><td colspan="6" style="padding:6px 8px"><button class="btn-add" onclick="addMisc()">+ Add Misc Row</button></td></tr>
-  <tr><td>Overhead %</td><td><input type="number" id="overheadPct" value="5" min="0" max="100" oninput="calc()"></td><td colspan="3" class="muted" id="overheadNote">% of subtotal</td><td class="right" id="overheadAmt">$0.00</td></tr>
-  <tr><td>Contingency Buffer %</td><td><input type="number" id="contingencyPct" value="10" min="0" max="100" oninput="calc()"></td><td colspan="3" class="muted" id="contingencyNote">% of subtotal</td><td class="right" id="contingencyAmt">$0.00</td></tr>
+    <!-- LODGING -->
+    <tr class="sh sh-teal"><td colspan="6">Lodging &amp; Per Diem</td></tr>
+    <tr class="lbl-row"><td>Hotel / Property Name</td><td>Rate/Night ($)</td><td colspan="3"># Rooms &amp; Nights</td><td>Total</td></tr>
+    <tbody id="hotelBody"></tbody>
+    <tr><td colspan="6" style="padding:8px 12px"><button class="btn-add" onclick="addHotel()">+ Add Hotel</button></td></tr>
+    <tr><td style="color:var(--text2);">Per Diem</td><td><input type="number" id="pdRate" value="75" min="0" oninput="calc()"></td><td colspan="3"><div class="qty-group"><input type="number" id="pdPeople" value="1" min="0" oninput="calc()"><span>ppl ×</span><input type="number" id="pdDays" value="7" min="0" oninput="calc()"><span>days</span></div></td><td class="right" id="pdTotal">$0.00</td></tr>
+    <tr class="total-row"><td colspan="5">Total Lodging &amp; Per Diem</td><td id="totalLodge">$0.00</td></tr>
 
-  <tr><td colspan="6" style="height:8px"></td></tr>
-  <tr class="total-row total-red"><td colspan="5"><b>Total Cost</b></td><td id="grandTotal">$0.00</td></tr>
-  <tr class="total-row"><td colspan="5"><b>Total Deployment Revenue</b></td><td id="totalRevBot">$0.00</td></tr>
-  <tr id="plRow" class="pl-neg"><td colspan="5"><b>Deployment P/L</b></td><td id="plAmt">$0.00</td></tr>
+    <!-- EQUIPMENT RENTAL -->
+    <tr class="sh sh-orange"><td colspan="6">Equipment Rental</td></tr>
+    <tr class="lbl-row"><td>Item / Description</td><td>Cost Per Day ($)</td><td colspan="3">Quantity &amp; Days</td><td>Total</td></tr>
+    <tbody id="equipBody"></tbody>
+    <tr><td colspan="6" style="padding:8px 12px"><button class="btn-add" onclick="addEquip()">+ Add Equipment Row</button></td></tr>
+    <tr class="total-row"><td colspan="5">Total Equipment Rental Cost</td><td id="totalEquip">$0.00</td></tr>
 
-</tbody></table></div>
+    <!-- SOFTWARE -->
+    <tr class="sh sh-indigo"><td colspan="6">Software &amp; Subscription Costs</td></tr>
+    <tr class="lbl-row"><td>Program / Tool</td><td>Cost ($)</td><td>Billing Cycle</td><td colspan="2"># Licenses</td><td>Total</td></tr>
+    <tbody id="softBody"></tbody>
+    <tr><td colspan="6" style="padding:8px 12px"><button class="btn-add" onclick="addSoftware()">+ Add Software Row</button></td></tr>
+    <tr class="total-row"><td colspan="5">Total Software &amp; Subscription Cost</td><td id="totalSoft">$0.00</td></tr>
 
-<button class="btn-print" onclick="window.print()">&#128424; Print / Save as PDF</button>
-<div class="footer">All yellow fields are editable &middot; &#128065; toggle hides a row from totals without deleting &middot; Values calculate automatically</div>
+    <!-- REGULATORY -->
+    <tr class="sh sh-brown"><td colspan="6">Regulatory, Venue &amp; Credentialing Costs</td></tr>
+    <tr class="lbl-row"><td>Item Description</td><td>Cost Each ($)</td><td colspan="3">Quantity &amp; Unit</td><td>Total</td></tr>
+    <tbody id="regBody"></tbody>
+    <tr><td colspan="6" style="padding:8px 12px"><button class="btn-add" onclick="addRegRow()">+ Add Regulatory / Venue Item</button></td></tr>
+    <tr class="total-row"><td colspan="5">Total Regulatory &amp; Venue Cost</td><td id="totalReg">$0.00</td></tr>
+
+    <!-- SHIPPING -->
+    <tr class="sh sh-gray"><td colspan="6">Shipping Costs</td></tr>
+    <tr class="lbl-row"><td>Direction</td><td>Cost ($)</td><td colspan="4"></td></tr>
+    <tr><td style="color:var(--text2);">Delivery (Outbound)</td><td><input type="number" id="shipOut" value="0" min="0" oninput="calc()"></td><td colspan="4"></td></tr>
+    <tr><td style="color:var(--text2);">Return (Inbound)</td><td><input type="number" id="shipIn" value="0" min="0" oninput="calc()"></td><td colspan="4"></td></tr>
+    <tr class="total-row"><td colspan="5">Total Shipping Cost</td><td id="totalShip">$0.00</td></tr>
+
+    <!-- MISC -->
+    <tr class="sh sh-gray"><td colspan="6">Other / Miscellaneous Costs</td></tr>
+    <tbody id="miscBody"></tbody>
+    <tr><td colspan="6" style="padding:8px 12px"><button class="btn-add" onclick="addMisc()">+ Add Misc Row</button></td></tr>
+    <tr><td style="color:var(--text2);">Overhead %</td><td><input type="number" id="overheadPct" value="5" min="0" max="100" oninput="calc()"></td><td colspan="3" class="muted" id="overheadNote">% of subtotal</td><td class="right" id="overheadAmt">$0.00</td></tr>
+    <tr><td style="color:var(--text2);">Contingency Buffer %</td><td><input type="number" id="contingencyPct" value="10" min="0" max="100" oninput="calc()"></td><td colspan="3" class="muted" id="contingencyNote">% of subtotal</td><td class="right" id="contingencyAmt">$0.00</td></tr>
+
+    <tr><td colspan="6" style="height:8px;border:none"></td></tr>
+    <tr class="total-row total-red"><td colspan="5">Total Cost</td><td id="grandTotal">$0.00</td></tr>
+    <tr class="total-row"><td colspan="5">Total Deployment Revenue</td><td id="totalRevBot">$0.00</td></tr>
+    <tr id="plRow" class="pl-neg"><td colspan="5">Deployment P/L</td><td id="plAmt">$0.00</td></tr>
+
+  </tbody></table></div>
+</div><!-- /page -->
 
 <script>
+function exportPDF(){
+  var customer=document.getElementById('customer').value||'Job Costing Sheet';
+  document.title='DXD — '+customer;
+  window.print();
+  setTimeout(function(){document.title='DXD — Job Costing Sheet';},2000);
+}
+
 function fmt(v){var n=parseFloat(v)||0;return '$'+Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function g(id){return parseFloat(document.getElementById(id)?.value)||0;}
 function s(id,v){var el=document.getElementById(id);if(el)el.textContent=v;}
-function numInput(val,cls,minVal){var i=document.createElement('input');i.type='number';i.value=val;i.min=minVal||0;if(cls)i.className=cls;i.style.cssText='width:100%;background:#fffde7;border:1px solid #bbb;border-radius:3px;padding:3px 6px;font-size:12px;text-align:right;';i.addEventListener('input',calc);return i;}
-function txtInput(val,placeholder){var i=document.createElement('input');i.type='text';i.value=val;i.placeholder=placeholder||'';i.style.cssText='width:100%;background:#fffde7;border:1px solid #bbb;border-radius:3px;padding:3px 6px;font-size:12px;text-align:left;';return i;}
-function removeBtn(fn){var b=document.createElement('button');b.className='btn-remove';b.textContent='x';b.addEventListener('click',fn);return b;}
+function numInput(val,cls,minVal){var i=document.createElement('input');i.type='number';i.value=val;i.min=minVal||0;if(cls)i.className=cls;i.addEventListener('input',calc);return i;}
+function txtInput(val,placeholder){var i=document.createElement('input');i.type='text';i.value=val;i.placeholder=placeholder||'';return i;}
+function removeBtn(fn){var b=document.createElement('button');b.className='btn-remove';b.textContent='×';b.addEventListener('click',fn);return b;}
 
 function hideBtn(rowsToToggle){
-  var b=document.createElement('button');
-  b.className='btn-hide';
-  b.title='Hide from totals (data preserved)';
-  b.textContent='hide';
+  var b=document.createElement('button');b.className='btn-hide';b.textContent='hide';
   var hidden=false;
   b.addEventListener('click',function(){
     hidden=!hidden;
@@ -220,48 +377,44 @@ function hideBtn(rowsToToggle){
       else{r.classList.remove('row-muted');delete r.dataset.hidden;}
     });
     b.classList.toggle('hidden',hidden);
-    b.title=hidden?'Click to restore to totals':'Click to hide from totals';
+    b.textContent=hidden?'show':'hide';
     calc();
   });
   return b;
 }
 
-function totalSpan(cls){var s=document.createElement('span');s.className=cls;s.style.cssText='font-weight:bold;font-size:12px;white-space:nowrap;';s.textContent='$0.00';return s;}
+function totalSpan(cls){var sp=document.createElement('span');sp.className=cls;sp.style.cssText='font-weight:700;font-size:12px;white-space:nowrap;color:var(--green);';sp.textContent='$0.00';return sp;}
 function wrapTotal(spanEl,hideEl,btnEl){var d=document.createElement('div');d.style.cssText='display:flex;align-items:center;justify-content:flex-end;gap:4px;';d.appendChild(spanEl);d.appendChild(hideEl);d.appendChild(btnEl);return d;}
 function td(content,colspan,style){var el=document.createElement('td');if(colspan)el.colSpan=colspan;if(style)el.style.cssText=style;if(content instanceof Node)el.appendChild(content);else if(content!==null&&content!==undefined)el.innerHTML=content;return el;}
 
-function makePersonRow(tbodyId,position,name,bg){
+function makePersonRow(tbodyId,position,name){
   var tr=document.createElement('tr');
-  var posIn=txtInput(position,'');posIn.style.fontWeight='bold';posIn.style.background=bg;
+  var posIn=txtInput(position,'Role');posIn.style.fontWeight='600';
   var nameIn=txtInput(name,'Name');
   var wrap=document.createElement('div');wrap.className='pill-row';wrap.appendChild(nameIn);
-  var btn=removeBtn(function(){tr.remove();});
-  wrap.appendChild(btn);
+  wrap.appendChild(removeBtn(function(){tr.remove();}));
   tr.appendChild(td(posIn));tr.appendChild(td(wrap));
   document.getElementById(tbodyId).appendChild(tr);
   return tr;
 }
 (function(){
-  [['Biz Dev Rep',''],['Solution Mgr','']].forEach(function(r){makePersonRow('stakeholderBody',r[0],r[1],'#dce8f7');});
-  [['Joint Leads',''],['Ground Lead',''],['Air Lead','']].forEach(function(r){makePersonRow('opsLeadBody',r[0],r[1],'#ead5f0');});
-  [['Pilot 1',''],['Pilot 2',''],['Pilot 3',''],['Pilot 4','']].forEach(function(r){makePersonRow('pilotBody',r[0],r[1],'#ead5f0');});
+  [['Biz Dev Rep',''],['Solution Mgr','']].forEach(function(r){makePersonRow('stakeholderBody',r[0],r[1]);});
+  [['Joint Leads',''],['Ground Lead',''],['Air Lead','']].forEach(function(r){makePersonRow('opsLeadBody',r[0],r[1]);});
+  [['Pilot 1',''],['Pilot 2',''],['Pilot 3',''],['Pilot 4','']].forEach(function(r){makePersonRow('pilotBody',r[0],r[1]);});
 })();
-function addStakeholder(){makePersonRow('stakeholderBody','Role','','#dce8f7');}
-function addPilot(){makePersonRow('pilotBody','Team Member','','#ead5f0');}
+function addStakeholder(){makePersonRow('stakeholderBody','Role','');}
+function addPilot(){makePersonRow('pilotBody','Team Member','');}
 
 var assetCategories=['Robot','Drone','Camera','Sensor','C2 Service','Manned Security','cUAS','EP Personnel'];
 function makeAssetRow(category,qty,desc){
   var tr=document.createElement('tr');
   var sel=document.createElement('select');
-  sel.style.cssText='width:100%;background:#fffde7;border:1px solid #bbb;border-radius:3px;padding:3px 6px;font-size:12px;';
   assetCategories.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;if(c===category)o.selected=true;sel.appendChild(o);});
   var td0=document.createElement('td');td0.appendChild(sel);tr.appendChild(td0);
   var wrap=document.createElement('div');wrap.style.cssText='display:flex;gap:6px;align-items:center;';
-  var qtyIn=document.createElement('input');qtyIn.type='number';qtyIn.value=qty;qtyIn.min=1;
-  qtyIn.style.cssText='width:50px;background:#fffde7;border:1px solid #bbb;border-radius:3px;padding:3px 6px;font-size:12px;text-align:right;';
+  var qtyIn=document.createElement('input');qtyIn.type='number';qtyIn.value=qty;qtyIn.min=1;qtyIn.style.cssText='width:50px;';
   var descIn=txtInput(desc,'e.g. DJI Matrice 4T');
-  var btn=removeBtn(function(){tr.remove();});
-  wrap.appendChild(qtyIn);wrap.appendChild(descIn);wrap.appendChild(btn);
+  wrap.appendChild(qtyIn);wrap.appendChild(descIn);wrap.appendChild(removeBtn(function(){tr.remove();}));
   var td1=document.createElement('td');td1.appendChild(wrap);tr.appendChild(td1);
   document.getElementById('assetBody').appendChild(tr);
   return tr;
@@ -269,27 +422,29 @@ function makeAssetRow(category,qty,desc){
 (function(){makeAssetRow('Drone',1,'');})();
 function addAsset(){makeAssetRow('Drone',1,'');}
 
+function addLaborRow(){
+  var tr=document.createElement('tr');
+  var roleIn=txtInput('','Role description');
+  var rateIn=numInput(0,'lbRate');
+  var peopleIn=numInput(1,'lbPeople');
+  var hpdIn=numInput(8,'lbHPD');
+  var daysIn=numInput(7,'lbDays');
+  var tot=totalSpan('lbTotal');
+  var hb=hideBtn([tr]);
+  var btn=removeBtn(function(){tr.remove();calc();});
+  tr.appendChild(td(roleIn));tr.appendChild(td(rateIn));tr.appendChild(td(peopleIn));tr.appendChild(td(hpdIn));tr.appendChild(td(daysIn));tr.appendChild(td(wrapTotal(tot,hb,btn)));
+  document.getElementById('laborBody').appendChild(tr);
+  return tr;
+}
+
 function calcBagFee(airline,numBags){
-  var n=Math.max(0,Math.floor(numBags));
-  if(n===0)return{cost:0,breakdown:'No bags'};
+  var n=Math.max(0,Math.floor(numBags));if(n===0)return{cost:0,breakdown:'No bags'};
   var cost=0,parts=[];
-  if(airline==='wn'){
-    var free=Math.min(n,2),paid=Math.max(0,n-2);
-    if(free>0)parts.push('bags 1-'+(free===1?'1':free)+' free');
-    if(paid>0){cost+=paid*75;parts.push('bags '+(free+1)+'-'+n+': '+paid+' x $75');}
-  }else if(airline==='aa'){
-    if(n>=1){cost+=40;parts.push('bag 1: $40');}
-    if(n>=2){cost+=45;parts.push('bag 2: $45');}
-    if(n>=3){var ex=n-2;cost+=ex*150;parts.push('bags 3-'+n+': '+ex+' x $150');}
-  }else if(airline==='dl'){
-    if(n>=1){cost+=35;parts.push('bag 1: $35');}
-    if(n>=2){cost+=45;parts.push('bag 2: $45');}
-    if(n>=3){var ex=n-2;cost+=ex*150;parts.push('bags 3-'+n+': '+ex+' x $150');}
-  }else if(airline==='ua'){
-    if(n>=1){cost+=35;parts.push('bag 1: $35');}
-    if(n>=2){cost+=45;parts.push('bag 2: $45');}
-    if(n>=3){var ex=n-2;cost+=ex*200;parts.push('bags 3-'+n+': '+ex+' x $200');}
-  }else{parts.push('Select airline for auto bag fees');}
+  if(airline==='wn'){var free=Math.min(n,2),paid=Math.max(0,n-2);if(free>0)parts.push('bags 1-'+(free===1?'1':free)+' free');if(paid>0){cost+=paid*75;parts.push('bags '+(free+1)+'-'+n+': '+paid+' x $75');}}
+  else if(airline==='aa'){if(n>=1){cost+=40;parts.push('bag 1: $40');}if(n>=2){cost+=45;parts.push('bag 2: $45');}if(n>=3){var ex=n-2;cost+=ex*150;parts.push('bags 3-'+n+': '+ex+' x $150');}}
+  else if(airline==='dl'){if(n>=1){cost+=35;parts.push('bag 1: $35');}if(n>=2){cost+=45;parts.push('bag 2: $45');}if(n>=3){var ex2=n-2;cost+=ex2*150;parts.push('bags 3-'+n+': '+ex2+' x $150');}}
+  else if(airline==='ua'){if(n>=1){cost+=35;parts.push('bag 1: $35');}if(n>=2){cost+=45;parts.push('bag 2: $45');}if(n>=3){var ex3=n-2;cost+=ex3*200;parts.push('bags 3-'+n+': '+ex3+' x $200');}}
+  else{parts.push('Select airline for auto bag fees');}
   return{cost:cost,breakdown:parts.join(' + ')||'No bags'};
 }
 
@@ -299,157 +454,108 @@ function makeFlightRow(desc,airline,ticketCost,numBags){
   var descIn=txtInput(desc,'Traveler name or description');
   var td0=document.createElement('td');td0.appendChild(descIn);tr.appendChild(td0);
   var sel=document.createElement('select');
-  sel.style.cssText='width:100%;background:#fffde7;border:1px solid #bbb;border-radius:3px;padding:3px 6px;font-size:12px;';
   airlines.forEach(function(a){var o=document.createElement('option');o.value=a[0];o.textContent=a[1];if(a[0]===airline)o.selected=true;sel.appendChild(o);});
   var td1=document.createElement('td');td1.appendChild(sel);tr.appendChild(td1);
   var ticketIn=numInput(ticketCost,'flTicket');
   var td2=document.createElement('td');td2.appendChild(ticketIn);tr.appendChild(td2);
   var bagsIn=numInput(numBags,'flBags');bagsIn.style.width='60px';
   var td3=document.createElement('td');td3.style.textAlign='center';td3.appendChild(bagsIn);tr.appendChild(td3);
-  var bagCostSpan=document.createElement('span');bagCostSpan.className='flBagCost';
-  bagCostSpan.style.cssText='font-size:12px;color:#555;white-space:nowrap;';bagCostSpan.textContent='$0.00';
+  var bagCostSpan=document.createElement('span');bagCostSpan.className='flBagCost';bagCostSpan.style.cssText='font-size:11px;color:var(--text2);white-space:nowrap;';bagCostSpan.textContent='$0.00';
   var td4=document.createElement('td');td4.style.textAlign='right';td4.appendChild(bagCostSpan);tr.appendChild(td4);
-  var bagDesc=document.createElement('span');bagDesc.className='flBagDesc';
-  bagDesc.style.cssText='font-size:10px;color:#888;';bagDesc.textContent='-';
+  var bagDesc=document.createElement('span');bagDesc.className='flBagDesc';bagDesc.style.cssText='font-size:10px;color:var(--muted);';bagDesc.textContent='-';
   var td5=document.createElement('td');td5.appendChild(bagDesc);tr.appendChild(td5);
   var peopleIn=numInput(1,'flPeople');peopleIn.style.width='55px';
   var td6=document.createElement('td');td6.style.textAlign='center';td6.appendChild(peopleIn);tr.appendChild(td6);
   peopleIn.addEventListener('input',calc);
   var tot=totalSpan('flTotal');
-  var hb=hideBtn([tr]);
-  var btn=removeBtn(function(){tr.remove();calc();});
-  var tdL=document.createElement('td');
-  var wrap=document.createElement('div');wrap.style.cssText='display:flex;align-items:center;justify-content:flex-end;gap:4px;';
-  wrap.appendChild(tot);wrap.appendChild(hb);wrap.appendChild(btn);tdL.appendChild(wrap);tr.appendChild(tdL);
-  function updateBags(){
-    var result=calcBagFee(sel.value,parseFloat(bagsIn.value)||0);
-    bagCostSpan.textContent=fmt(result.cost);bagDesc.textContent=result.breakdown;calc();
-  }
+  var hb=hideBtn([tr]);var btn=removeBtn(function(){tr.remove();calc();});
+  var tdL=document.createElement('td');var wrap=document.createElement('div');wrap.style.cssText='display:flex;align-items:center;justify-content:flex-end;gap:4px;';wrap.appendChild(tot);wrap.appendChild(hb);wrap.appendChild(btn);tdL.appendChild(wrap);tr.appendChild(tdL);
+  function updateBags(){var result=calcBagFee(sel.value,parseFloat(bagsIn.value)||0);bagCostSpan.textContent=fmt(result.cost);bagDesc.textContent=result.breakdown;calc();}
   sel.addEventListener('change',updateBags);bagsIn.addEventListener('input',updateBags);ticketIn.addEventListener('input',calc);
-  document.getElementById('flightBody').appendChild(tr);
-  updateBags();
-  return tr;
+  document.getElementById('flightBody').appendChild(tr);updateBags();return tr;
 }
 (function(){makeFlightRow('','',0,0);})();
 function addFlight(){makeFlightRow('','',0,0);calc();}
 
 function makeCarRow(desc,rate,days){
   var tr=document.createElement('tr');
-  var descIn=txtInput(desc,'e.g. Chevy Tahoe - Avis');
-  var rateIn=numInput(rate,'crRate');
+  var descIn=txtInput(desc,'e.g. Chevy Tahoe - Avis');var rateIn=numInput(rate,'crRate');
   var daysIn=numInput(days,'crDays');daysIn.style.width='70px';
-  var sp=document.createElement('span');sp.textContent='days';sp.style.cssText='font-size:11px;color:#555;';
+  var sp=document.createElement('span');sp.textContent='days';sp.style.cssText='font-size:10px;color:var(--muted);';
   var dWrap=document.createElement('div');dWrap.style.cssText='display:flex;align-items:center;gap:4px;';dWrap.appendChild(daysIn);dWrap.appendChild(sp);
-  var tot=totalSpan('crTotal');
-  var hb=hideBtn([tr]);
-  var btn=removeBtn(function(){tr.remove();calc();});
-  tr.appendChild(td(descIn));tr.appendChild(td(rateIn));
-  tr.appendChild(td(dWrap,3));tr.appendChild(td(wrapTotal(tot,hb,btn)));
-  document.getElementById('carBody').appendChild(tr);
-  return tr;
+  var tot=totalSpan('crTotal');var hb=hideBtn([tr]);var btn=removeBtn(function(){tr.remove();calc();});
+  tr.appendChild(td(descIn));tr.appendChild(td(rateIn));tr.appendChild(td(dWrap,3));tr.appendChild(td(wrapTotal(tot,hb,btn)));
+  document.getElementById('carBody').appendChild(tr);return tr;
 }
 (function(){makeCarRow('Rental Car 1',0,7);})();
 function addCar(){makeCarRow('',0,7);calc();}
 
 function makeHotelRow(desc,rate,rooms,nights){
   var tr=document.createElement('tr');
-  var descIn=txtInput(desc,'e.g. Marriott');
-  var rateIn=numInput(rate,'htRate');
+  var descIn=txtInput(desc,'e.g. Marriott');var rateIn=numInput(rate,'htRate');
   var roomsIn=numInput(rooms,'htRooms');roomsIn.style.width='55px';
-  var sp1=document.createElement('span');sp1.textContent='rooms x';sp1.style.cssText='font-size:11px;color:#555;white-space:nowrap;';
+  var sp1=document.createElement('span');sp1.textContent='rooms ×';sp1.style.cssText='font-size:10px;color:var(--muted);white-space:nowrap;';
   var nightsIn=numInput(nights,'htNights');nightsIn.style.width='55px';
-  var sp2=document.createElement('span');sp2.textContent='nights';sp2.style.cssText='font-size:11px;color:#555;';
-  var grp=document.createElement('div');grp.className='qty-group';
-  grp.appendChild(roomsIn);grp.appendChild(sp1);grp.appendChild(nightsIn);grp.appendChild(sp2);
-  var tot=totalSpan('htTotal');
-  var hb=hideBtn([tr]);
-  var btn=removeBtn(function(){tr.remove();calc();});
-  tr.appendChild(td(descIn));tr.appendChild(td(rateIn));
-  tr.appendChild(td(grp,3));tr.appendChild(td(wrapTotal(tot,hb,btn)));
-  document.getElementById('hotelBody').appendChild(tr);
-  return tr;
+  var sp2=document.createElement('span');sp2.textContent='nights';sp2.style.cssText='font-size:10px;color:var(--muted);';
+  var grp=document.createElement('div');grp.className='qty-group';grp.appendChild(roomsIn);grp.appendChild(sp1);grp.appendChild(nightsIn);grp.appendChild(sp2);
+  var tot=totalSpan('htTotal');var hb=hideBtn([tr]);var btn=removeBtn(function(){tr.remove();calc();});
+  tr.appendChild(td(descIn));tr.appendChild(td(rateIn));tr.appendChild(td(grp,3));tr.appendChild(td(wrapTotal(tot,hb,btn)));
+  document.getElementById('hotelBody').appendChild(tr);return tr;
 }
 (function(){makeHotelRow('Hotel',0,1,7);})();
 function addHotel(){makeHotelRow('',0,1,7);calc();}
 
 function makeEquipRow(desc,rate,qty,days){
   var tr=document.createElement('tr');
-  var descIn=txtInput(desc,'Equipment description');
-  var rateIn=numInput(rate,'eqRate');
+  var descIn=txtInput(desc,'Equipment description');var rateIn=numInput(rate,'eqRate');
   var qtyIn=numInput(qty,'eqQty');qtyIn.style.width='55px';
-  var sp1=document.createElement('span');sp1.textContent='units x';sp1.style.cssText='font-size:11px;color:#555;';
+  var sp1=document.createElement('span');sp1.textContent='units ×';sp1.style.cssText='font-size:10px;color:var(--muted);';
   var daysIn=numInput(days,'eqDays');daysIn.style.width='55px';
-  var sp2=document.createElement('span');sp2.textContent='days';sp2.style.cssText='font-size:11px;color:#555;';
-  var grp=document.createElement('div');grp.className='qty-group';
-  grp.appendChild(qtyIn);grp.appendChild(sp1);grp.appendChild(daysIn);grp.appendChild(sp2);
-  var tot=totalSpan('eqTotal');
-  var hb=hideBtn([tr]);
-  var btn=removeBtn(function(){tr.remove();calc();});
-  tr.appendChild(td(descIn));tr.appendChild(td(rateIn));
-  tr.appendChild(td(grp,3));tr.appendChild(td(wrapTotal(tot,hb,btn)));
-  document.getElementById('equipBody').appendChild(tr);
-  return tr;
+  var sp2=document.createElement('span');sp2.textContent='days';sp2.style.cssText='font-size:10px;color:var(--muted);';
+  var grp=document.createElement('div');grp.className='qty-group';grp.appendChild(qtyIn);grp.appendChild(sp1);grp.appendChild(daysIn);grp.appendChild(sp2);
+  var tot=totalSpan('eqTotal');var hb=hideBtn([tr]);var btn=removeBtn(function(){tr.remove();calc();});
+  tr.appendChild(td(descIn));tr.appendChild(td(rateIn));tr.appendChild(td(grp,3));tr.appendChild(td(wrapTotal(tot,hb,btn)));
+  document.getElementById('equipBody').appendChild(tr);return tr;
 }
-(function(){
-  [['Drone / Robot Unit',0,0,7],['Ground Support Vehicle',0,0,7],['Generator / Power Equipment',0,0,7]].forEach(function(r){makeEquipRow(r[0],r[1],r[2],r[3]);});
-})();
+(function(){[['Drone / Robot Unit',0,0,7],['Ground Support Vehicle',0,0,7],['Generator / Power Equipment',0,0,7]].forEach(function(r){makeEquipRow(r[0],r[1],r[2],r[3]);});})();
 function addEquip(){makeEquipRow('',0,0,7);calc();}
 
 function makeSoftRow(name,cost,seats){
   var tr=document.createElement('tr');
-  var nameIn=txtInput(name,'Software / tool name');
-  var costIn=numInput(cost,'swCost');
+  var nameIn=txtInput(name,'Software / tool name');var costIn=numInput(cost,'swCost');
   var sel=document.createElement('select');sel.className='swCycle';
-  sel.style.cssText='width:100%;background:#fffde7;border:1px solid #bbb;border-radius:3px;padding:3px 6px;font-size:12px;';
   ['Per Deployment','One-Time','Monthly','Annual (prorate)'].forEach(function(opt){var o=document.createElement('option');o.textContent=opt;sel.appendChild(o);});
   sel.addEventListener('change',calc);
   var seatsIn=numInput(seats,'swSeats',1);
-  var tot=totalSpan('swTotal');
-  var hb=hideBtn([tr]);
-  var btn=removeBtn(function(){tr.remove();calc();});
-  tr.appendChild(td(nameIn));tr.appendChild(td(costIn));tr.appendChild(td(sel));
-  tr.appendChild(td(seatsIn,2));tr.appendChild(td(wrapTotal(tot,hb,btn)));
-  document.getElementById('softBody').appendChild(tr);
-  return tr;
+  var tot=totalSpan('swTotal');var hb=hideBtn([tr]);var btn=removeBtn(function(){tr.remove();calc();});
+  tr.appendChild(td(nameIn));tr.appendChild(td(costIn));tr.appendChild(td(sel));tr.appendChild(td(seatsIn,2));tr.appendChild(td(wrapTotal(tot,hb,btn)));
+  document.getElementById('softBody').appendChild(tr);return tr;
 }
-(function(){
-  [['Mission Planning Software',0,1],['Data Processing / Analytics',0,1],['Comms / Hotspot Plan',0,1]].forEach(function(r){makeSoftRow(r[0],r[1],r[2]);});
-})();
+(function(){[['Mission Planning Software',0,1],['Data Processing / Analytics',0,1],['Comms / Hotspot Plan',0,1]].forEach(function(r){makeSoftRow(r[0],r[1],r[2]);});})();
 function addSoftware(){makeSoftRow('',0,1);calc();}
 
 function makeMiscRow(desc,cost){
   var tr=document.createElement('tr');
-  var descIn=txtInput(desc,'Description');
-  var costIn=numInput(cost,'miscCost');
-  var hb=hideBtn([tr]);
-  var btn=removeBtn(function(){tr.remove();calc();});
+  var descIn=txtInput(desc,'Description');var costIn=numInput(cost,'miscCost');
+  var hb=hideBtn([tr]);var btn=removeBtn(function(){tr.remove();calc();});
   tr.appendChild(td(descIn));tr.appendChild(td(costIn));
   var tdLast=document.createElement('td');tdLast.colSpan=4;
-  var wrap=document.createElement('div');wrap.style.cssText='display:flex;gap:4px;';
-  wrap.appendChild(hb);wrap.appendChild(btn);tdLast.appendChild(wrap);tr.appendChild(tdLast);
-  document.getElementById('miscBody').appendChild(tr);
-  return tr;
+  var wrap=document.createElement('div');wrap.style.cssText='display:flex;gap:4px;';wrap.appendChild(hb);wrap.appendChild(btn);tdLast.appendChild(wrap);tr.appendChild(tdLast);
+  document.getElementById('miscBody').appendChild(tr);return tr;
 }
 (function(){makeMiscRow('Miscellaneous',0);})();
 function addMisc(){makeMiscRow('',0);calc();}
 
 function makeRegRow(desc,cost,qty,unit){
   var tr=document.createElement('tr');
-  var descIn=txtInput(desc,'Item description');
-  descIn.style.fontWeight='bold';descIn.style.background='#f3e5d0';
+  var descIn=txtInput(desc,'Item description');descIn.style.fontWeight='600';
   var costIn=numInput(cost,'rgCost');
   var qtyIn=numInput(qty,'rgQty');qtyIn.style.width='60px';
-  var unitIn=txtInput(unit,'unit (e.g. waivers)');
-  unitIn.style.width='100px';unitIn.style.fontSize='11px';
-  var grp=document.createElement('div');grp.className='qty-group';
-  grp.appendChild(qtyIn);grp.appendChild(unitIn);
-  var tot=totalSpan('rgTotal');
-  var hb=hideBtn([tr]);
-  var btn=removeBtn(function(){tr.remove();calc();});
-  tr.appendChild(td(descIn));tr.appendChild(td(costIn));
-  tr.appendChild(td(grp,3));tr.appendChild(td(wrapTotal(tot,hb,btn)));
-  document.getElementById('regBody').appendChild(tr);
-  return tr;
+  var unitIn=txtInput(unit,'unit');unitIn.style.cssText='width:100px;font-size:10px;';
+  var grp=document.createElement('div');grp.className='qty-group';grp.appendChild(qtyIn);grp.appendChild(unitIn);
+  var tot=totalSpan('rgTotal');var hb=hideBtn([tr]);var btn=removeBtn(function(){tr.remove();calc();});
+  tr.appendChild(td(descIn));tr.appendChild(td(costIn));tr.appendChild(td(grp,3));tr.appendChild(td(wrapTotal(tot,hb,btn)));
+  document.getElementById('regBody').appendChild(tr);return tr;
 }
 (function(){
   [
@@ -490,15 +596,10 @@ function calc(){
   });
   s('totalAir',fmt(flightTotal));
 
-  var mileTotal=g('mileRate')*g('miles');
-  var gas=g('gas');
-  var carTotal=0;
+  var mileTotal=g('mileRate')*g('miles');var gas=g('gas');var carTotal=0;
   document.querySelectorAll('#carBody tr').forEach(function(tr){
-    var rate=parseFloat(tr.querySelector('.crRate')?.value)||0;
-    var days=parseFloat(tr.querySelector('.crDays')?.value)||0;
-    var t=rate*days;
-    var el=tr.querySelector('.crTotal');if(el)el.textContent=fmt(t);
-    if(!isHidden(tr))carTotal+=t;
+    var rate=parseFloat(tr.querySelector('.crRate')?.value)||0;var days=parseFloat(tr.querySelector('.crDays')?.value)||0;var t=rate*days;
+    var el=tr.querySelector('.crTotal');if(el)el.textContent=fmt(t);if(!isHidden(tr))carTotal+=t;
   });
   var parkHotel=g('parkHotelRate')*g('parkHotelCars')*g('parkHotelDays');
   var parkVenue=g('parkVenueRate')*g('parkVenueCars')*g('parkVenueDays');
@@ -508,85 +609,63 @@ function calc(){
 
   var hotelTotal=0;
   document.querySelectorAll('#hotelBody tr').forEach(function(tr){
-    var rate=parseFloat(tr.querySelector('.htRate')?.value)||0;
-    var rooms=parseFloat(tr.querySelector('.htRooms')?.value)||0;
-    var nights=parseFloat(tr.querySelector('.htNights')?.value)||0;
-    var t=rate*rooms*nights;
-    var el=tr.querySelector('.htTotal');if(el)el.textContent=fmt(t);
-    if(!isHidden(tr))hotelTotal+=t;
+    var rate=parseFloat(tr.querySelector('.htRate')?.value)||0;var rooms=parseFloat(tr.querySelector('.htRooms')?.value)||0;var nights=parseFloat(tr.querySelector('.htNights')?.value)||0;var t=rate*rooms*nights;
+    var el=tr.querySelector('.htTotal');if(el)el.textContent=fmt(t);if(!isHidden(tr))hotelTotal+=t;
   });
-  var pdTotal=g('pdRate')*g('pdPeople')*g('pdDays');
-  var totalLodge=hotelTotal+pdTotal;
+  var pdTotal=g('pdRate')*g('pdPeople')*g('pdDays');var totalLodge=hotelTotal+pdTotal;
   s('pdTotal',fmt(pdTotal));s('totalLodge',fmt(totalLodge));
 
   var totalEquip=0;
   document.querySelectorAll('#equipBody tr').forEach(function(tr){
-    var rate=parseFloat(tr.querySelector('.eqRate')?.value)||0;
-    var qty=parseFloat(tr.querySelector('.eqQty')?.value)||0;
-    var days=parseFloat(tr.querySelector('.eqDays')?.value)||0;
-    var t=rate*qty*days;
-    var el=tr.querySelector('.eqTotal');if(el)el.textContent=fmt(t);
-    if(!isHidden(tr))totalEquip+=t;
+    var rate=parseFloat(tr.querySelector('.eqRate')?.value)||0;var qty=parseFloat(tr.querySelector('.eqQty')?.value)||0;var days=parseFloat(tr.querySelector('.eqDays')?.value)||0;var t=rate*qty*days;
+    var el=tr.querySelector('.eqTotal');if(el)el.textContent=fmt(t);if(!isHidden(tr))totalEquip+=t;
   });
   s('totalEquip',fmt(totalEquip));
 
   var totalSoft=0;
   document.querySelectorAll('#softBody tr').forEach(function(tr){
-    var cost=parseFloat(tr.querySelector('.swCost')?.value)||0;
-    var seats=parseFloat(tr.querySelector('.swSeats')?.value)||1;
-    var t=cost*seats;
-    var el=tr.querySelector('.swTotal');if(el)el.textContent=fmt(t);
-    if(!isHidden(tr))totalSoft+=t;
+    var cost=parseFloat(tr.querySelector('.swCost')?.value)||0;var seats=parseFloat(tr.querySelector('.swSeats')?.value)||1;var t=cost*seats;
+    var el=tr.querySelector('.swTotal');if(el)el.textContent=fmt(t);if(!isHidden(tr))totalSoft+=t;
   });
   s('totalSoft',fmt(totalSoft));
 
   var totalReg=0;
   document.querySelectorAll('#regBody tr').forEach(function(tr){
-    var cost=parseFloat(tr.querySelector('.rgCost')?.value)||0;
-    var qty=parseFloat(tr.querySelector('.rgQty')?.value)||0;
-    var t=cost*qty;
-    var el=tr.querySelector('.rgTotal');if(el)el.textContent=fmt(t);
-    if(!isHidden(tr))totalReg+=t;
+    var cost=parseFloat(tr.querySelector('.rgCost')?.value)||0;var qty=parseFloat(tr.querySelector('.rgQty')?.value)||0;var t=cost*qty;
+    var el=tr.querySelector('.rgTotal');if(el)el.textContent=fmt(t);if(!isHidden(tr))totalReg+=t;
   });
   s('totalReg',fmt(totalReg));
 
-  var totalShip=g('shipOut')+g('shipIn');
-  s('totalShip',fmt(totalShip));
+  var totalShip=g('shipOut')+g('shipIn');s('totalShip',fmt(totalShip));
 
   var totalMisc=0;
   document.querySelectorAll('#miscBody tr').forEach(function(tr){
-    var el=tr.querySelector('.miscCost');
-    if(el&&!isHidden(tr))totalMisc+=parseFloat(el.value)||0;
+    var el=tr.querySelector('.miscCost');if(el&&!isHidden(tr))totalMisc+=parseFloat(el.value)||0;
   });
 
   var subtotal=totalLabor+flightTotal+totalGround+totalLodge+totalEquip+totalSoft+totalReg+totalShip+totalMisc;
-  var overhead=subtotal*(g('overheadPct')/100);
-  var contingency=subtotal*(g('contingencyPct')/100);
+  var overhead=subtotal*(g('overheadPct')/100);var contingency=subtotal*(g('contingencyPct')/100);
   s('overheadAmt',fmt(overhead));s('overheadNote','% of subtotal ('+fmt(subtotal)+')');
   s('contingencyAmt',fmt(contingency));s('contingencyNote','% of subtotal ('+fmt(subtotal)+')');
 
-  var totalCost=subtotal+overhead+contingency;
-  var totalRev=g('rev1')+g('rev2');
-  var pl=totalRev-totalCost;
+  var totalCost=subtotal+overhead+contingency;var totalRev=g('rev1')+g('rev2');var pl=totalRev-totalCost;
   s('totalRev',fmt(totalRev));s('grandTotal',fmt(totalCost));s('totalRevBot',fmt(totalRev));
-  var plEl=document.getElementById('plAmt');if(plEl)plEl.textContent=pl<0?'('+fmt(pl)+')':fmt(pl);
+  var plEl=document.getElementById('plAmt');if(plEl)plEl.textContent=pl<0?'('+fmt(Math.abs(pl))+')':fmt(pl);
   document.getElementById('plRow').className=pl>=0?'pl-pos':'pl-neg';
   s('plRev',fmt(totalRev));s('plCost',fmt(totalCost));
   var plNetEl=document.getElementById('plNet');
-  if(plNetEl){plNetEl.textContent=pl<0?'('+fmt(pl)+')':fmt(pl);plNetEl.style.color=pl>=0?'#1b5e20':'#b71c1c';}
+  if(plNetEl){plNetEl.textContent=pl<0?'('+fmt(Math.abs(pl))+')':fmt(pl);plNetEl.style.color=pl>=0?'var(--green)':'#f87171';}
   var margin=totalRev>0?((pl/totalRev)*100).toFixed(1):'0.0';
   s('plMargin','Actual Margin: '+margin+'%');
 
-  var targetMargin=g('targetMargin');
-  var minPrice=targetMargin<100?totalCost/(1-(targetMargin/100)):0;
-  var priceDiff=totalRev-minPrice;
+  var targetMargin=g('targetMargin');var minPrice=targetMargin<100?totalCost/(1-(targetMargin/100)):0;var priceDiff=totalRev-minPrice;
   s('minPrice',fmt(minPrice));
   var diffEl=document.getElementById('priceDiff');
-  if(diffEl){diffEl.textContent=(priceDiff>=0?'+ ':'-')+fmt(Math.abs(priceDiff));diffEl.style.color=priceDiff>=0?'#2e7d32':'#c8102e';}
+  if(diffEl){diffEl.textContent=(priceDiff>=0?'+ ':'-')+fmt(Math.abs(priceDiff));diffEl.style.color=priceDiff>=0?'var(--green)':'#f87171';}
   var statusEl=document.getElementById('marginStatus');
   if(statusEl){
-    if(priceDiff>=0){statusEl.style.background='#e8f5e9';statusEl.style.color='#2e7d32';statusEl.textContent='On target - you\'re $'+Math.abs(priceDiff).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})+' above minimum';}
-    else{statusEl.style.background='#ffcdd2';statusEl.style.color='#b71c1c';statusEl.textContent='Under target - raise price by $'+Math.abs(priceDiff).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
+    if(priceDiff>=0){statusEl.className='margin-status margin-ok';statusEl.textContent='✓ On target — $'+Math.abs(priceDiff).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})+' above minimum';}
+    else{statusEl.className='margin-status margin-low';statusEl.textContent='⚠ Under target — raise price by $'+Math.abs(priceDiff).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
   }
 }
 calc();
