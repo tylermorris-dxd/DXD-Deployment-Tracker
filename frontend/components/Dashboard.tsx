@@ -112,8 +112,6 @@ export default function Dashboard({ onOpenDeal, onSwitchTab }: Props) {
         </h1>
         <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: C.muted }}>
           {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-          <span style={{ margin: '0 8px', opacity: 0.4 }}>·</span>
-          <span style={{ color: C.text2 }}>DXD Defense</span>
         </div>
       </div>
 
@@ -281,7 +279,7 @@ export default function Dashboard({ onOpenDeal, onSwitchTab }: Props) {
               {hsStatus?.connected ? 'Connected and syncing' : 'Not connected — configure to sync deals'}
             </div>
             <button
-              onClick={() => onSwitchTab('hubspot')}
+              onClick={() => onSwitchTab('admin')}
               style={{ width: '100%', padding: '9px 0', background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 7, color: C.text2, fontFamily: "'JetBrains Mono', monospace", fontSize: 10, cursor: 'pointer', letterSpacing: 0.5, transition: 'border-color 0.15s' }}
               onMouseEnter={e => (e.currentTarget.style.borderColor = C.text2)}
               onMouseLeave={e => (e.currentTarget.style.borderColor = C.border)}

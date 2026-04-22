@@ -11,16 +11,17 @@ import PipelineView from '@/components/PipelineView'
 import AllDealsTable from '@/components/AllDealsTable'
 import EquipmentTracker from '@/components/EquipmentTracker'
 import CostEstimator from '@/components/CostEstimator'
-import AdminTasksPanel from '@/components/AdminPanel'
 
-export type MainTab = 'dashboard' | 'deals' | 'pipeline' | 'all-deals' | 'hubspot'
+export type MainTab = 'dashboard' | 'deals' | 'pipeline' | 'all-deals' | 'admin' | 'equipment' | 'cost'
 
-const NAV: { id: MainTab; label: string }[] = [
-  { id: 'dashboard', label: 'Dashboard' },
-  { id: 'deals',     label: 'Deals' },
-  { id: 'pipeline',  label: 'Pipeline' },
-  { id: 'all-deals', label: 'All Deals' },
-  { id: 'hubspot',   label: 'HubSpot' },
+const MENU_ITEMS: { id: MainTab; label: string; dividerBefore?: boolean }[] = [
+  { id: 'dashboard',  label: 'Dashboard' },
+  { id: 'deals',      label: 'Deals' },
+  { id: 'pipeline',   label: 'Pipeline' },
+  { id: 'all-deals',  label: 'All Deals' },
+  { id: 'admin',      label: 'Admin',          dividerBefore: true },
+  { id: 'equipment',  label: 'Equipment' },
+  { id: 'cost',       label: 'Cost Estimator' },
 ]
 
 const C = { bg: 'rgba(10,11,13,0.6)', card: 'rgba(17,19,24,0.75)', border: '#252b38', red: '#D2232A', text: '#e8eaf0', text2: '#9aa3b8', muted: '#5a6380' }
@@ -29,10 +30,12 @@ export default function Home() {
   const [tab, setTab]               = useState<MainTab>('dashboard')
   const [panelId, setPanelId]       = useState<string | null>(null)
   const [newDealOpen, setNewDealOpen] = useState(false)
-  const [toolsOpen, setToolsOpen]   = useState(false)
+  const [menuOpen, setMenuOpen]     = useState(false)
 
   const openDeal  = (id: string) => setPanelId(id)
   const closeDeal = () => setPanelId(null)
+
+  const activeLabel = MENU_ITEMS.find(m => m.id === tab)?.label ?? 'Menu'
 
   return (
     <div style={{ background: C.bg, minHeight: '100vh' }}>
@@ -47,51 +50,67 @@ export default function Home() {
         {/* Brand */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 20px', borderRight: `1px solid ${C.border}`, height: '100%', flexShrink: 0 }}>
           <img src="/images/logo.png" alt="DXD" style={{ height: 32, width: 'auto', flexShrink: 0 }} />
-          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: C.muted, letterSpacing: 1, textTransform: 'uppercase' }}>Ops Tracker</span>
+          <div>
+            <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 13, color: C.text, letterSpacing: 0.5, lineHeight: 1.2 }}>Deus X Defense</div>
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: C.muted, letterSpacing: 1, textTransform: 'uppercase' }}>Ops Tracker</div>
+          </div>
         </div>
 
-        {/* Nav tabs */}
-        <div style={{ flex: 1, display: 'flex', alignItems: 'stretch', overflowX: 'auto', height: '100%', scrollbarWidth: 'none' }}>
-          {NAV.map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)} style={{
-              height: '100%', padding: '0 16px', background: 'transparent', border: 'none',
-              borderBottom: tab === t.id ? `2px solid ${C.red}` : '2px solid transparent',
-              color: tab === t.id ? C.red : C.muted,
-              fontFamily: "'JetBrains Mono', monospace", fontSize: 11, fontWeight: 600,
-              letterSpacing: 0.8, textTransform: 'uppercase',
-              cursor: 'pointer', flexShrink: 0, transition: 'color 0.15s, border-color 0.15s',
-              marginTop: 2,
-            }}>
-              {t.label}
-            </button>
-          ))}
+        {/* Menu dropdown */}
+        <div style={{ position: 'relative', padding: '0 16px', height: '100%', display: 'flex', alignItems: 'center' }}>
+          <button
+            onClick={() => setMenuOpen(o => !o)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '6px 14px', background: menuOpen ? 'rgba(210,35,42,0.1)' : 'transparent',
+              border: `1px solid ${menuOpen ? C.red + '60' : C.border}`,
+              borderRadius: 7, color: menuOpen ? C.red : C.text2,
+              fontFamily: "'JetBrains Mono', monospace", fontSize: 10, fontWeight: 600,
+              letterSpacing: 0.8, cursor: 'pointer', transition: 'all 0.15s',
+            }}
+          >
+            Menu ▾
+          </button>
+          {menuOpen && (
+            <>
+              <div style={{ position: 'fixed', inset: 0, zIndex: 299 }} onClick={() => setMenuOpen(false)} />
+              <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 300, background: 'rgba(17,19,24,0.97)', border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden', minWidth: 200, boxShadow: '0 12px 40px rgba(0,0,0,0.7)', backdropFilter: 'blur(16px)' }}>
+                {MENU_ITEMS.map(item => (
+                  <React.Fragment key={item.id}>
+                    {item.dividerBefore && <div style={{ height: 1, background: C.border, margin: '4px 0' }} />}
+                    <button
+                      onClick={() => { setTab(item.id); setMenuOpen(false) }}
+                      style={{
+                        display: 'block', width: '100%', textAlign: 'left',
+                        background: tab === item.id ? 'rgba(210,35,42,0.1)' : 'transparent',
+                        border: 'none', padding: '11px 16px',
+                        color: tab === item.id ? C.red : C.text2,
+                        fontFamily: "'JetBrains Mono', monospace", fontSize: 11,
+                        fontWeight: tab === item.id ? 600 : 400,
+                        cursor: 'pointer', letterSpacing: 0.5,
+                        transition: 'background 0.1s, color 0.1s',
+                      }}
+                      onMouseEnter={e => { if (tab !== item.id) e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
+                      onMouseLeave={e => { if (tab !== item.id) e.currentTarget.style.background = 'transparent' }}
+                    >
+                      {item.label}
+                    </button>
+                  </React.Fragment>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Current tab indicator */}
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', paddingLeft: 4 }}>
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: C.muted, letterSpacing: 0.5 }}>
+            {activeLabel}
+          </span>
         </div>
 
         {/* Right actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 20px', borderLeft: `1px solid ${C.border}`, height: '100%', flexShrink: 0 }}>
-          {/* Tools dropdown */}
-          <div style={{ position: 'relative' }}>
-            <button onClick={() => setToolsOpen(o => !o)} style={{ padding: '6px 12px', background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 7, color: C.muted, fontFamily: "'JetBrains Mono', monospace", fontSize: 10, cursor: 'pointer', letterSpacing: 0.5 }}>
-              Tools ▾
-            </button>
-            {toolsOpen && (
-              <>
-                <div style={{ position: 'fixed', inset: 0, zIndex: 299 }} onClick={() => setToolsOpen(false)} />
-                <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 300, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, overflow: 'hidden', minWidth: 160, boxShadow: '0 8px 32px rgba(0,0,0,0.6)' }}>
-                  {[
-                    { label: 'Equipment', tab: 'equipment' as const },
-                    { label: 'Admin', tab: 'admin' as const },
-                    { label: 'Cost Estimator', tab: 'cost' as const },
-                  ].map(item => (
-                    <ToolsMenuItem key={item.label} label={item.label} onClick={() => { setTab(item.tab as MainTab); setToolsOpen(false) }} />
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-          <button style={{ padding: '6px 14px', background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 7, color: C.text2, fontFamily: "'JetBrains Mono', monospace", fontSize: 10, cursor: 'pointer', letterSpacing: 0.5 }}>
-            Sync
-          </button>
           <button onClick={() => setNewDealOpen(true)} style={{ padding: '7px 18px', background: C.red, border: 'none', borderRadius: 7, color: '#fff', fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 11, letterSpacing: 0.5, cursor: 'pointer' }}>
             New Deal
           </button>
@@ -103,10 +122,9 @@ export default function Home() {
       {tab === 'deals'     && <ProjectList onSelectProject={openDeal} />}
       {tab === 'pipeline'  && <PipelineView onOpenDeal={openDeal} />}
       {tab === 'all-deals' && <AllDealsTable onOpenDeal={openDeal} />}
-      {tab === 'hubspot'   && <AdminPanel />}
-      {(tab as string) === 'equipment' && <EquipmentTracker />}
-      {(tab as string) === 'admin'     && <AdminTasksPanel />}
-      {(tab as string) === 'cost'      && <CostEstimator />}
+      {tab === 'admin'     && <AdminPanel />}
+      {tab === 'equipment' && <EquipmentTracker />}
+      {tab === 'cost'      && <CostEstimator />}
 
       {/* ── Full-page deal view ──────────────────────────────────────────────── */}
       {panelId && (
@@ -132,15 +150,6 @@ export default function Home() {
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
-
-function ToolsMenuItem({ label, onClick }: { label: string; onClick: () => void }) {
-  return (
-    <button onClick={onClick} style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', borderBottom: `1px solid ${C.border}`, color: C.text2, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, padding: '10px 14px', cursor: 'pointer' }}>
-      {label}
-    </button>
-  )
-}
-
 
 function NewDealModal({ onClose, onCreated }: { onClose: () => void; onCreated: (id: string) => void }) {
   const [name, setName]     = useState('')
