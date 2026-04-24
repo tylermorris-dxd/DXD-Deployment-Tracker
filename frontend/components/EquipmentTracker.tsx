@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { s } from '@/lib/styles'
@@ -36,6 +36,73 @@ type EquipForm = {
 const EMPTY_FORM: EquipForm = {
   name: '', serialNumber: '', faaRegNumber: '', assignedOperator: '',
   groupName: '', dateOrdered: '', dateReceived: '', status: 'ordered', notes: '', qty: 1,
+}
+
+// ── CSV Import ─────────────────────────────────────────────────────────────────
+
+type ColMap = {
+  name: string; serialNumber: string; faaRegNumber: string; operator: string
+  groupName: string; dateOrdered: string; dateReceived: string; status: string
+  notes: string; qty: string
+}
+
+const EMPTY_COL_MAP: ColMap = {
+  name: '', serialNumber: '', faaRegNumber: '', operator: '',
+  groupName: '', dateOrdered: '', dateReceived: '', status: '', notes: '', qty: '',
+}
+
+function parseCSV(text: string): { headers: string[]; rows: string[][] } {
+  const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n')
+  const parse = (line: string): string[] => {
+    const fields: string[] = []
+    let cur = '', inQ = false
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i]
+      if (inQ) {
+        if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++ }
+        else if (ch === '"') inQ = false
+        else cur += ch
+      } else {
+        if (ch === '"') inQ = true
+        else if (ch === ',') { fields.push(cur.trim()); cur = '' }
+        else cur += ch
+      }
+    }
+    fields.push(cur.trim())
+    return fields
+  }
+  const nonEmpty = lines.filter(l => l.trim())
+  if (nonEmpty.length < 2) return { headers: [], rows: [] }
+  const headers = parse(nonEmpty[0]).map(h => h.replace(/^"|"$/g, ''))
+  const rows = nonEmpty.slice(1).map(parse)
+  return { headers, rows }
+}
+
+function guessColMap(headers: string[]): ColMap {
+  const find = (...patterns: RegExp[]) => headers.find(h => patterns.some(p => p.test(h.toLowerCase()))) ?? ''
+  return {
+    name:          find(/^name$/, /^item$/, /^asset/, /^equipment/, /^description$/),
+    serialNumber:  find(/serial/, /^sn$/, /^s\/n$/),
+    faaRegNumber:  find(/faa/, /reg.*num/, /registration/),
+    operator:      find(/operator/, /assigned/, /owner/, /person/, /pilot/),
+    groupName:     find(/^group$/, /^category$/, /^type$/, /^class$/),
+    status:        find(/^status$/, /^state$/),
+    notes:         find(/^notes?$/, /^comments?$/, /^info$/, /^remarks?/),
+    qty:           find(/^qty$/, /^quantity$/, /^count$/, /^num/),
+    dateOrdered:   find(/order.*date/, /date.*order/, /^ordered$/),
+    dateReceived:  find(/receiv.*date/, /date.*receiv/, /deliver.*date/, /^received$/),
+  }
+}
+
+function normalizeStatus(raw: string): string {
+  const v = raw.toLowerCase().trim()
+  if (/deploy|operational|active|done|complete/.test(v)) return 'deployed'
+  if (/transit|ship|in.?progress|working|en.?route/.test(v)) return 'in-transit'
+  if (/receiv|deliver/.test(v)) return 'received'
+  if (/order|pending|purchase/.test(v)) return 'ordered'
+  if (/mainten|repair|service|hold/.test(v)) return 'maintenance'
+  if (/decommission|retire|archive|stuck|cancel/.test(v)) return 'decommissioned'
+  return 'ordered'
 }
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
@@ -237,6 +304,16 @@ export default function EquipmentTracker() {
   const [form, setForm] = useState<EquipForm>(EMPTY_FORM)
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
 
+  // CSV import state
+  const csvInputRef = useRef<HTMLInputElement>(null)
+  const [showImport, setShowImport] = useState(false)
+  const [csvHeaders, setCsvHeaders] = useState<string[]>([])
+  const [csvRows, setCsvRows] = useState<string[][]>([])
+  const [colMap, setColMap] = useState<ColMap>(EMPTY_COL_MAP)
+  const [importProjectId, setImportProjectId] = useState<string>('')
+  const [importing, setImporting] = useState(false)
+  const [importResult, setImportResult] = useState<{ ok: number; skip: number } | null>(null)
+
   const invalidate = () => qc.invalidateQueries({ queryKey: ['equipment-all'] })
 
   const updateMut = useMutation({
@@ -305,6 +382,56 @@ export default function EquipmentTracker() {
     if (window.confirm(`Delete "${item.name}"?`)) deleteMut.mutate(item.id)
   }
 
+  const handleCsvFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => {
+      const text = ev.target?.result as string
+      const { headers, rows } = parseCSV(text)
+      if (!headers.length) return
+      setCsvHeaders(headers)
+      setCsvRows(rows)
+      setColMap(guessColMap(headers))
+      setImportProjectId(projects[0]?.id ?? '')
+      setImportResult(null)
+      setShowImport(true)
+    }
+    reader.readAsText(file)
+    e.target.value = ''
+  }
+
+  const handleImport = async () => {
+    const projectId = importProjectId || projects[0]?.id
+    if (!projectId || !colMap.name) return
+    setImporting(true)
+    let ok = 0, skip = 0
+    for (const row of csvRows) {
+      const val = (col: string) => (col ? (row[csvHeaders.indexOf(col)] ?? '').trim() : '')
+      const name = val(colMap.name)
+      if (!name) { skip++; continue }
+      const rawStatus = val(colMap.status)
+      try {
+        await api.equipment.create(projectId, {
+          name,
+          serialNumber: val(colMap.serialNumber),
+          faaRegNumber: val(colMap.faaRegNumber),
+          operator: val(colMap.operator),
+          groupName: val(colMap.groupName),
+          status: rawStatus ? normalizeStatus(rawStatus) : 'ordered',
+          notes: val(colMap.notes),
+          qty: parseInt(val(colMap.qty)) || 1,
+          dateOrdered: val(colMap.dateOrdered),
+          dateReceived: val(colMap.dateReceived),
+        })
+        ok++
+      } catch { skip++ }
+    }
+    setImporting(false)
+    setImportResult({ ok, skip })
+    invalidate()
+  }
+
   // Filter
   const filtered = allItems.filter(e => {
     if (!search) return true
@@ -336,9 +463,16 @@ export default function EquipmentTracker() {
             <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, color: 'rgba(255,255,255,0.35)', letterSpacing: 2, marginTop: 2 }}>DEUS X DEFENSE</div>
           </div>
         </div>
-        <button style={s.primaryBtn} onClick={() => openAdd()}>
-          {Icons.plus}<span>ADD EQUIPMENT</span>
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input ref={csvInputRef} type="file" accept=".csv" style={{ display: 'none' }} onChange={handleCsvFile} />
+          <button style={s.ghostBtn} onClick={() => csvInputRef.current?.click()}>
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" style={{ marginRight: 5 }}><path d="M2 9.5V11h9V9.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/><path d="M6.5 1v7M4 5.5l2.5 2.5L9 5.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            IMPORT CSV
+          </button>
+          <button style={s.primaryBtn} onClick={() => openAdd()}>
+            {Icons.plus}<span>ADD EQUIPMENT</span>
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -360,6 +494,103 @@ export default function EquipmentTracker() {
         </div>
         <input style={{ ...inputSm, paddingLeft: 32 }} placeholder="Search equipment, serial #, FAA reg, operator..." value={search} onChange={e => setSearch(e.target.value)} />
       </div>
+
+      {/* CSV Import Modal */}
+      {showImport && (
+        <div style={{ background: 'rgba(18,18,24,0.98)', border: '1px solid rgba(59,130,246,0.35)', borderRadius: 14, padding: '20px 24px', marginBottom: 24, animation: 'fadeSlideIn 0.25s ease' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+            <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 11, color: '#3B82F6', letterSpacing: 1.5 }}>
+              IMPORT FROM CSV — {csvRows.length} ROW{csvRows.length !== 1 ? 'S' : ''} DETECTED
+            </div>
+            <button style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', cursor: 'pointer', padding: 4 }} onClick={() => { setShowImport(false); setImportResult(null) }}>✕</button>
+          </div>
+
+          {/* Project selector */}
+          <div style={{ marginBottom: 16 }}>
+            <label style={labelSm}>ASSIGN TO PROJECT *</label>
+            <select style={inputSm} value={importProjectId} onChange={e => setImportProjectId(e.target.value)}>
+              {projects.map(p => <option key={p.id} value={p.id}>{p.name}{p.client ? ` — ${p.client}` : ''}</option>)}
+            </select>
+          </div>
+
+          {/* Column mapping */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 9, fontWeight: 600, letterSpacing: 1.5, color: 'rgba(255,255,255,0.3)', marginBottom: 10 }}>MAP COLUMNS</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
+              {([
+                ['name', 'Equipment Name *'],
+                ['serialNumber', 'Serial Number'],
+                ['faaRegNumber', 'FAA Reg #'],
+                ['operator', 'Operator'],
+                ['groupName', 'Group / Category'],
+                ['status', 'Status'],
+                ['qty', 'Qty'],
+                ['notes', 'Notes'],
+                ['dateOrdered', 'Date Ordered'],
+                ['dateReceived', 'Date Received'],
+              ] as [keyof ColMap, string][]).map(([field, label]) => (
+                <div key={field}>
+                  <label style={labelSm}>{label}</label>
+                  <select style={inputSm} value={colMap[field]} onChange={e => setColMap(m => ({ ...m, [field]: e.target.value }))}>
+                    <option value="">— skip —</option>
+                    {csvHeaders.map(h => <option key={h} value={h}>{h}</option>)}
+                  </select>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Preview */}
+          {csvRows.length > 0 && colMap.name && (
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 9, fontWeight: 600, letterSpacing: 1.5, color: 'rgba(255,255,255,0.3)', marginBottom: 8 }}>PREVIEW (first 3 rows)</div>
+              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 8, overflow: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'IBM Plex Mono', monospace", fontSize: 10 }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                      {(['name', 'serialNumber', 'status', 'groupName', 'operator'] as (keyof ColMap)[]).filter(f => colMap[f]).map(f => (
+                        <th key={f} style={{ padding: '7px 12px', textAlign: 'left', color: 'rgba(255,255,255,0.35)', fontWeight: 600, whiteSpace: 'nowrap' }}>{f}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {csvRows.slice(0, 3).map((row, i) => (
+                      <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                        {(['name', 'serialNumber', 'status', 'groupName', 'operator'] as (keyof ColMap)[]).filter(f => colMap[f]).map(f => (
+                          <td key={f} style={{ padding: '6px 12px', color: 'rgba(255,255,255,0.6)', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {colMap[f] ? (row[csvHeaders.indexOf(colMap[f])] ?? '') : ''}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Result */}
+          {importResult && (
+            <div style={{ marginBottom: 12, fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: importResult.skip > 0 ? '#F59E0B' : '#22C55E' }}>
+              ✓ {importResult.ok} imported{importResult.skip > 0 ? `, ${importResult.skip} skipped (missing name)` : ''}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button style={s.ghostBtn} onClick={() => { setShowImport(false); setImportResult(null) }}>
+              {importResult ? 'CLOSE' : 'CANCEL'}
+            </button>
+            {!importResult && (
+              <button
+                style={{ ...s.primaryBtn, background: '#3B82F6', opacity: colMap.name && importProjectId ? 1 : 0.4 }}
+                disabled={!colMap.name || !importProjectId || importing}
+                onClick={handleImport}>
+                {importing ? `IMPORTING… (${csvRows.length} rows)` : `IMPORT ${csvRows.length} ITEMS`}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Add / Edit Form */}
       {showForm && (
