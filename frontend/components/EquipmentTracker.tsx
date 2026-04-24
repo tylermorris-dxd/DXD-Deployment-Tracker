@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { s } from '@/lib/styles'
 import { Icons } from '@/lib/icons'
-import type { EquipmentItem, CreateEquipment, UpdateEquipment } from '@/lib/types'
+import type { EquipmentItem, CreateEquipment, UpdateEquipment, EquipmentSection } from '@/lib/types'
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -131,13 +131,15 @@ function StatCard({ label, value, color, icon }: { label: string; value: number;
 // ── Equipment Card ─────────────────────────────────────────────────────────────
 
 function EquipCard({
-  item, onEdit, onDelete, onStatusChange, onNoteChange,
+  item, onEdit, onDelete, onStatusChange, onNoteChange, isSelected, onToggleSelect,
 }: {
   item: EquipmentItem
   onEdit: () => void
   onDelete: () => void
   onStatusChange: (status: string) => void
   onNoteChange: (notes: string) => void
+  isSelected: boolean
+  onToggleSelect: () => void
 }) {
   const [noteOpen, setNoteOpen] = useState(false)
   const [noteVal, setNoteVal] = useState(item.notes)
@@ -147,12 +149,12 @@ function EquipCard({
 
   return (
     <div style={{
-      background: 'rgba(18,18,22,0.95)',
-      border: `1px solid rgba(255,255,255,0.07)`,
-      borderTop: `2px solid ${accentColor}55`,
+      background: isSelected ? 'rgba(239,68,68,0.07)' : 'rgba(18,18,22,0.95)',
+      border: isSelected ? '1px solid rgba(239,68,68,0.4)' : `1px solid rgba(255,255,255,0.07)`,
+      borderTop: `2px solid ${isSelected ? '#ef4444' : accentColor}55`,
       borderRadius: 10,
       overflow: 'hidden',
-      transition: 'border-color 0.15s',
+      transition: 'border-color 0.15s, background 0.15s',
       display: 'flex',
       flexDirection: 'column',
     }}>
@@ -160,6 +162,12 @@ function EquipCard({
       <div style={{ padding: '14px 16px', flex: 1 }}>
         {/* Name row */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 10 }}>
+          {/* Checkbox */}
+          <div
+            onClick={e => { e.stopPropagation(); onToggleSelect() }}
+            style={{ flexShrink: 0, width: 16, height: 16, marginTop: 2, borderRadius: 3, border: `1.5px solid ${isSelected ? '#ef4444' : 'rgba(255,255,255,0.2)'}`, background: isSelected ? '#ef4444' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}>
+            {isSelected && <svg width="9" height="9" viewBox="0 0 9 9" fill="none"><path d="M1.5 4.5l2 2 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+          </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 13, fontWeight: 700, color: '#E8ECF4', letterSpacing: 0.3, lineHeight: 1.3 }}>
               {item.name}
@@ -257,7 +265,7 @@ function EquipCard({
           title={item.notes ? 'Edit note' : 'Add note'}
           style={{ background: 'none', border: `1px solid ${item.notes ? 'rgba(96,165,250,0.4)' : 'rgba(255,255,255,0.08)'}`, borderRadius: 4, cursor: 'pointer', color: item.notes ? '#60A5FA' : 'rgba(255,255,255,0.3)', padding: '4px 9px', display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}>
           <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 2h8v7H7l-2 2V9H2V2Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/></svg>
-          {item.notes ? 'NOTE' : 'NOTE'}
+          NOTE
         </button>
         <button onClick={onEdit}
           title="Edit"
@@ -277,6 +285,127 @@ function EquipCard({
   )
 }
 
+// ── Section group ──────────────────────────────────────────────────────────────
+
+function SectionGroup({
+  section, items, isCollapsed, onToggleCollapse, onAddEquip, onDelete,
+  inputSm, labelSm, onEdit, onDeleteItem, onStatusChange, onNoteChange,
+  selectedIds, onToggleSelect,
+}: {
+  section: EquipmentSection
+  items: EquipmentItem[]
+  isCollapsed: boolean
+  onToggleCollapse: () => void
+  onAddEquip: () => void
+  onDelete: () => void
+  inputSm: React.CSSProperties
+  labelSm: React.CSSProperties
+  onEdit: (item: EquipmentItem) => void
+  onDeleteItem: (item: EquipmentItem) => void
+  onStatusChange: (item: EquipmentItem, status: string) => void
+  onNoteChange: (item: EquipmentItem, notes: string) => void
+  selectedIds: Set<string>
+  onToggleSelect: (id: string) => void
+}) {
+  const [editingName, setEditingName] = useState(false)
+  const [nameVal, setNameVal] = useState(section.name)
+  const qc = useQueryClient()
+
+  const renameMut = useMutation({
+    mutationFn: (name: string) => api.equipment.sections.rename(section.id, name),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['equipment-sections'] }),
+  })
+
+  const saveRename = () => {
+    if (nameVal.trim() && nameVal.trim() !== section.name) renameMut.mutate(nameVal.trim())
+    setEditingName(false)
+  }
+
+  return (
+    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(99,102,241,0.15)', borderRadius: 12, overflow: 'hidden' }}>
+      {/* Header */}
+      <div
+        onClick={() => !editingName && onToggleCollapse()}
+        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 18px', background: 'rgba(99,102,241,0.05)', borderBottom: isCollapsed ? 'none' : '1px solid rgba(255,255,255,0.05)', cursor: 'pointer', userSelect: 'none', transition: 'background 0.15s' }}
+        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(99,102,241,0.09)')}
+        onMouseLeave={e => (e.currentTarget.style.background = 'rgba(99,102,241,0.05)')}>
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0, transition: 'transform 0.2s', transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', color: 'rgba(255,255,255,0.35)' }}>
+          <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+        <span style={{ width: 9, height: 9, borderRadius: 2, background: '#6366F1', boxShadow: '0 0 7px #6366F188', flexShrink: 0, display: 'inline-block' }} />
+
+        {editingName ? (
+          <input
+            autoFocus
+            value={nameVal}
+            onChange={e => setNameVal(e.target.value)}
+            onBlur={saveRename}
+            onKeyDown={e => { if (e.key === 'Enter') saveRename(); if (e.key === 'Escape') { setNameVal(section.name); setEditingName(false) } }}
+            onClick={e => e.stopPropagation()}
+            style={{ ...inputSm, flex: 1, padding: '4px 8px', fontSize: 13, fontFamily: "'Chakra Petch', sans-serif" }}
+          />
+        ) : (
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 14, fontWeight: 700, color: '#E8ECF4', letterSpacing: 0.3 }}>{section.name}</div>
+          </div>
+        )}
+
+        <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: 'rgba(255,255,255,0.25)', background: 'rgba(255,255,255,0.06)', padding: '2px 10px', borderRadius: 10, flexShrink: 0 }}>
+          {items.length} ITEM{items.length !== 1 ? 'S' : ''}
+        </span>
+
+        {/* Rename */}
+        <button
+          onClick={e => { e.stopPropagation(); setEditingName(true); setNameVal(section.name) }}
+          title="Rename section"
+          style={{ background: 'none', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 5, cursor: 'pointer', color: 'rgba(255,255,255,0.35)', padding: '4px 8px', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M8.5 1.5L10.5 3.5L4 10H2V8L8.5 1.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        </button>
+
+        {/* Add item */}
+        <button
+          onClick={e => { e.stopPropagation(); onAddEquip() }}
+          style={{ background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: 6, cursor: 'pointer', color: '#818CF8', padding: '4px 10px', fontSize: 11, fontFamily: "'Chakra Petch', sans-serif", letterSpacing: 0.5, flexShrink: 0 }}>
+          + Add
+        </button>
+
+        {/* Delete section */}
+        <button
+          onClick={e => { e.stopPropagation(); onDelete() }}
+          title="Delete section"
+          style={{ background: 'none', border: '1px solid rgba(255,100,100,0.15)', borderRadius: 5, cursor: 'pointer', color: 'rgba(255,100,100,0.4)', padding: '4px 8px', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+          {Icons.trash}
+        </button>
+      </div>
+
+      {!isCollapsed && (
+        <div style={{ padding: '16px 18px' }}>
+          {items.length === 0 ? (
+            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: 'rgba(255,255,255,0.2)', textAlign: 'center', padding: '20px 0' }}>
+              No items — click "+ Add" to add equipment to this section.
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
+              {items.map(item => (
+                <EquipCard
+                  key={item.id}
+                  item={item}
+                  onEdit={() => onEdit(item)}
+                  onDelete={() => onDeleteItem(item)}
+                  onStatusChange={status => onStatusChange(item, status)}
+                  onNoteChange={notes => onNoteChange(item, notes)}
+                  isSelected={selectedIds.has(item.id)}
+                  onToggleSelect={() => onToggleSelect(item.id)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Main component ─────────────────────────────────────────────────────────────
 
 export default function EquipmentTracker() {
@@ -284,6 +413,7 @@ export default function EquipmentTracker() {
 
   const { data: projects = [] } = useQuery({ queryKey: ['projects'], queryFn: api.projects.list })
   const { data: teamMembers = [] } = useQuery({ queryKey: ['teamMembers'], queryFn: api.team.list })
+  const { data: sections = [] } = useQuery({ queryKey: ['equipment-sections'], queryFn: api.equipment.sections.list })
 
   // All items across all projects
   const projectIds = projects.map(p => p.id)
@@ -295,14 +425,41 @@ export default function EquipmentTracker() {
     },
     enabled: projectIds.length > 0,
   })
-  const allItems: EquipmentItem[] = equipQueries.data ?? []
+
+  // All items across all sections
+  const sectionIds = sections.map(s => s.id)
+  const sectionEquipQuery = useQuery({
+    queryKey: ['equipment-sections-items', sectionIds.join(',')],
+    queryFn: async () => {
+      if (!sectionIds.length) return []
+      const results = await Promise.all(sectionIds.map(id => api.equipment.sections.listEquipment(id)))
+      return results.flat()
+    },
+  })
+  const sectionItems: EquipmentItem[] = sectionEquipQuery.data ?? []
+
+  const allItems: EquipmentItem[] = [...(equipQueries.data ?? []), ...sectionItems]
 
   const [search, setSearch] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
-  const [formProjectId, setFormProjectId] = useState<string>('')
+  const [formTargetType, setFormTargetType] = useState<'project' | 'section'>('project')
+  const [formTargetId, setFormTargetId] = useState<string>('')
   const [form, setForm] = useState<EquipForm>(EMPTY_FORM)
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
+
+  // Sections UI state
+  const [showNewSection, setShowNewSection] = useState(false)
+  const [newSectionName, setNewSectionName] = useState('')
+
+  // Bulk delete
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const toggleSelect = (id: string) => setSelectedIds(prev => {
+    const next = new Set(prev)
+    if (next.has(id)) next.delete(id) else next.add(id)
+    return next
+  })
+  const clearSelection = () => setSelectedIds(new Set())
 
   // CSV import state
   const csvInputRef = useRef<HTMLInputElement>(null)
@@ -310,11 +467,15 @@ export default function EquipmentTracker() {
   const [csvHeaders, setCsvHeaders] = useState<string[]>([])
   const [csvRows, setCsvRows] = useState<string[][]>([])
   const [colMap, setColMap] = useState<ColMap>(EMPTY_COL_MAP)
-  const [importProjectId, setImportProjectId] = useState<string>('')
+  const [importTargetType, setImportTargetType] = useState<'project' | 'section'>('project')
+  const [importTargetId, setImportTargetId] = useState<string>('')
   const [importing, setImporting] = useState(false)
   const [importResult, setImportResult] = useState<{ ok: number; skip: number } | null>(null)
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: ['equipment-all'] })
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ['equipment-all'] })
+    qc.invalidateQueries({ queryKey: ['equipment-sections-items'] })
+  }
 
   const updateMut = useMutation({
     mutationFn: ({ id, body }: { id: string; body: UpdateEquipment }) => api.equipment.update(id, body),
@@ -325,15 +486,39 @@ export default function EquipmentTracker() {
       api.equipment.create(projectId, body),
     onSuccess: () => { invalidate(); setShowForm(false); setEditId(null); setForm(EMPTY_FORM) },
   })
+  const createSectionEquipMut = useMutation({
+    mutationFn: ({ sectionId, body }: { sectionId: string; body: CreateEquipment }) =>
+      api.equipment.sections.createEquipment(sectionId, body),
+    onSuccess: () => { invalidate(); setShowForm(false); setEditId(null); setForm(EMPTY_FORM) },
+  })
   const deleteMut = useMutation({
     mutationFn: (id: string) => api.equipment.delete(id),
     onSuccess: invalidate,
   })
+  const bulkDeleteMut = useMutation({
+    mutationFn: (ids: string[]) => Promise.all(ids.map(id => api.equipment.delete(id))),
+    onSuccess: () => { invalidate(); clearSelection() },
+  })
+  const createSectionMut = useMutation({
+    mutationFn: (name: string) => api.equipment.sections.create({ name }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['equipment-sections'] })
+      setShowNewSection(false); setNewSectionName('')
+    },
+  })
+  const deleteSectionMut = useMutation({
+    mutationFn: (id: string) => api.equipment.sections.delete(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['equipment-sections'] })
+      qc.invalidateQueries({ queryKey: ['equipment-sections-items'] })
+    },
+  })
 
   const toggleCollapse = (id: string) => setCollapsed(p => ({ ...p, [id]: !p[id] }))
 
-  const openAdd = (presetProjectId?: string) => {
-    setFormProjectId(presetProjectId || projects[0]?.id || '')
+  const openAdd = (targetType: 'project' | 'section' = 'project', targetId?: string) => {
+    setFormTargetType(targetType)
+    setFormTargetId(targetId || (targetType === 'project' ? projects[0]?.id : sections[0]?.id) || '')
     setForm(EMPTY_FORM)
     setEditId(null)
     setShowForm(true)
@@ -367,8 +552,11 @@ export default function EquipmentTracker() {
     if (editId) {
       updateMut.mutate({ id: editId, body })
       setShowForm(false); setEditId(null); setForm(EMPTY_FORM)
+    } else if (formTargetType === 'section') {
+      if (!formTargetId) return
+      createSectionEquipMut.mutate({ sectionId: formTargetId, body })
     } else {
-      const projectId = formProjectId || projects[0]?.id
+      const projectId = formTargetId || projects[0]?.id
       if (!projectId) return
       createMut.mutate({ projectId, body })
     }
@@ -393,7 +581,8 @@ export default function EquipmentTracker() {
       setCsvHeaders(headers)
       setCsvRows(rows)
       setColMap(guessColMap(headers))
-      setImportProjectId(projects[0]?.id ?? '')
+      setImportTargetType('project')
+      setImportTargetId(projects[0]?.id ?? sections[0]?.id ?? '')
       setImportResult(null)
       setShowImport(true)
     }
@@ -402,8 +591,7 @@ export default function EquipmentTracker() {
   }
 
   const handleImport = async () => {
-    const projectId = importProjectId || projects[0]?.id
-    if (!projectId || !colMap.name) return
+    if (!importTargetId || !colMap.name) return
     setImporting(true)
     let ok = 0, skip = 0
     for (const row of csvRows) {
@@ -412,7 +600,7 @@ export default function EquipmentTracker() {
       if (!name) { skip++; continue }
       const rawStatus = val(colMap.status)
       try {
-        await api.equipment.create(projectId, {
+        const body: CreateEquipment = {
           name,
           serialNumber: val(colMap.serialNumber),
           faaRegNumber: val(colMap.faaRegNumber),
@@ -423,7 +611,12 @@ export default function EquipmentTracker() {
           qty: parseInt(val(colMap.qty)) || 1,
           dateOrdered: val(colMap.dateOrdered),
           dateReceived: val(colMap.dateReceived),
-        })
+        }
+        if (importTargetType === 'section') {
+          await api.equipment.sections.createEquipment(importTargetId, body)
+        } else {
+          await api.equipment.create(importTargetId, body)
+        }
         ok++
       } catch { skip++ }
     }
@@ -463,7 +656,15 @@ export default function EquipmentTracker() {
             <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, color: 'rgba(255,255,255,0.35)', letterSpacing: 2, marginTop: 2 }}>DEUS X DEFENSE</div>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {selectedIds.size > 0 && (
+            <button
+              style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)', borderRadius: 7, padding: '8px 14px', color: '#ef4444', cursor: 'pointer', fontFamily: "'Chakra Petch', sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: 1, display: 'flex', alignItems: 'center', gap: 6 }}
+              onClick={() => { if (window.confirm(`Delete ${selectedIds.size} selected item${selectedIds.size !== 1 ? 's' : ''}? This cannot be undone.`)) bulkDeleteMut.mutate(Array.from(selectedIds)) }}>
+              {Icons.trash}
+              DELETE ({selectedIds.size})
+            </button>
+          )}
           <input ref={csvInputRef} type="file" accept=".csv" style={{ display: 'none' }} onChange={handleCsvFile} />
           <button style={s.ghostBtn} onClick={() => csvInputRef.current?.click()}>
             <svg width="13" height="13" viewBox="0 0 13 13" fill="none" style={{ marginRight: 5 }}><path d="M2 9.5V11h9V9.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/><path d="M6.5 1v7M4 5.5l2.5 2.5L9 5.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -505,15 +706,18 @@ export default function EquipmentTracker() {
             <button style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', cursor: 'pointer', padding: 4 }} onClick={() => { setShowImport(false); setImportResult(null) }}>✕</button>
           </div>
 
-          {/* Project selector */}
           <div style={{ marginBottom: 16 }}>
-            <label style={labelSm}>ASSIGN TO PROJECT *</label>
-            <select style={inputSm} value={importProjectId} onChange={e => setImportProjectId(e.target.value)}>
-              {projects.map(p => <option key={p.id} value={p.id}>{p.name}{p.client ? ` — ${p.client}` : ''}</option>)}
+            <label style={labelSm}>ASSIGN TO</label>
+            <select style={inputSm} value={`${importTargetType}:${importTargetId}`} onChange={e => {
+              const [type, ...rest] = e.target.value.split(':')
+              setImportTargetType(type as 'project' | 'section')
+              setImportTargetId(rest.join(':'))
+            }}>
+              {projects.length > 0 && <optgroup label="DEALS">{projects.map(p => <option key={p.id} value={`project:${p.id}`}>{p.name}{p.client ? ` — ${p.client}` : ''}</option>)}</optgroup>}
+              {sections.length > 0 && <optgroup label="SECTIONS">{sections.map(s => <option key={s.id} value={`section:${s.id}`}>{s.name}</option>)}</optgroup>}
             </select>
           </div>
 
-          {/* Column mapping */}
           <div style={{ marginBottom: 16 }}>
             <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 9, fontWeight: 600, letterSpacing: 1.5, color: 'rgba(255,255,255,0.3)', marginBottom: 10 }}>MAP COLUMNS</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
@@ -540,7 +744,6 @@ export default function EquipmentTracker() {
             </div>
           </div>
 
-          {/* Preview */}
           {csvRows.length > 0 && colMap.name && (
             <div style={{ marginBottom: 16 }}>
               <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 9, fontWeight: 600, letterSpacing: 1.5, color: 'rgba(255,255,255,0.3)', marginBottom: 8 }}>PREVIEW (first 3 rows)</div>
@@ -569,7 +772,6 @@ export default function EquipmentTracker() {
             </div>
           )}
 
-          {/* Result */}
           {importResult && (
             <div style={{ marginBottom: 12, fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: importResult.skip > 0 ? '#F59E0B' : '#22C55E' }}>
               ✓ {importResult.ok} imported{importResult.skip > 0 ? `, ${importResult.skip} skipped (missing name)` : ''}
@@ -582,8 +784,8 @@ export default function EquipmentTracker() {
             </button>
             {!importResult && (
               <button
-                style={{ ...s.primaryBtn, background: '#3B82F6', opacity: colMap.name && importProjectId ? 1 : 0.4 }}
-                disabled={!colMap.name || !importProjectId || importing}
+                style={{ ...s.primaryBtn, background: '#3B82F6', opacity: colMap.name && importTargetId ? 1 : 0.4 }}
+                disabled={!colMap.name || !importTargetId || importing}
                 onClick={handleImport}>
                 {importing ? `IMPORTING… (${csvRows.length} rows)` : `IMPORT ${csvRows.length} ITEMS`}
               </button>
@@ -601,6 +803,19 @@ export default function EquipmentTracker() {
               <label style={labelSm}>Equipment Name *</label>
               <input style={inputSm} placeholder="e.g. DJI Dock 3" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
             </div>
+            {!editId && (
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={labelSm}>Assign To</label>
+                <select style={inputSm} value={`${formTargetType}:${formTargetId}`} onChange={e => {
+                  const [type, ...rest] = e.target.value.split(':')
+                  setFormTargetType(type as 'project' | 'section')
+                  setFormTargetId(rest.join(':'))
+                }}>
+                  {projects.length > 0 && <optgroup label="DEALS">{projects.map(p => <option key={p.id} value={`project:${p.id}`}>{p.name}{p.client ? ` — ${p.client}` : ''}</option>)}</optgroup>}
+                  {sections.length > 0 && <optgroup label="SECTIONS">{sections.map(s => <option key={s.id} value={`section:${s.id}`}>{s.name}</option>)}</optgroup>}
+                </select>
+              </div>
+            )}
             <div>
               <label style={labelSm}>Serial Number</label>
               <input style={inputSm} placeholder="e.g. SN-123456" value={form.serialNumber} onChange={e => setForm(f => ({ ...f, serialNumber: e.target.value }))} />
@@ -657,20 +872,20 @@ export default function EquipmentTracker() {
       {/* Content */}
       {equipQueries.isLoading && projects.length > 0 ? (
         <div style={{ textAlign: 'center', padding: 40, color: 'rgba(255,255,255,0.3)', fontFamily: "'IBM Plex Mono', monospace", fontSize: 12 }}>Loading...</div>
-      ) : filtered.length === 0 ? (
+      ) : filtered.length === 0 && sections.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 20px', color: 'rgba(255,255,255,0.25)', fontFamily: "'IBM Plex Mono', monospace", fontSize: 12 }}>
           <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 15, fontWeight: 700, letterSpacing: 1, color: 'rgba(255,255,255,0.3)', marginBottom: 8 }}>{search ? 'No Results' : 'No Equipment'}</div>
           <div>{search ? 'No items match your search.' : 'Add equipment or mark procurement items in Phase 2 of a project.'}</div>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+          {/* Project-grouped items */}
           {projects.map(proj => {
             const projItems = filtered.filter(e => e.projectId === proj.id)
             if (projItems.length === 0) return null
             const isCollapsed = !!collapsed[proj.id]
             return (
               <div key={proj.id} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, overflow: 'hidden' }}>
-                {/* Project header */}
                 <div onClick={() => toggleCollapse(proj.id)}
                   style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px', background: 'rgba(255,255,255,0.03)', borderBottom: isCollapsed ? 'none' : '1px solid rgba(255,255,255,0.05)', cursor: 'pointer', userSelect: 'none', transition: 'background 0.15s' }}
                   onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.055)')}
@@ -688,13 +903,11 @@ export default function EquipmentTracker() {
                     )}
                   </div>
                   <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: 'rgba(255,255,255,0.25)', background: 'rgba(255,255,255,0.06)', padding: '2px 10px', borderRadius: 10, flexShrink: 0 }}>{projItems.length} ITEM{projItems.length !== 1 ? 'S' : ''}</span>
-                  <button onClick={e => { e.stopPropagation(); openAdd(proj.id) }}
+                  <button onClick={e => { e.stopPropagation(); openAdd('project', proj.id) }}
                     style={{ background: 'rgba(196,30,58,0.15)', border: '1px solid rgba(196,30,58,0.3)', borderRadius: 6, cursor: 'pointer', color: '#C41E3A', padding: '4px 10px', fontSize: 11, fontFamily: "'Chakra Petch', sans-serif", letterSpacing: 0.5, flexShrink: 0 }}>
                     + Add
                   </button>
                 </div>
-
-                {/* Cards grid */}
                 {!isCollapsed && (
                   <div style={{ padding: '16px 18px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
                     {projItems.map(item => (
@@ -705,6 +918,8 @@ export default function EquipmentTracker() {
                         onDelete={() => handleDelete(item)}
                         onStatusChange={status => updateMut.mutate({ id: item.id, body: { status } })}
                         onNoteChange={notes => handleNoteChange(item, notes)}
+                        isSelected={selectedIds.has(item.id)}
+                        onToggleSelect={() => toggleSelect(item.id)}
                       />
                     ))}
                   </div>
@@ -712,6 +927,85 @@ export default function EquipmentTracker() {
               </div>
             )
           })}
+
+          {/* Custom Sections */}
+          <div>
+            {/* Section header bar */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.09)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ width: 9, height: 9, borderRadius: 2, background: '#6366F1', boxShadow: '0 0 6px #6366F188', flexShrink: 0, display: 'inline-block' }} />
+                <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, fontWeight: 700, letterSpacing: 3, color: 'rgba(255,255,255,0.6)' }}>CUSTOM SECTIONS</span>
+                <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: 'rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.05)', padding: '2px 10px', borderRadius: 10 }}>{sections.length}</span>
+              </div>
+              <button
+                style={{ background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: 6, cursor: 'pointer', color: '#818CF8', padding: '6px 12px', fontSize: 10, fontFamily: "'Chakra Petch', sans-serif", letterSpacing: 0.5, display: 'flex', alignItems: 'center', gap: 5 }}
+                onClick={() => setShowNewSection(v => !v)}>
+                {Icons.plus}<span>NEW SECTION</span>
+              </button>
+            </div>
+
+            {/* New section form */}
+            {showNewSection && (
+              <div style={{ background: 'rgba(30,30,40,0.95)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: 10, padding: '16px 20px', marginBottom: 16, animation: 'fadeSlideIn 0.2s ease' }}>
+                <label style={labelSm}>SECTION NAME</label>
+                <input
+                  autoFocus
+                  style={inputSm}
+                  placeholder="e.g. Shared Fleet, Demo Equipment, HQ Inventory..."
+                  value={newSectionName}
+                  onChange={e => setNewSectionName(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && newSectionName.trim()) createSectionMut.mutate(newSectionName.trim())
+                    if (e.key === 'Escape') { setShowNewSection(false); setNewSectionName('') }
+                  }}
+                />
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 10 }}>
+                  <button style={s.ghostBtn} onClick={() => { setShowNewSection(false); setNewSectionName('') }}>CANCEL</button>
+                  <button
+                    style={{ ...s.primaryBtn, background: '#6366F1', opacity: newSectionName.trim() ? 1 : 0.4 }}
+                    disabled={!newSectionName.trim() || createSectionMut.isPending}
+                    onClick={() => createSectionMut.mutate(newSectionName.trim())}>
+                    {createSectionMut.isPending ? 'CREATING…' : 'CREATE SECTION'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Section list */}
+            {sections.length === 0 && !showNewSection ? (
+              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: 'rgba(255,255,255,0.2)', padding: '12px 4px' }}>
+                No custom sections. Click "NEW SECTION" to create one for equipment not tied to a deal.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {sections.map(sec => {
+                  const secItems = filtered.filter(e => e.sectionId === sec.id)
+                  return (
+                    <SectionGroup
+                      key={sec.id}
+                      section={sec}
+                      items={secItems}
+                      isCollapsed={!!collapsed[sec.id]}
+                      onToggleCollapse={() => toggleCollapse(sec.id)}
+                      onAddEquip={() => openAdd('section', sec.id)}
+                      onDelete={() => {
+                        if (window.confirm(`Delete section "${sec.name}" and all its equipment? This cannot be undone.`))
+                          deleteSectionMut.mutate(sec.id)
+                      }}
+                      inputSm={inputSm}
+                      labelSm={labelSm}
+                      onEdit={openEdit}
+                      onDeleteItem={handleDelete}
+                      onStatusChange={(item, status) => updateMut.mutate({ id: item.id, body: { status } })}
+                      onNoteChange={handleNoteChange}
+                      selectedIds={selectedIds}
+                      onToggleSelect={toggleSelect}
+                    />
+                  )
+                })}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

@@ -19,6 +19,18 @@ pub fn router() -> Router<AppState> {
             "/equipment/:id",
             patch(update_equipment).delete(delete_equipment),
         )
+        .route(
+            "/equipment-sections",
+            get(list_sections).post(create_section),
+        )
+        .route(
+            "/equipment-sections/:id",
+            patch(update_section).delete(delete_section),
+        )
+        .route(
+            "/equipment-sections/:id/equipment",
+            get(list_section_equipment).post(create_section_equipment),
+        )
 }
 
 async fn list_equipment(
@@ -46,7 +58,8 @@ async fn list_equipment(
     for r in &stored {
         items.push(EquipmentItem {
             id: r.try_get("id")?,
-            project_id: r.try_get("project_id")?,
+            project_id: Some(r.try_get("project_id")?),
+            section_id: None,
             subtask_id: r.try_get("subtask_id")?,
             name: r.try_get("name")?,
             serial_number: r.try_get("serial_number")?,
@@ -97,7 +110,8 @@ async fn list_equipment(
         };
         items.push(EquipmentItem {
             id: format!("virt-{}", subtask_id),
-            project_id: project_id.clone(),
+            project_id: Some(project_id.clone()),
+            section_id: None,
             subtask_id: Some(subtask_id),
             name: v.try_get("text")?,
             serial_number: String::new(),
@@ -164,7 +178,8 @@ async fn create_equipment(
         StatusCode::CREATED,
         Json(EquipmentItem {
             id,
-            project_id,
+            project_id: Some(project_id),
+            section_id: None,
             subtask_id: body.subtask_id,
             name: body.name,
             serial_number,
@@ -226,4 +241,188 @@ async fn delete_equipment(
         return Err(AppError::NotFound);
     }
     Ok(StatusCode::NO_CONTENT)
+}
+
+// ── Section CRUD ──────────────────────────────────────────────────────────────
+
+async fn list_sections(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<EquipmentSection>>, AppError> {
+    let rows = sqlx::query(
+        "SELECT id, name, created_at FROM equipment_sections ORDER BY created_at",
+    )
+    .fetch_all(&state.pool)
+    .await?;
+    let sections = rows
+        .iter()
+        .map(|r| {
+            Ok(EquipmentSection {
+                id: r.try_get("id")?,
+                name: r.try_get("name")?,
+                created_at: r.try_get("created_at")?,
+            })
+        })
+        .collect::<Result<Vec<_>, sqlx::Error>>()?;
+    Ok(Json(sections))
+}
+
+async fn create_section(
+    State(state): State<AppState>,
+    Json(body): Json<CreateEquipmentSection>,
+) -> Result<(StatusCode, Json<EquipmentSection>), AppError> {
+    if body.name.trim().is_empty() {
+        return Err(AppError::BadRequest("name is required".into()));
+    }
+    let id = format!("esec-{}", &Uuid::new_v4().to_string().replace('-', "")[..16]);
+    let created_at = chrono::Utc::now().to_rfc3339();
+    sqlx::query(
+        "INSERT INTO equipment_sections (id, name, created_at) VALUES ($1, $2, $3)",
+    )
+    .bind(&id)
+    .bind(&body.name)
+    .bind(&created_at)
+    .execute(&state.pool)
+    .await?;
+    Ok((StatusCode::CREATED, Json(EquipmentSection { id, name: body.name, created_at })))
+}
+
+async fn update_section(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Json(body): Json<RenameEquipmentSection>,
+) -> Result<StatusCode, AppError> {
+    if body.name.trim().is_empty() {
+        return Err(AppError::BadRequest("name cannot be empty".into()));
+    }
+    let res = sqlx::query("UPDATE equipment_sections SET name = $1 WHERE id = $2")
+        .bind(&body.name)
+        .bind(&id)
+        .execute(&state.pool)
+        .await?;
+    if res.rows_affected() == 0 {
+        return Err(AppError::NotFound);
+    }
+    Ok(StatusCode::NO_CONTENT)
+}
+
+async fn delete_section(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<StatusCode, AppError> {
+    let res = sqlx::query("DELETE FROM equipment_sections WHERE id = $1")
+        .bind(&id)
+        .execute(&state.pool)
+        .await?;
+    if res.rows_affected() == 0 {
+        return Err(AppError::NotFound);
+    }
+    Ok(StatusCode::NO_CONTENT)
+}
+
+// ── Section equipment ─────────────────────────────────────────────────────────
+
+async fn list_section_equipment(
+    State(state): State<AppState>,
+    Path(section_id): Path<String>,
+) -> Result<Json<Vec<EquipmentItem>>, AppError> {
+    let rows = sqlx::query(
+        "SELECT id, section_id, name, serial_number, faa_reg_number, \
+         status, operator, qty, notes, date_ordered, date_received, group_name, created_at \
+         FROM equipment WHERE section_id = $1 ORDER BY created_at",
+    )
+    .bind(&section_id)
+    .fetch_all(&state.pool)
+    .await?;
+
+    let items = rows
+        .iter()
+        .map(|r| {
+            Ok(EquipmentItem {
+                id: r.try_get("id")?,
+                project_id: None,
+                section_id: Some(r.try_get::<String, _>("section_id")?),
+                subtask_id: None,
+                name: r.try_get("name")?,
+                serial_number: r.try_get("serial_number")?,
+                faa_reg_number: r.try_get("faa_reg_number")?,
+                status: r.try_get("status")?,
+                operator: r.try_get("operator")?,
+                qty: r.try_get("qty")?,
+                notes: r.try_get("notes")?,
+                date_ordered: r.try_get("date_ordered")?,
+                date_received: r.try_get("date_received")?,
+                group_name: r.try_get("group_name")?,
+                created_at: r.try_get("created_at")?,
+                is_virtual: false,
+            })
+        })
+        .collect::<Result<Vec<_>, sqlx::Error>>()?;
+
+    Ok(Json(items))
+}
+
+async fn create_section_equipment(
+    State(state): State<AppState>,
+    Path(section_id): Path<String>,
+    Json(body): Json<CreateEquipment>,
+) -> Result<(StatusCode, Json<EquipmentItem>), AppError> {
+    if body.name.trim().is_empty() {
+        return Err(AppError::BadRequest("name is required".into()));
+    }
+    let id = format!("equip-{}", &Uuid::new_v4().to_string().replace('-', "")[..16]);
+    let serial_number  = body.serial_number.unwrap_or_default();
+    let faa_reg_number = body.faa_reg_number.unwrap_or_default();
+    let status         = body.status.unwrap_or_else(|| "ordered".into());
+    let operator       = body.operator.unwrap_or_default();
+    let qty: i32       = body.qty.unwrap_or(1).max(1);
+    let notes          = body.notes.unwrap_or_default();
+    let date_ordered   = body.date_ordered.unwrap_or_default();
+    let date_received  = body.date_received.unwrap_or_default();
+    let group_name     = body.group_name.unwrap_or_default();
+    let created_at     = chrono::Utc::now().to_rfc3339();
+
+    sqlx::query(
+        "INSERT INTO equipment \
+         (id, section_id, subtask_id, name, serial_number, faa_reg_number, status, operator, \
+          qty, notes, date_ordered, date_received, group_name, created_at) \
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)",
+    )
+    .bind(&id)
+    .bind(&section_id)
+    .bind(None::<i64>)
+    .bind(&body.name)
+    .bind(&serial_number)
+    .bind(&faa_reg_number)
+    .bind(&status)
+    .bind(&operator)
+    .bind(qty)
+    .bind(&notes)
+    .bind(&date_ordered)
+    .bind(&date_received)
+    .bind(&group_name)
+    .bind(&created_at)
+    .execute(&state.pool)
+    .await?;
+
+    Ok((
+        StatusCode::CREATED,
+        Json(EquipmentItem {
+            id,
+            project_id: None,
+            section_id: Some(section_id),
+            subtask_id: None,
+            name: body.name,
+            serial_number,
+            faa_reg_number,
+            status,
+            operator,
+            qty,
+            notes,
+            date_ordered,
+            date_received,
+            group_name,
+            created_at,
+            is_virtual: false,
+        }),
+    ))
 }

@@ -2,7 +2,7 @@ import type {
   ProjectSummary, ProjectFull, Phase, Task, Subtask, Contact, AttachmentMeta,
   TeamMember, AdminTask,
   CreateProject, UpdateProject, UpdatePhase, UpdateTask, UpdateSubtask, UpdateContact,
-  EquipmentItem, CreateEquipment, UpdateEquipment,
+  EquipmentItem, CreateEquipment, UpdateEquipment, EquipmentSection,
   HubSpotDeal, HubSpotActiveDeal, HubSpotStatus, HubSpotOwner,
 } from './types'
 
@@ -119,6 +119,22 @@ export const api = {
       apiFetch<void>(`/equipment/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
     delete: (id: string) =>
       apiFetch<void>(`/equipment/${id}`, { method: 'DELETE' }),
+    sections: {
+      list: () =>
+        apiFetch<EquipmentSection[]>('/equipment-sections'),
+      create: (body: { name: string }) =>
+        apiFetch<EquipmentSection>('/equipment-sections', { method: 'POST', body: JSON.stringify(body) }),
+      rename: (id: string, name: string) =>
+        apiFetch<void>(`/equipment-sections/${id}`, { method: 'PATCH', body: JSON.stringify({ name }) }),
+      delete: (id: string) =>
+        apiFetch<void>(`/equipment-sections/${id}`, { method: 'DELETE' }),
+      listEquipment: (sectionId: string) =>
+        apiFetch<EquipmentItem[]>(`/equipment-sections/${encodeURIComponent(sectionId)}/equipment`),
+      createEquipment: (sectionId: string, body: CreateEquipment) =>
+        apiFetch<EquipmentItem>(`/equipment-sections/${encodeURIComponent(sectionId)}/equipment`, {
+          method: 'POST', body: JSON.stringify(body),
+        }),
+    },
   },
 
   hubspot: {

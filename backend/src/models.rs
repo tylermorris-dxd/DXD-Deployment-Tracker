@@ -268,7 +268,8 @@ pub struct UpdateEquipment {
 #[serde(rename_all = "camelCase")]
 pub struct EquipmentItem {
     pub id: String,
-    pub project_id: String,
+    pub project_id: Option<String>,
+    pub section_id: Option<String>,
     pub subtask_id: Option<i64>,
     pub name: String,
     pub serial_number: String,
@@ -282,6 +283,26 @@ pub struct EquipmentItem {
     pub group_name: String,
     pub created_at: String,
     pub is_virtual: bool,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EquipmentSection {
+    pub id: String,
+    pub name: String,
+    pub created_at: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateEquipmentSection {
+    pub name: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RenameEquipmentSection {
+    pub name: String,
 }
 
 #[derive(Debug, Serialize)]

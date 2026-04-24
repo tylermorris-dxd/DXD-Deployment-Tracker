@@ -220,7 +220,8 @@ export interface UpdateContact {
 
 export interface EquipmentItem {
   id: string
-  projectId: string
+  projectId: string | null
+  sectionId: string | null
   subtaskId: number | null
   name: string
   serialNumber: string
@@ -234,6 +235,12 @@ export interface EquipmentItem {
   groupName: string
   createdAt: string
   isVirtual: boolean
+}
+
+export interface EquipmentSection {
+  id: string
+  name: string
+  createdAt: string
 }
 
 export interface CreateEquipment {
