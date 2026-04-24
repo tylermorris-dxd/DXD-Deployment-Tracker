@@ -246,8 +246,7 @@ export default function TaskCard({ task, phase, projectId, teamMembers, branchAn
       {expanded && (
         <div style={s.taskExpanded}>
           {/* Subtasks */}
-          {!task.hasEquipmentPicker && (
-            <div style={{ marginTop: 10, marginBottom: 8 }}>
+          <div style={{ marginTop: 10, marginBottom: 8 }}>
               {visibleSubtasks.map(sub => (
                 <React.Fragment key={sub.id}>
                   <div style={s.subtaskRow}>
@@ -354,7 +353,6 @@ export default function TaskCard({ task, phase, projectId, teamMembers, branchAn
                 </button>
               )}
             </div>
-          )}
 
           {/* Task fields */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 12 }}>
