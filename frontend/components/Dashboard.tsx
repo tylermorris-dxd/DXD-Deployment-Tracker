@@ -74,6 +74,7 @@ export default function Dashboard({ onOpenDeal, onSwitchTab }: Props) {
 
   // ── Stat computations ──────────────────────────────────────────────────────
   const activeProjects     = projects.filter(p => p.currentStage != null)
+  const steadyStateCount   = projects.filter(p => p.totalTasks > 0 && p.doneTasks === p.totalTasks).length
   const pipelineValue      = activeData
     .filter(a => a.deal.properties.dealstage !== 'closedlost')
     .reduce((s, a) => s + (parseFloat(a.deal.properties.amount || '0') || 0), 0)
@@ -116,9 +117,10 @@ export default function Dashboard({ onOpenDeal, onSwitchTab }: Props) {
       </div>
 
       {/* Stat row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14, marginBottom: 28 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 14, marginBottom: 28 }}>
         <StatCard label="Active Deals"      value={String(activeProjects.length)}   sub={`${projects.length} total tracked`}                                   color={C.blue}   />
         <StatCard label="Pipeline Value"    value={fmtMoney(pipelineValue)}          sub="open deals"                                                          color={C.green}  />
+        <StatCard label="Steady State"      value={String(steadyStateCount)}         sub="in active operations"                                                color={C.green}  />
         <StatCard label="Pending Handoffs"  value={String(pendingHandoffs.length)}   sub="at stages 3, 6 & 10"                                                 color={C.red}    />
         <StatCard label="At Risk"           value={String(atRisk.length)}            sub=">30 days · <15% complete"                                             color={C.amber}  />
         <StatCard label="Closed Won (30d)"  value={String(closedWon30d.length)}      sub={closedWon30d.length ? fmtMoney(closedWon30dValue) : 'no recent closes'} color={C.purple} />
