@@ -456,7 +456,7 @@ export default function EquipmentTracker() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const toggleSelect = (id: string) => setSelectedIds(prev => {
     const next = new Set(prev)
-    if (next.has(id)) next.delete(id) else next.add(id)
+    if (next.has(id)) { next.delete(id) } else { next.add(id) }
     return next
   })
   const clearSelection = () => setSelectedIds(new Set())
@@ -531,6 +531,13 @@ export default function EquipmentTracker() {
       dateOrdered: item.dateOrdered, dateReceived: item.dateReceived,
       status: item.status, notes: item.notes, qty: item.qty,
     })
+    if (item.sectionId) {
+      setFormTargetType('section')
+      setFormTargetId(item.sectionId)
+    } else {
+      setFormTargetType('project')
+      setFormTargetId(item.projectId ?? projects[0]?.id ?? '')
+    }
     setEditId(item.id)
     setShowForm(true)
   }
@@ -550,7 +557,10 @@ export default function EquipmentTracker() {
       groupName: form.groupName,
     }
     if (editId) {
-      updateMut.mutate({ id: editId, body })
+      const reassign = formTargetType === 'project'
+        ? { reassignProjectId: formTargetId }
+        : { reassignSectionId: formTargetId }
+      updateMut.mutate({ id: editId, body: { ...body, ...reassign } })
       setShowForm(false); setEditId(null); setForm(EMPTY_FORM)
     } else if (formTargetType === 'section') {
       if (!formTargetId) return
@@ -803,19 +813,17 @@ export default function EquipmentTracker() {
               <label style={labelSm}>Equipment Name *</label>
               <input style={inputSm} placeholder="e.g. DJI Dock 3" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
             </div>
-            {!editId && (
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label style={labelSm}>Assign To</label>
-                <select style={inputSm} value={`${formTargetType}:${formTargetId}`} onChange={e => {
-                  const [type, ...rest] = e.target.value.split(':')
-                  setFormTargetType(type as 'project' | 'section')
-                  setFormTargetId(rest.join(':'))
-                }}>
-                  {projects.length > 0 && <optgroup label="DEALS">{projects.map(p => <option key={p.id} value={`project:${p.id}`}>{p.name}{p.client ? ` — ${p.client}` : ''}</option>)}</optgroup>}
-                  {sections.length > 0 && <optgroup label="SECTIONS">{sections.map(s => <option key={s.id} value={`section:${s.id}`}>{s.name}</option>)}</optgroup>}
-                </select>
-              </div>
-            )}
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={labelSm}>{editId ? 'Reassign To' : 'Assign To'}</label>
+              <select style={inputSm} value={`${formTargetType}:${formTargetId}`} onChange={e => {
+                const [type, ...rest] = e.target.value.split(':')
+                setFormTargetType(type as 'project' | 'section')
+                setFormTargetId(rest.join(':'))
+              }}>
+                {projects.length > 0 && <optgroup label="DEALS">{projects.map(p => <option key={p.id} value={`project:${p.id}`}>{p.name}{p.client ? ` — ${p.client}` : ''}</option>)}</optgroup>}
+                {sections.length > 0 && <optgroup label="SECTIONS">{sections.map(s => <option key={s.id} value={`section:${s.id}`}>{s.name}</option>)}</optgroup>}
+              </select>
+            </div>
             <div>
               <label style={labelSm}>Serial Number</label>
               <input style={inputSm} placeholder="e.g. SN-123456" value={form.serialNumber} onChange={e => setForm(f => ({ ...f, serialNumber: e.target.value }))} />

@@ -268,4 +268,6 @@ export interface UpdateEquipment {
   dateOrdered?: string
   dateReceived?: string
   groupName?: string
+  reassignProjectId?: string
+  reassignSectionId?: string
 }

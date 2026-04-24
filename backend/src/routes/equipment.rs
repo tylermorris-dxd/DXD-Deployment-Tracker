@@ -226,6 +226,14 @@ async fn update_equipment(
     if let Some(v) = &body.date_ordered   { patch!("date_ordered",   v); }
     if let Some(v) = &body.date_received  { patch!("date_received",  v); }
     if let Some(v) = &body.group_name     { patch!("group_name",     v); }
+    if let Some(pid) = &body.reassign_project_id {
+        sqlx::query("UPDATE equipment SET project_id = $1, section_id = NULL WHERE id = $2")
+            .bind(pid).bind(&id).execute(&state.pool).await?;
+    }
+    if let Some(sid) = &body.reassign_section_id {
+        sqlx::query("UPDATE equipment SET section_id = $1, project_id = NULL WHERE id = $2")
+            .bind(sid).bind(&id).execute(&state.pool).await?;
+    }
     Ok(StatusCode::NO_CONTENT)
 }
 

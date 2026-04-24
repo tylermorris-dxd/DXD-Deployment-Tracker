@@ -262,6 +262,9 @@ pub struct UpdateEquipment {
     pub date_ordered: Option<String>,
     pub date_received: Option<String>,
     pub group_name: Option<String>,
+    // Reassignment: supply one to move the item; the other is cleared automatically
+    pub reassign_project_id: Option<String>,
+    pub reassign_section_id: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
