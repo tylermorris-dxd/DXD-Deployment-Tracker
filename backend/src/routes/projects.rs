@@ -27,9 +27,9 @@ async fn list_projects(State(state): State<AppState>) -> Result<Json<Vec<Project
         r#"
         SELECT p.id, p.name, p.client, p.site, p.created_at, p.hubspot_deal_id,
                p.faa_authorization_required, p.faa_auth_started_at,
-               COUNT(t.id) as total_tasks,
-               SUM(CASE WHEN t.completed = TRUE THEN 1 ELSE 0 END) as done_tasks,
-               MIN(CASE WHEN t.completed = FALSE AND t.stage_number IS NOT NULL THEN t.stage_number END) as current_stage
+               COUNT(t.id) FILTER (WHERE t.stage_number IS NULL OR t.stage_number NOT IN (11, 12)) as total_tasks,
+               SUM(CASE WHEN t.completed = TRUE THEN 1 ELSE 0 END) FILTER (WHERE t.stage_number IS NULL OR t.stage_number NOT IN (11, 12)) as done_tasks,
+               MIN(CASE WHEN t.completed = FALSE AND t.stage_number IS NOT NULL AND t.stage_number NOT IN (11, 12) THEN t.stage_number END) as current_stage
         FROM projects p
         LEFT JOIN phases ph ON ph.project_id = p.id
         LEFT JOIN tasks t ON t.phase_id = ph.id
@@ -134,7 +134,7 @@ async fn create_project(
         client,
         site,
         created_at,
-        total_tasks: template.iter().map(|p| p.tasks.len() as i64).sum(),
+        total_tasks: template.iter().flat_map(|p| p.tasks.iter()).filter(|t| t.stage_number < 11).count() as i64,
         done_tasks: 0,
         hubspot_deal_id: None,
         current_stage: Some(1),
@@ -392,9 +392,9 @@ async fn update_project(
     let row = sqlx::query!(
         r#"SELECT p.id, p.name, p.client, p.site, p.created_at, p.hubspot_deal_id,
                   p.faa_authorization_required, p.faa_auth_started_at,
-                  COUNT(t.id) as total_tasks,
-                  SUM(CASE WHEN t.completed = TRUE THEN 1 ELSE 0 END) as done_tasks,
-                  MIN(CASE WHEN t.completed = FALSE AND t.stage_number IS NOT NULL THEN t.stage_number END) as current_stage
+                  COUNT(t.id) FILTER (WHERE t.stage_number IS NULL OR t.stage_number NOT IN (11, 12)) as total_tasks,
+                  SUM(CASE WHEN t.completed = TRUE THEN 1 ELSE 0 END) FILTER (WHERE t.stage_number IS NULL OR t.stage_number NOT IN (11, 12)) as done_tasks,
+                  MIN(CASE WHEN t.completed = FALSE AND t.stage_number IS NOT NULL AND t.stage_number NOT IN (11, 12) THEN t.stage_number END) as current_stage
            FROM projects p
            LEFT JOIN phases ph ON ph.project_id = p.id
            LEFT JOIN tasks t ON t.phase_id = ph.id

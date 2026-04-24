@@ -189,8 +189,8 @@ export default function ProjectView({ projectId, onBack }: Props) {
   }
 
   // ── Derived stats ─────────────────────────────────────────────────────────
-  const totalTasks  = project.phases.reduce((a, ph) => a + ph.tasks.length, 0)
-  const doneTasks   = project.phases.reduce((a, ph) => a + ph.tasks.filter(t => t.completed).length, 0)
+  const totalTasks  = project.phases.reduce((a, ph) => a + ph.tasks.filter(t => t.stageNumber !== 11 && t.stageNumber !== 12).length, 0)
+  const doneTasks   = project.phases.reduce((a, ph) => a + ph.tasks.filter(t => t.completed && t.stageNumber !== 11 && t.stageNumber !== 12).length, 0)
   const overallPct  = totalTasks ? Math.round((doneTasks / totalTasks) * 100) : 0
   // ── Stage-centric derived values ──────────────────────────────────────────
   const allTasks = project.phases.flatMap(ph => ph.tasks)

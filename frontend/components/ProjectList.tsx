@@ -48,8 +48,8 @@ export default function ProjectList({ onSelectProject }: { onSelectProject: (id:
     createMutation.mutate()
   }
 
-  const active    = projects.filter(p => p.totalTasks === 0 || p.doneTasks < p.totalTasks)
-  const completed = projects.filter(p => p.totalTasks > 0 && p.doneTasks === p.totalTasks)
+  const active      = projects.filter(p => p.totalTasks === 0 || p.doneTasks < p.totalTasks)
+  const steadyState = projects.filter(p => p.totalTasks > 0 && p.doneTasks === p.totalTasks)
 
   return (
     <div style={s.container}>
@@ -131,13 +131,13 @@ export default function ProjectList({ onSelectProject }: { onSelectProject: (id:
             )}
           </div>
 
-          {/* Completed */}
-          {completed.length > 0 && (
+          {/* Steady State */}
+          {steadyState.length > 0 && (
             <div>
-              <SectionHeader label="COMPLETED" count={completed.length} color="#22C55E" />
+              <SectionHeader label="STEADY STATE" count={steadyState.length} color="#22C55E" />
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))', gap: 14 }}>
-                {completed.map((p, i) => (
-                  <ProjectCard key={p.id} proj={p} index={i} isCompleted activeDeal={dealMap.get(p.id)}
+                {steadyState.map((p, i) => (
+                  <ProjectCard key={p.id} proj={p} index={i} isSteadyState activeDeal={dealMap.get(p.id)}
                     onOpen={() => onSelectProject(p.id)}
                     onDelete={() => { if (window.confirm(`Delete "${p.name}"? This cannot be undone.`)) deleteMutation.mutate(p.id) }} />
                 ))}
@@ -160,26 +160,26 @@ function SectionHeader({ label, count, color }: { label: string; count: number; 
   )
 }
 
-function ProjectCard({ proj, index, isCompleted = false, activeDeal, onOpen, onDelete }: {
+function ProjectCard({ proj, index, isSteadyState = false, activeDeal, onOpen, onDelete }: {
   proj: ProjectSummary
   index: number
-  isCompleted?: boolean
+  isSteadyState?: boolean
   activeDeal?: HubSpotActiveDeal
   onOpen: () => void
   onDelete: () => void
 }) {
   const pct = proj.totalTasks > 0 ? Math.round((proj.doneTasks / proj.totalTasks) * 100) : 0
-  const accentColor = isCompleted ? '#22C55E' : progressColor(pct)
+  const accentColor = isSteadyState ? '#22C55E' : progressColor(pct)
   const hsStage = activeDeal?.deal.properties.dealstage
 
   return (
     <div
       onClick={onOpen}
       style={{
-        background: isCompleted
+        background: isSteadyState
           ? 'linear-gradient(160deg, rgba(34,197,94,0.07), rgba(22,22,26,0.99))'
           : 'linear-gradient(160deg, rgba(32,32,36,0.97), rgba(22,22,26,0.99))',
-        border: isCompleted ? '1px solid rgba(34,197,94,0.25)' : '1px solid rgba(255,255,255,0.09)',
+        border: isSteadyState ? '1px solid rgba(34,197,94,0.25)' : '1px solid rgba(255,255,255,0.09)',
         borderLeft: `3px solid ${accentColor}`,
         borderRadius: 10,
         padding: '18px 20px',
@@ -208,7 +208,7 @@ function ProjectCard({ proj, index, isCompleted = false, activeDeal, onOpen, onD
             borderRadius: 4, padding: '3px 9px', color: accentColor,
             fontFamily: "'Chakra Petch', sans-serif",
           }}>
-            {isCompleted ? '✓ COMPLETE' : hsStage ? hsStage : pct === 0 ? 'PHASE 1' : pct < 30 ? 'PHASE 2' : pct < 60 ? 'PHASE 3' : pct < 85 ? 'PHASE 4' : 'PHASE 5'}
+            {isSteadyState ? '⟳ STEADY STATE' : hsStage ? hsStage : pct === 0 ? 'PHASE 1' : pct < 30 ? 'PHASE 2' : pct < 60 ? 'PHASE 3' : pct < 85 ? 'PHASE 4' : 'PHASE 5'}
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
