@@ -212,69 +212,73 @@ export default function ProjectView({ projectId, onBack }: Props) {
   return (
     <div style={{ maxWidth: opsMaximized ? '100%' : 1200, margin: '0 auto', padding: '0 0 40px 0' }}>
       {/* ── Top Bar ────────────────────────────────────────────────────────── */}
-      <div style={{ display: opsMaximized ? 'none' : 'flex', alignItems: 'center', gap: 16, padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(6,6,8,0.98)', position: 'sticky', top: 0, zIndex: 100 }}>
-        <button style={{ ...s.ghostBtn, flexShrink: 0 }} onClick={onBack}>{Icons.back}<span style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 11, letterSpacing: 1 }}>ALL PROJECTS</span></button>
+      <div style={{ display: opsMaximized ? 'none' : 'block', borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(6,6,8,0.98)', position: 'sticky', top: 0, zIndex: 100 }}>
 
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 18, fontWeight: 700, color: '#E8ECF4', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {project.name}
+        {/* Row 1: back + project identity + ring + controls */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 24px' }}>
+          <button style={{ ...s.ghostBtn, flexShrink: 0 }} onClick={onBack}>{Icons.back}<span style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 11, letterSpacing: 1 }}>ALL PROJECTS</span></button>
+
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 17, fontWeight: 700, color: '#E8ECF4', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {project.name}
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 2, flexWrap: 'wrap' }}>
+              {project.client && (
+                <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>{project.client}</span>
+              )}
+              {project.site && (
+                <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: 'rgba(255,255,255,0.28)' }}>📍 {project.site}</span>
+              )}
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: 8, marginTop: 2, flexWrap: 'wrap' }}>
-            {project.client && (
-              <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>{project.client}</span>
-            )}
-            {project.site && (
-              <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: 'rgba(255,255,255,0.28)' }}>📍 {project.site}</span>
-            )}
+
+          {/* Overall progress ring */}
+          <div style={{ position: 'relative', width: 44, height: 44, flexShrink: 0 }}>
+            <svg width="44" height="44" viewBox="0 0 44 44">
+              <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="3.5" />
+              <circle cx="22" cy="22" r="18" fill="none" stroke="#E53935" strokeWidth="3.5" strokeLinecap="round"
+                strokeDasharray={`${(overallPct / 100) * 113.1} 113.1`}
+                transform="rotate(-90 22 22)"
+                style={{ transition: 'stroke-dasharray 0.6s ease' }}
+              />
+            </svg>
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, fontWeight: 700, color: '#E53935', lineHeight: 1 }}>{overallPct}%</span>
+            </div>
           </div>
+
+          {/* FAA Authorization toggle */}
+          <button
+            onClick={() => toggleFaa.mutate(!project.faaAuthorizationRequired)}
+            disabled={toggleFaa.isPending}
+            title={project.faaAuthorizationRequired ? 'FAA authorization active — click to disable' : 'Enable FAA authorization tracking'}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', flexShrink: 0,
+              background: project.faaAuthorizationRequired ? 'rgba(37,99,235,0.15)' : 'rgba(255,255,255,0.04)',
+              border: `1px solid ${project.faaAuthorizationRequired ? 'rgba(37,99,235,0.5)' : 'rgba(255,255,255,0.1)'}`,
+              borderRadius: 7, cursor: 'pointer', transition: 'all 0.2s',
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M6 1l1.5 3h3l-2.5 2 1 3L6 7.5 3 9l1-3L1.5 4h3L6 1z" stroke={project.faaAuthorizationRequired ? '#3b82f6' : 'rgba(255,255,255,0.35)'} strokeWidth="1.2" strokeLinejoin="round" fill={project.faaAuthorizationRequired ? 'rgba(37,99,235,0.3)' : 'none'}/>
+            </svg>
+            <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, letterSpacing: 0.8, color: project.faaAuthorizationRequired ? '#3b82f6' : 'rgba(255,255,255,0.35)', textTransform: 'uppercase' }}>
+              FAA Auth
+            </span>
+          </button>
+
+          {/* Delete project */}
+          <button
+            style={{ ...s.ghostBtn, flexShrink: 0, color: 'rgba(255,255,255,0.35)', borderColor: 'transparent' }}
+            onClick={() => { if (window.confirm(`Delete "${project.name}"? This cannot be undone.`)) deleteMutation.mutate() }}
+            disabled={deleteMutation.isPending}
+            title="Delete project">
+            {Icons.trash}
+          </button>
         </div>
 
-        {/* Overall progress ring */}
-        <div style={{ position: 'relative', width: 52, height: 52, flexShrink: 0 }}>
-          <svg width="52" height="52" viewBox="0 0 52 52">
-            <circle cx="26" cy="26" r="22" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="4" />
-            <circle cx="26" cy="26" r="22" fill="none" stroke="#E53935" strokeWidth="4" strokeLinecap="round"
-              strokeDasharray={`${(overallPct / 100) * 138.2} 138.2`}
-              transform="rotate(-90 26 26)"
-              style={{ transition: 'stroke-dasharray 0.6s ease' }}
-            />
-          </svg>
-          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, fontWeight: 700, color: '#E53935', lineHeight: 1 }}>{overallPct}%</span>
-          </div>
-        </div>
-
-        {/* FAA Authorization toggle */}
-        <button
-          onClick={() => toggleFaa.mutate(!project.faaAuthorizationRequired)}
-          disabled={toggleFaa.isPending}
-          title={project.faaAuthorizationRequired ? 'FAA authorization active — click to disable' : 'Enable FAA authorization tracking'}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', flexShrink: 0,
-            background: project.faaAuthorizationRequired ? 'rgba(37,99,235,0.15)' : 'rgba(255,255,255,0.04)',
-            border: `1px solid ${project.faaAuthorizationRequired ? 'rgba(37,99,235,0.5)' : 'rgba(255,255,255,0.1)'}`,
-            borderRadius: 7, cursor: 'pointer', transition: 'all 0.2s',
-          }}
-        >
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-            <path d="M6 1l1.5 3h3l-2.5 2 1 3L6 7.5 3 9l1-3L1.5 4h3L6 1z" stroke={project.faaAuthorizationRequired ? '#3b82f6' : 'rgba(255,255,255,0.35)'} strokeWidth="1.2" strokeLinejoin="round" fill={project.faaAuthorizationRequired ? 'rgba(37,99,235,0.3)' : 'none'}/>
-          </svg>
-          <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, letterSpacing: 0.8, color: project.faaAuthorizationRequired ? '#3b82f6' : 'rgba(255,255,255,0.35)', textTransform: 'uppercase' }}>
-            FAA Auth
-          </span>
-        </button>
-
-        {/* Delete project */}
-        <button
-          style={{ ...s.ghostBtn, flexShrink: 0, color: 'rgba(255,255,255,0.35)', borderColor: 'transparent' }}
-          onClick={() => { if (window.confirm(`Delete "${project.name}"? This cannot be undone.`)) deleteMutation.mutate() }}
-          disabled={deleteMutation.isPending}
-          title="Delete project">
-          {Icons.trash}
-        </button>
-
-        {/* View mode tab bar */}
-        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+        {/* Row 2: view mode tabs */}
+        <div style={{ display: 'flex', gap: 4, padding: '0 24px 10px 24px', flexWrap: 'wrap', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
           {TABS.map(tab => (
             <button key={tab.id} style={tabBtn(viewMode === tab.id)} onClick={() => setViewMode(tab.id)}>
               {tab.icon}<span>{tab.label}</span>
@@ -289,6 +293,7 @@ export default function ProjectView({ projectId, onBack }: Props) {
             </button>
           )}
         </div>
+
       </div>
 
       {/* ── HubSpot deal panel ──────────────────────────────────────────── */}
