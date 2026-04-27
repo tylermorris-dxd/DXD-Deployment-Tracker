@@ -363,7 +363,7 @@ export default function ProjectView({ projectId, onBack }: Props) {
             RESTORE
           </button>
         )}
-        <OpsPlanner site={project.site} name={project.name} maximized={opsMaximized} />
+        <OpsPlanner site={project.site} name={project.name} projectId={project.id} maximized={opsMaximized} />
       </div>
 
       {/* ── Content area ──────────────────────────────────────────────────── */}

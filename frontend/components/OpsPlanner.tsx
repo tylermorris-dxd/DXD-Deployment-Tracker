@@ -3,13 +3,15 @@
 interface Props {
   site?: string
   name?: string
+  projectId?: string
   maximized?: boolean
 }
 
-export default function OpsPlanner({ site, name, maximized }: Props) {
+export default function OpsPlanner({ site, name, projectId, maximized }: Props) {
   const params = new URLSearchParams()
   if (site) params.set('address', site)
   if (name) params.set('title', name)
+  if (projectId) params.set('projectId', projectId)
   const src = `/ops-planner.html${params.toString() ? '?' + params.toString() : ''}`
 
   return (

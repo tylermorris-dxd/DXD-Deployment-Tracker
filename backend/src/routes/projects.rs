@@ -1,7 +1,7 @@
 use axum::{
     extract::{Path, State},
     http::StatusCode,
-    routing::{get, patch, post, delete},
+    routing::{get, patch, post, put, delete},
     Json, Router,
 };
 use serde::Deserialize;
@@ -20,6 +20,7 @@ pub fn router() -> Router<AppState> {
         .route("/projects/:id", get(get_project).patch(update_project).delete(delete_project))
         .route("/projects/:id/phases/:phase_id", patch(update_phase))
         .route("/projects/:id/branch-answers", patch(update_branch_answers))
+        .route("/projects/:id/ops-plan", get(get_ops_plan).put(save_ops_plan))
 }
 
 async fn list_projects(State(state): State<AppState>) -> Result<Json<Vec<ProjectSummary>>, AppError> {
@@ -490,6 +491,38 @@ async fn update_branch_answers(
     .execute(&state.pool)
     .await?;
 
+    if res.rows_affected() == 0 {
+        return Err(AppError::NotFound);
+    }
+    Ok(StatusCode::NO_CONTENT)
+}
+
+async fn get_ops_plan(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    let row = sqlx::query!("SELECT ops_plan FROM projects WHERE id = $1", id)
+        .fetch_optional(&state.pool)
+        .await?;
+    match row {
+        None => Err(AppError::NotFound),
+        Some(r) => Ok(Json(serde_json::json!({ "opsPlan": r.ops_plan }))),
+    }
+}
+
+async fn save_ops_plan(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Json(body): Json<serde_json::Value>,
+) -> Result<StatusCode, AppError> {
+    let plan_str = serde_json::to_string(&body)
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+    let res = sqlx::query!(
+        "UPDATE projects SET ops_plan = $1 WHERE id = $2",
+        plan_str, id
+    )
+    .execute(&state.pool)
+    .await?;
     if res.rows_affected() == 0 {
         return Err(AppError::NotFound);
     }

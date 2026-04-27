@@ -282,6 +282,8 @@ select option{background:var(--blk3);}
 
     <div><div id="op-title">UAS OPERATIONS PLAN — NEW PROJECT</div><div id="op-sub">LOCATION TBD | AOR OVERLAY</div></div>
 
+    <div id="ops-save-status" style="margin-left:auto;font-family:'Barlow Condensed',sans-serif;font-size:9px;letter-spacing:1.5px;color:#22c55e;opacity:0;transition:opacity 0.4s;">✓ SAVED</div>
+
   </div>
 
   <div id="hr2">
@@ -1668,128 +1670,169 @@ document.addEventListener('fullscreenchange',function(){
 document.getElementById('legend-body').style.flex='1';
 document.getElementById('legend-body').style.minHeight='0';
 
-// ── Auto-save / restore (localStorage, keyed per project) ────────
-var _opsTitle=(new URLSearchParams(window.location.search).get('title')||'default').replace(/\W+/g,'_').toLowerCase();
+// ── Auto-save / restore (API-primary, localStorage fallback) ─────
+var _opsParams=new URLSearchParams(window.location.search);
+var _opsProjectId=_opsParams.get('projectId')||'';
+var _opsTitle=(_opsParams.get('title')||'default').replace(/\W+/g,'_').toLowerCase();
 var OPS_SAVE_KEY='dxd_ops_'+_opsTitle;
 var _opsSaveTimer=null;
 var _opsRestored=false;
+var _opsSaveIndicator=null;
+
+function _opsShowSaved(){
+  if(_opsSaveIndicator)clearTimeout(_opsSaveIndicator);
+  var el=document.getElementById('ops-save-status');
+  if(el){el.style.opacity='1';}
+  _opsSaveIndicator=setTimeout(function(){if(el)el.style.opacity='0';},2000);
+}
+
+function _opsBuildData(){
+  return{
+    v:2,
+    project:{title:document.getElementById('op-title').textContent,sub:document.getElementById('op-sub').textContent},
+    planSummary:S.planSummary,
+    coas:S.coas,active:S.active,
+    layers:S.layers,
+    teams:S.teams,
+    mapCenter:map.getCenter(),mapZoom:map.getZoom(),
+    labelsVisible:S.labelsVisible,
+    docks:dockGroups.map(function(d){var ll=d.marker.getLatLng();return{id:d.id,modelKey:d.modelKey,col:d.col,ll:[ll.lat,ll.lng]};}),
+    measures:measureSegments.map(function(s){return{id:s.id,pts:s.pts.map(function(p){return[p.lat,p.lng];}),distFt:s.distFt};}),
+    boundaries:boundaryPolys.map(function(b){return{id:b.id,pts:b.pts.map(function(p){return[p.lat,p.lng];}),acres:b.acres,perimFt:b.perimFt};})
+  };
+}
 
 function opsAutoSave(){
   if(_opsSaveTimer)clearTimeout(_opsSaveTimer);
   _opsSaveTimer=setTimeout(function(){
     try{
-      var data={
-        v:2,
-        project:{title:document.getElementById('op-title').textContent,sub:document.getElementById('op-sub').textContent},
-        planSummary:S.planSummary,
-        coas:S.coas,active:S.active,
-        layers:S.layers,
-        teams:S.teams,
-        mapCenter:map.getCenter(),mapZoom:map.getZoom(),
-        labelsVisible:S.labelsVisible,
-        docks:dockGroups.map(function(d){var ll=d.marker.getLatLng();return{id:d.id,modelKey:d.modelKey,col:d.col,ll:[ll.lat,ll.lng]};}),
-        measures:measureSegments.map(function(s){return{id:s.id,pts:s.pts.map(function(p){return[p.lat,p.lng];}),distFt:s.distFt};}),
-        boundaries:boundaryPolys.map(function(b){return{id:b.id,pts:b.pts.map(function(p){return[p.lat,p.lng];}),acres:b.acres,perimFt:b.perimFt};})
-      };
+      var data=_opsBuildData();
       localStorage.setItem(OPS_SAVE_KEY,JSON.stringify(data));
+      if(_opsProjectId){
+        fetch('/api/projects/'+_opsProjectId+'/ops-plan',{
+          method:'PUT',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify(data)
+        }).then(function(){_opsShowSaved();}).catch(function(e){console.warn('ops save failed:',e);});
+      }
     }catch(e){}
   },800);
 }
 
-function opsAutoRestore(){
+function _opsApplyData(data){
+  if(!data||!data.v)return;
+  if(data.project){
+    document.getElementById('op-title').textContent=data.project.title||'UAS OPERATIONS PLAN';
+    document.getElementById('op-sub').textContent=data.project.sub||'';
+  }
+  S.planSummary=data.planSummary||'';
+  if(data.coas&&data.coas.length){S.coas=data.coas;S.active=data.active||data.coas[0].id;}
+  if(data.teams){S.teams=data.teams.map(function(t){return Object.assign({members:[],tasks:[],equipment:[]},t);});}
+  if(data.layers&&data.layers.length){
+    Object.values(S.leafletLayers).forEach(function(lf){map.removeLayer(lf);});
+    S.leafletLayers={};S.layers=data.layers;
+    data.layers.forEach(function(meta){rebuildLL(meta);});
+  }
+  if(!data.labelsVisible){S.labelsVisible=false;document.getElementById('btn-labels').classList.remove('active');}
+  if(data.docks&&data.docks.length){
+    data.docks.forEach(function(d){
+      var ll=L.latLng(d.ll[0],d.ll[1]);
+      var model=DOCK_MODELS[d.modelKey];if(!model)return;
+      var marker=L.marker(ll,{icon:makeDroneIcon(d.col),draggable:true,zIndexOffset:1000}).addTo(map);
+      var rings=model.ringsSec.map(function(sec,i){
+        var r=dockFlightRadiusM(model,sec);
+        return L.circle(ll,{radius:r,color:d.col,weight:i===0?2.8:2.2,fillColor:d.col,fillOpacity:dockRingOpa*0.05,opacity:i===0?0.9:0.7,interactive:false}).addTo(map);
+      });
+      var ringLabels=model.ringsSec.map(function(sec){
+        var r=dockFlightRadiusM(model,sec);
+        var offsetLat=ll.lat+(r/111320);
+        var mi=(r/M_PER_MILE).toFixed(2);
+        var txt=fmtTime(sec)+'  '+mi+' mi';
+        var w=Math.ceil(txt.length*5.6+12);
+        var svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+w+'" height="16"><rect x="0.5" y="0.5" width="'+(w-1)+'" height="15" rx="2" fill="#000" stroke="'+d.col+'" stroke-width="1"/><text x="'+Math.round(w/2)+'" y="11" text-anchor="middle" fill="'+d.col+'" font-size="9" font-family="Courier New,monospace" font-weight="700">'+txt+'</text></svg>';
+        var lbl=L.divIcon({html:svg,className:'',iconAnchor:[Math.round(w/2),8]});
+        return L.marker([offsetLat,ll.lng],{icon:lbl,interactive:false}).addTo(map);
+      });
+      (function(id,col,mdl){
+        function syncRings(){var p=marker.getLatLng();rings.forEach(function(r){r.setLatLng(p);});ringLabels.forEach(function(rl,i){var r=dockFlightRadiusM(mdl,mdl.ringsSec[i]);rl.setLatLng([p.lat+(r/111320),p.lng]);});}
+        marker.on('drag',syncRings);
+        var ringSummary=mdl.ringsSec.map(fmtTime).join(' / ');
+        marker.bindPopup('<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:12px;color:#eee;background:#0a0404;padding:7px 12px;border:1px solid '+col+'66;min-width:160px;"><b style="color:'+col+';letter-spacing:2px;">'+mdl.label+'</b><br/><span style="color:rgba(255,255,255,.5);font-size:10px;letter-spacing:1px;">LAUNCH DELAY: '+mdl.launchDelaySec+'s &nbsp;·&nbsp; SPEED: '+mdl.speedMph+' MPH<br/>RINGS: '+ringSummary+'</span><br/><span style="opacity:.4;font-size:10px;">DRAG TO REPOSITION</span><br/><button onclick="removeDock(\''+id+'\')" style="margin-top:6px;width:100%;padding:4px;background:rgba(204,17,17,.12);border:1px solid rgba(204,17,17,.4);color:#ff6b6b;font-family:\'Barlow Condensed\',sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;cursor:pointer;text-transform:uppercase;">✕ REMOVE DOCK</button></div>',{className:''});
+        dockGroups.push({id:id,modelKey:d.modelKey,col:col,marker:marker,rings:rings,ringLabels:ringLabels});
+      })(d.id,d.col,model);
+    });
+    renderDockList();
+  }
+  if(data.measures&&data.measures.length){
+    data.measures.forEach(function(ms){
+      var pts=ms.pts.map(function(p){return L.latLng(p[0],p[1]);});
+      var lf=L.polyline(pts,{color:'#fbbf24',weight:2,interactive:true});
+      lf.bindTooltip(fmtFt(ms.distFt),{permanent:true,direction:'center',className:'uas-tip'});
+      lf.addTo(map);
+      measureSegments.push({id:ms.id,lf:lf,pts:pts,distFt:ms.distFt});
+    });
+    renderMeasureList();
+  }
+  if(data.boundaries&&data.boundaries.length){
+    data.boundaries.forEach(function(bnd){
+      var pts=bnd.pts.map(function(p){return L.latLng(p[0],p[1]);});
+      var lf=L.polygon(pts,{color:'#86efac',weight:2,fillColor:'#86efac',fillOpacity:0.08,interactive:false,bubblingMouseEvents:false});
+      var tip=bnd.acres.toFixed(2)+' ac  |  '+Math.round(bnd.perimFt).toLocaleString()+' ft perim';
+      lf.bindTooltip(tip,{permanent:true,direction:'center',className:'uas-tip'});
+      lf.addTo(map);
+      boundaryPolys.push({id:bnd.id,lf:lf,pts:pts,acres:bnd.acres,perimFt:bnd.perimFt});
+    });
+    renderBoundaryList();
+  }
+  if(data.mapCenter){map.setView([data.mapCenter.lat,data.mapCenter.lng],data.mapZoom||15);}
+  syncVis();
+  renderMapTab();
+  _opsRestored=true;
+}
+
+function _opsRestoreFromLocalStorage(){
   try{
     var raw=localStorage.getItem(OPS_SAVE_KEY);
     if(!raw)return;
     var data=JSON.parse(raw);
-    if(!data||!data.v)return;
-
-    // Project header
-    if(data.project){
-      document.getElementById('op-title').textContent=data.project.title||'UAS OPERATIONS PLAN';
-      document.getElementById('op-sub').textContent=data.project.sub||'';
-    }
-    S.planSummary=data.planSummary||'';
-
-    // COAs + layers
-    if(data.coas&&data.coas.length){
-      S.coas=data.coas;
-      S.active=data.active||data.coas[0].id;
-    }
-    if(data.teams){
-      S.teams=data.teams.map(function(t){return Object.assign({members:[],tasks:[],equipment:[]},t);});
-    }
-    if(data.layers&&data.layers.length){
-      Object.values(S.leafletLayers).forEach(function(lf){map.removeLayer(lf);});
-      S.leafletLayers={};S.layers=data.layers;
-      data.layers.forEach(function(meta){rebuildLL(meta);});
-    }
-    if(!data.labelsVisible){S.labelsVisible=false;document.getElementById('btn-labels').classList.remove('active');}
-
-    // Docks
-    if(data.docks&&data.docks.length){
-      data.docks.forEach(function(d){
-        var ll=L.latLng(d.ll[0],d.ll[1]);
-        var model=DOCK_MODELS[d.modelKey];if(!model)return;
-        var marker=L.marker(ll,{icon:makeDroneIcon(d.col),draggable:true,zIndexOffset:1000}).addTo(map);
-        var rings=model.ringsSec.map(function(sec,i){
-          var r=dockFlightRadiusM(model,sec);
-          return L.circle(ll,{radius:r,color:d.col,weight:i===0?2.8:2.2,fillColor:d.col,fillOpacity:dockRingOpa*0.05,opacity:i===0?0.9:0.7,interactive:false}).addTo(map);
-        });
-        var ringLabels=model.ringsSec.map(function(sec){
-          var r=dockFlightRadiusM(model,sec);
-          var offsetLat=ll.lat+(r/111320);
-          var mi=(r/M_PER_MILE).toFixed(2);
-          var txt=fmtTime(sec)+'  '+mi+' mi';
-          var w=Math.ceil(txt.length*5.6+12);
-          var svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+w+'" height="16"><rect x="0.5" y="0.5" width="'+(w-1)+'" height="15" rx="2" fill="#000" stroke="'+d.col+'" stroke-width="1"/><text x="'+Math.round(w/2)+'" y="11" text-anchor="middle" fill="'+d.col+'" font-size="9" font-family="Courier New,monospace" font-weight="700">'+txt+'</text></svg>';
-          var lbl=L.divIcon({html:svg,className:'',iconAnchor:[Math.round(w/2),8]});
-          return L.marker([offsetLat,ll.lng],{icon:lbl,interactive:false}).addTo(map);
-        });
-        (function(id,col,mdl,lbl){
-          function syncRings(){var p=marker.getLatLng();rings.forEach(function(r){r.setLatLng(p);});ringLabels.forEach(function(rl,i){var r=dockFlightRadiusM(mdl,mdl.ringsSec[i]);rl.setLatLng([p.lat+(r/111320),p.lng]);});}
-          marker.on('drag',syncRings);
-          var ringSummary=mdl.ringsSec.map(fmtTime).join(' / ');
-          marker.bindPopup('<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:12px;color:#eee;background:#0a0404;padding:7px 12px;border:1px solid '+col+'66;min-width:160px;"><b style="color:'+col+';letter-spacing:2px;">'+mdl.label+'</b><br/><span style="color:rgba(255,255,255,.5);font-size:10px;letter-spacing:1px;">LAUNCH DELAY: '+mdl.launchDelaySec+'s &nbsp;·&nbsp; SPEED: '+mdl.speedMph+' MPH<br/>RINGS: '+ringSummary+'</span><br/><span style="opacity:.4;font-size:10px;">DRAG TO REPOSITION</span><br/><button onclick="removeDock(\''+id+'\')" style="margin-top:6px;width:100%;padding:4px;background:rgba(204,17,17,.12);border:1px solid rgba(204,17,17,.4);color:#ff6b6b;font-family:\'Barlow Condensed\',sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;cursor:pointer;text-transform:uppercase;">✕ REMOVE DOCK</button></div>',{className:''});
-          dockGroups.push({id:id,modelKey:d.modelKey,col:col,marker:marker,rings:rings,ringLabels:ringLabels});
-        })(d.id,d.col,model);
-      });
-      renderDockList();
-    }
-
-    // Measures
-    if(data.measures&&data.measures.length){
-      data.measures.forEach(function(ms){
-        var pts=ms.pts.map(function(p){return L.latLng(p[0],p[1]);});
-        var lf=L.polyline(pts,{color:'#fbbf24',weight:2,interactive:true});
-        lf.bindTooltip(fmtFt(ms.distFt),{permanent:true,direction:'center',className:'uas-tip'});
-        lf.addTo(map);
-        measureSegments.push({id:ms.id,lf:lf,pts:pts,distFt:ms.distFt});
-      });
-      renderMeasureList();
-    }
-
-    // Boundaries
-    if(data.boundaries&&data.boundaries.length){
-      data.boundaries.forEach(function(bnd){
-        var pts=bnd.pts.map(function(p){return L.latLng(p[0],p[1]);});
-        var lf=L.polygon(pts,{color:'#86efac',weight:2,fillColor:'#86efac',fillOpacity:0.08,interactive:false,bubblingMouseEvents:false});
-        var tip=bnd.acres.toFixed(2)+' ac  |  '+Math.round(bnd.perimFt).toLocaleString()+' ft perim';
-        lf.bindTooltip(tip,{permanent:true,direction:'center',className:'uas-tip'});
-        lf.addTo(map);
-        boundaryPolys.push({id:bnd.id,lf:lf,pts:pts,acres:bnd.acres,perimFt:bnd.perimFt});
-      });
-      renderBoundaryList();
-    }
-
-    // Map view
-    if(data.mapCenter){map.setView([data.mapCenter.lat,data.mapCenter.lng],data.mapZoom||15);}
-    syncVis();
-    renderMapTab();
-    _opsRestored=true;
-  }catch(e){console.warn('ops restore failed:',e);}
+    _opsApplyData(data);
+  }catch(e){console.warn('ops localStorage restore failed:',e);}
 }
 
-window.addEventListener('beforeunload',opsAutoSave);
+function opsAutoRestore(){
+  if(_opsProjectId){
+    fetch('/api/projects/'+_opsProjectId+'/ops-plan')
+      .then(function(r){return r.json();})
+      .then(function(resp){
+        if(resp&&resp.opsPlan){
+          try{
+            var data=typeof resp.opsPlan==='string'?JSON.parse(resp.opsPlan):resp.opsPlan;
+            _opsApplyData(data);
+          }catch(e){_opsRestoreFromLocalStorage();}
+        }else{
+          _opsRestoreFromLocalStorage();
+        }
+      })
+      .catch(function(){_opsRestoreFromLocalStorage();});
+  }else{
+    _opsRestoreFromLocalStorage();
+  }
+}
+
+window.addEventListener('beforeunload',function(){
+  try{
+    var data=_opsBuildData();
+    localStorage.setItem(OPS_SAVE_KEY,JSON.stringify(data));
+    if(_opsProjectId){
+      fetch('/api/projects/'+_opsProjectId+'/ops-plan',{
+        method:'PUT',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(data),
+        keepalive:true
+      });
+    }
+  }catch(e){}
+});
 opsAutoRestore();
 
 renderMapTab();
