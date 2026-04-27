@@ -51,6 +51,18 @@ const EMPTY_COL_MAP: ColMap = {
   groupName: '', dateOrdered: '', dateReceived: '', status: '', notes: '', qty: '',
 }
 
+// ── Bulk Edit ──────────────────────────────────────────────────────────────────
+
+type BulkEditForm = {
+  status: string; operator: string; groupName: string
+  notes: string; dateOrdered: string; dateReceived: string
+  reassignTargetType: 'project' | 'section' | ''; reassignTargetId: string
+}
+const EMPTY_BULK_FORM: BulkEditForm = {
+  status: '', operator: '', groupName: '', notes: '',
+  dateOrdered: '', dateReceived: '', reassignTargetType: '', reassignTargetId: '',
+}
+
 function parseCSV(text: string): { headers: string[]; rows: string[][] } {
   const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n')
   const parse = (line: string): string[] => {
@@ -452,7 +464,7 @@ export default function EquipmentTracker() {
   const [showNewSection, setShowNewSection] = useState(false)
   const [newSectionName, setNewSectionName] = useState('')
 
-  // Bulk delete
+  // Bulk select / delete / edit
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const toggleSelect = (id: string) => setSelectedIds(prev => {
     const next = new Set(prev)
@@ -460,6 +472,8 @@ export default function EquipmentTracker() {
     return next
   })
   const clearSelection = () => setSelectedIds(new Set())
+  const [showBulkEdit, setShowBulkEdit] = useState(false)
+  const [bulkEditForm, setBulkEditForm] = useState<BulkEditForm>(EMPTY_BULK_FORM)
 
   // CSV import state
   const csvInputRef = useRef<HTMLInputElement>(null)
@@ -498,6 +512,11 @@ export default function EquipmentTracker() {
   const bulkDeleteMut = useMutation({
     mutationFn: (ids: string[]) => Promise.all(ids.map(id => api.equipment.delete(id))),
     onSuccess: () => { invalidate(); clearSelection() },
+  })
+  const bulkEditMut = useMutation({
+    mutationFn: ({ ids, body }: { ids: string[]; body: UpdateEquipment }) =>
+      Promise.all(ids.map(id => api.equipment.update(id, body))),
+    onSuccess: () => { invalidate(); clearSelection(); setShowBulkEdit(false); setBulkEditForm(EMPTY_BULK_FORM) },
   })
   const createSectionMut = useMutation({
     mutationFn: (name: string) => api.equipment.sections.create({ name }),
@@ -570,6 +589,23 @@ export default function EquipmentTracker() {
       if (!projectId) return
       createMut.mutate({ projectId, body })
     }
+  }
+
+  const saveBulkEdit = () => {
+    const body: UpdateEquipment = {}
+    if (bulkEditForm.status) body.status = bulkEditForm.status
+    if (bulkEditForm.operator) body.operator = bulkEditForm.operator
+    if (bulkEditForm.groupName) body.groupName = bulkEditForm.groupName
+    if (bulkEditForm.notes) body.notes = bulkEditForm.notes
+    if (bulkEditForm.dateOrdered) body.dateOrdered = bulkEditForm.dateOrdered
+    if (bulkEditForm.dateReceived) body.dateReceived = bulkEditForm.dateReceived
+    if (bulkEditForm.reassignTargetType === 'project' && bulkEditForm.reassignTargetId) {
+      body.reassignProjectId = bulkEditForm.reassignTargetId
+    } else if (bulkEditForm.reassignTargetType === 'section' && bulkEditForm.reassignTargetId) {
+      body.reassignSectionId = bulkEditForm.reassignTargetId
+    }
+    if (Object.keys(body).length === 0) return
+    bulkEditMut.mutate({ ids: Array.from(selectedIds), body })
   }
 
   const handleNoteChange = (item: EquipmentItem, notes: string) => {
@@ -668,12 +704,20 @@ export default function EquipmentTracker() {
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {selectedIds.size > 0 && (
-            <button
-              style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)', borderRadius: 7, padding: '8px 14px', color: '#ef4444', cursor: 'pointer', fontFamily: "'Chakra Petch', sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: 1, display: 'flex', alignItems: 'center', gap: 6 }}
-              onClick={() => { if (window.confirm(`Delete ${selectedIds.size} selected item${selectedIds.size !== 1 ? 's' : ''}? This cannot be undone.`)) bulkDeleteMut.mutate(Array.from(selectedIds)) }}>
-              {Icons.trash}
-              DELETE ({selectedIds.size})
-            </button>
+            <>
+              <button
+                style={{ background: showBulkEdit ? 'rgba(99,102,241,0.25)' : 'rgba(99,102,241,0.12)', border: `1px solid ${showBulkEdit ? 'rgba(99,102,241,0.6)' : 'rgba(99,102,241,0.35)'}`, borderRadius: 7, padding: '8px 14px', color: '#818CF8', cursor: 'pointer', fontFamily: "'Chakra Petch', sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: 1, display: 'flex', alignItems: 'center', gap: 6 }}
+                onClick={() => { setShowBulkEdit(v => !v); setBulkEditForm(EMPTY_BULK_FORM) }}>
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M8.5 1.5L10.5 3.5L4 10H2V8L8.5 1.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                EDIT ({selectedIds.size})
+              </button>
+              <button
+                style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)', borderRadius: 7, padding: '8px 14px', color: '#ef4444', cursor: 'pointer', fontFamily: "'Chakra Petch', sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: 1, display: 'flex', alignItems: 'center', gap: 6 }}
+                onClick={() => { if (window.confirm(`Delete ${selectedIds.size} selected item${selectedIds.size !== 1 ? 's' : ''}? This cannot be undone.`)) bulkDeleteMut.mutate(Array.from(selectedIds)) }}>
+                {Icons.trash}
+                DELETE ({selectedIds.size})
+              </button>
+            </>
           )}
           <input ref={csvInputRef} type="file" accept=".csv" style={{ display: 'none' }} onChange={handleCsvFile} />
           <button style={s.ghostBtn} onClick={() => csvInputRef.current?.click()}>
@@ -705,6 +749,81 @@ export default function EquipmentTracker() {
         </div>
         <input style={{ ...inputSm, paddingLeft: 32 }} placeholder="Search equipment, serial #, FAA reg, operator..." value={search} onChange={e => setSearch(e.target.value)} />
       </div>
+
+      {/* Bulk Edit Panel */}
+      {showBulkEdit && selectedIds.size > 0 && (
+        <div style={{ background: 'rgba(18,18,30,0.98)', border: '1px solid rgba(99,102,241,0.35)', borderRadius: 14, padding: '20px 24px', marginBottom: 24, animation: 'fadeSlideIn 0.25s ease' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+            <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 11, color: '#818CF8', letterSpacing: 1.5 }}>
+              BULK EDIT — {selectedIds.size} ITEM{selectedIds.size !== 1 ? 'S' : ''} SELECTED
+            </div>
+            <button style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', cursor: 'pointer', padding: 4 }} onClick={() => { setShowBulkEdit(false); setBulkEditForm(EMPTY_BULK_FORM) }}>✕</button>
+          </div>
+          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: 'rgba(255,255,255,0.3)', marginBottom: 18 }}>
+            Only filled fields are applied — leave blank to keep each item's existing value.
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+            <div>
+              <label style={labelSm}>Status</label>
+              <select style={{ ...inputSm, color: bulkEditForm.status ? (STATUS_COLORS[bulkEditForm.status] || '#E8ECF4') : 'rgba(255,255,255,0.3)' }} value={bulkEditForm.status} onChange={e => setBulkEditForm(f => ({ ...f, status: e.target.value }))}>
+                <option value="">— keep existing —</option>
+                {STATUS_OPTIONS.map(opt => <option key={opt} value={opt}>{STATUS_LABELS[opt]}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={labelSm}>Operator</label>
+              {teamMembers.length > 0 ? (
+                <select style={inputSm} value={bulkEditForm.operator} onChange={e => setBulkEditForm(f => ({ ...f, operator: e.target.value }))}>
+                  <option value="">— keep existing —</option>
+                  {teamMembers.map(m => <option key={m.id} value={m.name}>{m.name}{m.role ? ` (${m.role})` : ''}</option>)}
+                </select>
+              ) : (
+                <input style={inputSm} placeholder="— keep existing —" value={bulkEditForm.operator} onChange={e => setBulkEditForm(f => ({ ...f, operator: e.target.value }))} />
+              )}
+            </div>
+            <div>
+              <label style={labelSm}>Group / Category</label>
+              <input style={inputSm} placeholder="— keep existing —" value={bulkEditForm.groupName} onChange={e => setBulkEditForm(f => ({ ...f, groupName: e.target.value }))} />
+            </div>
+            <div>
+              <label style={labelSm}>Date Ordered</label>
+              <input type="date" style={inputSm} value={bulkEditForm.dateOrdered} onChange={e => setBulkEditForm(f => ({ ...f, dateOrdered: e.target.value }))} />
+            </div>
+            <div>
+              <label style={labelSm}>Date Received</label>
+              <input type="date" style={inputSm} value={bulkEditForm.dateReceived} onChange={e => setBulkEditForm(f => ({ ...f, dateReceived: e.target.value }))} />
+            </div>
+            <div>
+              <label style={labelSm}>Reassign To</label>
+              <select style={inputSm} value={bulkEditForm.reassignTargetType && bulkEditForm.reassignTargetId ? `${bulkEditForm.reassignTargetType}:${bulkEditForm.reassignTargetId}` : ''} onChange={e => {
+                if (!e.target.value) {
+                  setBulkEditForm(f => ({ ...f, reassignTargetType: '', reassignTargetId: '' }))
+                } else {
+                  const [type, ...rest] = e.target.value.split(':')
+                  setBulkEditForm(f => ({ ...f, reassignTargetType: type as 'project' | 'section', reassignTargetId: rest.join(':') }))
+                }
+              }}>
+                <option value="">— keep existing —</option>
+                {projects.length > 0 && <optgroup label="DEALS">{projects.map(p => <option key={p.id} value={`project:${p.id}`}>{p.name}{p.client ? ` — ${p.client}` : ''}</option>)}</optgroup>}
+                {sections.length > 0 && <optgroup label="SECTIONS">{sections.map(sec => <option key={sec.id} value={`section:${sec.id}`}>{sec.name}</option>)}</optgroup>}
+              </select>
+            </div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={labelSm}>Notes</label>
+              <textarea style={{ ...inputSm, height: 60, resize: 'vertical' }} placeholder="— keep existing —" value={bulkEditForm.notes} onChange={e => setBulkEditForm(f => ({ ...f, notes: e.target.value }))} />
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button style={s.ghostBtn} onClick={() => { setShowBulkEdit(false); setBulkEditForm(EMPTY_BULK_FORM) }}>CANCEL</button>
+            <button
+              style={{ ...s.primaryBtn, background: '#6366F1' }}
+              disabled={bulkEditMut.isPending}
+              onClick={saveBulkEdit}>
+              {bulkEditMut.isPending ? 'APPLYING…' : `APPLY TO ${selectedIds.size} ITEM${selectedIds.size !== 1 ? 'S' : ''}`}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* CSV Import Modal */}
       {showImport && (
