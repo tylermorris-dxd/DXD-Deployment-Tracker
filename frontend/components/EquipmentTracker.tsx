@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { s } from '@/lib/styles'
 import { Icons } from '@/lib/icons'
-import type { EquipmentItem, CreateEquipment, UpdateEquipment, EquipmentSection } from '@/lib/types'
+import type { EquipmentItem, CreateEquipment, UpdateEquipment, EquipmentSection, ProjectSummary, TeamMember } from '@/lib/types'
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -418,6 +418,97 @@ function SectionGroup({
   )
 }
 
+// ── Shared form panel ─────────────────────────────────────────────────────────
+
+function EquipFormPanel({
+  isEdit, editItemName, form, setForm, formTargetType, setFormTargetType, formTargetId, setFormTargetId,
+  projects, sections, teamMembers, inputSm, labelSm, onSave, onCancel, isPending,
+}: {
+  isEdit: boolean; editItemName?: string
+  form: EquipForm; setForm: React.Dispatch<React.SetStateAction<EquipForm>>
+  formTargetType: 'project' | 'section'; setFormTargetType: (t: 'project' | 'section') => void
+  formTargetId: string; setFormTargetId: (id: string) => void
+  projects: ProjectSummary[]; sections: EquipmentSection[]; teamMembers: TeamMember[]
+  inputSm: React.CSSProperties; labelSm: React.CSSProperties
+  onSave: () => void; onCancel: () => void; isPending: boolean
+}) {
+  return (
+    <>
+      <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 11, color: '#C41E3A', letterSpacing: 1.5, marginBottom: 16 }}>
+        {isEdit ? `EDITING: ${editItemName ?? 'EQUIPMENT'}` : 'ADD EQUIPMENT'}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 12 }}>
+        <div style={{ gridColumn: '1 / 3' }}>
+          <label style={labelSm}>Equipment Name *</label>
+          <input style={inputSm} placeholder="e.g. DJI Dock 3" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+        </div>
+        <div style={{ gridColumn: '3 / 5' }}>
+          <label style={labelSm}>{isEdit ? 'Reassign To' : 'Assign To'}</label>
+          <select style={inputSm} value={`${formTargetType}:${formTargetId}`} onChange={e => {
+            const [type, ...rest] = e.target.value.split(':')
+            setFormTargetType(type as 'project' | 'section')
+            setFormTargetId(rest.join(':'))
+          }}>
+            {projects.length > 0 && <optgroup label="DEALS">{projects.map(p => <option key={p.id} value={`project:${p.id}`}>{p.name}{p.client ? ` — ${p.client}` : ''}</option>)}</optgroup>}
+            {sections.length > 0 && <optgroup label="SECTIONS">{sections.map(s => <option key={s.id} value={`section:${s.id}`}>{s.name}</option>)}</optgroup>}
+          </select>
+        </div>
+        <div>
+          <label style={labelSm}>Serial Number</label>
+          <input style={inputSm} placeholder="SN-123456" value={form.serialNumber} onChange={e => setForm(f => ({ ...f, serialNumber: e.target.value }))} />
+        </div>
+        <div>
+          <label style={labelSm}>FAA Registration #</label>
+          <input style={inputSm} placeholder="FA3-1234567" value={form.faaRegNumber} onChange={e => setForm(f => ({ ...f, faaRegNumber: e.target.value }))} />
+        </div>
+        <div>
+          <label style={labelSm}>Assigned Operator</label>
+          {teamMembers.length > 0 ? (
+            <select style={inputSm} value={form.assignedOperator} onChange={e => setForm(f => ({ ...f, assignedOperator: e.target.value }))}>
+              <option value="">— Unassigned —</option>
+              {teamMembers.map(m => <option key={m.id} value={m.name}>{m.name}{m.role ? ` (${m.role})` : ''}</option>)}
+            </select>
+          ) : (
+            <input style={inputSm} placeholder="Tyler Morris" value={form.assignedOperator} onChange={e => setForm(f => ({ ...f, assignedOperator: e.target.value }))} />
+          )}
+        </div>
+        <div>
+          <label style={labelSm}>Group / Category</label>
+          <input style={inputSm} placeholder="Drones, DAA, Accessories…" value={form.groupName} onChange={e => setForm(f => ({ ...f, groupName: e.target.value }))} />
+        </div>
+        <div>
+          <label style={labelSm}>Status</label>
+          <select style={{ ...inputSm, color: STATUS_COLORS[form.status] || '#E8ECF4' }} value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
+            {STATUS_OPTIONS.map(opt => <option key={opt} value={opt}>{STATUS_LABELS[opt]}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={labelSm}>Qty</label>
+          <input type="number" min={1} style={inputSm} value={form.qty} onChange={e => setForm(f => ({ ...f, qty: Math.max(1, parseInt(e.target.value) || 1) }))} />
+        </div>
+        <div>
+          <label style={labelSm}>Date Ordered</label>
+          <input type="date" style={inputSm} value={form.dateOrdered} onChange={e => setForm(f => ({ ...f, dateOrdered: e.target.value }))} />
+        </div>
+        <div>
+          <label style={labelSm}>Date Received</label>
+          <input type="date" style={inputSm} value={form.dateReceived} onChange={e => setForm(f => ({ ...f, dateReceived: e.target.value }))} />
+        </div>
+        <div style={{ gridColumn: '1 / -1' }}>
+          <label style={labelSm}>Notes</label>
+          <textarea style={{ ...inputSm, height: 60, resize: 'vertical' }} placeholder="Additional notes…" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+        <button style={s.ghostBtn} onClick={onCancel}>CANCEL</button>
+        <button style={{ ...s.primaryBtn, opacity: form.name.trim() ? 1 : 0.4 }} disabled={!form.name.trim() || isPending} onClick={onSave}>
+          {isPending ? 'SAVING…' : 'SAVE EQUIPMENT'}
+        </button>
+      </div>
+    </>
+  )
+}
+
 // ── Main component ─────────────────────────────────────────────────────────────
 
 export default function EquipmentTracker() {
@@ -558,7 +649,7 @@ export default function EquipmentTracker() {
       setFormTargetId(item.projectId ?? projects[0]?.id ?? '')
     }
     setEditId(item.id)
-    setShowForm(true)
+    setShowForm(false)
   }
 
   const saveForm = () => {
@@ -692,7 +783,7 @@ export default function EquipmentTracker() {
   const labelSm: React.CSSProperties = { display: 'block', fontFamily: "'Chakra Petch', sans-serif", fontSize: 9, fontWeight: 600, letterSpacing: 1.5, color: 'rgba(255,255,255,0.35)', marginBottom: 5, textTransform: 'uppercase' }
 
   return (
-    <div style={s.container}>
+    <div style={{ ...s.container, paddingBottom: editId ? 320 : undefined }}>
       {/* Header */}
       <div style={s.header}>
         <div style={s.logoRow}>
@@ -923,76 +1014,20 @@ export default function EquipmentTracker() {
         </div>
       )}
 
-      {/* Add / Edit Form */}
-      {showForm && (
+      {/* Add Form (top, add-only) */}
+      {showForm && !editId && (
         <div style={{ background: 'rgba(20,20,24,0.98)', border: '1px solid rgba(196,30,58,0.35)', borderRadius: 14, padding: '20px 24px', marginBottom: 24, animation: 'fadeSlideIn 0.25s ease' }}>
-          <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 11, color: '#C41E3A', letterSpacing: 1.5, marginBottom: 16 }}>{editId ? 'EDIT EQUIPMENT' : 'ADD EQUIPMENT'}</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
-            <div style={{ gridColumn: '1 / -1' }}>
-              <label style={labelSm}>Equipment Name *</label>
-              <input style={inputSm} placeholder="e.g. DJI Dock 3" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
-            </div>
-            <div style={{ gridColumn: '1 / -1' }}>
-              <label style={labelSm}>{editId ? 'Reassign To' : 'Assign To'}</label>
-              <select style={inputSm} value={`${formTargetType}:${formTargetId}`} onChange={e => {
-                const [type, ...rest] = e.target.value.split(':')
-                setFormTargetType(type as 'project' | 'section')
-                setFormTargetId(rest.join(':'))
-              }}>
-                {projects.length > 0 && <optgroup label="DEALS">{projects.map(p => <option key={p.id} value={`project:${p.id}`}>{p.name}{p.client ? ` — ${p.client}` : ''}</option>)}</optgroup>}
-                {sections.length > 0 && <optgroup label="SECTIONS">{sections.map(s => <option key={s.id} value={`section:${s.id}`}>{s.name}</option>)}</optgroup>}
-              </select>
-            </div>
-            <div>
-              <label style={labelSm}>Serial Number</label>
-              <input style={inputSm} placeholder="e.g. SN-123456" value={form.serialNumber} onChange={e => setForm(f => ({ ...f, serialNumber: e.target.value }))} />
-            </div>
-            <div>
-              <label style={labelSm}>FAA Registration #</label>
-              <input style={inputSm} placeholder="e.g. FA3-1234567" value={form.faaRegNumber} onChange={e => setForm(f => ({ ...f, faaRegNumber: e.target.value }))} />
-            </div>
-            <div>
-              <label style={labelSm}>Assigned Operator</label>
-              {teamMembers.length > 0 ? (
-                <select style={inputSm} value={form.assignedOperator} onChange={e => setForm(f => ({ ...f, assignedOperator: e.target.value }))}>
-                  <option value="">— Unassigned —</option>
-                  {teamMembers.map(m => <option key={m.id} value={m.name}>{m.name}{m.role ? ` (${m.role})` : ''}</option>)}
-                </select>
-              ) : (
-                <input style={inputSm} placeholder="e.g. Tyler Morris" value={form.assignedOperator} onChange={e => setForm(f => ({ ...f, assignedOperator: e.target.value }))} />
-              )}
-            </div>
-            <div>
-              <label style={labelSm}>Group / Category</label>
-              <input style={inputSm} placeholder="e.g. Drones, DAA, Accessories..." value={form.groupName} onChange={e => setForm(f => ({ ...f, groupName: e.target.value }))} />
-            </div>
-            <div>
-              <label style={labelSm}>Status</label>
-              <select style={{ ...inputSm, color: STATUS_COLORS[form.status] || '#E8ECF4' }} value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
-                {STATUS_OPTIONS.map(opt => <option key={opt} value={opt}>{STATUS_LABELS[opt]}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={labelSm}>Qty</label>
-              <input type="number" min={1} style={inputSm} value={form.qty} onChange={e => setForm(f => ({ ...f, qty: Math.max(1, parseInt(e.target.value) || 1) }))} />
-            </div>
-            <div>
-              <label style={labelSm}>Date Ordered</label>
-              <input type="date" style={inputSm} value={form.dateOrdered} onChange={e => setForm(f => ({ ...f, dateOrdered: e.target.value }))} />
-            </div>
-            <div>
-              <label style={labelSm}>Date Received</label>
-              <input type="date" style={inputSm} value={form.dateReceived} onChange={e => setForm(f => ({ ...f, dateReceived: e.target.value }))} />
-            </div>
-            <div style={{ gridColumn: '1 / -1' }}>
-              <label style={labelSm}>Notes</label>
-              <textarea style={{ ...inputSm, height: 70, resize: 'vertical' }} placeholder="Additional notes..." value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <button style={s.ghostBtn} onClick={() => { setShowForm(false); setEditId(null); setForm(EMPTY_FORM) }}>CANCEL</button>
-            <button style={{ ...s.primaryBtn, opacity: form.name.trim() ? 1 : 0.4 }} disabled={!form.name.trim() || createMut.isPending || updateMut.isPending} onClick={saveForm}>SAVE EQUIPMENT</button>
-          </div>
+          <EquipFormPanel
+            isEdit={false}
+            form={form} setForm={setForm}
+            formTargetType={formTargetType} setFormTargetType={setFormTargetType}
+            formTargetId={formTargetId} setFormTargetId={setFormTargetId}
+            projects={projects} sections={sections} teamMembers={teamMembers}
+            inputSm={inputSm} labelSm={labelSm}
+            onSave={saveForm}
+            onCancel={() => { setShowForm(false); setForm(EMPTY_FORM) }}
+            isPending={createMut.isPending || createSectionEquipMut.isPending}
+          />
         </div>
       )}
 
@@ -1132,6 +1167,26 @@ export default function EquipmentTracker() {
                 })}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Fixed-bottom edit drawer */}
+      {editId && (
+        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 200, background: 'rgba(12,12,16,0.97)', backdropFilter: 'blur(16px)', borderTop: '2px solid rgba(196,30,58,0.5)', boxShadow: '0 -8px 40px rgba(0,0,0,0.7)', animation: 'fadeSlideIn 0.2s ease' }}>
+          <div style={{ maxWidth: 1200, margin: '0 auto', padding: '18px 28px' }}>
+            <EquipFormPanel
+              isEdit
+              editItemName={allItems.find(i => i.id === editId)?.name}
+              form={form} setForm={setForm}
+              formTargetType={formTargetType} setFormTargetType={setFormTargetType}
+              formTargetId={formTargetId} setFormTargetId={setFormTargetId}
+              projects={projects} sections={sections} teamMembers={teamMembers}
+              inputSm={inputSm} labelSm={labelSm}
+              onSave={saveForm}
+              onCancel={() => { setEditId(null); setForm(EMPTY_FORM) }}
+              isPending={updateMut.isPending}
+            />
           </div>
         </div>
       )}
