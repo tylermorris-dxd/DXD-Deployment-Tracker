@@ -108,7 +108,7 @@ export default function Dashboard({ onOpenDeal, onSwitchTab }: Props) {
 
       {/* Page header */}
       <div style={{ marginBottom: 28 }}>
-        <h1 style={{ fontFamily: ''Chakra Petch', sans-serif', fontWeight: 800, fontSize: 22, color: C.text, letterSpacing: -0.5, marginBottom: 5 }}>
+        <h1 style={{ fontFamily: "'Chakra Petch', sans-serif", fontWeight: 800, fontSize: 22, color: C.text, letterSpacing: -0.5, marginBottom: 5 }}>
           Operations Dashboard
         </h1>
         <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: C.muted }}>
@@ -151,7 +151,7 @@ export default function Dashboard({ onOpenDeal, onSwitchTab }: Props) {
                     >
                       <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.red, flexShrink: 0, boxShadow: `0 0 6px ${C.red}` }} />
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontFamily: ''Chakra Petch', sans-serif', fontWeight: 700, fontSize: 13, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontWeight: 700, fontSize: 13, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {deal?.properties.dealname ?? p.name}
                         </div>
                         <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: C.muted, marginTop: 2 }}>
@@ -222,7 +222,7 @@ export default function Dashboard({ onOpenDeal, onSwitchTab }: Props) {
                       </span>
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontFamily: ''Chakra Petch', sans-serif', fontWeight: 600, fontSize: 12, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontWeight: 600, fontSize: 12, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {deal?.properties.dealname ?? p.name}
                       </div>
                       <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, color: C.muted, marginTop: 1 }}>
@@ -252,7 +252,7 @@ export default function Dashboard({ onOpenDeal, onSwitchTab }: Props) {
                     const deal = dealMap.get(p.id)
                     return (
                       <div key={p.id} onClick={() => onOpenDeal(p.id)} style={{ cursor: 'pointer' }}>
-                        <div style={{ fontFamily: ''Chakra Petch', sans-serif', fontWeight: 600, fontSize: 12, color: C.text, marginBottom: 5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontWeight: 600, fontSize: 12, color: C.text, marginBottom: 5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {deal?.properties.dealname ?? p.name}
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
@@ -275,7 +275,7 @@ export default function Dashboard({ onOpenDeal, onSwitchTab }: Props) {
           <Widget>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
               <div style={{ width: 8, height: 8, borderRadius: '50%', background: hsStatus?.connected ? C.green : C.muted, boxShadow: hsStatus?.connected ? `0 0 6px ${C.green}` : 'none', flexShrink: 0 }} />
-              <span style={{ fontFamily: ''Chakra Petch', sans-serif', fontWeight: 700, fontSize: 14, color: C.text }}>HubSpot Sync</span>
+              <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontWeight: 700, fontSize: 14, color: C.text }}>HubSpot Sync</span>
             </div>
             <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: C.muted, marginBottom: 14 }}>
               {hsStatus?.connected ? 'Connected and syncing' : 'Not connected — configure to sync deals'}
@@ -303,7 +303,7 @@ function StatCard({ label, value, sub, color }: { label: string; value: string; 
     <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: '18px 18px 0', position: 'relative', overflow: 'hidden' }}>
       <div style={{ position: 'absolute', top: 0, right: 0, width: 90, height: 90, background: `radial-gradient(circle at top right, ${color}18, transparent 70%)`, pointerEvents: 'none' }} />
       <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, letterSpacing: 1.5, color: C.muted, textTransform: 'uppercase', marginBottom: 10 }}>{label}</div>
-      <div style={{ fontFamily: ''Chakra Petch', sans-serif', fontSize: 26, fontWeight: 800, color: C.text, letterSpacing: -1, lineHeight: 1, marginBottom: 6 }}>{value}</div>
+      <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 26, fontWeight: 800, color: C.text, letterSpacing: -1, lineHeight: 1, marginBottom: 6 }}>{value}</div>
       <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: C.text2, marginBottom: 16 }}>{sub}</div>
       <div style={{ height: 2, background: color, marginLeft: -18, marginRight: -18 }} />
     </div>
@@ -325,7 +325,7 @@ function WHeader({ title, sub, badge, badgeColor, action }: {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ fontFamily: ''Chakra Petch', sans-serif', fontWeight: 700, fontSize: 14, color: C.text }}>{title}</span>
+        <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontWeight: 700, fontSize: 14, color: C.text }}>{title}</span>
         {sub && <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: C.muted }}>({sub})</span>}
         {badge != null && badge > 0 && (
           <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, color: badgeColor ?? C.red, background: `${badgeColor ?? C.red}18`, border: `1px solid ${badgeColor ?? C.red}35`, borderRadius: 10, padding: '1px 7px' }}>
