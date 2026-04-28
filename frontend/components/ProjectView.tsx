@@ -379,7 +379,7 @@ export default function ProjectView({ projectId, onBack }: Props) {
                 { label: 'PHASE C', stages: [7,8,9,10,11,12], color: '#16A34A' },
               ].map(group => (
                 <div key={group.label} style={{ marginBottom: 14 }}>
-                  <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 8, letterSpacing: 2, color: group.color, marginBottom: 5, opacity: 0.7 }}>
+                  <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 10, letterSpacing: 2, color: group.color, marginBottom: 5, opacity: 0.7 }}>
                     {group.label}
                   </div>
                   {group.stages.map(n => {
@@ -398,17 +398,17 @@ export default function ProjectView({ projectId, onBack }: Props) {
                           <div style={{ width: 16, height: 16, borderRadius: '50%', background: isComplete ? '#22C55E' : 'transparent', border: `1.5px solid ${isComplete ? '#22C55E' : group.color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                             {isComplete
                               ? <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1.5 4l2 2 3-3" stroke="#fff" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                              : <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 7, color: isActive ? group.color : 'rgba(255,255,255,0.35)' }}>{n}</span>
+                              : <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 8, color: isActive ? group.color : 'rgba(255,255,255,0.35)' }}>{n}</span>
                             }
                           </div>
-                          <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, color: isActive ? '#E8ECF4' : 'rgba(255,255,255,0.45)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                          <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: isActive ? '#E8ECF4' : 'rgba(255,255,255,0.55)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                             {shortTitle}
                           </span>
                         </div>
                         <div style={{ height: 2, background: 'rgba(255,255,255,0.06)', borderRadius: 1, overflow: 'hidden' }}>
                           <div style={{ width: pct + '%', height: '100%', background: isComplete ? '#22C55E' : group.color, borderRadius: 1 }} />
                         </div>
-                        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 7, color: 'rgba(255,255,255,0.25)', marginTop: 2 }}>{done}/{total}</div>
+                        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>{done}/{total}</div>
                       </div>
                     )
                   })}
@@ -438,7 +438,7 @@ export default function ProjectView({ projectId, onBack }: Props) {
             {/* Stage content */}
             <div>
               {/* Stage label */}
-              <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: stagePhaseColor, marginBottom: 12, textTransform: 'uppercase' }}>
+              <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 12, fontWeight: 700, letterSpacing: 1.5, color: stagePhaseColor, marginBottom: 12, textTransform: 'uppercase' }}>
                 Stage {activeStageNumber}
               </div>
 
@@ -446,7 +446,7 @@ export default function ProjectView({ projectId, onBack }: Props) {
               {incompleteExitGates > 0 && (
                 <div style={{ background: 'rgba(234,179,8,0.07)', border: '1px solid rgba(234,179,8,0.25)', borderRadius: 8, padding: '9px 13px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span>⚠</span>
-                  <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: 'rgba(234,179,8,0.85)' }}>
+                  <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: 'rgba(234,179,8,0.85)' }}>
                     {incompleteExitGates} exit gate item{incompleteExitGates > 1 ? 's' : ''} incomplete — resolve before advancing to stage {activeStageNumber + 1}
                   </span>
                 </div>

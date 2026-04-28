@@ -94,14 +94,14 @@ export const s = {
   // Subtask
   subtaskRow: {
     display: 'flex', alignItems: 'center', gap: 8,
-    padding: '5px 0', minHeight: 28,
+    padding: '6px 0', minHeight: 32,
   } as CSSProperties,
   subtaskText: {
-    fontFamily: "'IBM Plex Mono', monospace", fontSize: 11,
+    fontFamily: "'IBM Plex Mono', monospace", fontSize: 13,
     color: 'rgba(255,255,255,0.65)', lineHeight: 1.4,
   } as CSSProperties,
   checkbox: {
-    width: 14, height: 14, flexShrink: 0, cursor: 'pointer',
+    width: 15, height: 15, flexShrink: 0, cursor: 'pointer',
     accentColor: '#e63946',
   } as CSSProperties,
 
@@ -138,7 +138,7 @@ export const s = {
 
   // Misc
   badge: {
-    fontFamily: "'IBM Plex Mono', monospace", fontSize: 9,
+    fontFamily: "'IBM Plex Mono', monospace", fontSize: 10,
     padding: '2px 7px', borderRadius: 10, letterSpacing: 0.5,
   } as CSSProperties,
   divider: {

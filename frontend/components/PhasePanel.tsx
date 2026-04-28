@@ -43,10 +43,10 @@ export default function PhasePanel({ phase, projectId, teamMembers, branchAnswer
         <div style={{ width: 4, height: 36, borderRadius: 2, background: phase.color, flexShrink: 0 }} />
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 9, color: phase.color, letterSpacing: 1.5 }}>
+            <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 11, color: phase.color, letterSpacing: 1.5 }}>
               PHASE {phase.phaseNumber}
             </span>
-            <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>
+            <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>
               {doneTasks}/{totalTasks} complete
             </span>
           </div>
@@ -54,7 +54,7 @@ export default function PhasePanel({ phase, projectId, teamMembers, branchAnswer
             {phase.title}
           </div>
           {phase.description && (
-            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>
+            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>
               {phase.description}
             </div>
           )}
@@ -121,7 +121,7 @@ export default function PhasePanel({ phase, projectId, teamMembers, branchAnswer
           </div>
         ) : (
           <button
-            style={{ background: 'none', border: `1px dashed rgba(255,255,255,0.1)`, borderRadius: 8, color: 'rgba(255,255,255,0.3)', fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, padding: '8px 14px', cursor: 'pointer', width: '100%', textAlign: 'left' }}
+            style={{ background: 'none', border: `1px dashed rgba(255,255,255,0.1)`, borderRadius: 8, color: 'rgba(255,255,255,0.3)', fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, padding: '8px 14px', cursor: 'pointer', width: '100%', textAlign: 'left' }}
             onClick={() => setAddingTask(true)}
           >
             {Icons.plus} Add custom task to {phase.title}

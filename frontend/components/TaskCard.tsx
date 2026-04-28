@@ -26,19 +26,19 @@ function isVisible(conditionKey: string, answers: Record<string, boolean>): bool
 
 function PriorityBadge({ priority }: { priority: string }) {
   if (priority === 'exit_gate') return (
-    <span style={{ fontSize: 8, padding: '1px 5px', borderRadius: 3, background: 'rgba(234,179,8,0.15)', color: '#EAB308', letterSpacing: 0.5, flexShrink: 0, fontFamily: "'IBM Plex Mono', monospace" }}>EXIT GATE</span>
+    <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 3, background: 'rgba(234,179,8,0.15)', color: '#EAB308', letterSpacing: 0.5, flexShrink: 0, fontFamily: "'IBM Plex Mono', monospace" }}>EXIT GATE</span>
   )
   if (priority === 'handoff') return (
-    <span style={{ fontSize: 8, padding: '1px 5px', borderRadius: 3, background: 'rgba(59,130,246,0.15)', color: '#60A5FA', letterSpacing: 0.5, flexShrink: 0, fontFamily: "'IBM Plex Mono', monospace" }}>HANDOFF</span>
+    <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 3, background: 'rgba(59,130,246,0.15)', color: '#60A5FA', letterSpacing: 0.5, flexShrink: 0, fontFamily: "'IBM Plex Mono', monospace" }}>HANDOFF</span>
   )
   if (priority === 'p0') return (
-    <span style={{ fontSize: 8, padding: '1px 4px', borderRadius: 3, background: 'rgba(239,68,68,0.12)', color: '#ef4444', letterSpacing: 0.5, flexShrink: 0, fontFamily: "'IBM Plex Mono', monospace" }}>P0</span>
+    <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, background: 'rgba(239,68,68,0.12)', color: '#ef4444', letterSpacing: 0.5, flexShrink: 0, fontFamily: "'IBM Plex Mono', monospace" }}>P0</span>
   )
   if (priority === 'p1') return (
-    <span style={{ fontSize: 8, padding: '1px 4px', borderRadius: 3, background: 'rgba(245,158,11,0.12)', color: '#f59e0b', letterSpacing: 0.5, flexShrink: 0, fontFamily: "'IBM Plex Mono', monospace" }}>P1</span>
+    <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, background: 'rgba(245,158,11,0.12)', color: '#f59e0b', letterSpacing: 0.5, flexShrink: 0, fontFamily: "'IBM Plex Mono', monospace" }}>P1</span>
   )
   if (priority === 'p2') return (
-    <span style={{ fontSize: 8, padding: '1px 4px', borderRadius: 3, background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.3)', letterSpacing: 0.5, flexShrink: 0, fontFamily: "'IBM Plex Mono', monospace" }}>P2</span>
+    <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.3)', letterSpacing: 0.5, flexShrink: 0, fontFamily: "'IBM Plex Mono', monospace" }}>P2</span>
   )
   return null
 }
@@ -190,8 +190,8 @@ export default function TaskCard({ task, phase, projectId, teamMembers, branchAn
               onClick={e => e.stopPropagation()}
             />
           ) : (
-            <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, color: task.completed ? 'rgba(255,255,255,0.4)' : '#E8ECF4', textDecoration: task.completed ? 'line-through' : 'none', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {task.isGate && <span style={{ color: phase.color, marginRight: 5, fontSize: 10 }}>⬡ GATE</span>}
+            <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 15, color: task.completed ? 'rgba(255,255,255,0.4)' : '#E8ECF4', textDecoration: task.completed ? 'line-through' : 'none', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {task.isGate && <span style={{ color: phase.color, marginRight: 5, fontSize: 11 }}>⬡ GATE</span>}
               {task.title}
             </span>
           )}
@@ -346,7 +346,7 @@ export default function TaskCard({ task, phase, projectId, teamMembers, branchAn
                 </div>
               ) : (
                 <button
-                  style={{ background: 'none', border: '1px dashed rgba(255,255,255,0.12)', borderRadius: 6, color: 'rgba(255,255,255,0.3)', fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, padding: '5px 12px', cursor: 'pointer', width: '100%', textAlign: 'left', marginTop: 4 }}
+                  style={{ background: 'none', border: '1px dashed rgba(255,255,255,0.12)', borderRadius: 6, color: 'rgba(255,255,255,0.3)', fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, padding: '6px 12px', cursor: 'pointer', width: '100%', textAlign: 'left', marginTop: 4 }}
                   onClick={() => setAddingSubtask(true)}
                 >
                   + Add subtask
