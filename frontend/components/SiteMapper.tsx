@@ -63,12 +63,12 @@ async function geocodeAddress(address: string): Promise<{ lat: number; lng: numb
       }
     } catch (_) { /* fall through */ }
   }
-  const HDR = { 'Accept-Language': 'en', 'User-Agent': 'DXD-Deployment-Tracker/1.0' }
   try {
-    const qs = new URLSearchParams({ format: 'json', limit: '1', q: address })
-    const r = await fetch(`https://nominatim.openstreetmap.org/search?${qs}`, { headers: HDR })
+    const r = await fetch(`/api/geocode?q=${encodeURIComponent(address)}`)
     const res = await r.json()
-    if (res.length > 0) return { lat: parseFloat(res[0].lat), lng: parseFloat(res[0].lon), displayName: res[0].display_name }
+    if (Array.isArray(res) && res.length > 0) {
+      return { lat: parseFloat(res[0].lat), lng: parseFloat(res[0].lon), displayName: res[0].display_name }
+    }
   } catch (_) { /* fall through */ }
   return null
 }

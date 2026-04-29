@@ -56,12 +56,9 @@ const AIRSPACE_INFO: Record<string, { name: string; color: string; desc: string;
 // ── Geocode ───────────────────────────────────────────────────────────────────
 
 async function geocodeAddress(address: string): Promise<Coords> {
-  const res = await fetch(
-    `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(address)}`,
-    { headers: { 'Accept-Language': 'en', 'User-Agent': 'DXD-Deployment-Tracker/1.0' } }
-  )
+  const res = await fetch(`/api/geocode?q=${encodeURIComponent(address)}`)
   const data = await res.json()
-  if (!data.length) throw new Error('Location not found. Try a more specific address.')
+  if (!Array.isArray(data) || !data.length) throw new Error('Location not found. Try a more specific address.')
   const { lat, lon, display_name } = data[0]
   return { lat: parseFloat(lat), lng: parseFloat(lon), display: display_name, source: 'Nominatim' }
 }
