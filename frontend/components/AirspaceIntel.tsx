@@ -55,26 +55,41 @@ const AIRSPACE_INFO: Record<string, { name: string; color: string; desc: string;
 
 // ── Geocode ───────────────────────────────────────────────────────────────────
 
+async function fetchWithTimeout(url: string, opts: RequestInit = {}, ms = 5000): Promise<Response> {
+  const ctrl = new AbortController()
+  const id = setTimeout(() => ctrl.abort(), ms)
+  try { return await fetch(url, { ...opts, signal: ctrl.signal }) }
+  finally { clearTimeout(id) }
+}
+
 async function geocodeAddress(address: string): Promise<Coords> {
-  // Nominatim — best accuracy for US street addresses
+  // US Census Bureau — most accurate for US street addresses
+  try {
+    const r = await fetchWithTimeout(
+      `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(address)}&benchmark=Public_AR_Current&format=json`
+    )
+    const d = await r.json()
+    const m = d?.result?.addressMatches?.[0]
+    if (m) return { lat: m.coordinates.y, lng: m.coordinates.x, display: m.matchedAddress, source: 'Census' }
+  } catch (_) { /* fall through */ }
+  // Nominatim — good for place names / international
   try {
     const qs = new URLSearchParams({ format: 'json', limit: '1', q: address, addressdetails: '1', email: 'tyler.morris@deusxdefense.com' })
-    const r = await fetch(`https://nominatim.openstreetmap.org/search?${qs}`, { headers: { 'Accept-Language': 'en' } })
+    const r = await fetchWithTimeout(`https://nominatim.openstreetmap.org/search?${qs}`, { headers: { 'Accept-Language': 'en' } })
     const data = await r.json()
     if (Array.isArray(data) && data.length > 0) {
       const { lat, lon, display_name } = data[0]
       return { lat: parseFloat(lat), lng: parseFloat(lon), display: display_name, source: 'Nominatim' }
     }
   } catch (_) { /* fall through */ }
-  // Photon fallback
-  const r = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(address)}&limit=1&lang=en`)
+  // Photon — last resort
+  const r = await fetchWithTimeout(`https://photon.komoot.io/api/?q=${encodeURIComponent(address)}&limit=1&lang=en`)
   const d = await r.json()
   if (!d?.features?.length) throw new Error('Location not found. Try a more specific address.')
   const f = d.features[0]
   const [lng, lat] = f.geometry.coordinates as [number, number]
   const p = f.properties
-  const display = [p.name, p.street, p.city, p.state, p.country].filter(Boolean).join(', ')
-  return { lat, lng, display, source: 'Photon' }
+  return { lat, lng, display: [p.name, p.street, p.city, p.state, p.country].filter(Boolean).join(', '), source: 'Photon' }
 }
 
 // ── Query FAA ─────────────────────────────────────────────────────────────────

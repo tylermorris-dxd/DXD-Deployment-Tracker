@@ -51,11 +51,18 @@ const USGS_TOPO      = 'https://basemap.nationalmap.gov/arcgis/rest/services/USG
 
 // ── Geocoding ─────────────────────────────────────────────────────────────────
 
+async function fetchWithTimeout(url: string, opts: RequestInit = {}, ms = 5000): Promise<Response> {
+  const ctrl = new AbortController()
+  const id = setTimeout(() => ctrl.abort(), ms)
+  try { return await fetch(url, { ...opts, signal: ctrl.signal }) }
+  finally { clearTimeout(id) }
+}
+
 async function geocodeAddress(address: string): Promise<{ lat: number; lng: number; displayName: string } | null> {
   const GKEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY || ''
   if (GKEY) {
     try {
-      const r = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${GKEY}`)
+      const r = await fetchWithTimeout(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${GKEY}`)
       const d = await r.json()
       if (d.status === 'OK' && d.results.length > 0) {
         const loc = d.results[0].geometry.location
@@ -63,25 +70,33 @@ async function geocodeAddress(address: string): Promise<{ lat: number; lng: numb
       }
     } catch (_) { /* fall through */ }
   }
-  // Nominatim — best accuracy for US street addresses
+  // US Census Bureau — most accurate for US street addresses, free, no auth
+  try {
+    const r = await fetchWithTimeout(
+      `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(address)}&benchmark=Public_AR_Current&format=json`
+    )
+    const d = await r.json()
+    const m = d?.result?.addressMatches?.[0]
+    if (m) return { lat: m.coordinates.y, lng: m.coordinates.x, displayName: m.matchedAddress }
+  } catch (_) { /* fall through */ }
+  // Nominatim — good for place names / international
   try {
     const qs = new URLSearchParams({ format: 'json', limit: '1', q: address, addressdetails: '1', email: 'tyler.morris@deusxdefense.com' })
-    const r = await fetch(`https://nominatim.openstreetmap.org/search?${qs}`, { headers: { 'Accept-Language': 'en' } })
+    const r = await fetchWithTimeout(`https://nominatim.openstreetmap.org/search?${qs}`, { headers: { 'Accept-Language': 'en' } })
     const res = await r.json()
     if (Array.isArray(res) && res.length > 0) {
       return { lat: parseFloat(res[0].lat), lng: parseFloat(res[0].lon), displayName: res[0].display_name }
     }
   } catch (_) { /* fall through */ }
-  // Photon fallback
+  // Photon — last resort
   try {
-    const r = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(address)}&limit=1&lang=en`)
+    const r = await fetchWithTimeout(`https://photon.komoot.io/api/?q=${encodeURIComponent(address)}&limit=1&lang=en`)
     const d = await r.json()
     if (d?.features?.length > 0) {
       const f = d.features[0]
       const [lng, lat] = f.geometry.coordinates as [number, number]
       const p = f.properties
-      const displayName = [p.name, p.street, p.city, p.state, p.country].filter(Boolean).join(', ')
-      return { lat, lng, displayName }
+      return { lat, lng, displayName: [p.name, p.street, p.city, p.state, p.country].filter(Boolean).join(', ') }
     }
   } catch (_) { /* fall through */ }
   return null
