@@ -63,8 +63,22 @@ async function geocodeAddress(address: string): Promise<{ lat: number; lng: numb
       }
     } catch (_) { /* fall through */ }
   }
+  // Photon: OSM-backed, CORS-open, no auth required
   try {
-    const r = await fetch(`/api/geocode?q=${encodeURIComponent(address)}`)
+    const r = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(address)}&limit=1&lang=en`)
+    const d = await r.json()
+    if (d?.features?.length > 0) {
+      const f = d.features[0]
+      const [lng, lat] = f.geometry.coordinates as [number, number]
+      const p = f.properties
+      const displayName = [p.name, p.street, p.city, p.state, p.country].filter(Boolean).join(', ')
+      return { lat, lng, displayName }
+    }
+  } catch (_) { /* fall through */ }
+  // Nominatim fallback
+  try {
+    const qs = new URLSearchParams({ format: 'json', limit: '1', q: address, email: 'tyler.morris@deusxdefense.com' })
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?${qs}`, { headers: { 'Accept-Language': 'en' } })
     const res = await r.json()
     if (Array.isArray(res) && res.length > 0) {
       return { lat: parseFloat(res[0].lat), lng: parseFloat(res[0].lon), displayName: res[0].display_name }
