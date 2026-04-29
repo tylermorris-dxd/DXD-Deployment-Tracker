@@ -26,21 +26,26 @@ function injectLeaflet(): Promise<void> {
       lk.rel = 'stylesheet'; lk.href = LEAFLET_CSS
       document.head.appendChild(lk)
     }
-    if (!document.querySelector(`script[src="${LEAFLET_JS}"]`)) {
-      const sc = document.createElement('script')
+    let sc = document.querySelector(`script[src="${LEAFLET_JS}"]`) as HTMLScriptElement | null
+    if (!sc) {
+      sc = document.createElement('script')
       sc.src = LEAFLET_JS
-      sc.onload = () => resolve()
       document.head.appendChild(sc)
-    } else { resolve() }
+    }
+    // Script tag may exist but not yet executed — always wait for load unless L is already ready
+    if ((window as typeof window & { L?: unknown }).L) {
+      resolve()
+    } else {
+      sc.addEventListener('load', () => resolve(), { once: true })
+    }
   })
 }
 
 // ── Tile layers ───────────────────────────────────────────────────────────────
 
 const ESRI_STREET    = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}'
-const GOOGLE_HYBRID  = 'https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'
-const GOOGLE_SAT     = 'https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'
-const GOOGLE_SUBS    = ['0', '1', '2', '3']
+const ESRI_SAT       = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+const ESRI_LABELS    = 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}'
 const USGS_HILLSHADE = 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSShadedReliefOnly/MapServer/tile/{z}/{y}/{x}'
 const USGS_TOPO      = 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}'
 
@@ -432,7 +437,8 @@ export default function SiteMapper({ project, onCacheUpdate }: Props) {
     const map = L.map(mapContainerRef.current, { center: [38.9, -77.0], zoom: 16, zoomControl: true })
     map.zoomControl.setPosition('topright')
     map.attributionControl.setPrefix('')
-    baseTileRef.current = L.tileLayer(GOOGLE_HYBRID, { maxZoom: 21, subdomains: GOOGLE_SUBS, attribution: 'Google' }).addTo(map)
+    baseTileRef.current  = L.tileLayer(ESRI_SAT,    { maxZoom: 21, attribution: 'Esri' }).addTo(map)
+    labelTileRef.current = L.tileLayer(ESRI_LABELS, { maxZoom: 21, opacity: 0.6, attribution: '' }).addTo(map)
     mapRef.current = map
     setStatus('Select a tool to begin')
     map.on('mousemove', (e: { latlng: { lat: number; lng: number } }) => setCoords({ lat: e.latlng.lat, lng: e.latlng.lng }))
@@ -487,13 +493,14 @@ export default function SiteMapper({ project, onCacheUpdate }: Props) {
     if (labelTileRef.current)     { map.removeLayer(labelTileRef.current);     labelTileRef.current     = null }
     if (hillshadeTileRef.current) { map.removeLayer(hillshadeTileRef.current); hillshadeTileRef.current = null }
     if (style === 'sat') {
-      baseTileRef.current = L.tileLayer(GOOGLE_HYBRID, { maxZoom: 21, subdomains: GOOGLE_SUBS, attribution: 'Google' }).addTo(map)
+      baseTileRef.current  = L.tileLayer(ESRI_SAT,    { maxZoom: 21, attribution: 'Esri' }).addTo(map)
+      labelTileRef.current = L.tileLayer(ESRI_LABELS, { maxZoom: 21, opacity: 0.6, attribution: '' }).addTo(map)
     } else if (style === 'street') {
       baseTileRef.current = L.tileLayer(ESRI_STREET, { maxZoom: 21, attribution: 'Esri' }).addTo(map)
     } else if (style === 'topo') {
       baseTileRef.current = L.tileLayer(USGS_TOPO, { maxZoom: 21, maxNativeZoom: 16, attribution: 'USGS National Map' }).addTo(map)
     } else if (style === 'earth') {
-      baseTileRef.current      = L.tileLayer(GOOGLE_SAT, { maxZoom: 21, subdomains: GOOGLE_SUBS, attribution: 'Google' }).addTo(map)
+      baseTileRef.current      = L.tileLayer(ESRI_SAT,      { maxZoom: 21, attribution: 'Esri' }).addTo(map)
       hillshadeTileRef.current = L.tileLayer(USGS_HILLSHADE, { maxZoom: 21, maxNativeZoom: 13, opacity: 0.35, attribution: 'USGS' }).addTo(map)
     }
     setMapStyle(style)

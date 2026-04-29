@@ -193,7 +193,7 @@ function MapViewInner({
   )
 }
 
-const MapView = dynamic(() => Promise.resolve(MapViewInner), { ssr: false })
+const MapView = dynamic(() => Promise.resolve({ default: MapViewInner }), { ssr: false })
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
