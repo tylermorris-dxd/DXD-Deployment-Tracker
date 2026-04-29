@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useCallback, useEffect } from 'react'
+import React, { useState, useCallback, useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import type { ProjectFull } from '@/lib/types'
 
@@ -94,7 +94,7 @@ async function geocodeAddress(address: string): Promise<Coords> {
 
 // ── Query FAA ─────────────────────────────────────────────────────────────────
 
-async function queryFAAGrids(lat: number, lng: number, radiusMeters = 8047): Promise<GeoJSONData> {
+async function queryFAAGrids(lat: number, lng: number, radiusMeters = 3219): Promise<GeoJSONData> {
   const degOffset = radiusMeters / 111000
   const bbox = `${lng - degOffset},${lat - degOffset},${lng + degOffset},${lat + degOffset}`
   const params = new URLSearchParams({
@@ -114,7 +114,7 @@ async function queryFAAGrids(lat: number, lng: number, radiusMeters = 8047): Pro
   return res.json()
 }
 
-// ── The Map sub-component (loaded dynamically to avoid SSR issues) ─────────────
+// ── Map sub-component — raw Leaflet via refs (no react-leaflet) ───────────────
 
 interface MapViewProps {
   center: [number, number]
@@ -127,96 +127,103 @@ interface MapViewProps {
   onGridDataForPoint: (geojson: GeoJSONData) => void
 }
 
-// We define MapView as a separate inner component that gets lazy-loaded
-// to avoid react-leaflet SSR issues with Next.js
-function MapViewInner({
-  center,
-  zoom,
-  flyTo,
-  gridData,
-  markerPos,
-  markerLat,
-  markerLng,
-}: MapViewProps) {
-  // These imports are safe here because this component is only rendered client-side
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { MapContainer, TileLayer, GeoJSON, Marker, Popup, useMap } = require('react-leaflet')
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const L = require('leaflet')
-
-  // Fix default marker icons
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-  delete L.Icon.Default.prototype._getIconUrl
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-  L.Icon.Default.mergeOptions({
-    iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  })
-
-  function MapFlyTo({ target, z }: { target: [number, number]; z: number }) {
-    const map = useMap()
-    useEffect(() => {
-      if (target) map.flyTo(target, z, { duration: 1.5 })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [target[0], target[1]])
-    return null
-  }
-
-  function gridStyle(feature: GeoJSONFeature) {
-    const ceiling = feature?.properties?.CEILING as number
-    const info = CEILING_COLORS[ceiling] || CEILING_COLORS[0]
-    return { color: info.fill, weight: 1.5, opacity: 0.8, fillColor: info.fill, fillOpacity: 0.25 }
-  }
-
+function MapViewInner({ center, zoom, flyTo, gridData, markerPos, markerLat, markerLng }: MapViewProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function gridPopup(feature: GeoJSONFeature, layer: any) {
-    const p = feature.properties
-    const ceiling = p.CEILING as number
-    const info = CEILING_COLORS[ceiling] || { label: `${ceiling} ft`, verdict: 'UNKNOWN', fill: '#aaa' }
-    const airports: string[] = []
-    if (p.APT1_NAME) airports.push(`${p.APT1_NAME} (${p.APT1_ICAO || p.APT1_FAAID})${p.APT1_LAANC ? ' ✓ LAANC' : ''}`)
-    if (p.APT2_NAME) airports.push(`${p.APT2_NAME} (${p.APT2_FAAID})${p.APT2_LAANC ? ' ✓ LAANC' : ''}`)
-    const airspaces = [p.AIRSPACE_1, p.AIRSPACE_2, p.AIRSPACE_3].filter(Boolean).join(', ')
-    layer.bindPopup(`
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;min-width:200px">
-        <div style="font-weight:700;font-size:14px;margin-bottom:6px;color:${info.fill}">${info.label}</div>
-        <div style="margin-bottom:4px"><b>Status:</b> ${info.verdict}</div>
-        ${airspaces ? `<div style="margin-bottom:4px"><b>Airspace:</b> ${airspaces}</div>` : ''}
-        ${airports.length ? `<div style="margin-bottom:4px"><b>Airport(s):</b><br/>${airports.join('<br/>')}</div>` : ''}
-        ${p.REGION ? `<div><b>Region:</b> ${p.REGION}</div>` : ''}
-      </div>
-    `)
-  }
+  const mapRef    = useRef<any>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const gridRef   = useRef<any>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const markerRef = useRef<any>(null)
+  const [leafletReady, setLeafletReady] = useState(false)
 
-  return (
-    <MapContainer center={center} zoom={zoom} style={{ height: '100%', width: '100%' }}>
-      <TileLayer
-        url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-        attribution='&copy; <a href="https://www.esri.com">Esri</a> World Imagery'
-        maxZoom={19}
-      />
-      <TileLayer
-        url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"
-        maxZoom={19}
-        opacity={0.6}
-      />
-      {flyTo && <MapFlyTo target={flyTo} z={14} />}
-      {gridData && gridData.features && (
-        <GeoJSON data={gridData} style={gridStyle} onEachFeature={gridPopup} />
-      )}
-      {markerPos && (
-        <Marker position={markerPos}>
-          <Popup>
-            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12 }}>
-              <strong>Target Location</strong><br />
-              {markerLat.toFixed(5)}, {markerLng.toFixed(5)}
-            </div>
-          </Popup>
-        </Marker>
-      )}
-    </MapContainer>
-  )
+  // Load Leaflet JS (CSS already in layout.tsx)
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if ((window as any).L) { setLeafletReady(true); return }
+    const JS = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
+    let sc = document.querySelector(`script[src="${JS}"]`) as HTMLScriptElement | null
+    if (!sc) { sc = document.createElement('script'); sc.src = JS; document.head.appendChild(sc) }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if ((window as any).L) { setLeafletReady(true) }
+    else sc.addEventListener('load', () => setLeafletReady(true), { once: true })
+  }, [])
+
+  // Init map once
+  useEffect(() => {
+    if (!leafletReady || !containerRef.current || mapRef.current) return
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const L = (window as any).L
+    const map = L.map(containerRef.current, { center, zoom, zoomControl: true })
+    map.zoomControl.setPosition('topright')
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 19, attribution: 'Esri',
+    }).addTo(map)
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 19, opacity: 0.65,
+    }).addTo(map)
+    mapRef.current = map
+    return () => { map.remove(); mapRef.current = null }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leafletReady])
+
+  // Fly to searched location
+  useEffect(() => {
+    if (!mapRef.current || !flyTo) return
+    mapRef.current.flyTo(flyTo, 13, { duration: 1.2 })
+  }, [flyTo])
+
+  // Redraw FAA grid whenever data changes
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const L = (window as any).L
+    if (!mapRef.current || !L) return
+    if (gridRef.current) { mapRef.current.removeLayer(gridRef.current); gridRef.current = null }
+    if (!gridData?.features?.length) return
+    gridRef.current = L.geoJSON(gridData, {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      style: (feature: any) => {
+        const info = CEILING_COLORS[feature?.properties?.CEILING as number] || CEILING_COLORS[0]
+        return { color: info.fill, weight: 1.5, opacity: 0.9, fillColor: info.fill, fillOpacity: 0.3 }
+      },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      onEachFeature: (feature: any, layer: any) => {
+        const p = feature.properties
+        const info = CEILING_COLORS[p.CEILING as number] || { label: `${p.CEILING} ft`, verdict: 'UNKNOWN', fill: '#aaa' }
+        const apts = ([1, 2] as const).flatMap(n =>
+          p[`APT${n}_NAME`]
+            ? [`${p[`APT${n}_NAME`]} (${p[`APT${n}_ICAO`] || p[`APT${n}_FAAID`]})${p[`APT${n}_LAANC`] ? ' ✓ LAANC' : ''}`]
+            : []
+        )
+        const airs = [p.AIRSPACE_1, p.AIRSPACE_2, p.AIRSPACE_3].filter(Boolean).join(', ')
+        layer.bindPopup(`
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;min-width:200px">
+            <div style="font-weight:700;font-size:14px;margin-bottom:6px;color:${info.fill}">${info.label}</div>
+            <div style="margin-bottom:4px"><b>Status:</b> ${info.verdict}</div>
+            ${airs ? `<div style="margin-bottom:4px"><b>Airspace:</b> ${airs}</div>` : ''}
+            ${apts.length ? `<div style="margin-bottom:4px"><b>Airport(s):</b><br/>${apts.join('<br/>')}</div>` : ''}
+            ${p.REGION ? `<div><b>Region:</b> ${p.REGION}</div>` : ''}
+          </div>`)
+      },
+    }).addTo(mapRef.current)
+  }, [gridData])
+
+  // Update target pin
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const L = (window as any).L
+    if (!mapRef.current || !L || !markerPos) return
+    if (markerRef.current) { mapRef.current.removeLayer(markerRef.current); markerRef.current = null }
+    const icon = L.divIcon({
+      html: `<div style="width:14px;height:14px;background:#e74c3c;border:2px solid #fff;border-radius:50%;box-shadow:0 0 10px rgba(231,76,60,0.9)"></div>`,
+      className: '', iconSize: [14, 14], iconAnchor: [7, 7],
+    })
+    markerRef.current = L.marker(markerPos, { icon }).addTo(mapRef.current)
+      .bindPopup(`<div style="font-family:'IBM Plex Mono',monospace;font-size:12px"><b>Target</b><br/>${markerLat.toFixed(5)}, ${markerLng.toFixed(5)}</div>`)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [markerPos])
+
+  return <div ref={containerRef} style={{ height: '100%', width: '100%' }} />
 }
 
 const MapView = dynamic(() => Promise.resolve({ default: MapViewInner }), { ssr: false })
@@ -480,7 +487,7 @@ export default function AirspaceIntel({ project, onCacheUpdate }: Props) {
                 {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
               </div>
             </div>
-            <div style={{ height: 500 }}>
+            <div style={{ height: 560 }}>
               <MapView
                 center={mapCenter}
                 zoom={mapZoom}
