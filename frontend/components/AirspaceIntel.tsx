@@ -56,25 +56,25 @@ const AIRSPACE_INFO: Record<string, { name: string; color: string; desc: string;
 // ── Geocode ───────────────────────────────────────────────────────────────────
 
 async function geocodeAddress(address: string): Promise<Coords> {
-  // Photon: OSM-backed, CORS-open, no auth required
+  // Nominatim — best accuracy for US street addresses
   try {
-    const r = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(address)}&limit=1&lang=en`)
-    const d = await r.json()
-    if (d?.features?.length > 0) {
-      const f = d.features[0]
-      const [lng, lat] = f.geometry.coordinates as [number, number]
-      const p = f.properties
-      const display = [p.name, p.street, p.city, p.state, p.country].filter(Boolean).join(', ')
-      return { lat, lng, display, source: 'Photon' }
+    const qs = new URLSearchParams({ format: 'json', limit: '1', q: address, addressdetails: '1', email: 'tyler.morris@deusxdefense.com' })
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?${qs}`, { headers: { 'Accept-Language': 'en' } })
+    const data = await r.json()
+    if (Array.isArray(data) && data.length > 0) {
+      const { lat, lon, display_name } = data[0]
+      return { lat: parseFloat(lat), lng: parseFloat(lon), display: display_name, source: 'Nominatim' }
     }
   } catch (_) { /* fall through */ }
-  // Nominatim fallback
-  const qs = new URLSearchParams({ format: 'json', limit: '1', q: address, email: 'tyler.morris@deusxdefense.com' })
-  const res = await fetch(`https://nominatim.openstreetmap.org/search?${qs}`, { headers: { 'Accept-Language': 'en' } })
-  const data = await res.json()
-  if (!Array.isArray(data) || !data.length) throw new Error('Location not found. Try a more specific address.')
-  const { lat, lon, display_name } = data[0]
-  return { lat: parseFloat(lat), lng: parseFloat(lon), display: display_name, source: 'Nominatim' }
+  // Photon fallback
+  const r = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(address)}&limit=1&lang=en`)
+  const d = await r.json()
+  if (!d?.features?.length) throw new Error('Location not found. Try a more specific address.')
+  const f = d.features[0]
+  const [lng, lat] = f.geometry.coordinates as [number, number]
+  const p = f.properties
+  const display = [p.name, p.street, p.city, p.state, p.country].filter(Boolean).join(', ')
+  return { lat, lng, display, source: 'Photon' }
 }
 
 // ── Query FAA ─────────────────────────────────────────────────────────────────
