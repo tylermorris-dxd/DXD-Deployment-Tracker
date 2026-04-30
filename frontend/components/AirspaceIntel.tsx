@@ -55,41 +55,59 @@ const AIRSPACE_INFO: Record<string, { name: string; color: string; desc: string;
 
 // ── Geocode ───────────────────────────────────────────────────────────────────
 
-async function fetchWithTimeout(url: string, opts: RequestInit = {}, ms = 5000): Promise<Response> {
+async function fetchWithTimeout(url: string, opts: RequestInit = {}, ms = 7000): Promise<Response> {
   const ctrl = new AbortController()
   const id = setTimeout(() => ctrl.abort(), ms)
   try { return await fetch(url, { ...opts, signal: ctrl.signal }) }
   finally { clearTimeout(id) }
 }
 
-async function geocodeAddress(address: string): Promise<Coords> {
-  // US Census Bureau — most accurate for US street addresses
-  try {
+async function geocodeAddress(input: string): Promise<Coords> {
+  const q = input.trim()
+
+  // Accept raw coordinates: "32.7767, -96.7970" or "32.7767 -96.7970"
+  const coordMatch = q.match(/^(-?\d{1,3}\.?\d*)[,\s]+(-?\d{1,3}\.?\d*)$/)
+  if (coordMatch) {
+    const lat = parseFloat(coordMatch[1]), lng = parseFloat(coordMatch[2])
+    if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180)
+      return { lat, lng, display: `${lat.toFixed(6)}, ${lng.toFixed(6)}`, source: 'Direct' }
+  }
+
+  // Census (US street addresses) and Nominatim run in parallel — fastest valid result wins
+  const censusFetch = async (): Promise<Coords> => {
     const r = await fetchWithTimeout(
-      `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(address)}&benchmark=Public_AR_Current&format=json`
+      `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(q)}&benchmark=Public_AR_Current&format=json`
     )
     const d = await r.json()
     const m = d?.result?.addressMatches?.[0]
-    if (m) return { lat: m.coordinates.y, lng: m.coordinates.x, display: m.matchedAddress, source: 'Census' }
-  } catch (_) { /* fall through */ }
-  // Nominatim — good for place names / international
-  try {
-    const qs = new URLSearchParams({ format: 'json', limit: '1', q: address, addressdetails: '1', email: 'tyler.morris@deusxdefense.com' })
+    if (!m) throw new Error('no census match')
+    return { lat: m.coordinates.y, lng: m.coordinates.x, display: m.matchedAddress, source: 'Census' }
+  }
+
+  const nominatimFetch = async (): Promise<Coords> => {
+    const qs = new URLSearchParams({ format: 'json', limit: '1', q, addressdetails: '1', email: 'tyler.morris@deusxdefense.com' })
     const r = await fetchWithTimeout(`https://nominatim.openstreetmap.org/search?${qs}`, { headers: { 'Accept-Language': 'en' } })
     const data = await r.json()
-    if (Array.isArray(data) && data.length > 0) {
-      const { lat, lon, display_name } = data[0]
-      return { lat: parseFloat(lat), lng: parseFloat(lon), display: display_name, source: 'Nominatim' }
+    if (!Array.isArray(data) || !data.length) throw new Error('no nominatim match')
+    return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), display: data[0].display_name, source: 'Nominatim' }
+  }
+
+  const primary = await Promise.any([censusFetch(), nominatimFetch()]).catch(() => null)
+  if (primary) return primary
+
+  // Photon last resort
+  try {
+    const r = await fetchWithTimeout(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=1&lang=en`)
+    const d = await r.json()
+    if (d?.features?.length) {
+      const f = d.features[0]
+      const [lng, lat] = f.geometry.coordinates as [number, number]
+      const p = f.properties
+      return { lat, lng, display: [p.name, p.street, p.city, p.state, p.country].filter(Boolean).join(', '), source: 'Photon' }
     }
   } catch (_) { /* fall through */ }
-  // Photon — last resort
-  const r = await fetchWithTimeout(`https://photon.komoot.io/api/?q=${encodeURIComponent(address)}&limit=1&lang=en`)
-  const d = await r.json()
-  if (!d?.features?.length) throw new Error('Location not found. Try a more specific address.')
-  const f = d.features[0]
-  const [lng, lat] = f.geometry.coordinates as [number, number]
-  const p = f.properties
-  return { lat, lng, display: [p.name, p.street, p.city, p.state, p.country].filter(Boolean).join(', '), source: 'Photon' }
+
+  throw new Error('Location not found — try a full address with city and state, or paste coordinates (lat, lng)')
 }
 
 // ── Query FAA ─────────────────────────────────────────────────────────────────
@@ -347,7 +365,7 @@ export default function AirspaceIntel({ project, onCacheUpdate }: Props) {
           value={query}
           onChange={e => setQuery(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') handleSearch() }}
-          placeholder="Enter address — e.g. 1234 Main St, Dallas, TX"
+          placeholder="Address, venue name, or coordinates (lat, lng)"
           style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: '#f1f1f1', fontFamily: "'Chakra Petch', sans-serif", fontSize: 15, padding: '10px 14px', letterSpacing: 0.5 }}
         />
         <button
@@ -359,7 +377,7 @@ export default function AirspaceIntel({ project, onCacheUpdate }: Props) {
         </button>
       </div>
       <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: 'rgba(255,255,255,0.25)', marginBottom: 20, paddingLeft: 4 }}>
-        Queries FAA UAS Facility Map in real-time · ESRI satellite imagery · LAANC grid altitude ceilings
+        FAA UAS Facility Map · LAANC grid data · accepts address, venue name, or lat/lng coordinates
       </div>
 
       {/* Loading */}

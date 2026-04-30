@@ -51,18 +51,28 @@ const USGS_TOPO      = 'https://basemap.nationalmap.gov/arcgis/rest/services/USG
 
 // ── Geocoding ─────────────────────────────────────────────────────────────────
 
-async function fetchWithTimeout(url: string, opts: RequestInit = {}, ms = 5000): Promise<Response> {
+async function fetchWithTimeout(url: string, opts: RequestInit = {}, ms = 7000): Promise<Response> {
   const ctrl = new AbortController()
   const id = setTimeout(() => ctrl.abort(), ms)
   try { return await fetch(url, { ...opts, signal: ctrl.signal }) }
   finally { clearTimeout(id) }
 }
 
-async function geocodeAddress(address: string): Promise<{ lat: number; lng: number; displayName: string } | null> {
+async function geocodeAddress(input: string): Promise<{ lat: number; lng: number; displayName: string } | null> {
+  const q = input.trim()
+
+  // Accept raw coordinates: "32.7767, -96.7970"
+  const coordMatch = q.match(/^(-?\d{1,3}\.?\d*)[,\s]+(-?\d{1,3}\.?\d*)$/)
+  if (coordMatch) {
+    const lat = parseFloat(coordMatch[1]), lng = parseFloat(coordMatch[2])
+    if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180)
+      return { lat, lng, displayName: `${lat.toFixed(6)}, ${lng.toFixed(6)}` }
+  }
+
   const GKEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY || ''
   if (GKEY) {
     try {
-      const r = await fetchWithTimeout(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${GKEY}`)
+      const r = await fetchWithTimeout(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(q)}&key=${GKEY}`)
       const d = await r.json()
       if (d.status === 'OK' && d.results.length > 0) {
         const loc = d.results[0].geometry.location
@@ -70,27 +80,32 @@ async function geocodeAddress(address: string): Promise<{ lat: number; lng: numb
       }
     } catch (_) { /* fall through */ }
   }
-  // US Census Bureau — most accurate for US street addresses, free, no auth
-  try {
+
+  // Census (US) and Nominatim in parallel — fastest valid result wins
+  const censusFetch = async () => {
     const r = await fetchWithTimeout(
-      `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(address)}&benchmark=Public_AR_Current&format=json`
+      `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(q)}&benchmark=Public_AR_Current&format=json`
     )
     const d = await r.json()
     const m = d?.result?.addressMatches?.[0]
-    if (m) return { lat: m.coordinates.y, lng: m.coordinates.x, displayName: m.matchedAddress }
-  } catch (_) { /* fall through */ }
-  // Nominatim — good for place names / international
-  try {
-    const qs = new URLSearchParams({ format: 'json', limit: '1', q: address, addressdetails: '1', email: 'tyler.morris@deusxdefense.com' })
+    if (!m) throw new Error('no match')
+    return { lat: m.coordinates.y as number, lng: m.coordinates.x as number, displayName: m.matchedAddress as string }
+  }
+
+  const nominatimFetch = async () => {
+    const qs = new URLSearchParams({ format: 'json', limit: '1', q, addressdetails: '1', email: 'tyler.morris@deusxdefense.com' })
     const r = await fetchWithTimeout(`https://nominatim.openstreetmap.org/search?${qs}`, { headers: { 'Accept-Language': 'en' } })
     const res = await r.json()
-    if (Array.isArray(res) && res.length > 0) {
-      return { lat: parseFloat(res[0].lat), lng: parseFloat(res[0].lon), displayName: res[0].display_name }
-    }
-  } catch (_) { /* fall through */ }
-  // Photon — last resort
+    if (!Array.isArray(res) || !res.length) throw new Error('no match')
+    return { lat: parseFloat(res[0].lat), lng: parseFloat(res[0].lon), displayName: res[0].display_name as string }
+  }
+
+  const primary = await Promise.any([censusFetch(), nominatimFetch()]).catch(() => null)
+  if (primary) return primary
+
+  // Photon last resort
   try {
-    const r = await fetchWithTimeout(`https://photon.komoot.io/api/?q=${encodeURIComponent(address)}&limit=1&lang=en`)
+    const r = await fetchWithTimeout(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=1&lang=en`)
     const d = await r.json()
     if (d?.features?.length > 0) {
       const f = d.features[0]
@@ -850,7 +865,7 @@ export default function SiteMapper({ project, onCacheUpdate }: Props) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 4 }}>
           <input value={addSiteInput} onChange={(e) => setAddSiteInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && !addingSite && addSiteToMap(addSiteInput)}
-            placeholder="+ Add location address…"
+            placeholder="+ Address or lat, lng…"
             style={{ padding: '3px 10px', borderRadius: 3, width: 220, border: `1px solid ${TACT_RED}33`, background: 'rgba(10,4,4,0.9)', color: 'rgba(255,255,255,0.75)', fontSize: 10, fontFamily: "'Courier New', monospace", outline: 'none' }}
           />
           <button onClick={() => !addingSite && addSiteToMap(addSiteInput)} disabled={addingSite || !addSiteInput.trim()}
