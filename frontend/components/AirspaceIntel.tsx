@@ -288,8 +288,13 @@ export default function AirspaceIntel({ project, onCacheUpdate }: Props) {
   })()
 
   const defaultLocation = project.site || ''
+  // Prefer the resolved address from the last successful search over the
+  // raw project.site value, so the input shows the geocoder-verified form
+  // (e.g. "9200 BLOCKER LN, AUSTIN, TX, 78719") instead of whatever was
+  // originally typed.
+  const initialQuery = (cachedData?.displayName as string | undefined) || defaultLocation
 
-  const [query, setQuery]           = useState<string>(defaultLocation)
+  const [query, setQuery]           = useState<string>(initialQuery)
   const [loading, setLoading]       = useState(false)
   const [error, setError]           = useState<string | null>(null)
   const [coords, setCoords]         = useState<Coords | null>(cachedData?.coords || null)
@@ -344,6 +349,7 @@ export default function AirspaceIntel({ project, onCacheUpdate }: Props) {
       const geo = await geocodeAddress(loc)
       setCoords(geo)
       setDisplayName(geo.display)
+      setQuery(geo.display)              // sync input to the resolved address
       setMapCenter([geo.lat, geo.lng])
       setFlyTo([geo.lat, geo.lng])
 
