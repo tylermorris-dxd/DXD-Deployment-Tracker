@@ -153,7 +153,11 @@ function MapViewInner({ center, zoom, flyTo, gridData, markerPos, markerLat, mar
   const gridRef   = useRef<any>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const markerRef = useRef<any>(null)
+  // Snapshot center/zoom at first mount so re-renders don't reset the map
+  const initCenterRef = useRef(center)
+  const initZoomRef   = useRef(zoom)
   const [leafletReady, setLeafletReady] = useState(false)
+  const [mapReady,     setMapReady]     = useState(false)
 
   // Load Leaflet JS (CSS already in layout.tsx)
   useEffect(() => {
@@ -163,16 +167,20 @@ function MapViewInner({ center, zoom, flyTo, gridData, markerPos, markerLat, mar
     let sc = document.querySelector(`script[src="${JS}"]`) as HTMLScriptElement | null
     if (!sc) { sc = document.createElement('script'); sc.src = JS; document.head.appendChild(sc) }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if ((window as any).L) { setLeafletReady(true) }
+    if ((window as any).L) setLeafletReady(true)
     else sc.addEventListener('load', () => setLeafletReady(true), { once: true })
   }, [])
 
-  // Init map once
+  // Init map once Leaflet is ready
   useEffect(() => {
     if (!leafletReady || !containerRef.current || mapRef.current) return
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const L = (window as any).L
-    const map = L.map(containerRef.current, { center, zoom, zoomControl: true })
+    const map = L.map(containerRef.current, {
+      center: initCenterRef.current,
+      zoom: initZoomRef.current,
+      zoomControl: true,
+    })
     map.zoomControl.setPosition('topright')
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
       maxZoom: 19, attribution: 'Esri',
@@ -181,21 +189,34 @@ function MapViewInner({ center, zoom, flyTo, gridData, markerPos, markerLat, mar
       maxZoom: 19, opacity: 0.65,
     }).addTo(map)
     mapRef.current = map
-    return () => { map.remove(); mapRef.current = null }
+    setMapReady(true)
+    // Fix the classic "tiles missing / blank map" issue when container size
+    // wasn't finalized at L.map() call time
+    requestAnimationFrame(() => map.invalidateSize(true))
+    const t1 = setTimeout(() => map.invalidateSize(true), 250)
+    const t2 = setTimeout(() => map.invalidateSize(true), 750)
+    return () => {
+      clearTimeout(t1); clearTimeout(t2)
+      map.remove()
+      mapRef.current = null
+      gridRef.current = null
+      markerRef.current = null
+      setMapReady(false)
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leafletReady])
 
-  // Fly to searched location
+  // Fly to searched location — also fires once map becomes ready
   useEffect(() => {
-    if (!mapRef.current || !flyTo) return
+    if (!mapRef.current || !mapReady || !flyTo) return
     mapRef.current.flyTo(flyTo, 13, { duration: 1.2 })
-  }, [flyTo])
+  }, [flyTo, mapReady])
 
-  // Redraw FAA grid whenever data changes
+  // Redraw FAA grid whenever data changes (or when map first becomes ready)
   useEffect(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const L = (window as any).L
-    if (!mapRef.current || !L) return
+    if (!mapRef.current || !mapReady || !L) return
     if (gridRef.current) { mapRef.current.removeLayer(gridRef.current); gridRef.current = null }
     if (!gridData?.features?.length) return
     gridRef.current = L.geoJSON(gridData, {
@@ -224,13 +245,13 @@ function MapViewInner({ center, zoom, flyTo, gridData, markerPos, markerLat, mar
           </div>`)
       },
     }).addTo(mapRef.current)
-  }, [gridData])
+  }, [gridData, mapReady])
 
-  // Update target pin
+  // Update target pin (also fires once map becomes ready)
   useEffect(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const L = (window as any).L
-    if (!mapRef.current || !L || !markerPos) return
+    if (!mapRef.current || !mapReady || !L || !markerPos) return
     if (markerRef.current) { mapRef.current.removeLayer(markerRef.current); markerRef.current = null }
     const icon = L.divIcon({
       html: `<div style="width:14px;height:14px;background:#e74c3c;border:2px solid #fff;border-radius:50%;box-shadow:0 0 10px rgba(231,76,60,0.9)"></div>`,
@@ -239,7 +260,7 @@ function MapViewInner({ center, zoom, flyTo, gridData, markerPos, markerLat, mar
     markerRef.current = L.marker(markerPos, { icon }).addTo(mapRef.current)
       .bindPopup(`<div style="font-family:'IBM Plex Mono',monospace;font-size:12px"><b>Target</b><br/>${markerLat.toFixed(5)}, ${markerLng.toFixed(5)}</div>`)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [markerPos])
+  }, [markerPos, mapReady])
 
   return <div ref={containerRef} style={{ height: '100%', width: '100%' }} />
 }
