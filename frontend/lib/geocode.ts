@@ -7,16 +7,17 @@
 //   2. Google Maps (if NEXT_PUBLIC_GOOGLE_MAPS_KEY is set)
 //   3. US Census Bureau — authoritative for US street addresses,
 //      called via JSONP because Census does NOT send CORS headers.
-//      Without JSONP, every browser fetch() silently fails and we fall
-//      through to Nominatim, which has poor coverage of newer/specific
-//      US street addresses.
-//   4. Nominatim — global, good for venue names and international.
+//      Census has coverage gaps (e.g. 5623 Two Notch Rd, Columbia SC).
+//   4. ArcGIS World Geocoder — fills Census gaps with very accurate
+//      US + global address data. Public endpoint, CORS-enabled,
+//      forStorage=false for non-stored use.
+//   5. Nominatim — last resort, used when ArcGIS also misses.
 
 export interface GeocodeResult {
   lat: number
   lng: number
   displayName: string
-  source: 'Direct' | 'Google' | 'Census' | 'Nominatim'
+  source: 'Direct' | 'Google' | 'Census' | 'ArcGIS' | 'Nominatim'
 }
 
 async function fetchWithTimeout(url: string, opts: RequestInit = {}, ms = 8000): Promise<Response> {
@@ -89,7 +90,30 @@ export async function geocodeAddress(input: string): Promise<GeocodeResult | nul
   const census = await censusGeocodeJSONP(q)
   if (census) return { lat: census.lat, lng: census.lng, displayName: census.matchedAddress, source: 'Census' }
 
-  // 3) Nominatim (international + venue names)
+  // 3) ArcGIS World Geocoder — fills Census gaps with very accurate matches.
+  // Public endpoint, CORS-enabled, forStorage=false keeps us within ESRI's
+  // free-tier terms for non-stored geocoding.
+  try {
+    const params = new URLSearchParams({
+      SingleLine: q,
+      f: 'json',
+      outFields: 'Match_addr,Addr_type',
+      maxLocations: '1',
+      forStorage: 'false',
+    })
+    const r = await fetchWithTimeout(
+      `https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?${params}`,
+    )
+    const d = await r.json()
+    const c = d?.candidates?.[0]
+    // Require a high-confidence match — ArcGIS returns low-score fuzzy
+    // matches that can be far from the requested address.
+    if (c && typeof c.score === 'number' && c.score >= 85 && c.location && typeof c.location.x === 'number' && typeof c.location.y === 'number') {
+      return { lat: c.location.y, lng: c.location.x, displayName: c.address || q, source: 'ArcGIS' }
+    }
+  } catch (_) { /* fall through */ }
+
+  // 4) Nominatim (international + venue names, last resort)
   try {
     const qs = new URLSearchParams({
       format: 'json', limit: '1', q,
