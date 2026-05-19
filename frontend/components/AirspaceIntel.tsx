@@ -62,6 +62,38 @@ async function fetchWithTimeout(url: string, opts: RequestInit = {}, ms = 7000):
   finally { clearTimeout(id) }
 }
 
+// Census Bureau API doesn't support CORS — must use JSONP via <script> tag
+// to avoid browser blocking the response.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function censusGeocodeJSONP(address: string, timeoutMs = 9000): Promise<{ lat: number; lng: number; matchedAddress: string } | null> {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined') { resolve(null); return }
+    const cbName = `__census_cb_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+    const url = `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(address)}&benchmark=Public_AR_Current&format=jsonp&callback=${cbName}`
+    const script = document.createElement('script')
+    const cleanup = () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      try { delete (window as any)[cbName] } catch { /* ignore */ }
+      if (script.parentNode) script.parentNode.removeChild(script)
+    }
+    const timer = setTimeout(() => { cleanup(); resolve(null) }, timeoutMs)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(window as any)[cbName] = (data: any) => {
+      clearTimeout(timer)
+      cleanup()
+      const m = data?.result?.addressMatches?.[0]
+      if (m && m.coordinates) {
+        resolve({ lat: m.coordinates.y, lng: m.coordinates.x, matchedAddress: m.matchedAddress })
+      } else {
+        resolve(null)
+      }
+    }
+    script.onerror = () => { clearTimeout(timer); cleanup(); resolve(null) }
+    script.src = url
+    document.head.appendChild(script)
+  })
+}
+
 async function geocodeAddress(input: string): Promise<Coords> {
   const q = input.trim()
 
@@ -73,16 +105,9 @@ async function geocodeAddress(input: string): Promise<Coords> {
       return { lat, lng, display: `${lat.toFixed(6)}, ${lng.toFixed(6)}`, source: 'Direct' }
   }
 
-  // 1) US Census Bureau — authoritative for US street addresses
-  try {
-    const r = await fetchWithTimeout(
-      `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(q)}&benchmark=Public_AR_Current&format=json`,
-      {}, 8000
-    )
-    const d = await r.json()
-    const m = d?.result?.addressMatches?.[0]
-    if (m) return { lat: m.coordinates.y, lng: m.coordinates.x, display: m.matchedAddress, source: 'Census' }
-  } catch (_) { /* fall through */ }
+  // 1) US Census Bureau — authoritative for US street addresses (uses JSONP, no CORS)
+  const census = await censusGeocodeJSONP(q)
+  if (census) return { lat: census.lat, lng: census.lng, display: census.matchedAddress, source: 'Census' }
 
   // 2) Nominatim — for venue names, non-street-address queries, international
   try {
