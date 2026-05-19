@@ -63,7 +63,7 @@ async function geocodeAddress(input: string): Promise<Coords> {
 
 // ── Query FAA ─────────────────────────────────────────────────────────────────
 
-async function queryFAAGrids(lat: number, lng: number, radiusMeters = 3219): Promise<GeoJSONData> {
+async function queryFAAGrids(lat: number, lng: number, radiusMeters = 4828): Promise<GeoJSONData> {
   const degOffset = radiusMeters / 111000
   const bbox = `${lng - degOffset},${lat - degOffset},${lng + degOffset},${lat + degOffset}`
   const params = new URLSearchParams({
@@ -160,7 +160,7 @@ function MapViewInner({ center, zoom, flyTo, gridData, markerPos, markerLat, mar
   // Fly to searched location — also fires once map becomes ready
   useEffect(() => {
     if (!mapRef.current || !mapReady || !flyTo) return
-    mapRef.current.flyTo(flyTo, 13, { duration: 1.2 })
+    mapRef.current.flyTo(flyTo, 12, { duration: 1.2 })
   }, [flyTo, mapReady])
 
   // Redraw FAA grid whenever data changes (or when map first becomes ready)
