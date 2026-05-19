@@ -81,37 +81,24 @@ async function geocodeAddress(input: string): Promise<{ lat: number; lng: number
     } catch (_) { /* fall through */ }
   }
 
-  // Census (US) and Nominatim in parallel — fastest valid result wins
-  const censusFetch = async () => {
+  // 1) Census Bureau — authoritative for US street addresses
+  try {
     const r = await fetchWithTimeout(
-      `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(q)}&benchmark=Public_AR_Current&format=json`
+      `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(q)}&benchmark=Public_AR_Current&format=json`,
+      {}, 8000
     )
     const d = await r.json()
     const m = d?.result?.addressMatches?.[0]
-    if (!m) throw new Error('no match')
-    return { lat: m.coordinates.y as number, lng: m.coordinates.x as number, displayName: m.matchedAddress as string }
-  }
+    if (m) return { lat: m.coordinates.y as number, lng: m.coordinates.x as number, displayName: m.matchedAddress as string }
+  } catch (_) { /* fall through */ }
 
-  const nominatimFetch = async () => {
-    const qs = new URLSearchParams({ format: 'json', limit: '1', q, addressdetails: '1', email: 'tyler.morris@deusxdefense.com' })
-    const r = await fetchWithTimeout(`https://nominatim.openstreetmap.org/search?${qs}`, { headers: { 'Accept-Language': 'en' } })
-    const res = await r.json()
-    if (!Array.isArray(res) || !res.length) throw new Error('no match')
-    return { lat: parseFloat(res[0].lat), lng: parseFloat(res[0].lon), displayName: res[0].display_name as string }
-  }
-
-  const primary = await Promise.any([censusFetch(), nominatimFetch()]).catch(() => null)
-  if (primary) return primary
-
-  // Photon last resort
+  // 2) Nominatim — venue names, non-street-address queries, international
   try {
-    const r = await fetchWithTimeout(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=1&lang=en`)
-    const d = await r.json()
-    if (d?.features?.length > 0) {
-      const f = d.features[0]
-      const [lng, lat] = f.geometry.coordinates as [number, number]
-      const p = f.properties
-      return { lat, lng, displayName: [p.name, p.street, p.city, p.state, p.country].filter(Boolean).join(', ') }
+    const qs = new URLSearchParams({ format: 'json', limit: '1', q, addressdetails: '1', email: 'tyler.morris@deusxdefense.com' })
+    const r = await fetchWithTimeout(`https://nominatim.openstreetmap.org/search?${qs}`, { headers: { 'Accept-Language': 'en' } }, 8000)
+    const res = await r.json()
+    if (Array.isArray(res) && res.length > 0) {
+      return { lat: parseFloat(res[0].lat), lng: parseFloat(res[0].lon), displayName: res[0].display_name as string }
     }
   } catch (_) { /* fall through */ }
   return null

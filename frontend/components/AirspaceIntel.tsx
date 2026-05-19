@@ -65,7 +65,7 @@ async function fetchWithTimeout(url: string, opts: RequestInit = {}, ms = 7000):
 async function geocodeAddress(input: string): Promise<Coords> {
   const q = input.trim()
 
-  // Accept raw coordinates: "32.7767, -96.7970" or "32.7767 -96.7970"
+  // Direct coordinates: "32.7767, -96.7970" or "32.7767 -96.7970"
   const coordMatch = q.match(/^(-?\d{1,3}\.?\d*)[,\s]+(-?\d{1,3}\.?\d*)$/)
   if (coordMatch) {
     const lat = parseFloat(coordMatch[1]), lng = parseFloat(coordMatch[2])
@@ -73,41 +73,28 @@ async function geocodeAddress(input: string): Promise<Coords> {
       return { lat, lng, display: `${lat.toFixed(6)}, ${lng.toFixed(6)}`, source: 'Direct' }
   }
 
-  // Census (US street addresses) and Nominatim run in parallel — fastest valid result wins
-  const censusFetch = async (): Promise<Coords> => {
+  // 1) US Census Bureau — authoritative for US street addresses
+  try {
     const r = await fetchWithTimeout(
-      `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(q)}&benchmark=Public_AR_Current&format=json`
+      `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(q)}&benchmark=Public_AR_Current&format=json`,
+      {}, 8000
     )
     const d = await r.json()
     const m = d?.result?.addressMatches?.[0]
-    if (!m) throw new Error('no census match')
-    return { lat: m.coordinates.y, lng: m.coordinates.x, display: m.matchedAddress, source: 'Census' }
-  }
+    if (m) return { lat: m.coordinates.y, lng: m.coordinates.x, display: m.matchedAddress, source: 'Census' }
+  } catch (_) { /* fall through */ }
 
-  const nominatimFetch = async (): Promise<Coords> => {
-    const qs = new URLSearchParams({ format: 'json', limit: '1', q, addressdetails: '1', email: 'tyler.morris@deusxdefense.com' })
-    const r = await fetchWithTimeout(`https://nominatim.openstreetmap.org/search?${qs}`, { headers: { 'Accept-Language': 'en' } })
-    const data = await r.json()
-    if (!Array.isArray(data) || !data.length) throw new Error('no nominatim match')
-    return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), display: data[0].display_name, source: 'Nominatim' }
-  }
-
-  const primary = await Promise.any([censusFetch(), nominatimFetch()]).catch(() => null)
-  if (primary) return primary
-
-  // Photon last resort
+  // 2) Nominatim — for venue names, non-street-address queries, international
   try {
-    const r = await fetchWithTimeout(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=1&lang=en`)
-    const d = await r.json()
-    if (d?.features?.length) {
-      const f = d.features[0]
-      const [lng, lat] = f.geometry.coordinates as [number, number]
-      const p = f.properties
-      return { lat, lng, display: [p.name, p.street, p.city, p.state, p.country].filter(Boolean).join(', '), source: 'Photon' }
+    const qs = new URLSearchParams({ format: 'json', limit: '1', q, addressdetails: '1', email: 'tyler.morris@deusxdefense.com' })
+    const r = await fetchWithTimeout(`https://nominatim.openstreetmap.org/search?${qs}`, { headers: { 'Accept-Language': 'en' } }, 8000)
+    const data = await r.json()
+    if (Array.isArray(data) && data.length > 0) {
+      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), display: data[0].display_name, source: 'Nominatim' }
     }
   } catch (_) { /* fall through */ }
 
-  throw new Error('Location not found — try a full address with city and state, or paste coordinates (lat, lng)')
+  throw new Error('Location not found — try a full street address with city + state, or paste coordinates as "lat, lng"')
 }
 
 // ── Query FAA ─────────────────────────────────────────────────────────────────
@@ -397,9 +384,25 @@ export default function AirspaceIntel({ project, onCacheUpdate }: Props) {
           {loading ? 'SCANNING...' : 'SCAN AIRSPACE'}
         </button>
       </div>
-      <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: 'rgba(255,255,255,0.25)', marginBottom: 20, paddingLeft: 4 }}>
+      <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: 'rgba(255,255,255,0.25)', marginBottom: 12, paddingLeft: 4 }}>
         FAA UAS Facility Map · LAANC grid data · accepts address, venue name, or lat/lng coordinates
       </div>
+
+      {/* Resolved address — visible immediately so user can verify */}
+      {coords && !loading && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(46,204,113,0.06)', border: '1px solid rgba(46,204,113,0.2)', borderRadius: 8, padding: '10px 14px', marginBottom: 20, flexWrap: 'wrap' }}>
+          <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: '#2ecc71', letterSpacing: 1.5, textTransform: 'uppercase' }}>Resolved → {coords.source}</span>
+          <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: '#f1f1f1', flex: 1, minWidth: 200 }}>
+            {displayName || coords.display}
+          </span>
+          <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>
+            {coords.lat.toFixed(6)}, {coords.lng.toFixed(6)}
+          </span>
+          <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, color: 'rgba(255,255,255,0.4)', width: '100%', marginTop: 2 }}>
+            Wrong location? Paste coordinates as &quot;lat, lng&quot; in the search box (e.g. {coords.lat.toFixed(6)}, {coords.lng.toFixed(6)}).
+          </span>
+        </div>
+      )}
 
       {/* Loading */}
       {loading && (
