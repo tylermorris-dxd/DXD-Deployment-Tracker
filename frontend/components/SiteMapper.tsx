@@ -624,157 +624,28 @@ export default function SiteMapper({ project, onCacheUpdate }: Props) {
     setStatus('MAP CLEARED')
   }
 
-  // ── PDF export ──────────────────────────────────────────────────────────────
-  const [exportingPDF, setExportingPDF] = useState(false)
-
-  const loadScript = (src: string) => new Promise<void>((resolve, reject) => {
-    if (document.querySelector(`script[src="${src}"]`)) { resolve(); return }
-    const sc = document.createElement('script')
-    sc.src = src
-    sc.onload = () => resolve()
-    sc.onerror = () => reject(new Error(`Failed to load ${src}`))
-    document.head.appendChild(sc)
-  })
-
-  async function exportSiteMapPDF() {
-    if (!mapRef.current) return
-    setExportingPDF(true)
-    setStatus('Generating PDF…')
-    try {
-      await Promise.all([
-        loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'),
-        loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'),
-      ])
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const html2canvas = (window as any).html2canvas
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { jsPDF } = (window as any).jspdf
-
-      // Force a fresh size + invalidateSize so tiles are crisp before capture
-      mapRef.current.invalidateSize()
-
-      const mapEl = document.querySelector('[data-sitemap-mapwrap="1"]') as HTMLElement | null
-      if (!mapEl) throw new Error('Map element not found')
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const canvas: HTMLCanvasElement = await html2canvas(mapEl, {
-        useCORS: true,
-        logging: false,
-        scale: 2,
-        backgroundColor: '#0a0404',
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ignoreElements: (el: any) => {
-          const cls = el.className
-          if (typeof cls !== 'string') return false
-          return cls.includes('leaflet-popup') || cls.includes('leaflet-control-attribution')
-        },
-      })
-      const imgData = canvas.toDataURL('image/jpeg', 0.88)
-
-      const pdf = new jsPDF({ unit: 'pt', format: 'letter', orientation: 'landscape' })
-      const pageW = pdf.internal.pageSize.getWidth()
-      const pageH = pdf.internal.pageSize.getHeight()
-      const margin = 40
-      let y = margin
-
-      // Header band
-      pdf.setFillColor(231, 57, 70)
-      pdf.rect(0, 0, pageW, 6, 'F')
-      pdf.setTextColor(20)
-      pdf.setFont('helvetica', 'bold'); pdf.setFontSize(20)
-      pdf.text('SITE DEPLOYMENT PLAN', margin, y + 18)
-      pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9); pdf.setTextColor(110)
-      pdf.text(`Generated ${new Date().toLocaleString()}`, margin, y + 32)
-      pdf.setTextColor(20)
-      y += 48
-
-      const row = (label: string, val: string) => {
-        pdf.setFont('helvetica', 'bold'); pdf.text(`${label}:`, margin, y)
-        pdf.setFont('helvetica', 'normal')
-        const wrapped = pdf.splitTextToSize(val || '—', pageW - margin * 2 - 90) as string[]
-        pdf.text(wrapped, margin + 90, y)
-        y += 13 * Math.max(1, wrapped.length)
+  // ── Export / print ──────────────────────────────────────────────────────────
+  function handleExport() {
+    const map = mapRef.current
+    if (map) map.invalidateSize()
+    const style = document.createElement('style')
+    style.id = '__print_map'
+    style.innerHTML = `
+      @media print {
+        @page { size: landscape; margin: 0; }
+        body * { visibility: hidden !important; }
+        [data-sitemap], [data-sitemap] * { visibility: visible !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+        [data-sitemap] { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; z-index: 99999 !important; background: #000 !important; }
+        [data-sitemap-toolbar], [data-sitemap-status] { display: none !important; }
+        .leaflet-control-zoom, .leaflet-control-attribution { display: none !important; }
+        .sm-ring-lbl, .sm-bnd-lbl { background: transparent !important; border: none !important; }
       }
-
-      // Project / Customer info
-      pdf.setDrawColor(220); pdf.line(margin, y, pageW - margin, y); y += 14
-      pdf.setFont('helvetica', 'bold'); pdf.setFontSize(11)
-      pdf.text('PROJECT', margin, y); y += 16
-      pdf.setFont('helvetica', 'normal'); pdf.setFontSize(10)
-      row('Project',    project.name || '—')
-      row('Client',     project.client || '—')
-      row('Project ID', project.id || '—')
-      row('Site',       project.site || '—')
-      y += 6
-
-      // Map data summary
-      const lr  = layersRef.current
-      const sites = sitesListRef.current
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const docks: Array<{ num: number; droneKey: string; lat: number; lng: number }> = lr.dockMarkers.map((d: any) => {
-        const ll = d.marker.getLatLng()
-        return { num: d.num, droneKey: d.droneKey || 'dji-dock-3', lat: ll.lat, lng: ll.lng }
-      })
-      const measurement = (lr.measurePins.length === 2)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ? (lr.measurePins[0] as any).getLatLng().distanceTo((lr.measurePins[1] as any).getLatLng()) as number
-        : null
-
-      pdf.setDrawColor(220); pdf.line(margin, y, pageW - margin, y); y += 14
-      pdf.setFont('helvetica', 'bold'); pdf.setFontSize(11)
-      pdf.text('SITE DATA', margin, y); y += 16
-      pdf.setFont('helvetica', 'normal'); pdf.setFontSize(10)
-      row('Locations',   `${sites.length}`)
-      row('Docks placed', `${docks.length}`)
-      if (areaAcres != null) row('Boundary', `${areaAcres.toFixed(2)} acres`)
-      if (measurement != null) row('Measurement', metersToDisplay(measurement))
-      y += 6
-
-      // Locations list
-      if (sites.length > 0) {
-        pdf.setFont('helvetica', 'bold'); pdf.text('Locations:', margin, y); y += 14
-        pdf.setFont('helvetica', 'normal')
-        sites.forEach((s, i) => {
-          const text = `  #${i + 1}  ${s.address}  (${s.lat.toFixed(6)}, ${s.lng.toFixed(6)})`
-          const wrapped = pdf.splitTextToSize(text, pageW - margin * 2) as string[]
-          pdf.text(wrapped, margin, y); y += 13 * wrapped.length
-        })
-        y += 4
-      }
-
-      // Docks list
-      if (docks.length > 0) {
-        pdf.setFont('helvetica', 'bold'); pdf.text('Dock placements:', margin, y); y += 14
-        pdf.setFont('helvetica', 'normal')
-        docks.forEach(d => {
-          const modelLabel = DRONE_MODELS[d.droneKey]?.label || 'DJI Dock 3'
-          pdf.text(`  DOCK-${String(d.num).padStart(2, '0')}  ${modelLabel}  (${d.lat.toFixed(6)}, ${d.lng.toFixed(6)})`, margin, y)
-          y += 13
-        })
-        y += 4
-      }
-
-      // Map image — start on a new page for clean landscape layout
-      pdf.addPage()
-      pdf.setFont('helvetica', 'bold'); pdf.setFontSize(11); pdf.setTextColor(20)
-      pdf.text('SITE MAP', margin, margin)
-      const imgW = pageW - margin * 2
-      const imgH = Math.min(imgW * (canvas.height / canvas.width), pageH - margin * 2 - 30)
-      const adjW = imgH * (canvas.width / canvas.height)
-      pdf.addImage(imgData, 'JPEG', (pageW - adjW) / 2, margin + 14, adjW, imgH)
-      pdf.setFont('helvetica', 'italic'); pdf.setFontSize(8); pdf.setTextColor(110)
-      pdf.text('Red boundary, dock placements, location pins, and any measurement lines are baked into the image.', margin, pageH - 24)
-      pdf.text('Generated by DXD Deployment Tracker', margin, pageH - 12)
-
-      const safeName = (project.name || 'site-map').replace(/[^a-z0-9]+/gi, '-').toLowerCase()
-      const stamp = new Date().toISOString().slice(0, 10)
-      pdf.save(`sitemap-${safeName}-${stamp}.pdf`)
-      setStatus('PDF saved')
-    } catch (e) {
-      setStatus(`PDF export failed: ${e instanceof Error ? e.message : String(e)}`)
-    } finally {
-      setExportingPDF(false)
-    }
+    `
+    document.head.appendChild(style)
+    setTimeout(() => {
+      window.print()
+      setTimeout(() => { const s = document.getElementById('__print_map'); if (s) s.remove() }, 3000)
+    }, 400)
   }
 
   // ── Map click handler ───────────────────────────────────────────────────────
@@ -902,9 +773,7 @@ export default function SiteMapper({ project, onCacheUpdate }: Props) {
 
         <div style={S.divider} />
         <button style={S.clearBtn}  onClick={clearAll}>CLEAR ALL</button>
-        <button style={S.exportBtn} onClick={exportSiteMapPDF} disabled={exportingPDF}>
-          {exportingPDF ? 'EXPORTING…' : 'EXPORT PDF'}
-        </button>
+        <button style={S.exportBtn} onClick={handleExport}>EXPORT / PRINT</button>
       </div>
 
       {/* Locations bar */}
@@ -943,7 +812,7 @@ export default function SiteMapper({ project, onCacheUpdate }: Props) {
       </div>
 
       {/* Map container */}
-      <div style={S.mapWrap} data-sitemap-mapwrap="1">
+      <div style={S.mapWrap}>
         <div ref={mapContainerRef} style={{ ...S.mapEl, visibility: mapStyle === 'streetview' ? 'hidden' : 'visible' }} />
 
         {mapStyle === 'streetview' && (
