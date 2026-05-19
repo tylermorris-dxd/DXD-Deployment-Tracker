@@ -319,156 +319,29 @@ export default function AirspaceIntel({ project, onCacheUpdate }: Props) {
   const airspaceInfo = airspaceType ? AIRSPACE_INFO[airspaceType] : null
   const isClassG = !pointGrid || (!!coords && !gridData?.features?.length)
 
-  // ── PDF export ───────────────────────────────────────────────────────────────
-  const [exporting, setExporting] = useState(false)
-
-  const loadScript = (src: string) => new Promise<void>((resolve, reject) => {
-    if (document.querySelector(`script[src="${src}"]`)) { resolve(); return }
-    const sc = document.createElement('script')
-    sc.src = src
-    sc.onload = () => resolve()
-    sc.onerror = () => reject(new Error(`Failed to load ${src}`))
-    document.head.appendChild(sc)
-  })
-
-  const exportAirspacePDF = async () => {
-    if (!coords) return
-    setExporting(true)
-    setError(null)
-    try {
-      // Lazy-load PDF libs from CDN (no npm bloat)
-      await Promise.all([
-        loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'),
-        loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'),
-      ])
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const html2canvas = (window as any).html2canvas
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { jsPDF } = (window as any).jspdf
-
-      // Capture the map element (Leaflet container, including tiles + overlay + pin)
-      const mapEl = document.querySelector('[data-airspace-map="1"]') as HTMLElement | null
-      if (!mapEl) throw new Error('Map element not found — try scanning the airspace first.')
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const canvas: HTMLCanvasElement = await html2canvas(mapEl, {
-        useCORS: true,
-        logging: false,
-        scale: 2,
-        backgroundColor: '#0a0b0d',
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ignoreElements: (el: any) => {
-          const cls = el.className
-          if (typeof cls !== 'string') return false
-          return cls.includes('leaflet-popup') || cls.includes('leaflet-control-attribution')
-        },
-      })
-      const imgData = canvas.toDataURL('image/jpeg', 0.88)
-
-      // Build the PDF
-      const pdf = new jsPDF({ unit: 'pt', format: 'letter', orientation: 'portrait' })
-      const pageW = pdf.internal.pageSize.getWidth()
-      const pageH = pdf.internal.pageSize.getHeight()
-      const margin = 40
-      let y = margin
-
-      // Header banner
-      pdf.setFillColor(231, 57, 70)
-      pdf.rect(0, 0, pageW, 6, 'F')
-      pdf.setTextColor(20, 20, 20)
-      pdf.setFont('helvetica', 'bold'); pdf.setFontSize(20)
-      pdf.text('FAA AIRSPACE ANALYSIS', margin, y + 18)
-      pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9); pdf.setTextColor(110)
-      pdf.text(`Generated ${new Date().toLocaleString()}`, margin, y + 32)
-      pdf.setTextColor(20)
-      y += 48
-
-      // Project / Customer info
-      pdf.setDrawColor(220); pdf.line(margin, y, pageW - margin, y); y += 14
-      pdf.setFont('helvetica', 'bold'); pdf.setFontSize(11)
-      pdf.text('PROJECT', margin, y); y += 16
-      pdf.setFont('helvetica', 'normal'); pdf.setFontSize(10)
-      const row = (label: string, val: string) => {
-        pdf.setFont('helvetica', 'bold'); pdf.text(`${label}:`, margin, y)
-        pdf.setFont('helvetica', 'normal')
-        const wrapped = pdf.splitTextToSize(val || '—', pageW - margin * 2 - 80) as string[]
-        pdf.text(wrapped, margin + 80, y)
-        y += 14 * Math.max(1, wrapped.length)
+  // ── Export / Print ───────────────────────────────────────────────────────────
+  function handleExport() {
+    const style = document.createElement('style')
+    style.id = '__print_airspace'
+    style.innerHTML = `
+      @media print {
+        @page { size: portrait; margin: 0.4in; }
+        body * { visibility: hidden !important; }
+        [data-airspace], [data-airspace] * { visibility: visible !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+        [data-airspace] { position: absolute !important; top: 0 !important; left: 0 !important; right: 0 !important; background: #fff !important; color: #111 !important; }
+        [data-airspace-noprint] { display: none !important; }
+        .leaflet-control-zoom, .leaflet-control-attribution { display: none !important; }
       }
-      row('Project',     project.name || '—')
-      row('Client',      project.client || '—')
-      row('Project ID',  project.id || '—')
-      row('Site',        project.site || '—')
-      row('Resolved',    displayName || coords.display || '—')
-      row('Coordinates', `${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}`)
-      row('Source',      coords.source)
-      y += 8
-
-      // Airspace summary
-      pdf.setDrawColor(220); pdf.line(margin, y, pageW - margin, y); y += 14
-      pdf.setFont('helvetica', 'bold'); pdf.setFontSize(11)
-      pdf.text('AIRSPACE SUMMARY (2-MILE RADIUS)', margin, y); y += 16
-      pdf.setFont('helvetica', 'normal'); pdf.setFontSize(10)
-      const verdict      = isClassG ? 'GOOD TO GO' : (ceilingInfo?.verdict || 'CHECK REQUIRED')
-      const classLabel   = isClassG ? 'G — Uncontrolled' : `${airspaceType} — ${airspaceInfo?.name || 'Unknown'}`
-      const maxAlt       = isClassG ? '400 ft AGL (Standard Part 107)' : `${ceilingVal ?? '?'} ft AGL (per UASFM)`
-      const droneZone    = isClassG ? 'Not required' : 'Required (LAANC or FAA DroneZone)'
-      row('Verdict',         verdict)
-      row('Airspace Class',  classLabel)
-      row('Max Altitude',    maxAlt)
-      row('FAA DroneZone',   droneZone)
-      if (!isClassG && airspaceInfo?.desc) {
-        const wrapped = pdf.splitTextToSize(airspaceInfo.desc, pageW - margin * 2) as string[]
-        pdf.setFont('helvetica', 'italic'); pdf.setFontSize(9); pdf.setTextColor(80)
-        pdf.text(wrapped, margin, y); y += 12 * wrapped.length + 4
-        pdf.setTextColor(20); pdf.setFontSize(10)
-      }
-      y += 4
-
-      // Controlling airports
-      if (pointGrid?.properties?.APT1_NAME) {
-        pdf.setFont('helvetica', 'bold'); pdf.text('Controlling Airport(s):', margin, y); y += 14
-        pdf.setFont('helvetica', 'normal')
-        for (const n of [1, 2, 3, 4, 5] as const) {
-          const aptName = pointGrid.properties[`APT${n}_NAME`] as string | undefined
-          if (!aptName) continue
-          const icao  = (pointGrid.properties[`APT${n}_ICAO`] || pointGrid.properties[`APT${n}_FAAID`] || '') as string
-          const laanc = pointGrid.properties[`APT${n}_LAANC`] === 1
-          pdf.text(`  • ${aptName} (${icao})  —  ${laanc ? 'LAANC enabled' : 'No LAANC'}`, margin, y)
-          y += 13
-        }
-        y += 6
-      }
-
-      // Map image (new page if not enough room)
-      const imgW = pageW - margin * 2
-      const imgH = imgW * (canvas.height / canvas.width)
-      if (y + imgH + 30 > pageH - margin) { pdf.addPage(); y = margin }
-      pdf.setFont('helvetica', 'bold'); pdf.setFontSize(11)
-      pdf.text('MAP — SATELLITE + FAA UASFM GRID OVERLAY', margin, y); y += 14
-      pdf.addImage(imgData, 'JPEG', margin, y, imgW, imgH)
-      y += imgH + 8
-      pdf.setFont('helvetica', 'italic'); pdf.setFontSize(8); pdf.setTextColor(110)
-      pdf.text('Red pin marks resolved target location. Colored grid cells show FAA LAANC altitude ceilings.', margin, y)
-      pdf.setTextColor(20)
-
-      // Footer on the last page
-      pdf.setFont('helvetica', 'italic'); pdf.setFontSize(8); pdf.setTextColor(120)
-      pdf.text('Source: FAA UAS Facility Map (UASFM) — services6.arcgis.com/ssFJjBXIUyZDrSYZ/...FAA_UAS_FacilityMap_Data', margin, pageH - 24)
-      pdf.text('Generated by DXD Deployment Tracker', margin, pageH - 12)
-
-      const safeName = (project.name || 'airspace').replace(/[^a-z0-9]+/gi, '-').toLowerCase()
-      const stamp = new Date().toISOString().slice(0, 10)
-      pdf.save(`airspace-${safeName}-${stamp}.pdf`)
-    } catch (e) {
-      setError(`PDF export failed: ${e instanceof Error ? e.message : String(e)}`)
-    } finally {
-      setExporting(false)
-    }
+    `
+    document.head.appendChild(style)
+    setTimeout(() => {
+      window.print()
+      setTimeout(() => { const s = document.getElementById('__print_airspace'); if (s) s.remove() }, 3000)
+    }, 300)
   }
 
   return (
-    <div style={{ marginBottom: 24 }}>
+    <div style={{ marginBottom: 24 }} data-airspace="1">
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
         <div style={{ width: 44, height: 44, background: 'linear-gradient(135deg, #3498db, #2471a3)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700, color: '#fff' }}>
@@ -486,7 +359,7 @@ export default function AirspaceIntel({ project, onCacheUpdate }: Props) {
       </div>
 
       {/* Search */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 12, background: 'rgba(30,30,34,0.8)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: 6 }}>
+      <div data-airspace-noprint="1" style={{ display: 'flex', gap: 8, marginBottom: 12, background: 'rgba(30,30,34,0.8)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: 6 }}>
         <input
           value={query}
           onChange={e => setQuery(e.target.value)}
@@ -648,17 +521,17 @@ export default function AirspaceIntel({ project, onCacheUpdate }: Props) {
                   {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
                 </div>
                 <button
-                  onClick={exportAirspacePDF}
-                  disabled={exporting}
-                  title="Export PDF report with map, customer info, and airspace analysis"
+                  data-airspace-noprint="1"
+                  onClick={handleExport}
+                  title="Print or save as PDF (browser print dialog)"
                   style={{
-                    background: exporting ? 'rgba(231,57,70,0.25)' : 'linear-gradient(135deg, #e63946, #c1121f)',
+                    background: 'linear-gradient(135deg, #e63946, #c1121f)',
                     border: 'none', borderRadius: 5, color: '#fff',
                     fontFamily: "'Chakra Petch', sans-serif", fontSize: 11, fontWeight: 600, letterSpacing: 1,
-                    padding: '7px 14px', cursor: exporting ? 'wait' : 'pointer', textTransform: 'uppercase',
+                    padding: '7px 14px', cursor: 'pointer', textTransform: 'uppercase',
                   }}
                 >
-                  {exporting ? 'EXPORTING…' : 'EXPORT PDF'}
+                  EXPORT / PRINT
                 </button>
               </div>
             </div>
