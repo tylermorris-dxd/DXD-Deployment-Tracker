@@ -44,9 +44,10 @@ function injectLeaflet(): Promise<void> {
 
 // ── Tile layers ───────────────────────────────────────────────────────────────
 
+const GOOGLE_HYBRID  = 'https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'  // satellite + labels, sub-meter in most US areas
+const GOOGLE_SAT     = 'https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'  // satellite only, no labels
+const GOOGLE_SUBS    = ['0', '1', '2', '3']
 const ESRI_STREET    = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}'
-const ESRI_SAT       = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
-const ESRI_LABELS    = 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}'
 const USGS_HILLSHADE = 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSShadedReliefOnly/MapServer/tile/{z}/{y}/{x}'
 const USGS_TOPO      = 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}'
 
@@ -366,7 +367,7 @@ export default function SiteMapper({ project, onCacheUpdate }: Props) {
   const drawClosedBoundary = useCallback((L: any, map: any, lls: any[], knownAcres: number | null) => {
     const lr = layersRef.current
     if (lr.boundaryPoly) map.removeLayer(lr.boundaryPoly)
-    const poly = L.polygon(lls, { color: TACT_WHITE, weight: 2.5, dashArray: '10 5', fillColor: TACT_WHITE, fillOpacity: 0.06, opacity: 0.92, interactive: false }).addTo(map)
+    const poly = L.polygon(lls, { color: TACT_RED, weight: 3, fillColor: TACT_RED, fillOpacity: 0.12, opacity: 1, interactive: false }).addTo(map)
     lr.boundaryPoly = poly
     const acres = knownAcres ?? polygonAreaM2(lls) / M2_PER_ACRE
     lr.boundaryAcres = acres
@@ -418,8 +419,7 @@ export default function SiteMapper({ project, onCacheUpdate }: Props) {
     const map = L.map(mapContainerRef.current, { center: [38.9, -77.0], zoom: 16, zoomControl: true })
     map.zoomControl.setPosition('topright')
     map.attributionControl.setPrefix('')
-    baseTileRef.current  = L.tileLayer(ESRI_SAT,    { maxZoom: 21, attribution: 'Esri' }).addTo(map)
-    labelTileRef.current = L.tileLayer(ESRI_LABELS, { maxZoom: 21, opacity: 0.6, attribution: '' }).addTo(map)
+    baseTileRef.current = L.tileLayer(GOOGLE_HYBRID, { maxZoom: 22, subdomains: GOOGLE_SUBS, attribution: 'Google' }).addTo(map)
     mapRef.current = map
     setStatus('Select a tool to begin')
     map.on('mousemove', (e: { latlng: { lat: number; lng: number } }) => setCoords({ lat: e.latlng.lat, lng: e.latlng.lng }))
@@ -474,15 +474,14 @@ export default function SiteMapper({ project, onCacheUpdate }: Props) {
     if (labelTileRef.current)     { map.removeLayer(labelTileRef.current);     labelTileRef.current     = null }
     if (hillshadeTileRef.current) { map.removeLayer(hillshadeTileRef.current); hillshadeTileRef.current = null }
     if (style === 'sat') {
-      baseTileRef.current  = L.tileLayer(ESRI_SAT,    { maxZoom: 21, attribution: 'Esri' }).addTo(map)
-      labelTileRef.current = L.tileLayer(ESRI_LABELS, { maxZoom: 21, opacity: 0.6, attribution: '' }).addTo(map)
+      baseTileRef.current = L.tileLayer(GOOGLE_HYBRID, { maxZoom: 22, subdomains: GOOGLE_SUBS, attribution: 'Google' }).addTo(map)
     } else if (style === 'street') {
       baseTileRef.current = L.tileLayer(ESRI_STREET, { maxZoom: 21, attribution: 'Esri' }).addTo(map)
     } else if (style === 'topo') {
       baseTileRef.current = L.tileLayer(USGS_TOPO, { maxZoom: 21, maxNativeZoom: 16, attribution: 'USGS National Map' }).addTo(map)
     } else if (style === 'earth') {
-      baseTileRef.current      = L.tileLayer(ESRI_SAT,      { maxZoom: 21, attribution: 'Esri' }).addTo(map)
-      hillshadeTileRef.current = L.tileLayer(USGS_HILLSHADE, { maxZoom: 21, maxNativeZoom: 13, opacity: 0.35, attribution: 'USGS' }).addTo(map)
+      baseTileRef.current      = L.tileLayer(GOOGLE_SAT,    { maxZoom: 22, subdomains: GOOGLE_SUBS, attribution: 'Google' }).addTo(map)
+      hillshadeTileRef.current = L.tileLayer(USGS_HILLSHADE, { maxZoom: 22, maxNativeZoom: 13, opacity: 0.35, attribution: 'USGS' }).addTo(map)
     }
     setMapStyle(style)
   }
@@ -674,7 +673,7 @@ export default function SiteMapper({ project, onCacheUpdate }: Props) {
         const vm = L.marker(e.latlng, { icon: makeVertexIcon(L), interactive: false }).addTo(map)
         lr.vertexMarkers.push(vm)
         if (lr.boundaryLine) map.removeLayer(lr.boundaryLine)
-        lr.boundaryLine = L.polyline(lr.boundaryPoints, { color: TACT_WHITE, weight: 2, dashArray: '8 4', opacity: 0.75 }).addTo(map)
+        lr.boundaryLine = L.polyline(lr.boundaryPoints, { color: TACT_RED, weight: 2.5, opacity: 0.9 }).addTo(map)
         const n = lr.boundaryPoints.length
         setStatus(n < 3 ? `BOUNDARY: ${n} point${n === 1 ? '' : 's'} — keep clicking to trace the edge` : `BOUNDARY: ${n} points — click CLOSE BOUNDARY when done`)
       }
@@ -865,9 +864,9 @@ export default function SiteMapper({ project, onCacheUpdate }: Props) {
             {areaAcres != null && (
               <div style={S.legendRow}>
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <polygon points="7,1 13,13 1,13" stroke={TACT_WHITE} strokeWidth="1.3" fill={TACT_WHITE} fillOpacity="0.12"/>
+                  <polygon points="7,1 13,13 1,13" stroke={TACT_RED} strokeWidth="1.5" fill={TACT_RED} fillOpacity="0.18"/>
                 </svg>
-                <span>BOUNDARY&nbsp;&nbsp;<span style={{ color: TACT_WHITE }}>{areaAcres.toFixed(2)} acres</span></span>
+                <span>BOUNDARY&nbsp;&nbsp;<span style={{ color: TACT_RED }}>{areaAcres.toFixed(2)} acres</span></span>
               </div>
             )}
             {lr.measurePins.length === 2 && (
