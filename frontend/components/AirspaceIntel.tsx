@@ -3,6 +3,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import type { ProjectFull } from '@/lib/types'
+import { geocodeAddressOrThrow } from '@/lib/geocode'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -53,73 +54,11 @@ const AIRSPACE_INFO: Record<string, { name: string; color: string; desc: string;
   B: { name: 'Class B', color: '#e74c3c', verdict: 'HIGHLY RESTRICTED',     desc: 'Most restrictive controlled airspace (major airports). LAANC or DroneZone authorization required.' },
 }
 
-// ── Geocode ───────────────────────────────────────────────────────────────────
-
-async function fetchWithTimeout(url: string, opts: RequestInit = {}, ms = 7000): Promise<Response> {
-  const ctrl = new AbortController()
-  const id = setTimeout(() => ctrl.abort(), ms)
-  try { return await fetch(url, { ...opts, signal: ctrl.signal }) }
-  finally { clearTimeout(id) }
-}
-
-// Census Bureau API doesn't support CORS — must use JSONP via <script> tag
-// to avoid browser blocking the response.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function censusGeocodeJSONP(address: string, timeoutMs = 9000): Promise<{ lat: number; lng: number; matchedAddress: string } | null> {
-  return new Promise((resolve) => {
-    if (typeof window === 'undefined') { resolve(null); return }
-    const cbName = `__census_cb_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
-    const url = `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(address)}&benchmark=Public_AR_Current&format=jsonp&callback=${cbName}`
-    const script = document.createElement('script')
-    const cleanup = () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      try { delete (window as any)[cbName] } catch { /* ignore */ }
-      if (script.parentNode) script.parentNode.removeChild(script)
-    }
-    const timer = setTimeout(() => { cleanup(); resolve(null) }, timeoutMs)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(window as any)[cbName] = (data: any) => {
-      clearTimeout(timer)
-      cleanup()
-      const m = data?.result?.addressMatches?.[0]
-      if (m && m.coordinates) {
-        resolve({ lat: m.coordinates.y, lng: m.coordinates.x, matchedAddress: m.matchedAddress })
-      } else {
-        resolve(null)
-      }
-    }
-    script.onerror = () => { clearTimeout(timer); cleanup(); resolve(null) }
-    script.src = url
-    document.head.appendChild(script)
-  })
-}
+// ── Geocode wrapper — uses shared lib/geocode and adapts to local Coords shape ─
 
 async function geocodeAddress(input: string): Promise<Coords> {
-  const q = input.trim()
-
-  // Direct coordinates: "32.7767, -96.7970" or "32.7767 -96.7970"
-  const coordMatch = q.match(/^(-?\d{1,3}\.?\d*)[,\s]+(-?\d{1,3}\.?\d*)$/)
-  if (coordMatch) {
-    const lat = parseFloat(coordMatch[1]), lng = parseFloat(coordMatch[2])
-    if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180)
-      return { lat, lng, display: `${lat.toFixed(6)}, ${lng.toFixed(6)}`, source: 'Direct' }
-  }
-
-  // 1) US Census Bureau — authoritative for US street addresses (uses JSONP, no CORS)
-  const census = await censusGeocodeJSONP(q)
-  if (census) return { lat: census.lat, lng: census.lng, display: census.matchedAddress, source: 'Census' }
-
-  // 2) Nominatim — for venue names, non-street-address queries, international
-  try {
-    const qs = new URLSearchParams({ format: 'json', limit: '1', q, addressdetails: '1', email: 'tyler.morris@deusxdefense.com' })
-    const r = await fetchWithTimeout(`https://nominatim.openstreetmap.org/search?${qs}`, { headers: { 'Accept-Language': 'en' } }, 8000)
-    const data = await r.json()
-    if (Array.isArray(data) && data.length > 0) {
-      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), display: data[0].display_name, source: 'Nominatim' }
-    }
-  } catch (_) { /* fall through */ }
-
-  throw new Error('Location not found — try a full street address with city + state, or paste coordinates as "lat, lng"')
+  const r = await geocodeAddressOrThrow(input)
+  return { lat: r.lat, lng: r.lng, display: r.displayName, source: r.source }
 }
 
 // ── Query FAA ─────────────────────────────────────────────────────────────────

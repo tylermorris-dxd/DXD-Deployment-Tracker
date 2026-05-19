@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback, useEffect } from 'react'
 import type { ProjectFull } from '@/lib/types'
+import { geocodeAddress } from '@/lib/geocode'
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -15,27 +16,6 @@ function calcDaylightHours(latDeg: number, monthIdx: number) {
   if (cosH <= -1) return 24
   if (cosH >= 1) return 0
   return Math.round((2 * Math.acos(cosH) * 180 / Math.PI / 15) * 10) / 10
-}
-
-async function geocodeAddressWx(address: string): Promise<{ lat: number; lng: number; displayName: string } | null> {
-  const GKEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY || ''
-  if (GKEY) {
-    try {
-      const r = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${GKEY}`)
-      const d = await r.json()
-      if (d.status === 'OK' && d.results.length > 0) {
-        const loc = d.results[0].geometry.location
-        return { lat: loc.lat, lng: loc.lng, displayName: d.results[0].formatted_address }
-      }
-    } catch (_) { /* fall through */ }
-  }
-  try {
-    const qs = new URLSearchParams({ format: 'json', limit: '1', q: address })
-    const r = await fetch(`https://nominatim.openstreetmap.org/search?${qs}`, { headers: { 'Accept-Language': 'en', 'User-Agent': 'DXD-Deployment-Tracker/1.0' } })
-    const res = await r.json()
-    if (res.length > 0) return { lat: parseFloat(res[0].lat), lng: parseFloat(res[0].lon), displayName: res[0].display_name }
-  } catch (_) { /* fall through */ }
-  return null
 }
 
 interface MonthData {
@@ -53,7 +33,7 @@ interface FlyData { flyable: number; marginal: number; nofly: number }
 
 async function fetchWeatherFromOpenMeteo(location: string, onStatus: (s: string) => void): Promise<WeatherData> {
   onStatus('Geocoding location...')
-  const geo = await geocodeAddressWx(location)
+  const geo = await geocodeAddress(location)
   if (!geo) throw new Error('Could not geocode location — check the site address')
   const { lat, lng } = geo
 

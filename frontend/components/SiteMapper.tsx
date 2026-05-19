@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import type { ProjectFull } from '@/lib/types'
+import { geocodeAddress as sharedGeocode } from '@/lib/geocode'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -49,83 +50,9 @@ const ESRI_LABELS    = 'https://server.arcgisonline.com/ArcGIS/rest/services/Ref
 const USGS_HILLSHADE = 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSShadedReliefOnly/MapServer/tile/{z}/{y}/{x}'
 const USGS_TOPO      = 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}'
 
-// ── Geocoding ─────────────────────────────────────────────────────────────────
+// ── Geocode wrapper ───────────────────────────────────────────────────────────
 
-async function fetchWithTimeout(url: string, opts: RequestInit = {}, ms = 7000): Promise<Response> {
-  const ctrl = new AbortController()
-  const id = setTimeout(() => ctrl.abort(), ms)
-  try { return await fetch(url, { ...opts, signal: ctrl.signal }) }
-  finally { clearTimeout(id) }
-}
-
-// Census Bureau API doesn't support CORS — must use JSONP via <script> tag
-function censusGeocodeJSONP(address: string, timeoutMs = 9000): Promise<{ lat: number; lng: number; matchedAddress: string } | null> {
-  return new Promise((resolve) => {
-    if (typeof window === 'undefined') { resolve(null); return }
-    const cbName = `__census_cb_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
-    const url = `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(address)}&benchmark=Public_AR_Current&format=jsonp&callback=${cbName}`
-    const script = document.createElement('script')
-    const cleanup = () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      try { delete (window as any)[cbName] } catch { /* ignore */ }
-      if (script.parentNode) script.parentNode.removeChild(script)
-    }
-    const timer = setTimeout(() => { cleanup(); resolve(null) }, timeoutMs)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(window as any)[cbName] = (data: any) => {
-      clearTimeout(timer)
-      cleanup()
-      const m = data?.result?.addressMatches?.[0]
-      if (m && m.coordinates) {
-        resolve({ lat: m.coordinates.y, lng: m.coordinates.x, matchedAddress: m.matchedAddress })
-      } else {
-        resolve(null)
-      }
-    }
-    script.onerror = () => { clearTimeout(timer); cleanup(); resolve(null) }
-    script.src = url
-    document.head.appendChild(script)
-  })
-}
-
-async function geocodeAddress(input: string): Promise<{ lat: number; lng: number; displayName: string } | null> {
-  const q = input.trim()
-
-  // Accept raw coordinates: "32.7767, -96.7970"
-  const coordMatch = q.match(/^(-?\d{1,3}\.?\d*)[,\s]+(-?\d{1,3}\.?\d*)$/)
-  if (coordMatch) {
-    const lat = parseFloat(coordMatch[1]), lng = parseFloat(coordMatch[2])
-    if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180)
-      return { lat, lng, displayName: `${lat.toFixed(6)}, ${lng.toFixed(6)}` }
-  }
-
-  const GKEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY || ''
-  if (GKEY) {
-    try {
-      const r = await fetchWithTimeout(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(q)}&key=${GKEY}`)
-      const d = await r.json()
-      if (d.status === 'OK' && d.results.length > 0) {
-        const loc = d.results[0].geometry.location
-        return { lat: loc.lat, lng: loc.lng, displayName: d.results[0].formatted_address }
-      }
-    } catch (_) { /* fall through */ }
-  }
-
-  // 1) Census Bureau — authoritative for US street addresses (uses JSONP, no CORS)
-  const census = await censusGeocodeJSONP(q)
-  if (census) return { lat: census.lat, lng: census.lng, displayName: census.matchedAddress }
-
-  // 2) Nominatim — venue names, non-street-address queries, international
-  try {
-    const qs = new URLSearchParams({ format: 'json', limit: '1', q, addressdetails: '1', email: 'tyler.morris@deusxdefense.com' })
-    const r = await fetchWithTimeout(`https://nominatim.openstreetmap.org/search?${qs}`, { headers: { 'Accept-Language': 'en' } }, 8000)
-    const res = await r.json()
-    if (Array.isArray(res) && res.length > 0) {
-      return { lat: parseFloat(res[0].lat), lng: parseFloat(res[0].lon), displayName: res[0].display_name as string }
-    }
-  } catch (_) { /* fall through */ }
-  return null
-}
+const geocodeAddress = sharedGeocode
 
 // ── Unit helpers ──────────────────────────────────────────────────────────────
 

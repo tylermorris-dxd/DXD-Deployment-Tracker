@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react'
 import type { ProjectFull } from '@/lib/types'
+import { geocodeAddress } from '@/lib/geocode'
 
 interface Props {
   project: ProjectFull
@@ -37,29 +38,6 @@ function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
-async function geocodeAddressConn(address: string): Promise<{ lat: number; lng: number; displayName: string } | null> {
-  const GKEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY || ''
-  if (GKEY) {
-    try {
-      const r = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${GKEY}`)
-      const d = await r.json()
-      if (d.status === 'OK' && d.results.length > 0) {
-        const loc = d.results[0].geometry.location
-        return { lat: loc.lat, lng: loc.lng, displayName: d.results[0].formatted_address }
-      }
-    } catch (_) { /* fall through */ }
-  }
-  const HDR = { 'Accept-Language': 'en', 'User-Agent': 'DXD-Deployment-Tracker/1.0' }
-  // Nominatim free-text fallback
-  try {
-    const qs = new URLSearchParams({ format: 'json', limit: '1', q: address })
-    const r = await fetch(`https://nominatim.openstreetmap.org/search?${qs}`, { headers: HDR })
-    const res = await r.json()
-    if (res.length > 0) return { lat: parseFloat(res[0].lat), lng: parseFloat(res[0].lon), displayName: res[0].display_name }
-  } catch (_) { /* fall through */ }
-  return null
-}
-
 interface PowerData {
   substationCount: number
   operators: string[]
@@ -92,7 +70,7 @@ async function fetchConnectivity(
   setLoadMsg: (msg: string) => void
 ): Promise<ConnResult> {
   setLoadMsg('Geocoding address...')
-  const geoResult = await geocodeAddressConn(address)
+  const geoResult = await geocodeAddress(address)
   if (!geoResult) throw new Error('Address not found — verify site address in project settings')
   const { lat, lng: lon, displayName: display_name } = geoResult
 
