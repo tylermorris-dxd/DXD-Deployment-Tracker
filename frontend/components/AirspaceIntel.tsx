@@ -34,17 +34,23 @@ interface GeoJSONData {
 
 const FAA_UASFM_URL = 'https://services6.arcgis.com/ssFJjBXIUyZDrSYZ/arcgis/rest/services/FAA_UAS_FacilityMap_Data/FeatureServer/0/query'
 
+// Colors match the official FAA UAS Facility Map renderer
+// (FeatureServer drawingInfo.uniqueValueInfos, field=CEILING).
+// Verified against the FAA web app at
+// https://faa.maps.arcgis.com/apps/webappviewer/index.html?id=9c2e4406710048e19806ebf6a06754ad
 const CEILING_COLORS: Record<number, { fill: string; label: string; verdict: string }> = {
-  0:   { fill: '#e74c3c', label: '0 ft — NO FLY',   verdict: 'NO-FLY'      },
-  50:  { fill: '#e67e22', label: '50 ft AGL',         verdict: 'RESTRICTED'  },
-  100: { fill: '#f39c12', label: '100 ft AGL',        verdict: 'RESTRICTED'  },
-  150: { fill: '#f1c40f', label: '150 ft AGL',        verdict: 'LIMITED'     },
-  200: { fill: '#2ecc71', label: '200 ft AGL',        verdict: 'AUTHORIZED'  },
-  250: { fill: '#27ae60', label: '250 ft AGL',        verdict: 'AUTHORIZED'  },
-  300: { fill: '#1abc9c', label: '300 ft AGL',        verdict: 'AUTHORIZED'  },
-  350: { fill: '#17a2b8', label: '350 ft AGL',        verdict: 'AUTHORIZED'  },
-  400: { fill: '#3498db', label: '400 ft AGL',        verdict: 'FULL ACCESS' },
+  0:   { fill: '#B53535', label: '0 ft — NO FLY',  verdict: 'NO-FLY'      },
+  50:  { fill: '#BCFCB6', label: '50 ft AGL',      verdict: 'RESTRICTED'  },
+  100: { fill: '#E69800', label: '100 ft AGL',     verdict: 'RESTRICTED'  },
+  150: { fill: '#FCCFB8', label: '150 ft AGL',     verdict: 'LIMITED'     },
+  200: { fill: '#FFFFBE', label: '200 ft AGL',     verdict: 'AUTHORIZED'  },
+  250: { fill: '#D4D9A1', label: '250 ft AGL',     verdict: 'AUTHORIZED'  },
+  300: { fill: '#A7C7B3', label: '300 ft AGL',     verdict: 'AUTHORIZED'  },
+  350: { fill: '#BDD8FC', label: '350 ft AGL',     verdict: 'AUTHORIZED'  },
+  400: { fill: '#65A843', label: '400 ft AGL',     verdict: 'FULL ACCESS' },
 }
+// FAA's default symbol fill for any CEILING value outside the table.
+const CEILING_DEFAULT_FILL = '#828282'
 
 const AIRSPACE_INFO: Record<string, { name: string; color: string; desc: string; verdict: string }> = {
   G: { name: 'Class G', color: '#2ecc71', verdict: 'GOOD TO GO',           desc: 'Uncontrolled airspace. No ATC authorization required for Part 107 under 400ft AGL.' },
@@ -233,13 +239,16 @@ function MapViewInner({ center, zoom, flyTo, gridData, markerPos, markerLat, mar
     gridRef.current = L.geoJSON(gridData, {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       style: (feature: any) => {
-        const info = CEILING_COLORS[feature?.properties?.CEILING as number] || CEILING_COLORS[0]
-        return { color: info.fill, weight: 1.5, opacity: 0.9, fillColor: info.fill, fillOpacity: 0.3 }
+        const c = feature?.properties?.CEILING as number
+        const fill = CEILING_COLORS[c]?.fill || CEILING_DEFAULT_FILL
+        // Mirror the FAA renderer: solid fill at ~50% opacity so satellite
+        // imagery shows through, thin same-color borders.
+        return { color: fill, weight: 0.6, opacity: 0.9, fillColor: fill, fillOpacity: 0.55 }
       },
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       onEachFeature: (feature: any, layer: any) => {
         const p = feature.properties
-        const info = CEILING_COLORS[p.CEILING as number] || { label: `${p.CEILING} ft`, verdict: 'UNKNOWN', fill: '#aaa' }
+        const info = CEILING_COLORS[p.CEILING as number] || { label: `${p.CEILING} ft`, verdict: 'UNKNOWN', fill: CEILING_DEFAULT_FILL }
         const apts = ([1, 2] as const).flatMap(n =>
           p[`APT${n}_NAME`]
             ? [`${p[`APT${n}_NAME`]} (${p[`APT${n}_ICAO`] || p[`APT${n}_FAAID`]})${p[`APT${n}_LAANC`] ? ' ✓ LAANC' : ''}`]
