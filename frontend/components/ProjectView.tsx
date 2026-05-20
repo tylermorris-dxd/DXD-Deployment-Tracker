@@ -148,6 +148,14 @@ export default function ProjectView({ projectId, onBack }: Props) {
     } catch (_) { /* non-fatal */ }
   }, [projectId, invalidate])
 
+  const updatePricingCache = useCallback(async (data: unknown) => {
+    try {
+      await api.projects.update(projectId, { pricingCache: data ? JSON.stringify(data) : null })
+      // No invalidate — pricing tool owns its own state during the session;
+      // re-fetching the project would cause its inputs to reset on every keystroke.
+    } catch (_) { /* non-fatal */ }
+  }, [projectId])
+
   const updateWeatherCache = useCallback(async (data: unknown) => {
     try {
       await api.projects.update(projectId, { weatherCache: data ? JSON.stringify(data) : null })
@@ -484,7 +492,7 @@ export default function ProjectView({ projectId, onBack }: Props) {
         {viewMode === 'kanban' && <KanbanView project={project} />}
 
         {/* PRICING view */}
-        {viewMode === 'pricing' && <PricingView project={project} />}
+        {viewMode === 'pricing' && <PricingView project={project} onCacheUpdate={updatePricingCache} />}
 
         {/* WEATHER view */}
         {viewMode === 'wx' && <WeatherIntel project={project} onCacheUpdate={updateWeatherCache} />}

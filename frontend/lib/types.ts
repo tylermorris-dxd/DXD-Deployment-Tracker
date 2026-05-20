@@ -22,6 +22,7 @@ export interface ProjectFull {
   airspaceCache: string | null
   networkCache: string | null
   weatherCache: string | null
+  pricingCache: string | null
   phases: Phase[]
   branchAnswers: Record<string, boolean>
   hubspotDealId?: string
@@ -182,6 +183,7 @@ export interface UpdateProject {
   airspaceCache?: string | null
   networkCache?: string | null
   weatherCache?: string | null
+  pricingCache?: string | null
   faaAuthorizationRequired?: boolean
 }
 

@@ -151,7 +151,7 @@ async fn get_project(
     Path(project_id): Path<String>,
 ) -> Result<Json<ProjectFull>, AppError> {
     let proj = sqlx::query!(
-        "SELECT id, name, client, site, created_at, map_cache, airspace_cache, network_cache, weather_cache, hubspot_deal_id, branch_answers, faa_authorization_required, faa_auth_started_at FROM projects WHERE id = $1",
+        "SELECT id, name, client, site, created_at, map_cache, airspace_cache, network_cache, weather_cache, pricing_cache, hubspot_deal_id, branch_answers, faa_authorization_required, faa_auth_started_at FROM projects WHERE id = $1",
         project_id
     )
     .fetch_optional(&state.pool)
@@ -318,6 +318,7 @@ async fn get_project(
         airspace_cache: proj.airspace_cache,
         network_cache: proj.network_cache,
         weather_cache: proj.weather_cache,
+        pricing_cache: proj.pricing_cache,
         hubspot_deal_id: proj.hubspot_deal_id,
         branch_answers: serde_json::from_str(&proj.branch_answers)
             .unwrap_or_else(|_| serde_json::json!({})),
@@ -368,6 +369,12 @@ async fn update_project(
     if let Some(v) = &body.weather_cache {
         let s = v.as_str().map(|s| s.to_string());
         sqlx::query!("UPDATE projects SET weather_cache = $1 WHERE id = $2", s, project_id)
+            .execute(&state.pool)
+            .await?;
+    }
+    if let Some(v) = &body.pricing_cache {
+        let s = v.as_str().map(|s| s.to_string());
+        sqlx::query!("UPDATE projects SET pricing_cache = $1 WHERE id = $2", s, project_id)
             .execute(&state.pool)
             .await?;
     }

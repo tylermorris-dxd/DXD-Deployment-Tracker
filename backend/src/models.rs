@@ -20,6 +20,7 @@ pub struct UpdateProject {
     pub airspace_cache: Option<serde_json::Value>,
     pub network_cache: Option<serde_json::Value>,
     pub weather_cache: Option<serde_json::Value>,
+    pub pricing_cache: Option<serde_json::Value>,
     pub faa_authorization_required: Option<bool>,
 }
 
@@ -134,6 +135,7 @@ pub struct ProjectFull {
     pub airspace_cache: Option<String>,
     pub network_cache: Option<String>,
     pub weather_cache: Option<String>,
+    pub pricing_cache: Option<String>,
     pub phases: Vec<PhaseFull>,
     pub branch_answers: serde_json::Value,
     pub hubspot_deal_id: Option<String>,

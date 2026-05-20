@@ -1,12 +1,17 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import type { ProjectFull } from '@/lib/types'
 
-// ─── Per-project pricing persistence (localStorage) ──────────────────────
-// Persists across sessions on the same browser so users don't lose their
-// inputs when navigating away or logging back in. Keyed by project id so
-// each deal gets its own pricing state.
+// ─── Per-project pricing persistence ─────────────────────────────────────
+// Two-tier persistence:
+//   1. Backend (project.pricingCache via onCacheUpdate)  — source of truth,
+//      syncs across devices/browsers. Debounced to avoid flooding the API
+//      while the user types.
+//   2. localStorage — instant writeback on every change so input survives
+//      a page refresh before the debounced backend write has flushed.
+// On load, backend wins; localStorage is only consulted if pricingCache
+// is empty.
 
 interface PricingState {
   quantities: number[]
@@ -35,6 +40,11 @@ function savePricingState(projectId: string, state: PricingState) {
   try {
     localStorage.setItem(storageKey(projectId), JSON.stringify(state))
   } catch { /* quota exceeded — ignore */ }
+}
+
+function parseBackendCache(pricingCache: string | null): Partial<PricingState> | null {
+  if (!pricingCache) return null
+  try { return JSON.parse(pricingCache) } catch { return null }
 }
 
 // ─── PRICING CATALOG ──────────────────────────────────────────────────────
@@ -74,6 +84,7 @@ const PRICING_CATALOG = [
 
 interface Props {
   project: ProjectFull
+  onCacheUpdate?: (data: unknown) => void
 }
 
 function generateQuotePDF(opts: {
@@ -181,8 +192,12 @@ function generateQuotePDF(opts: {
   win.document.open(); win.document.write(html); win.document.close()
 }
 
-export default function PricingView({ project }: Props) {
+export default function PricingView({ project, onCacheUpdate }: Props) {
+  // Prefer the backend cache; fall back to localStorage if backend hasn't
+  // received any data yet (e.g. first time this deal opens this feature).
   const cached = (() => {
+    const backend = parseBackendCache(project.pricingCache)
+    if (backend) return backend
     if (typeof window === 'undefined') return null
     return loadPricingState(project.id)
   })()
@@ -208,13 +223,23 @@ export default function PricingView({ project }: Props) {
   const [manualPrices, setManualPrices] = useState<Record<number, string>>(cached?.manualPrices || {})
   const [paymentMode, setPaymentMode] = useState(cached?.paymentMode || 'upfront')
 
-  // Persist on every change so the next session restores everything.
+  // Persist immediately to localStorage (fast, survives refresh) AND
+  // debounce-save to backend (cross-device, source of truth).
+  const backendSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
-    savePricingState(project.id, {
+    const state: PricingState = {
       quantities, contactName, contactPhone, contactEmail,
       margin, customItems, manualPrices, paymentMode, collapsedCats,
-    })
-  }, [project.id, quantities, contactName, contactPhone, contactEmail, margin, customItems, manualPrices, paymentMode, collapsedCats])
+    }
+    savePricingState(project.id, state)
+    if (onCacheUpdate) {
+      if (backendSaveTimer.current) clearTimeout(backendSaveTimer.current)
+      backendSaveTimer.current = setTimeout(() => { onCacheUpdate(state) }, 800)
+    }
+    return () => {
+      if (backendSaveTimer.current) { clearTimeout(backendSaveTimer.current); backendSaveTimer.current = null }
+    }
+  }, [project.id, quantities, contactName, contactPhone, contactEmail, margin, customItems, manualPrices, paymentMode, collapsedCats, onCacheUpdate])
 
   const mult = 1 + margin / 100
   const custPrice = (cost: number) => Math.round(cost * mult * 100) / 100
