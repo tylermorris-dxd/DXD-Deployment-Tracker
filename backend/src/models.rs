@@ -86,6 +86,39 @@ pub struct CreateTeamMember {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct CreatePricingItem {
+    pub name: String,
+    pub cost: Option<f64>,
+    pub category: String,
+    pub manual_price: Option<bool>,
+    pub sort_order: Option<i32>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdatePricingItem {
+    pub name: Option<String>,
+    pub cost: Option<f64>,
+    pub category: Option<String>,
+    pub manual_price: Option<bool>,
+    pub sort_order: Option<i32>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PricingCatalogItem {
+    pub id: String,
+    pub name: String,
+    pub cost: f64,
+    pub category: String,
+    pub manual_price: bool,
+    pub sort_order: i32,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateAdminTask {
     pub title: String,
     pub description: Option<String>,

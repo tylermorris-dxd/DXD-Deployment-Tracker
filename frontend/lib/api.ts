@@ -4,6 +4,7 @@ import type {
   CreateProject, UpdateProject, UpdatePhase, UpdateTask, UpdateSubtask, UpdateContact,
   EquipmentItem, CreateEquipment, UpdateEquipment, EquipmentSection,
   HubSpotDeal, HubSpotActiveDeal, HubSpotStatus, HubSpotOwner,
+  PricingCatalogItem, CreatePricingItem, UpdatePricingItem,
 } from './types'
 
 class ApiError extends Error {
@@ -27,6 +28,16 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   me: () => apiFetch<{ principal: string }>('/me'),
+
+  pricingCatalog: {
+    list: () => apiFetch<PricingCatalogItem[]>('/pricing-catalog'),
+    create: (body: CreatePricingItem) =>
+      apiFetch<PricingCatalogItem>('/pricing-catalog', { method: 'POST', body: JSON.stringify(body) }),
+    update: (id: string, body: UpdatePricingItem) =>
+      apiFetch<void>(`/pricing-catalog/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+    delete: (id: string) =>
+      apiFetch<void>(`/pricing-catalog/${id}`, { method: 'DELETE' }),
+  },
 
   projects: {
     list: () => apiFetch<ProjectSummary[]>('/projects'),

@@ -1,7 +1,9 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
-import type { ProjectFull } from '@/lib/types'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import type { ProjectFull, PricingCatalogItem } from '@/lib/types'
+import { api } from '@/lib/api'
 
 // ─── Per-project pricing persistence ─────────────────────────────────────
 // Two-tier persistence:
@@ -47,8 +49,10 @@ function parseBackendCache(pricingCache: string | null): Partial<PricingState> |
   try { return JSON.parse(pricingCache) } catch { return null }
 }
 
-// ─── PRICING CATALOG ──────────────────────────────────────────────────────
-const PRICING_CATALOG = [
+// ─── FALLBACK PRICING CATALOG ─────────────────────────────────────────────
+// Used only when the live catalog from /api/pricing-catalog hasn't loaded
+// yet. Admins can edit prices and add items via the EDIT CATALOG button.
+const FALLBACK_CATALOG = [
   { name: 'DJI Matrice 4D with RC Plus 2', cost: 6798.80, category: 'DJI Dock 3' },
   { name: 'DJI Matrice 4TD with RC Plus 2', cost: 8469.75, category: 'DJI Dock 3' },
   { name: 'DJI Dock 3', cost: 11684.00, category: 'DJI Dock 3' },
@@ -88,12 +92,14 @@ interface Props {
 }
 
 function generateQuotePDF(opts: {
-  project: ProjectFull; quantities: number[]; margin: number
+  project: ProjectFull
+  catalog: Array<{ name: string; cost: number; category: string; manualPrice?: boolean }>
+  quantities: number[]; margin: number
   customItems: Array<{ id: number; name: string; cost: number; qty: number }>
   manualPrices: Record<number, string>; paymentMode: string
   contactName: string; contactPhone: string; contactEmail: string
 }) {
-  const { project, quantities, margin, customItems, manualPrices, paymentMode, contactName, contactPhone, contactEmail } = opts
+  const { project, catalog, quantities, margin, customItems, manualPrices, paymentMode, contactName, contactPhone, contactEmail } = opts
   const win = window.open('', '_blank')
   if (!win) { alert('Pop-up blocked — please allow pop-ups and try again.'); return }
   const mult = 1 + margin / 100
@@ -105,8 +111,8 @@ function generateQuotePDF(opts: {
   const exp = new Date(today); exp.setDate(exp.getDate() + 30)
   const quoteNum = `DXD-${today.getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`
 
-  const cats: Record<string, Array<typeof PRICING_CATALOG[0] & { qty: number; _idx: number }>> = {}
-  PRICING_CATALOG.forEach((item, idx) => {
+  const cats: Record<string, Array<typeof catalog[0] & { qty: number; _idx: number }>> = {}
+  catalog.forEach((item, idx) => {
     const qty = quantities[idx] || 0
     if (!qty) return
     if (!cats[item.category]) cats[item.category] = []
@@ -215,6 +221,21 @@ function generateQuotePDF(opts: {
 }
 
 export default function PricingView({ project, onCacheUpdate }: Props) {
+  const qc = useQueryClient()
+
+  // Live catalog from the backend (admins can edit costs / add items).
+  // Falls back to the hard-coded FALLBACK_CATALOG until the API responds,
+  // so the UI never flashes empty.
+  const catalogQuery = useQuery({
+    queryKey: ['pricing-catalog'],
+    queryFn: () => api.pricingCatalog.list(),
+    staleTime: 60_000,
+  })
+  const dynamicCatalog: Array<{ id?: string; name: string; cost: number; category: string; manualPrice?: boolean }> =
+    catalogQuery.data && catalogQuery.data.length > 0
+      ? catalogQuery.data.map(i => ({ id: i.id, name: i.name, cost: i.cost, category: i.category, manualPrice: i.manualPrice }))
+      : FALLBACK_CATALOG
+
   // Prefer the backend cache; fall back to localStorage if backend hasn't
   // received any data yet (e.g. first time this deal opens this feature).
   const cached = (() => {
@@ -225,10 +246,10 @@ export default function PricingView({ project, onCacheUpdate }: Props) {
   })()
 
   // Cached quantities are mapped by catalog index. Pad/trim to current
-  // catalog length so the array stays in sync if the catalog grows later.
+  // catalog length so the array stays in sync as items are added.
   const cachedQuantities = Array.isArray(cached?.quantities)
-    ? PRICING_CATALOG.map((_, i) => Number(cached!.quantities![i]) || 0)
-    : PRICING_CATALOG.map(() => 0)
+    ? dynamicCatalog.map((_, i) => Number(cached!.quantities![i]) || 0)
+    : dynamicCatalog.map(() => 0)
 
   const [quantities, setQuantities] = useState<number[]>(cachedQuantities)
   const [contactName, setContactName] = useState(cached?.contactName || '')
@@ -244,6 +265,7 @@ export default function PricingView({ project, onCacheUpdate }: Props) {
   const [newCost, setNewCost] = useState('')
   const [manualPrices, setManualPrices] = useState<Record<number, string>>(cached?.manualPrices || {})
   const [paymentMode, setPaymentMode] = useState(cached?.paymentMode || 'upfront')
+  const [showCatalogEditor, setShowCatalogEditor] = useState(false)
 
   // Persist immediately to localStorage (fast, survives refresh) AND
   // debounce-save to backend (cross-device, source of truth).
@@ -283,16 +305,16 @@ export default function PricingView({ project, onCacheUpdate }: Props) {
     const v = Math.max(0, parseInt(String(val)) || 0)
     setCustomItems(prev => prev.map(i => i.id === id ? { ...i, qty: v } : i))
   }
-  const clearAll = () => { setQuantities(PRICING_CATALOG.map(() => 0)); setCustomItems([]); setManualPrices({}) }
+  const clearAll = () => { setQuantities(dynamicCatalog.map(() => 0)); setCustomItems([]); setManualPrices({}) }
   const toggleCat = (cat: string) => setCollapsedCats(prev => ({ ...prev, [cat]: !prev[cat] }))
 
-  const categories: Record<string, Array<typeof PRICING_CATALOG[0] & { idx: number }>> = {}
-  PRICING_CATALOG.forEach((item, idx) => {
+  const categories: Record<string, Array<typeof dynamicCatalog[0] & { idx: number }>> = {}
+  dynamicCatalog.forEach((item, idx) => {
     if (!categories[item.category]) categories[item.category] = []
     categories[item.category].push({ ...item, idx })
   })
 
-  const catalogTotal = PRICING_CATALOG.reduce((sum, item, idx) => {
+  const catalogTotal = dynamicCatalog.reduce((sum, item, idx) => {
     const qty = quantities[idx] || 0
     const cpBase = item.manualPrice ? (parseFloat(manualPrices[idx] || '0') || 0) : custPrice(item.cost)
     return sum + displayPrice(cpBase) * qty
@@ -300,7 +322,7 @@ export default function PricingView({ project, onCacheUpdate }: Props) {
   const customTotal = customItems.reduce((sum, i) => sum + displayPrice(custPrice(i.cost)) * i.qty, 0)
   const grandTotal = catalogTotal + customTotal
   // Full (non-amortized) totals — used to show "X total" alongside monthly
-  const catalogTotalFull = PRICING_CATALOG.reduce((sum, item, idx) => {
+  const catalogTotalFull = dynamicCatalog.reduce((sum, item, idx) => {
     const qty = quantities[idx] || 0
     const cpBase = item.manualPrice ? (parseFloat(manualPrices[idx] || '0') || 0) : custPrice(item.cost)
     return sum + cpBase * qty
@@ -308,7 +330,7 @@ export default function PricingView({ project, onCacheUpdate }: Props) {
   const customTotalFull = customItems.reduce((sum, i) => sum + custPrice(i.cost) * i.qty, 0)
   const grandTotalFull = catalogTotalFull + customTotalFull
   const totalItems = quantities.reduce((s, q) => s + q, 0) + customItems.reduce((s, i) => s + i.qty, 0)
-  const hasTBD = PRICING_CATALOG.some((item, idx) => quantities[idx] > 0 && !item.cost)
+  const hasTBD = dynamicCatalog.some((item, idx) => quantities[idx] > 0 && !item.cost)
   const fmt2 = (n: number) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
   const fieldSt: React.CSSProperties = {
@@ -317,10 +339,23 @@ export default function PricingView({ project, onCacheUpdate }: Props) {
     fontSize: 12, padding: '8px 12px', outline: 'none', width: '100%', boxSizing: 'border-box',
   }
 
+  // Keep quantities array in sync with catalog length — pads with zeros
+  // when the live catalog has more items than the cached array.
+  useEffect(() => {
+    if (quantities.length < dynamicCatalog.length) {
+      setQuantities(prev => {
+        const next = [...prev]
+        while (next.length < dynamicCatalog.length) next.push(0)
+        return next
+      })
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dynamicCatalog.length])
+
   const handleGeneratePDF = () => {
     setGenerating(true)
     try {
-      generateQuotePDF({ project, quantities, margin, customItems, manualPrices, paymentMode, contactName, contactPhone, contactEmail })
+      generateQuotePDF({ project, catalog: dynamicCatalog, quantities, margin, customItems, manualPrices, paymentMode, contactName, contactPhone, contactEmail })
     } finally {
       setTimeout(() => setGenerating(false), 500)
     }
@@ -399,7 +434,13 @@ export default function PricingView({ project, onCacheUpdate }: Props) {
           </div>
         </div>
       </div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 12 }}>
+        <button
+          onClick={() => setShowCatalogEditor(true)}
+          style={{ background: 'rgba(229,57,53,0.10)', border: '1px solid rgba(229,57,53,0.4)', borderRadius: 5, color: '#E53935', fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, fontWeight: 700, letterSpacing: 1, padding: '5px 12px', cursor: 'pointer', textTransform: 'uppercase' as const }}
+        >
+          Edit Catalog
+        </button>
         <button onClick={clearAll} style={{ background: 'none', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 5, color: 'rgba(255,255,255,0.4)', fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, padding: '5px 12px', cursor: 'pointer' }}>
           Clear All
         </button>
@@ -550,6 +591,224 @@ export default function PricingView({ project, onCacheUpdate }: Props) {
             + ADD ITEM
           </button>
         </div>
+      </div>
+
+      {showCatalogEditor && (
+        <CatalogEditor
+          catalog={catalogQuery.data || []}
+          onClose={() => setShowCatalogEditor(false)}
+          onChange={() => qc.invalidateQueries({ queryKey: ['pricing-catalog'] })}
+        />
+      )}
+    </div>
+  )
+}
+
+// ─── Catalog editor modal ────────────────────────────────────────────────
+// Admin UI for editing the master pricing catalog. Edits cost, name,
+// category, and the manual-price flag. Supports bulk percentage adjust,
+// add new items, and delete.
+
+function CatalogEditor({
+  catalog,
+  onClose,
+  onChange,
+}: {
+  catalog: PricingCatalogItem[]
+  onClose: () => void
+  onChange: () => void
+}) {
+  const [pctAdjust, setPctAdjust] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [newItem, setNewItem] = useState({ name: '', cost: '', category: '', manualPrice: false })
+
+  const update = useMutation({
+    mutationFn: ({ id, body }: { id: string; body: { name?: string; cost?: number; category?: string; manualPrice?: boolean } }) =>
+      api.pricingCatalog.update(id, body),
+    onSuccess: onChange,
+  })
+  const create = useMutation({
+    mutationFn: () => api.pricingCatalog.create({
+      name: newItem.name.trim(),
+      cost: parseFloat(newItem.cost) || 0,
+      category: newItem.category.trim(),
+      manualPrice: newItem.manualPrice,
+    }),
+    onSuccess: () => { onChange(); setNewItem({ name: '', cost: '', category: '', manualPrice: false }) },
+  })
+  const del = useMutation({
+    mutationFn: (id: string) => api.pricingCatalog.delete(id),
+    onSuccess: onChange,
+  })
+
+  // Apply a percentage change to every catalog cost. Sequential PATCHes —
+  // not super fast but avoids needing a bulk endpoint.
+  const applyBulkAdjust = async () => {
+    const pct = parseFloat(pctAdjust)
+    if (isNaN(pct) || pct === 0) return
+    if (!confirm(`Apply ${pct > 0 ? '+' : ''}${pct}% to all ${catalog.length} costs? This cannot be undone.`)) return
+    setBusy(true)
+    try {
+      const mult = 1 + pct / 100
+      for (const item of catalog) {
+        const newCost = Math.round(item.cost * mult * 100) / 100
+        await api.pricingCatalog.update(item.id, { cost: newCost })
+      }
+      onChange()
+      setPctAdjust('')
+    } finally { setBusy(false) }
+  }
+
+  const fmt2 = (n: number) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+  // Group by category for cleaner editing.
+  const grouped: Record<string, PricingCatalogItem[]> = {}
+  catalog.forEach(i => { (grouped[i.category] ||= []).push(i) })
+
+  const inputSt: React.CSSProperties = {
+    background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)',
+    borderRadius: 4, color: '#E8ECF4', fontFamily: "'IBM Plex Mono',monospace",
+    fontSize: 12, padding: '6px 10px', outline: 'none', boxSizing: 'border-box',
+  }
+
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, backdropFilter: 'blur(4px)' }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{ background: '#12131a', border: '1px solid rgba(229,57,53,0.4)', borderRadius: 10, width: '100%', maxWidth: 1100, maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,0.8)' }}
+      >
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          <div>
+            <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontSize: 16, fontWeight: 700, color: '#fff', letterSpacing: 1 }}>MASTER PRICING CATALOG</div>
+            <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>
+              {catalog.length} items · changes affect every deal&apos;s quote going forward
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 5, color: '#fff', padding: '6px 14px', fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, cursor: 'pointer', letterSpacing: 1 }}>
+            CLOSE
+          </button>
+        </div>
+
+        {/* Bulk adjust + add new */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: 16, padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(229,57,53,0.04)' }}>
+          {/* Bulk percentage */}
+          <div>
+            <label style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, color: 'rgba(255,255,255,0.4)', letterSpacing: 1.5, textTransform: 'uppercase' as const, display: 'block', marginBottom: 6 }}>Bulk % Adjust All Costs</label>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <input
+                style={{ ...inputSt, flex: 1 }} type="number" step="0.1" placeholder="e.g. 5 or -3.5"
+                value={pctAdjust} onChange={e => setPctAdjust(e.target.value)}
+              />
+              <button
+                onClick={applyBulkAdjust}
+                disabled={busy || !pctAdjust || isNaN(parseFloat(pctAdjust)) || parseFloat(pctAdjust) === 0}
+                style={{ padding: '6px 16px', background: '#E53935', border: 'none', borderRadius: 4, color: '#fff', fontFamily: "'Chakra Petch',sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: 1, cursor: 'pointer', opacity: busy ? 0.5 : 1 }}
+              >
+                {busy ? 'APPLYING…' : 'APPLY'}
+              </button>
+            </div>
+            <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, color: 'rgba(255,255,255,0.3)', marginTop: 4 }}>Positive = increase, negative = decrease. Confirms before applying.</div>
+          </div>
+
+          {/* Add new item */}
+          <div>
+            <label style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, color: 'rgba(255,255,255,0.4)', letterSpacing: 1.5, textTransform: 'uppercase' as const, display: 'block', marginBottom: 6 }}>Add New Item</label>
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 6 }}>
+              <input style={inputSt} placeholder="Item name" value={newItem.name} onChange={e => setNewItem(s => ({ ...s, name: e.target.value }))} />
+              <input style={inputSt} placeholder="Cost" type="number" min="0" step="0.01" value={newItem.cost} onChange={e => setNewItem(s => ({ ...s, cost: e.target.value }))} />
+              <input style={inputSt} placeholder="Category" value={newItem.category} onChange={e => setNewItem(s => ({ ...s, category: e.target.value }))} />
+              <button
+                onClick={() => create.mutate()}
+                disabled={!newItem.name.trim() || !newItem.category.trim() || create.isPending}
+                style={{ padding: '6px 14px', background: 'linear-gradient(135deg,#E53935,#C62828)', border: 'none', borderRadius: 4, color: '#fff', fontFamily: "'Chakra Petch',sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: 1, cursor: 'pointer', opacity: (!newItem.name.trim() || !newItem.category.trim()) ? 0.5 : 1, whiteSpace: 'nowrap' }}
+              >
+                + ADD
+              </button>
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: 'rgba(255,255,255,0.5)', cursor: 'pointer' }}>
+              <input type="checkbox" checked={newItem.manualPrice} onChange={e => setNewItem(s => ({ ...s, manualPrice: e.target.checked }))} />
+              Manual price (quote-time pricing — like installation services)
+            </label>
+          </div>
+        </div>
+
+        {/* Item list */}
+        <div style={{ overflowY: 'auto', padding: '12px 24px' }}>
+          {Object.entries(grouped).map(([cat, items]) => (
+            <div key={cat} style={{ marginBottom: 18 }}>
+              <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: '#E53935', padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.06)', textTransform: 'uppercase' as const }}>
+                {cat}
+              </div>
+              {items.map(item => (
+                <CatalogEditorRow key={item.id} item={item} fmt2={fmt2} inputSt={inputSt}
+                  onUpdate={body => update.mutate({ id: item.id, body })}
+                  onDelete={() => { if (confirm(`Delete "${item.name}"?`)) del.mutate(item.id) }}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function CatalogEditorRow({
+  item, fmt2, inputSt, onUpdate, onDelete,
+}: {
+  item: PricingCatalogItem
+  fmt2: (n: number) => string
+  inputSt: React.CSSProperties
+  onUpdate: (body: { name?: string; cost?: number; category?: string; manualPrice?: boolean }) => void
+  onDelete: () => void
+}) {
+  const [name, setName] = useState(item.name)
+  const [cost, setCost] = useState(String(item.cost))
+  const [category, setCategory] = useState(item.category)
+  const [manualPrice, setManualPrice] = useState(item.manualPrice)
+
+  // Reset local state whenever the upstream item identity/values change
+  // (e.g., after a bulk-percentage adjust refreshes the list).
+  useEffect(() => {
+    setName(item.name); setCost(String(item.cost))
+    setCategory(item.category); setManualPrice(item.manualPrice)
+  }, [item.id, item.name, item.cost, item.category, item.manualPrice])
+
+  const costNum = parseFloat(cost) || 0
+  const dirty = name !== item.name || costNum !== item.cost || category !== item.category || manualPrice !== item.manualPrice
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 130px 1fr 60px 90px', gap: 8, padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.03)', alignItems: 'center' }}>
+      <input style={inputSt} value={name} onChange={e => setName(e.target.value)} />
+      <div style={{ position: 'relative' }}>
+        <span style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, color: 'rgba(255,255,255,0.4)', pointerEvents: 'none' }}>$</span>
+        <input style={{ ...inputSt, paddingLeft: 18 }} type="number" min="0" step="0.01" value={cost} onChange={e => setCost(e.target.value)} />
+      </div>
+      <input style={inputSt} value={category} onChange={e => setCategory(e.target.value)} />
+      <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, color: 'rgba(255,255,255,0.5)', cursor: 'pointer' }} title="Manual price (quote-time)">
+        <input type="checkbox" checked={manualPrice} onChange={e => setManualPrice(e.target.checked)} />
+        Man
+      </label>
+      <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+        <button
+          onClick={() => onUpdate({ name, cost: costNum, category, manualPrice })}
+          disabled={!dirty || !name.trim() || !category.trim()}
+          title={dirty ? 'Save changes' : `$${fmt2(item.cost)}`}
+          style={{ padding: '4px 8px', background: dirty ? '#E53935' : 'rgba(255,255,255,0.05)', border: 'none', borderRadius: 3, color: dirty ? '#fff' : 'rgba(255,255,255,0.3)', fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, fontWeight: 700, cursor: dirty ? 'pointer' : 'default' }}
+        >
+          SAVE
+        </button>
+        <button
+          onClick={onDelete}
+          title="Delete this item"
+          style={{ padding: '4px 8px', background: 'rgba(229,57,53,0.1)', border: '1px solid rgba(229,57,53,0.3)', borderRadius: 3, color: '#E53935', fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, cursor: 'pointer' }}
+        >
+          ✕
+        </button>
       </div>
     </div>
   )

@@ -218,6 +218,35 @@ export interface UpdateContact {
   phone?: string
 }
 
+// ── Pricing catalog ───────────────────────────────────────────────────────────
+
+export interface PricingCatalogItem {
+  id: string
+  name: string
+  cost: number
+  category: string
+  manualPrice: boolean
+  sortOrder: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreatePricingItem {
+  name: string
+  cost?: number
+  category: string
+  manualPrice?: boolean
+  sortOrder?: number
+}
+
+export interface UpdatePricingItem {
+  name?: string
+  cost?: number
+  category?: string
+  manualPrice?: boolean
+  sortOrder?: number
+}
+
 // ── Equipment ─────────────────────────────────────────────────────────────────
 
 export interface EquipmentItem {
