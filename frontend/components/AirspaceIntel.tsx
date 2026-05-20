@@ -63,7 +63,63 @@ async function geocodeAddress(input: string): Promise<Coords> {
 
 // ── Query FAA ─────────────────────────────────────────────────────────────────
 
-async function queryFAAGrids(lat: number, lng: number, radiusMeters = 4828): Promise<GeoJSONData> {
+const FAA_OUT_FIELDS = 'CEILING,REGION,AIRS_COUNT,AIRSPACE_1,AIRSPACE_2,AIRSPACE_3,APT1_FAAID,APT1_ICAO,APT1_NAME,APT1_LAANC,APT2_FAAID,APT2_NAME,APT2_LAANC,UNIT'
+
+// Two-stage query so we return the FULL facility-map grid for the
+// controlling airport(s) — not just a slice around the site.
+//   1. Tiny bounding-box probe at (lat,lng) to identify the controlling
+//      airport IDs (APT1..APT5_FAAID) of the cell the site sits in.
+//   2. Fetch every cell that lists any of those airport IDs in any of its
+//      APT slots — this returns the entire grid block for that facility.
+// If the site is in Class G / has no controlling airport at all, we fall
+// back to a wide-radius query so the user still sees nearby context.
+async function queryFAAGrids(lat: number, lng: number): Promise<GeoJSONData> {
+  // Stage 1: identify controlling airport(s) at the site point.
+  const probeOffset = 0.005 // ~550m — small enough to hit just the cell the site is in
+  const probeBox = `${lng - probeOffset},${lat - probeOffset},${lng + probeOffset},${lat + probeOffset}`
+  const probeParams = new URLSearchParams({
+    where: '1=1',
+    geometry: probeBox,
+    geometryType: 'esriGeometryEnvelope',
+    inSR: '4326',
+    spatialRel: 'esriSpatialRelIntersects',
+    outFields: 'APT1_FAAID,APT2_FAAID,APT3_FAAID,APT4_FAAID,APT5_FAAID',
+    returnGeometry: 'false',
+    f: 'json',
+    resultRecordCount: '5',
+  })
+  const probeRes = await fetch(`${FAA_UASFM_URL}?${probeParams}`)
+  if (!probeRes.ok) throw new Error('FAA API query failed')
+  const probe = await probeRes.json() as { features?: Array<{ attributes?: Record<string, string | null> }> }
+
+  const aptIds = new Set<string>()
+  for (const f of probe.features || []) {
+    for (const k of ['APT1_FAAID', 'APT2_FAAID', 'APT3_FAAID', 'APT4_FAAID', 'APT5_FAAID']) {
+      const v = f.attributes?.[k]
+      if (v && typeof v === 'string' && v.trim()) aptIds.add(v.trim())
+    }
+  }
+
+  // Stage 2: fetch the full grid for those airports — every cell where any
+  // APTn_FAAID matches any of the discovered IDs.
+  if (aptIds.size > 0) {
+    const idList = Array.from(aptIds).map(id => `'${id.replace(/'/g, "''")}'`).join(',')
+    const whereParts = [1, 2, 3, 4, 5].map(n => `APT${n}_FAAID IN (${idList})`)
+    const params = new URLSearchParams({
+      where: whereParts.join(' OR '),
+      outFields: FAA_OUT_FIELDS,
+      returnGeometry: 'true',
+      outSR: '4326',
+      f: 'geojson',
+      resultRecordCount: '2000',
+    })
+    const res = await fetch(`${FAA_UASFM_URL}?${params}`)
+    if (!res.ok) throw new Error('FAA API query failed')
+    return res.json()
+  }
+
+  // Fallback: Class G / uncontrolled — wide radius so user sees nearby context.
+  const radiusMeters = 16093 // 10 miles
   const degOffset = radiusMeters / 111000
   const bbox = `${lng - degOffset},${lat - degOffset},${lng + degOffset},${lat + degOffset}`
   const params = new URLSearchParams({
@@ -72,11 +128,11 @@ async function queryFAAGrids(lat: number, lng: number, radiusMeters = 4828): Pro
     geometryType: 'esriGeometryEnvelope',
     inSR: '4326',
     spatialRel: 'esriSpatialRelIntersects',
-    outFields: 'CEILING,REGION,AIRS_COUNT,AIRSPACE_1,AIRSPACE_2,AIRSPACE_3,APT1_FAAID,APT1_ICAO,APT1_NAME,APT1_LAANC,APT2_FAAID,APT2_NAME,APT2_LAANC,UNIT',
+    outFields: FAA_OUT_FIELDS,
     returnGeometry: 'true',
     outSR: '4326',
     f: 'geojson',
-    resultRecordCount: '500',
+    resultRecordCount: '2000',
   })
   const res = await fetch(`${FAA_UASFM_URL}?${params}`)
   if (!res.ok) throw new Error('FAA API query failed')
@@ -157,10 +213,14 @@ function MapViewInner({ center, zoom, flyTo, gridData, markerPos, markerLat, mar
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leafletReady])
 
-  // Fly to searched location — also fires once map becomes ready
+  // Fly to searched location — only when there's no grid yet. Once
+  // gridData arrives, the grid effect will fitBounds to the full extent
+  // and we don't want a flyTo competing with it mid-animation.
   useEffect(() => {
     if (!mapRef.current || !mapReady || !flyTo) return
+    if (gridData?.features?.length) return
     mapRef.current.flyTo(flyTo, 12, { duration: 1.2 })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flyTo, mapReady])
 
   // Redraw FAA grid whenever data changes (or when map first becomes ready)
@@ -196,6 +256,15 @@ function MapViewInner({ center, zoom, flyTo, gridData, markerPos, markerLat, mar
           </div>`)
       },
     }).addTo(mapRef.current)
+    // Zoom the map to fit the full grid extent so the user can see where
+    // the facility map starts and ends. Padded slightly so the edge cells
+    // aren't clipped by the map frame.
+    try {
+      const b = gridRef.current.getBounds()
+      if (b && b.isValid && b.isValid()) {
+        mapRef.current.fitBounds(b, { padding: [24, 24], maxZoom: 13 })
+      }
+    } catch { /* ignore — keep current view */ }
   }, [gridData, mapReady])
 
   // Update target pin (also fires once map becomes ready)
