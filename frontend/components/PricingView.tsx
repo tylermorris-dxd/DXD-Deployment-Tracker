@@ -113,24 +113,40 @@ function generateQuotePDF(opts: {
     cats[item.category].push({ ...item, qty, _idx: idx })
   })
 
-  let grandTotal = 0; let hasTBD = false; let itemsHTML = ''
+  let grandTotal = 0; let grandTotalFull = 0; let hasTBD = false; let itemsHTML = ''
+  // Render a price cell — when payMonths is set, show "$X/mo<br/><small>$Y total</small>".
+  const priceCell = (display: number | null, full: number | null) => {
+    if (display === null) return "<span class='tbd'>TBD</span>"
+    if (payMonths && full !== null) {
+      return `$${fmtUSD(display)}/mo<div class="full-amt">$${fmtUSD(full)} total</div>`
+    }
+    return `$${fmtUSD(display)}`
+  }
   Object.entries(cats).forEach(([cat, items]) => {
     itemsHTML += `<tr class="cat-row"><td colspan="4" class="cat-label">${cat}</td></tr>`
     items.forEach(item => {
       const baseCp = item.manualPrice ? (parseFloat(manualPrices[item._idx] || '0') || null) : (item.cost ? Math.round(item.cost * mult * 100) / 100 : null)
       const unitPrice = baseCp !== null ? dispPrice(baseCp) : null
-      const lineTotal = unitPrice ? unitPrice * item.qty : null
-      if (lineTotal) grandTotal += lineTotal; else hasTBD = true
-      itemsHTML += `<tr class="line-item"><td class="item-description">${item.name}</td><td class="item-qty">${item.qty}</td><td class="item-rate">${unitPrice ? '$' + fmtUSD(unitPrice) : "<span class='tbd'>TBD</span>"}</td><td class="item-amount">${lineTotal ? '$' + fmtUSD(lineTotal) : "<span class='tbd'>TBD</span>"}</td></tr>`
+      const lineTotal = unitPrice !== null ? unitPrice * item.qty : null
+      const lineTotalFull = baseCp !== null ? baseCp * item.qty : null
+      if (lineTotal !== null && lineTotalFull !== null) {
+        grandTotal += lineTotal
+        grandTotalFull += lineTotalFull
+      } else { hasTBD = true }
+      itemsHTML += `<tr class="line-item"><td class="item-description">${item.name}</td><td class="item-qty">${item.qty}</td><td class="item-rate">${priceCell(unitPrice, baseCp)}</td><td class="item-amount">${priceCell(lineTotal, lineTotalFull)}</td></tr>`
     })
   })
   const activeCustom = customItems.filter(i => i.qty > 0)
   if (activeCustom.length > 0) {
     itemsHTML += `<tr class="cat-row"><td colspan="4" class="cat-label">Custom Items</td></tr>`
     activeCustom.forEach(item => {
-      const cp = dispPrice(Math.round(item.cost * mult * 100) / 100)
-      const lt = cp * item.qty; grandTotal += lt
-      itemsHTML += `<tr class="line-item"><td class="item-description">${item.name}</td><td class="item-qty">${item.qty}</td><td class="item-rate">$${fmtUSD(cp)}</td><td class="item-amount">$${fmtUSD(lt)}</td></tr>`
+      const baseCp = Math.round(item.cost * mult * 100) / 100
+      const cp = dispPrice(baseCp)
+      const lt = cp * item.qty
+      const ltFull = baseCp * item.qty
+      grandTotal += lt
+      grandTotalFull += ltFull
+      itemsHTML += `<tr class="line-item"><td class="item-description">${item.name}</td><td class="item-qty">${item.qty}</td><td class="item-rate">${priceCell(cp, baseCp)}</td><td class="item-amount">${priceCell(lt, ltFull)}</td></tr>`
     })
   }
 
@@ -153,10 +169,12 @@ function generateQuotePDF(opts: {
   .cat-row td{background:#222;color:#888;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;padding:8px 10px;border-top:1px solid #333;font-weight:700}
   .line-item td{padding:12px 8px;border-bottom:1px solid #2a2a2a;font-size:13px}
   .item-description{color:#ddd}.item-qty,.item-rate{text-align:right;color:#aaa}.item-amount{text-align:right;color:#c41e3a;font-weight:700}
+  .full-amt{font-size:10px;color:#888;font-weight:400;margin-top:2px;letter-spacing:0}
   .tbd{color:#c41e3a;font-style:italic}
   .grand-total{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:20px;padding:20px;background:#2a2a2a;border-left:4px solid #c41e3a;margin-top:20px;align-items:center}
   .grand-total-label{grid-column:1;text-align:right;font-size:13px;font-weight:700;color:#c41e3a;text-transform:uppercase}
   .grand-total-amount{text-align:right;font-size:22px;font-weight:700;color:#c41e3a}
+  .grand-total-full{text-align:right;font-size:12px;color:#aaa;font-weight:600;margin-top:4px;letter-spacing:0}
   .tbd-note{font-size:10px;color:#c41e3a;font-style:italic;text-align:right;margin-top:4px}
   .terms-section{margin-top:40px;padding:20px;background:#2a2a2a;border-left:4px solid #c41e3a}
   .terms-label{font-size:10px;color:#c41e3a;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px}
@@ -182,7 +200,11 @@ function generateQuotePDF(opts: {
   <div class="grand-total">
   <div class="grand-total-label">${payMonths ? `Monthly Payment (${payMonths}-Month Term)` : 'Total Quote Value'}</div>
   <div></div><div></div>
-  <div><div class="grand-total-amount">$${fmtUSD(grandTotal)}${payMonths ? ' / mo' : ''}</div>${hasTBD ? '<div class="tbd-note">+ TBD items not included</div>' : ''}</div>
+  <div>
+    <div class="grand-total-amount">$${fmtUSD(grandTotal)}${payMonths ? ' / mo' : ''}</div>
+    ${payMonths ? `<div class="grand-total-full">$${fmtUSD(grandTotalFull)} total over ${payMonths} months</div>` : ''}
+    ${hasTBD ? '<div class="tbd-note">+ TBD items not included</div>' : ''}
+  </div>
   </div></div>
   <div class="terms-section"><div class="terms-label">Quote Terms</div><div class="terms-text">This quote is valid for 30 days from the date of issue (expires ${fmt(exp)}). Pricing is subject to change based on site-specific requirements. All installations subject to FAA approval and local regulatory compliance. Prices quoted are pre-tax.</div></div>
   </div>
@@ -277,6 +299,14 @@ export default function PricingView({ project, onCacheUpdate }: Props) {
   }, 0)
   const customTotal = customItems.reduce((sum, i) => sum + displayPrice(custPrice(i.cost)) * i.qty, 0)
   const grandTotal = catalogTotal + customTotal
+  // Full (non-amortized) totals — used to show "X total" alongside monthly
+  const catalogTotalFull = PRICING_CATALOG.reduce((sum, item, idx) => {
+    const qty = quantities[idx] || 0
+    const cpBase = item.manualPrice ? (parseFloat(manualPrices[idx] || '0') || 0) : custPrice(item.cost)
+    return sum + cpBase * qty
+  }, 0)
+  const customTotalFull = customItems.reduce((sum, i) => sum + custPrice(i.cost) * i.qty, 0)
+  const grandTotalFull = catalogTotalFull + customTotalFull
   const totalItems = quantities.reduce((s, q) => s + q, 0) + customItems.reduce((s, i) => s + i.qty, 0)
   const hasTBD = PRICING_CATALOG.some((item, idx) => quantities[idx] > 0 && !item.cost)
   const fmt2 = (n: number) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -356,9 +386,14 @@ export default function PricingView({ project, onCacheUpdate }: Props) {
             {payMonths ? `PER MONTH (${payMonths} MO)` : 'CUSTOMER TOTAL'}
           </div>
           <div style={{ fontSize: 28, fontWeight: 700, color: '#E53935', fontFamily: "'IBM Plex Mono',monospace" }}>
-            ${grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            ${grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{payMonths ? ' / mo' : ''}
           </div>
-          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', fontFamily: "'IBM Plex Mono',monospace" }}>
+          {payMonths && (
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.6)', fontFamily: "'IBM Plex Mono',monospace", marginTop: 2 }}>
+              ${grandTotalFull.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} total
+            </div>
+          )}
+          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', fontFamily: "'IBM Plex Mono',monospace", marginTop: 2 }}>
             {totalItems} item{totalItems !== 1 ? 's' : ''} · {margin}% margin
             {hasTBD && <span style={{ color: '#f59e0b', marginLeft: 6 }}>* Some items TBD</span>}
           </div>
@@ -397,8 +432,9 @@ export default function PricingView({ project, onCacheUpdate }: Props) {
             {!isCollapsed && items.map(item => {
               const qty = quantities[item.idx] || 0
               const cpBase = item.manualPrice ? (parseFloat(manualPrices[item.idx] || '0') || 0) : custPrice(item.cost)
-              const cp = displayPrice(cpBase)
-              const lineTotal = cp * qty
+              const cp = displayPrice(cpBase)               // amortized (or full if upfront)
+              const lineTotal = cp * qty                    // amortized * qty (or full * qty)
+              const lineTotalFull = cpBase * qty            // full upfront line total
               return (
                 <div key={item.idx} style={{ display: 'flex', alignItems: 'center', padding: '8px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)', gap: 10 }}>
                   <div style={{ width: 5, height: 5, borderRadius: '50%', background: qty > 0 ? '#e63946' : 'rgba(255,255,255,0.15)', flexShrink: 0 }} />
@@ -410,7 +446,7 @@ export default function PricingView({ project, onCacheUpdate }: Props) {
                       <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>${fmt2(item.cost)}</span>
                     </div>
                   )}
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', minWidth: 110, marginLeft: 14 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', minWidth: 120, marginLeft: 14 }}>
                     <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, color: 'rgba(255,255,255,0.3)', letterSpacing: 1, textTransform: 'uppercase' as const, marginBottom: 1 }}>Customer</span>
                     {item.manualPrice ? (
                       <div style={{ position: 'relative' }}>
@@ -419,7 +455,16 @@ export default function PricingView({ project, onCacheUpdate }: Props) {
                           style={{ background: 'rgba(229,57,53,0.08)', border: '1px solid rgba(229,57,53,0.3)', borderRadius: 4, color: '#E53935', fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, fontWeight: 700, padding: '3px 6px 3px 18px', width: 100, outline: 'none', boxSizing: 'border-box' as const }} />
                       </div>
                     ) : (
-                      <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, fontWeight: 700, color: '#e63946' }}>${fmt2(cp)}</span>
+                      <>
+                        <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, fontWeight: 700, color: '#e63946' }}>
+                          ${fmt2(cp)}{payMonths ? '/mo' : ''}
+                        </span>
+                        {payMonths && (
+                          <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 1 }}>
+                            ${fmt2(cpBase)} total
+                          </span>
+                        )}
+                      </>
                     )}
                   </div>
                   <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, color: 'rgba(255,255,255,0.3)', margin: '0 4px' }}>×</span>
@@ -429,9 +474,16 @@ export default function PricingView({ project, onCacheUpdate }: Props) {
                       style={{ width: 40, textAlign: 'center', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: qty > 0 ? '#E8ECF4' : 'rgba(255,255,255,0.3)', fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, padding: '3px 4px', outline: 'none' }} />
                     <button onClick={() => setQty(item.idx, qty + 1)} style={{ width: 24, height: 24, borderRadius: 4, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.06)', color: '#fff', cursor: 'pointer', fontSize: 14, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
                   </div>
-                  <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, fontWeight: 700, color: qty > 0 && cp > 0 ? '#E8ECF4' : 'rgba(255,255,255,0.2)', minWidth: 90, textAlign: 'right' }}>
-                    {qty > 0 && cp > 0 ? `$${fmt2(lineTotal)}` : '—'}
-                  </span>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', minWidth: 100 }}>
+                    <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, fontWeight: 700, color: qty > 0 && cp > 0 ? '#E8ECF4' : 'rgba(255,255,255,0.2)' }}>
+                      {qty > 0 && cp > 0 ? `$${fmt2(lineTotal)}${payMonths ? '/mo' : ''}` : '—'}
+                    </span>
+                    {qty > 0 && cp > 0 && payMonths && (
+                      <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 1 }}>
+                        ${fmt2(lineTotalFull)} total
+                      </span>
+                    )}
+                  </div>
                 </div>
               )
             })}
@@ -449,19 +501,40 @@ export default function PricingView({ project, onCacheUpdate }: Props) {
           {customTotal > 0 && <span style={{ marginLeft: 'auto', fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, fontWeight: 700, color: '#E8ECF4' }}>${customTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>}
         </div>
         {customItems.map(item => {
-          const cp = displayPrice(custPrice(item.cost)); const lt = cp * item.qty
+          const cpBase = custPrice(item.cost)
+          const cp = displayPrice(cpBase)
+          const lt = cp * item.qty
+          const ltFull = cpBase * item.qty
           return (
             <div key={item.id} style={{ display: 'flex', alignItems: 'center', padding: '8px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)', gap: 10 }}>
               <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#e63946', flexShrink: 0 }} />
               <span style={{ flex: 1, fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, color: '#E8ECF4' }}>{item.name}</span>
-              <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, fontWeight: 700, color: '#e63946' }}>${fmt2(cp)}</span>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, fontWeight: 700, color: '#e63946' }}>
+                  ${fmt2(cp)}{payMonths ? '/mo' : ''}
+                </span>
+                {payMonths && (
+                  <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 1 }}>
+                    ${fmt2(cpBase)} total
+                  </span>
+                )}
+              </div>
               <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, color: 'rgba(255,255,255,0.3)', margin: '0 4px' }}>×</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <button onClick={() => setCustomQty(item.id, item.qty - 1)} style={{ width: 24, height: 24, borderRadius: 4, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.06)', color: '#fff', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
                 <input type="number" min="0" value={item.qty} onChange={e => setCustomQty(item.id, e.target.value)} style={{ width: 40, textAlign: 'center', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#E8ECF4', fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, padding: '3px 4px', outline: 'none' }} />
                 <button onClick={() => setCustomQty(item.id, item.qty + 1)} style={{ width: 24, height: 24, borderRadius: 4, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.06)', color: '#fff', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
               </div>
-              <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, fontWeight: 700, color: '#E8ECF4', minWidth: 90, textAlign: 'right' }}>{item.qty > 0 ? `$${fmt2(lt)}` : '—'}</span>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', minWidth: 100 }}>
+                <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, fontWeight: 700, color: '#E8ECF4' }}>
+                  {item.qty > 0 ? `$${fmt2(lt)}${payMonths ? '/mo' : ''}` : '—'}
+                </span>
+                {item.qty > 0 && payMonths && (
+                  <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 1 }}>
+                    ${fmt2(ltFull)} total
+                  </span>
+                )}
+              </div>
               <button onClick={() => removeCustomItem(item.id)} style={{ background: 'none', border: 'none', color: 'rgba(229,57,53,0.6)', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '0 0 0 10px', flexShrink: 0 }}>×</button>
             </div>
           )
