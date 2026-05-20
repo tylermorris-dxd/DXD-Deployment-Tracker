@@ -1,7 +1,41 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import type { ProjectFull } from '@/lib/types'
+
+// ─── Per-project pricing persistence (localStorage) ──────────────────────
+// Persists across sessions on the same browser so users don't lose their
+// inputs when navigating away or logging back in. Keyed by project id so
+// each deal gets its own pricing state.
+
+interface PricingState {
+  quantities: number[]
+  contactName: string
+  contactPhone: string
+  contactEmail: string
+  margin: number
+  customItems: Array<{ id: number; name: string; cost: number; qty: number }>
+  manualPrices: Record<number, string>
+  paymentMode: string
+  collapsedCats: Record<string, boolean>
+}
+
+const storageKey = (projectId: string) => `dxd-pricing-${projectId}`
+
+function loadPricingState(projectId: string): Partial<PricingState> | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = localStorage.getItem(storageKey(projectId))
+    return raw ? JSON.parse(raw) : null
+  } catch { return null }
+}
+
+function savePricingState(projectId: string, state: PricingState) {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.setItem(storageKey(projectId), JSON.stringify(state))
+  } catch { /* quota exceeded — ignore */ }
+}
 
 // ─── PRICING CATALOG ──────────────────────────────────────────────────────
 const PRICING_CATALOG = [
@@ -148,18 +182,39 @@ function generateQuotePDF(opts: {
 }
 
 export default function PricingView({ project }: Props) {
-  const [quantities, setQuantities] = useState<number[]>(() => PRICING_CATALOG.map(() => 0))
-  const [contactName, setContactName] = useState('')
-  const [contactPhone, setContactPhone] = useState('')
-  const [contactEmail, setContactEmail] = useState('')
+  const cached = (() => {
+    if (typeof window === 'undefined') return null
+    return loadPricingState(project.id)
+  })()
+
+  // Cached quantities are mapped by catalog index. Pad/trim to current
+  // catalog length so the array stays in sync if the catalog grows later.
+  const cachedQuantities = Array.isArray(cached?.quantities)
+    ? PRICING_CATALOG.map((_, i) => Number(cached!.quantities![i]) || 0)
+    : PRICING_CATALOG.map(() => 0)
+
+  const [quantities, setQuantities] = useState<number[]>(cachedQuantities)
+  const [contactName, setContactName] = useState(cached?.contactName || '')
+  const [contactPhone, setContactPhone] = useState(cached?.contactPhone || '')
+  const [contactEmail, setContactEmail] = useState(cached?.contactEmail || '')
   const [generating, setGenerating] = useState(false)
-  const [collapsedCats, setCollapsedCats] = useState<Record<string, boolean>>({})
-  const [margin, setMargin] = useState(30)
-  const [customItems, setCustomItems] = useState<Array<{ id: number; name: string; cost: number; qty: number }>>([])
+  const [collapsedCats, setCollapsedCats] = useState<Record<string, boolean>>(cached?.collapsedCats || {})
+  const [margin, setMargin] = useState(typeof cached?.margin === 'number' ? cached.margin : 30)
+  const [customItems, setCustomItems] = useState<Array<{ id: number; name: string; cost: number; qty: number }>>(
+    Array.isArray(cached?.customItems) ? cached!.customItems! : []
+  )
   const [newName, setNewName] = useState('')
   const [newCost, setNewCost] = useState('')
-  const [manualPrices, setManualPrices] = useState<Record<number, string>>({})
-  const [paymentMode, setPaymentMode] = useState('upfront')
+  const [manualPrices, setManualPrices] = useState<Record<number, string>>(cached?.manualPrices || {})
+  const [paymentMode, setPaymentMode] = useState(cached?.paymentMode || 'upfront')
+
+  // Persist on every change so the next session restores everything.
+  useEffect(() => {
+    savePricingState(project.id, {
+      quantities, contactName, contactPhone, contactEmail,
+      margin, customItems, manualPrices, paymentMode, collapsedCats,
+    })
+  }, [project.id, quantities, contactName, contactPhone, contactEmail, margin, customItems, manualPrices, paymentMode, collapsedCats])
 
   const mult = 1 + margin / 100
   const custPrice = (cost: number) => Math.round(cost * mult * 100) / 100
