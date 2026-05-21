@@ -497,11 +497,14 @@ export default function AirspaceIntel({ project, onCacheUpdate }: Props) {
             <div style={{ background: 'linear-gradient(135deg, rgba(30,30,34,0.95), rgba(22,22,26,0.98))', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: '16px 18px', position: 'relative', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, ${isClassG ? '#2ecc71' : (ceilingInfo?.fill || '#e74c3c')}, transparent)` }} />
               <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 8 }}>DEPLOYMENT VERDICT</div>
-              <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 22, fontWeight: 700, color: isClassG ? '#2ecc71' : (ceilingInfo?.fill || '#e74c3c'), lineHeight: 1.2 }}>
+              <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 20, fontWeight: 700, color: isClassG ? '#2ecc71' : (ceilingInfo?.fill || '#e74c3c'), lineHeight: 1.15 }}>
+                {isClassG ? 'UNCONTROLLED AIRSPACE' : 'CONTROLLED AIRSPACE'}
+              </div>
+              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, fontWeight: 700, color: isClassG ? '#2ecc71' : (ceilingInfo?.fill || '#e74c3c'), letterSpacing: 0.5, marginTop: 6 }}>
                 {isClassG ? 'GOOD TO GO' : (ceilingInfo?.verdict || 'CHECK REQUIRED')}
               </div>
-              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 6 }}>
-                {isClassG ? 'Class G — No authorization needed under 400ft' : `Controlled airspace — Max ${ceilingVal}ft AGL`}
+              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 4 }}>
+                {isClassG ? 'Class G — No authorization needed under 400ft' : `Max ${ceilingVal}ft AGL`}
               </div>
             </div>
 
