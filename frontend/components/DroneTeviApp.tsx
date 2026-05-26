@@ -1,7 +1,29 @@
 // @ts-nocheck
 'use client'
 
-import { useState, useReducer, createContext, useContext } from "react";
+import { useState, useReducer, createContext, useContext, useEffect } from "react";
+
+// ─── Persistence ──────────────────────────────────────────────────────────
+// All TEVI state lives in the useReducer below. The Save button writes
+// the whole reducer state (every OEM + their results, weekly checks,
+// sign-offs, etc.) to localStorage. On mount we restore from there so
+// users don't lose work between sessions.
+
+const TEVI_STORAGE_KEY = 'dxd-drone-tevi-state';
+
+function loadTeviSaved() {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(TEVI_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+function saveTeviSnapshot(state) {
+  if (typeof window === 'undefined') return false;
+  try { localStorage.setItem(TEVI_STORAGE_KEY, JSON.stringify(state)); return true; }
+  catch { return false; }
+}
 
 const ROLES = ["Lead Evaluator","Co-Evaluator","Technical Specialist","Safety Officer","Commanding Officer / Approver"];
 const TABS  = ["Overview","Drone","Dock","Sensors","Payload","Reliability","Use Cases","Compare","Weekly Checks","6-Month Plan","Demo Missions","Test Results","Evaluation Checklist","Chief Pilot Final Eval & Sign-Off"];
@@ -1320,11 +1342,33 @@ function TestResults(){
 
 // ── Main App ───────────────────────────────────────────────────────────────
 export default function DroneTeviApp(){
-  const [state,dispatch]=useReducer(reducer,{oems:[mkOEM("DJI"),mkOEM("SKYDIO"),mkOEM("Sunflower"),mkOEM("Quantum Systems")],activeOEM:0});
+  const [state,dispatch]=useReducer(reducer,undefined,()=>{
+    const saved=loadTeviSaved();
+    if(saved&&Array.isArray(saved.oems)&&saved.oems.length>0) return saved;
+    return {oems:[mkOEM("DJI"),mkOEM("SKYDIO"),mkOEM("Sunflower"),mkOEM("Quantum Systems")],activeOEM:0};
+  });
   const [tab,setTab]=useState("Overview");
   const [addingOEM,setAddingOEM]=useState(false);
   const [newName,setNewName]=useState("");
+  const [saveStatus,setSaveStatus]=useState(null); // 'saving' | 'saved' | 'error' | null
+  const [dirty,setDirty]=useState(false);
   const oem=state.oems[state.activeOEM];
+
+  // Mark dirty whenever the reducer state changes after the initial mount.
+  useEffect(()=>{ setDirty(true); },[state]);
+
+  function handleSave(){
+    setSaveStatus('saving');
+    const ok=saveTeviSnapshot(state);
+    if(ok){
+      setSaveStatus('saved');
+      setDirty(false);
+      setTimeout(()=>setSaveStatus(s=>s==='saved'?null:s),2500);
+    } else {
+      setSaveStatus('error');
+      setTimeout(()=>setSaveStatus(s=>s==='error'?null:s),3500);
+    }
+  }
 
   const buildTestCtx=sectionKey=>"Tests: "+TESTS[sectionKey].map(t=>t.test+": "+(oem.results[t.id+"_pfn"]||"Pending")).join(", ");
   const buildAllResultsCtx=()=>Object.keys(TESTS).map(sec=>{const r=(TESTS[sec]||[]).map(t=>oem.results[t.id+"_pfn"]).filter(Boolean);return sec+": "+r.filter(v=>v==="Pass").length+"P/"+r.filter(v=>v==="Fail").length+"F";}).join(", ");
@@ -1384,10 +1428,30 @@ export default function DroneTeviApp(){
       <div style={{background:"#000",minHeight:"100vh",fontFamily:"'Inter',system-ui,sans-serif",color:C.text}}>
         <div style={{position:"fixed",inset:0,zIndex:0,pointerEvents:"none",background:"radial-gradient(ellipse 90% 55% at 25% 75%,rgba(170,170,170,0.11) 0%,transparent 55%),radial-gradient(ellipse 65% 45% at 72% 35%,rgba(140,140,140,0.09) 0%,transparent 50%)"}}/>
         <div style={{position:"relative",zIndex:1}}>
-          <div style={{background:"rgba(0,0,0,0.82)",backdropFilter:"blur(16px)",borderBottom:"1px solid "+C.border,padding:"13px 24px",display:"flex",alignItems:"center"}}>
+          <div style={{background:"rgba(0,0,0,0.82)",backdropFilter:"blur(16px)",borderBottom:"1px solid "+C.border,padding:"13px 24px",display:"flex",alignItems:"center",gap:16}}>
             <div style={{display:"flex",alignItems:"center",gap:12}}>
               <div style={{background:"rgba(204,34,0,0.15)",border:"1px solid rgba(204,34,0,0.35)",borderRadius:8,padding:"6px 10px",fontSize:18}}>🚁</div>
               <div><div style={{fontSize:16,fontWeight:800,color:"#fff",letterSpacing:2}}>DRONE TEVI PLATFORM</div><div style={{fontSize:10,color:C.muted,letterSpacing:2}}>TESTING · EVALUATION · VALIDATION · IMPLEMENTATION</div></div>
+            </div>
+            <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:10}}>
+              {saveStatus==='saved'&&<span style={{fontSize:10,color:"#6ee7b7",letterSpacing:1,fontWeight:600}}>✓ SAVED</span>}
+              {saveStatus==='saving'&&<span style={{fontSize:10,color:C.muted,letterSpacing:1}}>SAVING…</span>}
+              {saveStatus==='error'&&<span style={{fontSize:10,color:"#ff6b4a",letterSpacing:1,fontWeight:600}}>SAVE FAILED</span>}
+              {!saveStatus&&dirty&&<span style={{fontSize:10,color:"#fbbf24",letterSpacing:1}}>UNSAVED CHANGES</span>}
+              <button
+                onClick={handleSave}
+                disabled={saveStatus==='saving'}
+                style={{
+                  padding:"8px 18px",
+                  background:dirty?"linear-gradient(135deg,#E53935,#C62828)":"rgba(255,255,255,0.08)",
+                  color:"#fff",border:"none",borderRadius:6,
+                  fontSize:11,fontWeight:800,letterSpacing:2,
+                  cursor:saveStatus==='saving'?"wait":"pointer",
+                  opacity:saveStatus==='saving'?0.6:1,
+                }}
+              >
+                SAVE
+              </button>
             </div>
           </div>
           <div style={{background:"rgba(0,0,0,0.75)",backdropFilter:"blur(12px)",borderBottom:"1px solid "+C.border,padding:"0 24px",display:"flex",alignItems:"center",gap:4,overflowX:"auto"}}>
