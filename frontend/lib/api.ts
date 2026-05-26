@@ -39,6 +39,15 @@ export const api = {
       apiFetch<void>(`/pricing-catalog/${id}`, { method: 'DELETE' }),
   },
 
+  // Shared Drone TEVI (Products tool) evaluation state — single row,
+  // team-wide. Save button writes the whole reducer snapshot here so
+  // everyone sees the same vendor evals/results across browsers.
+  droneTevi: {
+    get: () => apiFetch<{ state: unknown; updatedAt: string }>('/drone-tevi-state'),
+    save: (state: unknown) =>
+      apiFetch<void>('/drone-tevi-state', { method: 'PUT', body: JSON.stringify({ state }) }),
+  },
+
   projects: {
     list: () => apiFetch<ProjectSummary[]>('/projects'),
     get: (id: string) => apiFetch<ProjectFull>(`/projects/${id}`),

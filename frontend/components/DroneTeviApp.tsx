@@ -2,12 +2,16 @@
 'use client'
 
 import { useState, useReducer, createContext, useContext, useEffect } from "react";
+import { api } from "@/lib/api";
 
 // ─── Persistence ──────────────────────────────────────────────────────────
-// All TEVI state lives in the useReducer below. The Save button writes
-// the whole reducer state (every OEM + their results, weekly checks,
-// sign-offs, etc.) to localStorage. On mount we restore from there so
-// users don't lose work between sessions.
+// All TEVI state lives in the useReducer below. Two-tier save:
+//   1. localStorage — instant writeback, survives page refresh
+//   2. Backend (/api/drone-tevi-state) — single shared team-wide
+//      snapshot so anyone opening the Products tool on any device
+//      sees the latest evaluations.
+// On mount we kick off a fetch for the backend snapshot and merge it
+// into the reducer (backend wins over localStorage when present).
 
 const TEVI_STORAGE_KEY = 'dxd-drone-tevi-state';
 
@@ -19,10 +23,14 @@ function loadTeviSaved() {
   } catch { return null; }
 }
 
-function saveTeviSnapshot(state) {
+function saveTeviSnapshotLocal(state) {
   if (typeof window === 'undefined') return false;
   try { localStorage.setItem(TEVI_STORAGE_KEY, JSON.stringify(state)); return true; }
   catch { return false; }
+}
+
+function isValidTeviState(s) {
+  return s && typeof s === 'object' && Array.isArray(s.oems) && s.oems.length > 0;
 }
 
 const ROLES = ["Lead Evaluator","Co-Evaluator","Technical Specialist","Safety Officer","Commanding Officer / Approver"];
@@ -305,6 +313,7 @@ function reducer(state,action){
   const clone=()=>state.oems.map((o,i)=>i===state.activeOEM?{...o}:o);
   const ai=state.activeOEM;
   switch(action.type){
+    case "REPLACE_STATE": return action.state; // full replace — used to hydrate from backend
     case "ADD_OEM":    return {...state,oems:[...state.oems,mkOEM(action.name)],activeOEM:state.oems.length};
     case "DEL_OEM":  {const oems=state.oems.filter((_,i)=>i!==action.idx);return {...state,oems,activeOEM:Math.min(state.activeOEM,oems.length-1)};}
     case "SET_ACTIVE": return {...state,activeOEM:action.idx};
@@ -1342,9 +1351,10 @@ function TestResults(){
 
 // ── Main App ───────────────────────────────────────────────────────────────
 export default function DroneTeviApp(){
+  // Initial state: localStorage first (instant render), backend hydrates after.
   const [state,dispatch]=useReducer(reducer,undefined,()=>{
     const saved=loadTeviSaved();
-    if(saved&&Array.isArray(saved.oems)&&saved.oems.length>0) return saved;
+    if(isValidTeviState(saved)) return saved;
     return {oems:[mkOEM("DJI"),mkOEM("SKYDIO"),mkOEM("Sunflower"),mkOEM("Quantum Systems")],activeOEM:0};
   });
   const [tab,setTab]=useState("Overview");
@@ -1352,19 +1362,44 @@ export default function DroneTeviApp(){
   const [newName,setNewName]=useState("");
   const [saveStatus,setSaveStatus]=useState(null); // 'saving' | 'saved' | 'error' | null
   const [dirty,setDirty]=useState(false);
+  const [hydrated,setHydrated]=useState(false);
   const oem=state.oems[state.activeOEM];
 
-  // Mark dirty whenever the reducer state changes after the initial mount.
-  useEffect(()=>{ setDirty(true); },[state]);
+  // On mount, hydrate from backend (single shared team-wide snapshot).
+  // If the backend has data, it wins over the localStorage seed.
+  useEffect(()=>{
+    let cancelled=false;
+    api.droneTevi.get()
+      .then(res=>{
+        if(cancelled) return;
+        if(isValidTeviState(res?.state)){
+          dispatch({type:"REPLACE_STATE",state:res.state});
+          // Mirror into localStorage so the instant-load path agrees next visit.
+          saveTeviSnapshotLocal(res.state);
+        }
+      })
+      .catch(()=>{/* offline / first run — keep localStorage seed */})
+      .finally(()=>{ if(!cancelled){ setHydrated(true); setDirty(false); } });
+    return ()=>{ cancelled=true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[]);
 
-  function handleSave(){
+  // Mark dirty whenever the reducer state changes after hydration.
+  useEffect(()=>{
+    if(hydrated) setDirty(true);
+  },[state, hydrated]);
+
+  async function handleSave(){
     setSaveStatus('saving');
-    const ok=saveTeviSnapshot(state);
-    if(ok){
+    // 1. Instant local writeback so a refresh survives even if backend is slow/down.
+    saveTeviSnapshotLocal(state);
+    // 2. Push to backend so the rest of the team sees the same snapshot.
+    try {
+      await api.droneTevi.save(state);
       setSaveStatus('saved');
       setDirty(false);
       setTimeout(()=>setSaveStatus(s=>s==='saved'?null:s),2500);
-    } else {
+    } catch {
       setSaveStatus('error');
       setTimeout(()=>setSaveStatus(s=>s==='error'?null:s),3500);
     }
