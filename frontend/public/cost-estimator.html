@@ -194,6 +194,11 @@ td[style*="font-weight:bold"]{color:var(--text);}
     </div>
   </div>
   <div class="topbar-actions">
+    <span id="saveStatus" style="font-size:10px;color:#9aa3b8;margin-right:6px;letter-spacing:0.5px;"></span>
+    <button class="btn-pdf" id="btnSave" onclick="saveAll()" style="background:#22c55e;">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M11 1H3a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2V5l-2-4z M3 1v4h6V1 M3 13v-5h8v5" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Save
+    </button>
     <button class="btn-pdf" onclick="exportPDF()">
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 10.5v1.5h10v-1.5M7 1v8M4 6l3 3 3-3" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       Download PDF
@@ -669,6 +674,130 @@ function calc(){
   }
 }
 calc();
+
+// ─── Backend persistence ──────────────────────────────────────────────
+// Saves a snapshot of every static input by ID plus the innerHTML of
+// every dynamic <tbody> so we capture user-added rows. On restore,
+// re-attaches input/remove/hide listeners since they don't survive
+// innerHTML round-tripping.
+const SAVE_KEY='cost-estimator';
+const DYN_BODIES=['stakeholderBody','opsLeadBody','pilotBody','assetBody',
+                  'laborBody','flightBody','carBody','hotelBody',
+                  'equipBody','softBody','regBody','miscBody'];
+
+function _syncValuesToAttrs(){
+  // Copy current input/select values into their HTML attributes so the
+  // innerHTML snapshot reflects what the user typed, not the original
+  // defaults.
+  document.querySelectorAll('input,textarea').forEach(function(el){
+    if(el.type==='checkbox'||el.type==='radio'){
+      if(el.checked) el.setAttribute('checked',''); else el.removeAttribute('checked');
+    } else {
+      el.setAttribute('value', el.value);
+    }
+  });
+  document.querySelectorAll('select').forEach(function(sel){
+    Array.from(sel.options).forEach(function(opt){
+      if(opt.selected) opt.setAttribute('selected',''); else opt.removeAttribute('selected');
+    });
+  });
+}
+
+function _staticInputs(){
+  var data={};
+  document.querySelectorAll('input[id],select[id],textarea[id]').forEach(function(el){
+    data[el.id] = el.type==='checkbox' ? el.checked : el.value;
+  });
+  return data;
+}
+
+function _applyStaticInputs(data){
+  Object.keys(data||{}).forEach(function(id){
+    var el=document.getElementById(id);
+    if(!el) return;
+    if(el.type==='checkbox') el.checked=!!data[id];
+    else el.value=data[id];
+  });
+}
+
+function _reattachRowListeners(){
+  // Re-bind input listeners so calc fires as the user edits restored rows
+  document.querySelectorAll('tbody input').forEach(function(inp){
+    inp.addEventListener('input', calc);
+  });
+  // Re-bind remove buttons (× to delete the row)
+  document.querySelectorAll('button.btn-remove').forEach(function(btn){
+    if(btn.dataset._rebound) return;
+    btn.dataset._rebound='1';
+    btn.addEventListener('click', function(){
+      var tr=btn.closest('tr'); if(tr) tr.remove();
+      calc();
+    });
+  });
+  // Re-bind hide buttons (toggle row-muted)
+  document.querySelectorAll('button.btn-hide').forEach(function(btn){
+    if(btn.dataset._rebound) return;
+    btn.dataset._rebound='1';
+    btn.addEventListener('click', function(){
+      var row=btn.closest('tr'); if(!row) return;
+      if(row.dataset.hidden){
+        row.removeAttribute('data-hidden');
+        row.classList.remove('row-muted');
+        btn.classList.remove('hidden');
+        btn.textContent='hide';
+      } else {
+        row.dataset.hidden='1';
+        row.classList.add('row-muted');
+        btn.classList.add('hidden');
+        btn.textContent='show';
+      }
+      calc();
+    });
+  });
+}
+
+function saveAll(){
+  var st=document.getElementById('saveStatus');
+  if(st) st.textContent='Saving…';
+  _syncValuesToAttrs();
+  var bodies={};
+  DYN_BODIES.forEach(function(id){
+    var el=document.getElementById(id);
+    if(el) bodies[id]=el.innerHTML;
+  });
+  var snapshot={ inputs:_staticInputs(), bodies:bodies };
+  return fetch('/api/tool-state/'+SAVE_KEY,{
+    method:'PUT', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({state:snapshot}),
+  }).then(function(r){
+    if(!r.ok) throw new Error('save failed');
+    if(st){ st.textContent='✓ Saved'; setTimeout(function(){st.textContent='';},2500); }
+  }).catch(function(){
+    if(st){ st.textContent='Save failed'; setTimeout(function(){st.textContent='';},3500); }
+  });
+}
+
+function loadAll(){
+  return fetch('/api/tool-state/'+SAVE_KEY)
+    .then(function(r){return r.ok?r.json():null;})
+    .then(function(res){
+      if(!res||!res.state) return;
+      var s=res.state;
+      if(s.bodies){
+        Object.keys(s.bodies).forEach(function(id){
+          var el=document.getElementById(id);
+          if(el) el.innerHTML=s.bodies[id];
+        });
+      }
+      if(s.inputs) _applyStaticInputs(s.inputs);
+      _reattachRowListeners();
+      calc();
+    })
+    .catch(function(){/* offline / first run */});
+}
+
+// Hydrate after initial page setup is complete
+setTimeout(loadAll, 0);
 </script>
 </body>
 </html>

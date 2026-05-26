@@ -622,6 +622,8 @@
         <div class="doc-id">DXD-FIN-JOBCOST-001</div>
         <div id="current-date"></div>
       </div>
+      <span id="saveStatus" style="font-size:10px;color:#9aa3b8;margin-right:6px;letter-spacing:0.5px;"></span>
+      <button class="pdf-btn" onclick="saveAll()" style="background:#22c55e;border-color:#22c55e;margin-right:6px;">&#9745; Save</button>
       <button class="pdf-btn" onclick="exportPDF()">&#8595; Download PDF</button>
     </div>
   </div>
@@ -1018,6 +1020,89 @@
   defaultServiceLines.forEach(label => addServiceLine(label));
 
   recalc();
+
+  // ─── Backend persistence ──────────────────────────────────────────────
+  const SAVE_KEY='security-job-estimator';
+  const DYN_BODIES=['equipRows','serviceRows'];
+
+  function _syncValuesToAttrs(){
+    document.querySelectorAll('input,textarea').forEach(function(el){
+      if(el.type==='checkbox'||el.type==='radio'){
+        if(el.checked) el.setAttribute('checked',''); else el.removeAttribute('checked');
+      } else { el.setAttribute('value', el.value); }
+    });
+    document.querySelectorAll('select').forEach(function(sel){
+      Array.from(sel.options).forEach(function(opt){
+        if(opt.selected) opt.setAttribute('selected',''); else opt.removeAttribute('selected');
+      });
+    });
+  }
+
+  function _staticInputs(){
+    var data={};
+    document.querySelectorAll('input[id],select[id],textarea[id]').forEach(function(el){
+      data[el.id] = el.type==='checkbox' ? el.checked : el.value;
+    });
+    return data;
+  }
+
+  function _applyStaticInputs(data){
+    Object.keys(data||{}).forEach(function(id){
+      var el=document.getElementById(id);
+      if(!el) return;
+      if(el.type==='checkbox') el.checked=!!data[id];
+      else el.value=data[id];
+    });
+  }
+
+  function _reattachRowListeners(){
+    document.querySelectorAll('tbody input,tbody select').forEach(function(inp){
+      inp.addEventListener('input', recalc);
+      inp.addEventListener('change', recalc);
+    });
+  }
+
+  window.saveAll = function saveAll(){
+    var st=document.getElementById('saveStatus');
+    if(st) st.textContent='Saving…';
+    _syncValuesToAttrs();
+    var bodies={};
+    DYN_BODIES.forEach(function(id){
+      var el=document.getElementById(id);
+      if(el) bodies[id]=el.innerHTML;
+    });
+    var snapshot={ inputs:_staticInputs(), bodies:bodies };
+    return fetch('/api/tool-state/'+SAVE_KEY,{
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({state:snapshot}),
+    }).then(function(r){
+      if(!r.ok) throw new Error('save failed');
+      if(st){ st.textContent='✓ Saved'; setTimeout(function(){st.textContent='';},2500); }
+    }).catch(function(){
+      if(st){ st.textContent='Save failed'; setTimeout(function(){st.textContent='';},3500); }
+    });
+  };
+
+  function loadAll(){
+    return fetch('/api/tool-state/'+SAVE_KEY)
+      .then(function(r){return r.ok?r.json():null;})
+      .then(function(res){
+        if(!res||!res.state) return;
+        var s=res.state;
+        if(s.bodies){
+          Object.keys(s.bodies).forEach(function(id){
+            var el=document.getElementById(id);
+            if(el) el.innerHTML=s.bodies[id];
+          });
+        }
+        if(s.inputs) _applyStaticInputs(s.inputs);
+        _reattachRowListeners();
+        recalc();
+      })
+      .catch(function(){/* offline / first run */});
+  }
+
+  setTimeout(loadAll, 0);
 </script>
 </body>
 </html>

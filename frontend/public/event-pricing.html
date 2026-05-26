@@ -1232,9 +1232,21 @@ function renderApp() {
 }
 
 const STORAGE_KEY='dxd_event_pricing_v5';
+const BACKEND_KEY='event-pricing';
 function saveState(){
-  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(S));return true;}
-  catch(e){console.warn('Save failed:',e);return false;}
+  let localOk=false;
+  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(S));localOk=true;}
+  catch(e){console.warn('Local save failed:',e);}
+  // Push to backend so the team sees the same snapshot. Fire-and-forget —
+  // local save above guarantees the user's data survives a refresh.
+  try{
+    fetch('/api/tool-state/'+BACKEND_KEY,{
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({state:S}),
+    }).catch(()=>{/* offline / first run — local already saved */});
+  }catch(e){/* ignore */}
+  return localOk;
 }
 function migrateEventType(et) {
   if(et.vlos && et.bvlos) return et;
@@ -1343,6 +1355,24 @@ function resetState(){
 
 loadState();
 rerender();
+
+// After local-first render, hydrate from backend so anyone on the team
+// sees the shared snapshot. If backend has data, replace S and re-render.
+(function hydrateFromBackend(){
+  fetch('/api/tool-state/'+BACKEND_KEY)
+    .then(r=>r.ok?r.json():null)
+    .then(res=>{
+      if(!res||!res.state||typeof res.state!=='object'||Object.keys(res.state).length===0) return;
+      const remote=res.state;
+      if(remote.eventTypes){
+        remote.eventTypes = remote.eventTypes.map(et => (!et.vlos || !et.bvlos) ? migrateEventType(et) : et);
+      }
+      Object.assign(S, remote);
+      try{localStorage.setItem(STORAGE_KEY,JSON.stringify(S));}catch(e){/* ignore */}
+      rerender();
+    })
+    .catch(()=>{/* offline — local-only fine */});
+})();
 </script>
 </body>
 </html>
