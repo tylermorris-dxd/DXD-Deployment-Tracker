@@ -23,7 +23,15 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
     const err = await res.json().catch(() => ({ error: res.statusText }))
     throw new ApiError(res.status, err.error ?? 'Unknown error')
   }
-  return res.json() as Promise<T>
+  // 204 No Content (and other empty bodies) must NOT call res.json() —
+  // it throws on an empty body and makes void-returning routes appear
+  // to fail even though the server succeeded. The Drone TEVI save and
+  // every DELETE / PATCH route that returns NO_CONTENT hit this path.
+  if (res.status === 204) return undefined as T
+  const text = await res.text()
+  if (!text) return undefined as T
+  try { return JSON.parse(text) as T }
+  catch { return undefined as T }
 }
 
 export const api = {
