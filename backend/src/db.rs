@@ -1,5 +1,13 @@
 use sqlx::postgres::{PgPool, PgPoolOptions};
 
+// sqlx::migrate!() embeds migrations/*.sql at compile time. If the CI's
+// rust-cache serves a stale compiled artifact, newly-added migration
+// files won't be in the deployed binary even though they're present in
+// the source tree. Bumping this constant on each restore forces a fresh
+// compile of this module.
+#[allow(dead_code)]
+const MIGRATIONS_REBUILD_TAG: &str = "rebuild-v2-restore-013-014";
+
 pub async fn create_pool(database_url: &str) -> anyhow::Result<PgPool> {
     let safe_url = database_url
         .find('@')
