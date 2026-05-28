@@ -55,7 +55,7 @@ async fn put_state(
     let s = serde_json::to_string(&body.state).map_err(|e| AppError::BadRequest(e.to_string()))?;
     sqlx::query!(
         "INSERT INTO tool_state (tool_key, state, updated_at) VALUES ($1, $2, $3) \
-         ON CONFLICT (tool_key) DO UPDATE SET state = $2, updated_at = $3",
+         ON CONFLICT (tool_key) DO UPDATE SET state = EXCLUDED.state, updated_at = EXCLUDED.updated_at",
         key, s, now
     )
     .execute(&state.pool)

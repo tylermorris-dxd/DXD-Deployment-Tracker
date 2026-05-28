@@ -37,7 +37,7 @@ async fn put_state(
     let s = serde_json::to_string(&body.state).map_err(|e| AppError::BadRequest(e.to_string()))?;
     sqlx::query!(
         "INSERT INTO drone_tevi_state (id, state, updated_at) VALUES (1, $1, $2) \
-         ON CONFLICT (id) DO UPDATE SET state = $1, updated_at = $2",
+         ON CONFLICT (id) DO UPDATE SET state = EXCLUDED.state, updated_at = EXCLUDED.updated_at",
         s, now
     )
     .execute(&state.pool)
