@@ -1,6 +1,7 @@
 use axum::Router;
 
 pub mod attachments;
+pub mod claude;
 pub mod equipment;
 pub mod hubspot;
 pub mod misc;
@@ -22,6 +23,7 @@ pub fn api_router(state: AppState) -> Router {
         .merge(hubspot::router())
         .merge(pricing::router())
         .merge(tevi::router())
+        .merge(claude::router())
         .merge(misc::router())
         .with_state(state)
 }
