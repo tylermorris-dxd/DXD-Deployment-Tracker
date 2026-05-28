@@ -84,6 +84,20 @@ pub struct CreateTeamMember {
     pub email: Option<String>,
 }
 
+// Drone TEVI shared state — single team-wide row in drone_tevi_state.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateTeviState {
+    pub state: serde_json::Value,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TeviStateResponse {
+    pub state: serde_json::Value,
+    pub updated_at: String,
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreatePricingItem {
