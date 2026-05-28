@@ -86,33 +86,6 @@ pub struct CreateTeamMember {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct UpdateTeviState {
-    pub state: serde_json::Value,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct TeviStateResponse {
-    pub state: serde_json::Value,
-    pub updated_at: String,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct UpdateToolState {
-    pub state: serde_json::Value,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ToolStateResponse {
-    pub tool_key: String,
-    pub state: serde_json::Value,
-    pub updated_at: String,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct CreatePricingItem {
     pub name: String,
     pub cost: Option<f64>,
