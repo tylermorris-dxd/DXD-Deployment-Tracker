@@ -404,6 +404,130 @@ function MSButtons({value,onChange,types}){
 // ── Context ────────────────────────────────────────────────────────────────
 const TeviCtx = createContext(null);
 
+// ── Local executive summary generator ─────────────────────────────────────
+// Generates a deterministic, data-driven summary from the test results
+// already in state. No API key, no network — always works. The /api/claude
+// proxy is still tried first, so if an ANTHROPIC_API_KEY is configured the
+// user gets the AI-written version; if not, this fallback kicks in.
+
+function _parseTestsCtx(contextData){
+  // contextData looks like "Tests: name1: Pass, name2: Fail, name3: Pending, ..."
+  // Could also be "LE: Tests: ... | Campus: Tests: ... | CIP: Tests: ..." or
+  // "Selected: name: result, ...". We collect every "<label>: <Pass|Fail|Pending>".
+  var passes=[],fails=[],pendings=[];
+  var re=/([^,|]+?):\s*(Pass|Fail|Pending|N\/A)/gi;
+  var m;
+  while((m=re.exec(contextData||''))!==null){
+    var name=(m[1]||'').replace(/^Tests:\s*/i,'').trim();
+    if(!name||name.length>120) continue;
+    var r=m[2].toLowerCase();
+    if(r==='pass') passes.push(name);
+    else if(r==='fail') fails.push(name);
+    else if(r==='pending') pendings.push(name);
+  }
+  return {passes:passes,fails:fails,pendings:pendings};
+}
+
+function _recommendation(passes,fails,pendings){
+  var total=passes.length+fails.length+pendings.length;
+  if(total===0) return "CONDITIONAL — testing has not started; cannot recommend until results are recorded.";
+  var rate=Math.round(passes.length/total*100);
+  if(fails.length===0 && pendings.length===0) return "PROCEED — all evaluated tests passed.";
+  if(fails.length===0) return "CONDITIONAL — complete the remaining "+pendings.length+" pending test"+(pendings.length===1?"":"s")+" before final decision.";
+  if(rate>=80) return "CONDITIONAL — "+passes.length+"/"+total+" tests pass ("+rate+"%). Address the "+fails.length+" failing item"+(fails.length===1?"":"s")+" before procurement.";
+  if(rate>=50) return "CONDITIONAL — significant gaps ("+fails.length+" failures, "+rate+"% pass). Re-test after remediation; revisit decision.";
+  return "DO NOT PROCEED — only "+rate+"% pass rate. Platform does not meet baseline performance requirements.";
+}
+
+function buildLocalSummary(sectionName, contextData, oem){
+  var platform=oem.name||"Unknown";
+  var model=oem.model||"";
+  var evaluator=oem.evaluator||"N/A";
+  var decision=(oem.procurement&&oem.procurement.decision)||"Not yet made";
+  var parsed=_parseTestsCtx(contextData||"");
+  var p=parsed.passes,f=parsed.fails,pd=parsed.pendings;
+  var total=p.length+f.length+pd.length;
+  var rate=total>0?Math.round(p.length/total*100):0;
+
+  var lines=[];
+  lines.push("SECTION OVERVIEW");
+  lines.push("Evaluation of the "+platform+(model?" ("+model+")":"")+" platform against the "+sectionName+" criteria. Conducted by "+evaluator+". Current procurement status: "+decision+".");
+  lines.push("");
+  lines.push("KEY FINDINGS");
+  if(total===0){
+    lines.push("• No test results recorded yet for this section.");
+    if(contextData) lines.push("• Context: "+String(contextData).slice(0,260));
+  } else {
+    lines.push("• "+p.length+"/"+total+" tests passed ("+rate+"% pass rate)");
+    if(f.length>0)  lines.push("• Failures ("+f.length+"): "+f.slice(0,6).join("; ")+(f.length>6?" (+"+(f.length-6)+" more)":""));
+    if(pd.length>0) lines.push("• Pending: "+pd.length+" test"+(pd.length===1?"":"s")+" awaiting result");
+    if(p.length>0 && f.length===0 && pd.length===0) lines.push("• Clean sweep — no failures or open items in evaluated set.");
+    if(p.length>0)  lines.push("• Notable passes: "+p.slice(0,5).join("; ")+(p.length>5?" …":""));
+  }
+  lines.push("");
+  lines.push("OPERATIONAL IMPACT");
+  if(total===0){
+    lines.push("Operational readiness cannot be assessed until tests are completed and results entered.");
+  } else if(f.length===0 && pd.length===0){
+    lines.push("Platform demonstrates consistent performance across all evaluated requirements in this section. Ready for deployment consideration in this domain.");
+  } else if(f.length===0){
+    lines.push("Platform tracking well so far ("+rate+"% pass rate) with "+pd.length+" item"+(pd.length===1?"":"s")+" still outstanding. Prioritize the remaining checks to complete the assessment.");
+  } else if(rate>=60){
+    lines.push("Platform shows acceptable overall performance but has "+f.length+" specific weak point"+(f.length===1?"":"s")+" requiring mitigation. Operators should be briefed on identified failure modes before field deployment.");
+  } else {
+    lines.push("Platform performance is below required threshold for operational deployment in this section. Significant remediation, OEM engagement, or alternative platform consideration required.");
+  }
+  lines.push("");
+  lines.push("RECOMMENDATION");
+  lines.push(_recommendation(p,f,pd));
+  return lines.join("\n");
+}
+
+function buildLocalDemoSummary(oem, allResultsCtx){
+  var platform=oem.name||"Unknown";
+  var model=oem.model||"";
+  // allResultsCtx looks like "Flight Performance: 5P/2F, Dock Integration: 8P/0F, ..."
+  var sections=[];
+  var totalP=0,totalF=0;
+  var re=/([^,]+?):\s*(\d+)P\/(\d+)F/g;
+  var m;
+  while((m=re.exec(allResultsCtx||""))!==null){
+    var p=parseInt(m[2],10),f=parseInt(m[3],10);
+    sections.push({name:m[1].trim(),pass:p,fail:f});
+    totalP+=p; totalF+=f;
+  }
+  var rate=(totalP+totalF)>0?Math.round(totalP/(totalP+totalF)*100):0;
+
+  var lines=[];
+  lines.push("DEMO READINESS OVERVIEW");
+  lines.push("Overall readiness of the "+platform+(model?" ("+model+")":"")+" platform across all evaluated test categories. Aggregate pass rate: "+rate+"% ("+totalP+" passes / "+totalF+" failures recorded).");
+  lines.push("");
+  lines.push("PLATFORM STRENGTHS PER MISSION");
+  var strengths=sections.filter(function(s){return s.pass>0 && s.fail===0;});
+  if(strengths.length>0){
+    strengths.forEach(function(s){ lines.push("• "+s.name+" — "+s.pass+" pass, 0 fail. Ready for: First on Scene / Eyes On / Crime Scene / Perimeter where applicable."); });
+  } else {
+    lines.push("• No section is fully clean yet — every category has either failures or pending tests.");
+  }
+  lines.push("");
+  lines.push("RISKS OR GAPS");
+  var risky=sections.filter(function(s){return s.fail>0;}).sort(function(a,b){return b.fail-a.fail;});
+  if(risky.length===0){
+    lines.push("• No outright failures across categories.");
+  } else {
+    risky.slice(0,5).forEach(function(s){ lines.push("• "+s.name+" — "+s.fail+" failure"+(s.fail===1?"":"s")+" recorded; review specific failed tests before demo."); });
+  }
+  if(totalP+totalF===0) lines.push("• No results entered yet — demo cannot be assessed.");
+  lines.push("");
+  lines.push("RECOMMENDATION");
+  if(totalP+totalF===0)            lines.push("NOT READY — no test results entered. Demo cannot proceed until baseline testing is complete.");
+  else if(totalF===0 && totalP>=8) lines.push("READY — clean record across recorded sections. Proceed with demo missions: First on Scene, License Plate ID, Heat Signature, Eyes On, Crime Scene, The Perimeter.");
+  else if(rate>=85)                lines.push("CONDITIONAL — strong performance ("+rate+"%) but address "+totalF+" specific failure"+(totalF===1?"":"s")+" before demo for highest-stakes missions (License Plate ID, Heat Signature).");
+  else if(rate>=60)                lines.push("CONDITIONAL — limit demo to mission profiles that don't depend on the failing test categories until remediation.");
+  else                              lines.push("NOT READY — pass rate of "+rate+"% is below acceptable demo threshold.");
+  return lines.join("\n");
+}
+
 // ── Module-level extracted components ─────────────────────────────────────
 
 function ExecSummaryBtn({sectionName,contextData}){
@@ -418,19 +542,21 @@ function ExecSummaryBtn({sectionName,contextData}){
     fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1000,messages:[{role:"user",content:prompt}]})})
       .then(async r=>{
         const data=await r.json().catch(()=>({}));
-        if(!r.ok){
-          const msg=(data&&data.error)||("HTTP "+r.status);
-          throw new Error(msg);
-        }
+        if(!r.ok) throw new Error((data&&data.error)||("HTTP "+r.status));
         return data;
       })
       .then(data=>{
         const out=(data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n");
-        setText(out||"No summary generated.");
+        // If the API returns an empty payload for any reason, fall back to
+        // the deterministic local generator so the user always sees a
+        // usable summary instead of "No summary generated."
+        setText(out||buildLocalSummary(sectionName,contextData,oem));
         setLoading(false);
       })
-      .catch(err=>{
-        setText("Error generating summary: "+(err&&err.message?err.message:"unknown error"));
+      .catch(()=>{
+        // API outage, missing key, or rate limit — local generator always
+        // produces something useful from the data already in state.
+        setText(buildLocalSummary(sectionName,contextData,oem));
         setLoading(false);
       });
   };
@@ -1190,19 +1316,16 @@ function DemoMissions(){
     fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1000,messages:[{role:"user",content:prompt}]})})
       .then(async r=>{
         const data=await r.json().catch(()=>({}));
-        if(!r.ok){
-          const msg=(data&&data.error)||("HTTP "+r.status);
-          throw new Error(msg);
-        }
+        if(!r.ok) throw new Error((data&&data.error)||("HTTP "+r.status));
         return data;
       })
       .then(data=>{
         const out=(data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n");
-        setSummaryText(out||"No summary generated.");
+        setSummaryText(out||buildLocalDemoSummary(oem,allRes));
         setLoading(false);
       })
-      .catch(err=>{
-        setSummaryText("Error generating summary: "+(err&&err.message?err.message:"unknown error"));
+      .catch(()=>{
+        setSummaryText(buildLocalDemoSummary(oem,allRes));
         setLoading(false);
       });
   };
