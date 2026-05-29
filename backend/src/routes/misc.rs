@@ -1,7 +1,7 @@
 use axum::{
     extract::{Query, State},
     http::HeaderMap,
-    routing::{get, post},
+    routing::get,
     Json, Router,
 };
 use serde::Deserialize;
@@ -17,10 +17,11 @@ pub struct AppState {
 }
 
 pub fn router() -> Router<AppState> {
+    // /claude lives in routes::claude (hardened version with model
+    // whitelist, max_tokens cap, payload size limits).
     Router::new()
         .route("/health", get(health))
         .route("/me", get(me))
-        .route("/claude", post(claude_proxy))
         .route("/geocode", get(geocode))
 }
 
@@ -39,33 +40,6 @@ async fn me(headers: HeaderMap) -> Json<Value> {
         .unwrap_or("local-dev")
         .to_string();
     Json(json!({ "principal": principal }))
-}
-
-async fn claude_proxy(
-    State(state): State<AppState>,
-    Json(body): Json<Value>,
-) -> Result<Json<Value>, AppError> {
-    let api_key = std::env::var("ANTHROPIC_API_KEY").map_err(|_| {
-        AppError::Internal("ANTHROPIC_API_KEY not configured".into())
-    })?;
-
-    let resp = state
-        .http
-        .post("https://api.anthropic.com/v1/messages")
-        .header("x-api-key", &api_key)
-        .header("anthropic-version", "2023-06-01")
-        .header("content-type", "application/json")
-        .json(&body)
-        .send()
-        .await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
-
-    let data: Value = resp
-        .json()
-        .await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
-
-    Ok(Json(data))
 }
 
 #[derive(Deserialize)]
