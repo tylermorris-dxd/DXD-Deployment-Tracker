@@ -7,7 +7,6 @@ import Dashboard from '@/components/Dashboard'
 import ProjectList from '@/components/ProjectList'
 import ProjectView from '@/components/ProjectView'
 import AdminPanel from '@/components/AdminPanel'
-import PipelineView from '@/components/PipelineView'
 import AllDealsTable from '@/components/AllDealsTable'
 import EquipmentTracker from '@/components/EquipmentTracker'
 import CostEstimator from '@/components/CostEstimator'
@@ -15,12 +14,11 @@ import DroneTeviApp from '@/components/DroneTeviApp'
 import EventPricingApp from '@/components/EventPricingApp'
 import SecurityJobEstimator from '@/components/SecurityJobEstimator'
 
-export type MainTab = 'dashboard' | 'deals' | 'pipeline' | 'all-deals' | 'admin' | 'equipment' | 'cost' | 'product' | 'events' | 'security-est'
+export type MainTab = 'dashboard' | 'deals' | 'all-deals' | 'admin' | 'equipment' | 'cost' | 'product' | 'events' | 'security-est'
 
 const MENU_ITEMS: { id: MainTab; label: string; dividerBefore?: boolean }[] = [
   { id: 'dashboard',    label: 'Dashboard' },
   { id: 'deals',        label: 'Deals' },
-  { id: 'pipeline',     label: 'Pipeline' },
   { id: 'all-deals',    label: 'All Deals' },
   { id: 'admin',        label: 'Admin',               dividerBefore: true },
   { id: 'equipment',    label: 'Equipment' },
@@ -126,7 +124,6 @@ export default function Home() {
       {/* ── Content ─────────────────────────────────────────────────────────── */}
       {tab === 'dashboard' && <Dashboard onOpenDeal={openDeal} onSwitchTab={setTab} />}
       {tab === 'deals'     && <ProjectList onSelectProject={openDeal} />}
-      {tab === 'pipeline'  && <PipelineView onOpenDeal={openDeal} />}
       {tab === 'all-deals' && <AllDealsTable onOpenDeal={openDeal} />}
       {tab === 'admin'     && <AdminPanel />}
       {tab === 'equipment' && <EquipmentTracker />}

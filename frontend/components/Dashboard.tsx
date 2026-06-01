@@ -21,13 +21,6 @@ const C = {
   muted:   '#5a6380',
 }
 
-const STAGE_NAMES: Record<number, string> = {
-  1:  'Identify & Qualify',      2:  'Discovery & Assessment',  3:  'Opportunity Capture',
-  4:  'Solution Design',         5:  'Proposal & Scoping',      6:  'Negotiation & Close',
-  7:  'Deployment Prep',         8:  'Site Preparation',        9:  'Installation',
-  10: 'Testing & Validation',    11: 'Ops Transition',          12: 'Active Operations',
-}
-
 const HANDOFF_INFO: Record<number, { from: string; to: string; desc: string }> = {
   3:  { from: 'Capture',   to: 'Solutions', desc: 'Capture → Solutions handoff required' },
   6:  { from: 'Solutions', to: 'Delivery',  desc: 'Solutions → Delivery handoff required' },
@@ -92,16 +85,6 @@ export default function Dashboard({ onOpenDeal, onSwitchTab }: Props) {
   })
   const closedWon30dValue  = closedWon30d.reduce((s, a) => s + (parseFloat(a.deal.properties.amount || '0') || 0), 0)
 
-  // ── Pipeline by stage ──────────────────────────────────────────────────────
-  const stageDist = Array.from({ length: 12 }, (_, i) => {
-    const n = i + 1
-    const ps = projects.filter(p => p.currentStage === n)
-    const val = ps.reduce((s, p) => s + (parseFloat(dealMap.get(p.id)?.properties.amount || '0') || 0), 0)
-    return { n, name: STAGE_NAMES[n] ?? `Stage ${n}`, count: ps.length, value: val, color: stageColor(n), projects: ps }
-  }).filter(s => s.count > 0)
-
-  const maxCount = Math.max(...stageDist.map(s => s.count), 1)
-
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div style={{ maxWidth: 1400, margin: '0 auto', padding: '28px 28px 60px' }}>
@@ -164,36 +147,6 @@ export default function Dashboard({ onOpenDeal, onSwitchTab }: Props) {
                     </div>
                   )
                 })}
-              </div>
-            )}
-          </Widget>
-
-          {/* Pipeline by Stage */}
-          <Widget>
-            <WHeader title="Pipeline by Stage" action={{ label: 'View All →', onClick: () => onSwitchTab('pipeline') }} />
-            {stageDist.length === 0 ? (
-              <Empty>No deals with stage data yet</Empty>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                {stageDist.map(s => (
-                  <div key={s.n} onClick={() => onSwitchTab('pipeline')}
-                    style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 10px', borderRadius: 7, cursor: 'pointer' }}
-                    onMouseEnter={e => (e.currentTarget.style.background = C.surface2)}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                  >
-                    <div style={{ width: 24, height: 24, borderRadius: '50%', border: `1.5px solid ${s.color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, color: s.color, fontWeight: 600 }}>{s.n}</span>
-                    </div>
-                    <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: C.text2, width: 168, flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</div>
-                    <div style={{ flex: 1, height: 5, background: C.surface2, borderRadius: 3, overflow: 'hidden' }}>
-                      <div style={{ width: `${(s.count / maxCount) * 100}%`, height: '100%', background: s.color, borderRadius: 3, transition: 'width 0.4s' }} />
-                    </div>
-                    <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: C.text, width: 18, textAlign: 'right', flexShrink: 0 }}>{s.count}</div>
-                    <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: C.green, width: 52, textAlign: 'right', flexShrink: 0 }}>
-                      {s.value > 0 ? fmtMoney(s.value) : ''}
-                    </div>
-                  </div>
-                ))}
               </div>
             )}
           </Widget>
