@@ -1,14 +1,11 @@
 'use client'
 
-import React, { useState, useCallback, useEffect } from 'react'
+import React, { useState, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { s } from '@/lib/styles'
 import { Icons } from '@/lib/icons'
 import type { HubSpotDeal } from '@/lib/types'
-import PhasePanel from './PhasePanel'
-import KanbanView from './KanbanView'
-import PricingView from './PricingView'
 import WeatherIntel from './WeatherIntel'
 import AirspaceIntel from './AirspaceIntel'
 import ConnectivityView from './ConnectivityView'
@@ -16,14 +13,13 @@ import SiteMapper from './SiteMapper'
 import StakeholdersView from './StakeholdersView'
 import ProjectSettingsView from './ProjectSettingsView'
 import OpsPlanner from './OpsPlanner'
-import HandoffCard from './HandoffCard'
 
 interface Props {
   projectId: string
   onBack: () => void
 }
 
-type ViewMode = 'list' | 'kanban' | 'pricing' | 'wx' | 'airspace' | 'map' | 'network' | 'stakeholders' | 'settings' | 'ops'
+type ViewMode = 'wx' | 'airspace' | 'map' | 'network' | 'stakeholders' | 'settings' | 'ops'
 
 // ── Shared tab-button styles ───────────────────────────────────────────────────
 
@@ -45,18 +41,6 @@ const tabBtn = (active: boolean): React.CSSProperties => ({
 // ── Tab definitions ───────────────────────────────────────────────────────────
 
 const TABS: Array<{ id: ViewMode; label: string; icon: React.ReactNode }> = [
-  {
-    id: 'list', label: 'List',
-    icon: <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 3h12M1 7h12M1 11h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>,
-  },
-  {
-    id: 'kanban', label: 'Kanban',
-    icon: <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="3.5" height="12" rx="1" stroke="currentColor" strokeWidth="1.2"/><rect x="5.25" y="1" width="3.5" height="8" rx="1" stroke="currentColor" strokeWidth="1.2"/><rect x="9.5" y="1" width="3.5" height="10" rx="1" stroke="currentColor" strokeWidth="1.2"/></svg>,
-  },
-  {
-    id: 'pricing', label: 'Pricing',
-    icon: <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M4.5 3.5h3.75a1.75 1.75 0 010 3.5H4M4.5 7h4.25a1.75 1.75 0 010 3.5H4.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>,
-  },
   {
     id: 'wx', label: 'WX',
     icon: <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="5" r="3" stroke="currentColor" strokeWidth="1.2"/><path d="M2 11c0-2 2.5-3.5 5-3.5s5 1.5 5 3.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/><path d="M10.5 3.5l1-1M3.5 3.5l-1-1M7 1V0M11 6h1M2 6H1" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/></svg>,
@@ -91,11 +75,9 @@ const TABS: Array<{ id: ViewMode; label: string; icon: React.ReactNode }> = [
 
 export default function ProjectView({ projectId, onBack }: Props) {
   const qc = useQueryClient()
-  const [viewMode, setViewMode]             = useState<ViewMode>('list')
+  const [viewMode, setViewMode]             = useState<ViewMode>('stakeholders')
   const [opsMaximized, setOpsMaximized]     = useState(false)
   const [hsOpen, setHsOpen]                 = useState(true)
-  const [activeStageNumber, setActiveStageNumber] = useState(1)
-  const [showGateModal, setShowGateModal]   = useState(false)
 
   const { data: project, isLoading, error } = useQuery({
     queryKey: ['project', projectId],
@@ -107,11 +89,6 @@ export default function ProjectView({ projectId, onBack }: Props) {
     queryFn: () => api.hubspot.getDeal(project!.hubspotDealId!),
     enabled: !!project?.hubspotDealId,
     refetchInterval: 60_000,
-  })
-
-  const { data: teamMembers = [] } = useQuery({
-    queryKey: ['team'],
-    queryFn: api.team.list,
   })
 
   const invalidate = useCallback(() => qc.invalidateQueries({ queryKey: ['project', projectId] }), [qc, projectId])
@@ -148,31 +125,12 @@ export default function ProjectView({ projectId, onBack }: Props) {
     } catch (_) { /* non-fatal */ }
   }, [projectId, invalidate])
 
-  const updatePricingCache = useCallback(async (data: unknown) => {
-    try {
-      await api.projects.update(projectId, { pricingCache: data ? JSON.stringify(data) : null })
-      // No invalidate — pricing tool owns its own state during the session;
-      // re-fetching the project would cause its inputs to reset on every keystroke.
-    } catch (_) { /* non-fatal */ }
-  }, [projectId])
-
   const updateWeatherCache = useCallback(async (data: unknown) => {
     try {
       await api.projects.update(projectId, { weatherCache: data ? JSON.stringify(data) : null })
       invalidate()
     } catch (_) { /* non-fatal */ }
   }, [projectId, invalidate])
-
-  useEffect(() => {
-    if (!project) return
-    const incompleteStageTasks = project.phases
-      .flatMap(ph => ph.tasks)
-      .filter(t => !t.completed && t.stageNumber !== null)
-    if (incompleteStageTasks.length > 0) {
-      const minStage = Math.min(...incompleteStageTasks.map(t => t.stageNumber!))
-      setActiveStageNumber(minStage)
-    }
-  }, [project?.id])
 
   // ── Loading / error states ────────────────────────────────────────────────
   if (isLoading) {
@@ -200,22 +158,6 @@ export default function ProjectView({ projectId, onBack }: Props) {
   const totalTasks  = project.phases.reduce((a, ph) => a + ph.tasks.filter(t => t.stageNumber !== 11 && t.stageNumber !== 12).length, 0)
   const doneTasks   = project.phases.reduce((a, ph) => a + ph.tasks.filter(t => t.completed && t.stageNumber !== 11 && t.stageNumber !== 12).length, 0)
   const overallPct  = totalTasks ? Math.round((doneTasks / totalTasks) * 100) : 0
-  // ── Stage-centric derived values ──────────────────────────────────────────
-  const allTasks = project.phases.flatMap(ph => ph.tasks)
-  const activeStageTasks = allTasks.filter(t => t.stageNumber === activeStageNumber)
-  const activeStagePhase = project.phases.find(ph => ph.tasks.some(t => t.stageNumber === activeStageNumber)) ?? project.phases[0]
-  const incompleteExitGates = activeStageTasks.flatMap(t => t.subtasks).filter(s => s.priority === 'exit_gate' && !s.isDone).length
-  const stagePhaseColor = activeStageNumber <= 3 ? '#D2232A' : activeStageNumber <= 6 ? '#2563EB' : '#16A34A'
-
-  const stageMap = new Map<number, { total: number; done: number; color: string }>()
-  for (const ph of project.phases) {
-    for (const t of ph.tasks) {
-      if (t.stageNumber === null) continue
-      const e = stageMap.get(t.stageNumber)
-      if (!e) stageMap.set(t.stageNumber, { total: 1, done: t.completed ? 1 : 0, color: ph.color })
-      else { e.total++; if (t.completed) e.done++ }
-    }
-  }
 
   return (
     <div style={{ maxWidth: opsMaximized ? '100%' : 1200, margin: '0 auto', padding: '0 0 40px 0' }}>
@@ -309,57 +251,6 @@ export default function ProjectView({ projectId, onBack }: Props) {
         <HubSpotDealPanel deal={hsDeal} open={hsOpen} onToggle={() => setHsOpen(v => !v)} />
       )}
 
-      {/* ── Stage pipeline strip ─────────────────────────────────────────── */}
-      {(viewMode === 'list' || viewMode === 'kanban') && (() => {
-        const FALLBACK = ['#D2232A','#D2232A','#D2232A','#2563EB','#2563EB','#2563EB','#16A34A','#16A34A','#16A34A','#16A34A','#16A34A','#16A34A']
-        const stageNodes = Array.from({ length: 12 }, (_, i) => {
-          const n = i + 1
-          const info = stageMap.get(n)
-          return { n, total: info?.total ?? 0, done: info?.done ?? 0, color: info?.color ?? FALLBACK[i] }
-        })
-        let foundCurrent = false
-        return (
-          <div style={{ padding: '10px 24px', background: 'rgba(6,6,8,0.7)', borderBottom: '1px solid rgba(255,255,255,0.05)', overflowX: 'auto' }}>
-            <div style={{ display: 'flex', alignItems: 'center', minWidth: 'max-content', position: 'relative' }}>
-              {stageNodes.map((stage, i) => {
-                const isDone = stage.total > 0 && stage.done === stage.total
-                const isCurrent = !isDone && !foundCurrent && stage.total > 0
-                if (isCurrent) foundCurrent = true
-                const isActive = stage.n === activeStageNumber
-                return (
-                  <React.Fragment key={stage.n}>
-                    {i > 0 && <div style={{ width: 20, height: 1, background: 'rgba(255,255,255,0.08)', flexShrink: 0 }} />}
-                    <div
-                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, cursor: 'pointer' }}
-                      onClick={() => {
-                        setActiveStageNumber(stage.n)
-                        setViewMode('list')
-                      }}
-                    >
-                      <div style={{
-                        width: 22, height: 22, borderRadius: '50%',
-                        background: isDone ? '#22C55E' : 'rgba(6,6,8,1)',
-                        border: `2px solid ${isDone ? '#22C55E' : stage.color}`,
-                        boxShadow: isActive ? `0 0 10px ${stage.color}99` : isCurrent ? `0 0 6px ${stage.color}55` : 'none',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                      }}>
-                        {isDone
-                          ? <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M2 5.5l2.5 2.5 4.5-4.5" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                          : <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 8, color: isActive ? stage.color : isCurrent ? stage.color : 'rgba(255,255,255,0.35)', fontWeight: isActive || isCurrent ? 700 : 400 }}>{stage.n}</span>
-                        }
-                      </div>
-                      <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 8, color: isDone ? '#22C55E' : isActive ? stage.color : isCurrent ? stage.color : 'rgba(255,255,255,0.25)', letterSpacing: 0.3 }}>
-                        S{stage.n}
-                      </span>
-                    </div>
-                  </React.Fragment>
-                )
-              })}
-            </div>
-          </div>
-        )
-      })()}
-
       {/* ── OPS PLANNER — always mounted so iframe state survives tab switches ── */}
       <div style={{ display: viewMode === 'ops' ? 'block' : 'none', position: 'relative' }}>
         {opsMaximized && (
@@ -376,124 +267,6 @@ export default function ProjectView({ projectId, onBack }: Props) {
 
       {/* ── Content area ──────────────────────────────────────────────────── */}
       <div style={{ display: viewMode === 'ops' ? 'none' : 'block', padding: viewMode === 'map' ? 0 : '24px 24px 0 24px' }}>
-        {/* LIST view */}
-        {viewMode === 'list' && (
-          <div style={{ display: 'grid', gridTemplateColumns: '175px 1fr', gap: 24 }}>
-            {/* Stage sidebar */}
-            <div>
-              {[
-                { label: 'PHASE A', stages: [1,2,3], color: '#D2232A' },
-                { label: 'PHASE B', stages: [4,5,6], color: '#2563EB' },
-                { label: 'PHASE C', stages: [7,8,9,10,11,12], color: '#16A34A' },
-              ].map(group => (
-                <div key={group.label} style={{ marginBottom: 14 }}>
-                  <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 10, letterSpacing: 2, color: group.color, marginBottom: 5, opacity: 0.7 }}>
-                    {group.label}
-                  </div>
-                  {group.stages.map(n => {
-                    const info = stageMap.get(n)
-                    const total = info?.total ?? 0
-                    const done = info?.done ?? 0
-                    const pct = total > 0 ? Math.round((done / total) * 100) : 0
-                    const isActive = n === activeStageNumber
-                    const isComplete = total > 0 && done === total
-                    const stageTaskTitle = allTasks.find(t => t.stageNumber === n)?.title ?? ''
-                    const shortTitle = stageTaskTitle.includes(' — ') ? stageTaskTitle.split(' — ')[1] : `Stage ${n}`
-                    return (
-                      <div key={n} onClick={() => setActiveStageNumber(n)}
-                        style={{ padding: '6px 8px', borderRadius: 6, marginBottom: 2, cursor: 'pointer', background: isActive ? 'rgba(255,255,255,0.07)' : 'transparent', border: isActive ? `1px solid ${group.color}35` : '1px solid transparent', transition: 'all 0.15s' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
-                          <div style={{ width: 16, height: 16, borderRadius: '50%', background: isComplete ? '#22C55E' : 'transparent', border: `1.5px solid ${isComplete ? '#22C55E' : group.color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                            {isComplete
-                              ? <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1.5 4l2 2 3-3" stroke="#fff" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                              : <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 8, color: isActive ? group.color : 'rgba(255,255,255,0.35)' }}>{n}</span>
-                            }
-                          </div>
-                          <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: isActive ? '#E8ECF4' : 'rgba(255,255,255,0.55)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                            {shortTitle}
-                          </span>
-                        </div>
-                        <div style={{ height: 2, background: 'rgba(255,255,255,0.06)', borderRadius: 1, overflow: 'hidden' }}>
-                          <div style={{ width: pct + '%', height: '100%', background: isComplete ? '#22C55E' : group.color, borderRadius: 1 }} />
-                        </div>
-                        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>{done}/{total}</div>
-                      </div>
-                    )
-                  })}
-                </div>
-              ))}
-
-              {/* Prev / Next nav */}
-              <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
-                <button
-                  onClick={() => setActiveStageNumber(n => Math.max(1, n - 1))}
-                  disabled={activeStageNumber <= 1}
-                  style={{ flex: 1, padding: '5px 0', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, color: activeStageNumber <= 1 ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.45)', fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, cursor: activeStageNumber <= 1 ? 'default' : 'pointer' }}>
-                  ← Prev
-                </button>
-                <button
-                  onClick={() => {
-                    if (incompleteExitGates > 0) setShowGateModal(true)
-                    else setActiveStageNumber(n => Math.min(12, n + 1))
-                  }}
-                  disabled={activeStageNumber >= 12}
-                  style={{ flex: 1, padding: '5px 0', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, color: activeStageNumber >= 12 ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.45)', fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, cursor: activeStageNumber >= 12 ? 'default' : 'pointer' }}>
-                  Next →
-                </button>
-              </div>
-            </div>
-
-            {/* Stage content */}
-            <div>
-              {/* Stage label */}
-              <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 12, fontWeight: 700, letterSpacing: 1.5, color: stagePhaseColor, marginBottom: 12, textTransform: 'uppercase' }}>
-                Stage {activeStageNumber}
-              </div>
-
-              {/* Exit gate warning */}
-              {incompleteExitGates > 0 && (
-                <div style={{ background: 'rgba(234,179,8,0.07)', border: '1px solid rgba(234,179,8,0.25)', borderRadius: 8, padding: '9px 13px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span>⚠</span>
-                  <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: 'rgba(234,179,8,0.85)' }}>
-                    {incompleteExitGates} exit gate item{incompleteExitGates > 1 ? 's' : ''} incomplete — resolve before advancing to stage {activeStageNumber + 1}
-                  </span>
-                </div>
-              )}
-
-              {/* Handoff card */}
-              {(activeStageNumber === 4 || activeStageNumber === 7 || activeStageNumber === 11) && (
-                <HandoffCard
-                  stageNumber={activeStageNumber}
-                  phases={project.phases}
-                  projectId={projectId}
-                  onUpdate={invalidate}
-                />
-              )}
-
-              {/* Stage tasks */}
-              {activeStageTasks.length > 0 ? (
-                <PhasePanel
-                  phase={{ ...activeStagePhase, tasks: activeStageTasks }}
-                  projectId={projectId}
-                  teamMembers={teamMembers}
-                  branchAnswers={project.branchAnswers ?? {}}
-                  onDataChange={invalidate}
-                />
-              ) : (
-                <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: 'rgba(255,255,255,0.2)', padding: '40px 0', textAlign: 'center' }}>
-                  No tasks in stage {activeStageNumber}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* KANBAN view */}
-        {viewMode === 'kanban' && <KanbanView project={project} />}
-
-        {/* PRICING view */}
-        {viewMode === 'pricing' && <PricingView project={project} onCacheUpdate={updatePricingCache} />}
-
         {/* WEATHER view */}
         {viewMode === 'wx' && <WeatherIntel project={project} onCacheUpdate={updateWeatherCache} />}
 
@@ -514,35 +287,6 @@ export default function ProjectView({ projectId, onBack }: Props) {
 
       </div>
 
-      {/* Exit gate modal */}
-      {showGateModal && (
-        <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={() => setShowGateModal(false)}>
-          <div
-            style={{ background: '#0F0F11', border: '1px solid rgba(234,179,8,0.3)', borderRadius: 12, padding: '28px 32px', maxWidth: 420, width: '90%' }}
-            onClick={e => e.stopPropagation()}>
-            <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 13, fontWeight: 700, color: '#EAB308', letterSpacing: 1, marginBottom: 12 }}>
-              ⚠ Exit Gate Warning
-            </div>
-            <p style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: 'rgba(255,255,255,0.7)', lineHeight: 1.6, marginBottom: 20, margin: '0 0 20px 0' }}>
-              {incompleteExitGates} exit gate item{incompleteExitGates > 1 ? 's' : ''} for Stage {activeStageNumber} {incompleteExitGates > 1 ? 'are' : 'is'} still incomplete. These should be resolved before advancing.
-            </p>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button
-                onClick={() => { setShowGateModal(false); setActiveStageNumber(n => Math.min(12, n + 1)) }}
-                style={{ flex: 1, padding: '10px 0', background: 'rgba(234,179,8,0.12)', border: '1px solid rgba(234,179,8,0.35)', borderRadius: 8, color: '#EAB308', fontFamily: "'Chakra Petch', sans-serif", fontSize: 10, fontWeight: 700, letterSpacing: 1, cursor: 'pointer' }}>
-                CONTINUE ANYWAY
-              </button>
-              <button
-                onClick={() => setShowGateModal(false)}
-                style={{ flex: 1, padding: '10px 0', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: 'rgba(255,255,255,0.55)', fontFamily: "'Chakra Petch', sans-serif", fontSize: 10, fontWeight: 700, letterSpacing: 1, cursor: 'pointer' }}>
-                STAY IN STAGE
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
