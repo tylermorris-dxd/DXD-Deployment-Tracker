@@ -107,44 +107,40 @@ async fn network_lookup(
     let county_code = &county_fips[2..];
 
     // ── 2. Census ACS broadband data for that county ─────────────────────
-    let census_url = format!(
+    // The Census Data API now requires a free API key on every request.
+    // We pass it via the CENSUS_API_KEY env var (set in Azure App Settings).
+    // If the key is missing or Census is unreachable, we degrade gracefully:
+    // the rest of the network lookup (FCC county info + Overpass towers +
+    // power) still works and broadband stats just show as unavailable.
+    let census_key = std::env::var("CENSUS_API_KEY").ok().filter(|s| !s.trim().is_empty());
+    let mut census_url = format!(
         "https://api.census.gov/data/2022/acs/acs5?get=NAME,B28002_001E,B28002_004E,B28002_007E,B28002_013E&for=county:{county_code}&in=state:{state_fips}"
     );
-    let census: Value = state
-        .http
-        .get(&census_url)
-        .send()
-        .await
-        .map_err(|e| AppError::BadRequest(format!("Census API request failed: {e}")))?
-        .json()
-        .await
-        .map_err(|e| AppError::BadRequest(format!("Census API returned non-JSON: {e}")))?;
-
-    // Response shape is [[headers...], [values...]]. We need to map header
-    // names back to their values, then parse the broadband variables.
-    let headers = census
-        .get(0)
-        .and_then(|v| v.as_array())
-        .ok_or_else(|| AppError::BadRequest("Census response empty".into()))?;
-    let values = census
-        .get(1)
-        .and_then(|v| v.as_array())
-        .ok_or_else(|| AppError::BadRequest("Census response missing data row".into()))?;
-    let mut census_map: HashMap<String, i64> = HashMap::new();
-    for (i, h) in headers.iter().enumerate() {
-        if let (Some(name), Some(raw)) = (h.as_str(), values.get(i)) {
-            let parsed = raw.as_str().and_then(|s| s.parse::<i64>().ok()).unwrap_or(0);
-            census_map.insert(name.to_string(), parsed);
-        }
+    if let Some(k) = &census_key {
+        census_url.push_str("&key=");
+        census_url.push_str(&urlencoding::encode(k));
     }
-    let total_hh = census_map.get("B28002_001E").copied().unwrap_or(1).max(1);
-    let has_internet = census_map.get("B28002_004E").copied().unwrap_or(0);
-    let broadband = census_map.get("B28002_007E").copied().unwrap_or(0);
-    let satellite = census_map.get("B28002_013E").copied().unwrap_or(0);
-    let internet_pct = (has_internet * 100 / total_hh).max(0);
-    let broadband_pct = (broadband * 100 / total_hh).max(0);
-    let satellite_pct = (satellite * 100 / total_hh).max(0);
-    let no_internet_pct = ((total_hh - has_internet) * 100 / total_hh).max(0);
+
+    let (total_hh, internet_pct, broadband_pct, satellite_pct, no_internet_pct) = match try_census(&state, &census_url).await {
+        Ok(m) => {
+            let total_hh = m.get("B28002_001E").copied().unwrap_or(1).max(1);
+            let has_internet = m.get("B28002_004E").copied().unwrap_or(0);
+            let broadband = m.get("B28002_007E").copied().unwrap_or(0);
+            let satellite = m.get("B28002_013E").copied().unwrap_or(0);
+            (
+                total_hh,
+                (has_internet * 100 / total_hh).max(0),
+                (broadband * 100 / total_hh).max(0),
+                (satellite * 100 / total_hh).max(0),
+                ((total_hh - has_internet) * 100 / total_hh).max(0),
+            )
+        }
+        Err(e) => {
+            // Don't fail the whole tool — log and degrade.
+            tracing::warn!("Census ACS lookup failed: {e}");
+            (0, 0, 0, 0, 0)
+        }
+    };
 
     // ── 3. Overpass: cell towers (non-fatal — defaults to empty if down) ──
     let tower_query = format!(
@@ -277,6 +273,31 @@ fn parse_power(json: &Value, lat: f64, lng: f64) -> PowerData {
     data.nearestSubDist = nearest_dist.map(|d| (d * 10.0).round() / 10.0);
     data.nearestSub = nearest_sub;
     data
+}
+
+async fn try_census(state: &AppState, url: &str) -> Result<HashMap<String, i64>, String> {
+    // Read the body as text first. If Census errors (e.g. missing key, rate
+    // limit, malformed FIPS) it returns a plaintext or HTML response that
+    // would otherwise blow up serde_json with a useless message.
+    let res = state.http.get(url).send().await.map_err(|e| e.to_string())?;
+    let status = res.status();
+    let body = res.text().await.map_err(|e| e.to_string())?;
+    if !status.is_success() {
+        return Err(format!("HTTP {status}: {}", body.chars().take(200).collect::<String>()));
+    }
+    let json: Value = serde_json::from_str(&body).map_err(|e| {
+        format!("non-JSON response ({e}): {}", body.chars().take(200).collect::<String>())
+    })?;
+    let headers = json.get(0).and_then(|v| v.as_array()).ok_or("empty census response")?;
+    let values = json.get(1).and_then(|v| v.as_array()).ok_or("census response missing data row")?;
+    let mut map: HashMap<String, i64> = HashMap::new();
+    for (i, h) in headers.iter().enumerate() {
+        if let (Some(name), Some(raw)) = (h.as_str(), values.get(i)) {
+            let parsed = raw.as_str().and_then(|s| s.parse::<i64>().ok()).unwrap_or(0);
+            map.insert(name.to_string(), parsed);
+        }
+    }
+    Ok(map)
 }
 
 fn haversine_km(lat1: f64, lon1: f64, lat2: f64, lon2: f64) -> f64 {
