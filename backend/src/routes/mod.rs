@@ -5,6 +5,7 @@ pub mod claude;
 pub mod equipment;
 pub mod hubspot;
 pub mod misc;
+pub mod network;
 pub mod pricing;
 pub mod projects;
 pub mod tasks;
@@ -24,6 +25,7 @@ pub fn api_router(state: AppState) -> Router {
         .merge(pricing::router())
         .merge(tevi::router())
         .merge(claude::router())
+        .merge(network::router())
         .merge(misc::router())
         .with_state(state)
 }

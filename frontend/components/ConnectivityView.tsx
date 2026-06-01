@@ -30,13 +30,6 @@ const monoNum: React.CSSProperties = {
   fontFamily: "'IBM Plex Mono', monospace", fontWeight: 700,
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number) {
-  const R = 6371, dL = (lat2 - lat1) * Math.PI / 180, dO = (lon2 - lon1) * Math.PI / 180
-  const a = Math.sin(dL / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dO / 2) ** 2
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-}
 
 interface PowerData {
   substationCount: number
@@ -69,102 +62,25 @@ async function fetchConnectivity(
   address: string,
   setLoadMsg: (msg: string) => void
 ): Promise<ConnResult> {
+  // Geocode stays client-side (works via shared Census JSONP geocoder).
   setLoadMsg('Geocoding address...')
-  const geoResult = await geocodeAddress(address)
-  if (!geoResult) throw new Error('Address not found — verify site address in project settings')
-  const { lat, lng: lon, displayName: display_name } = geoResult
+  const geo = await geocodeAddress(address)
+  if (!geo) throw new Error('Address not found — verify site address in project settings')
 
-  setLoadMsg('Looking up FCC coverage area...')
-  const fccRes = await fetch(`https://geo.fcc.gov/api/census/block/find?latitude=${lat}&longitude=${lon}&format=json`)
-  const fccData = await fccRes.json()
-  if (fccData.status !== 'OK') throw new Error('Could not determine coverage area')
-  const countyFIPS: string = fccData.County.FIPS
-  const countyName: string = fccData.County.name
-  const stateCode: string  = fccData.State.code
-  const stateName: string  = fccData.State.name
-  const stateFIPS: string  = fccData.State.FIPS
-  const countyCode = countyFIPS.slice(2)
-
-  setLoadMsg('Fetching Census broadband data...')
-  const censusRes = await fetch(
-    `https://api.census.gov/data/2022/acs/acs5?get=NAME,B28002_001E,B28002_004E,B28002_007E,B28002_013E&for=county:${countyCode}&in=state:${stateFIPS}`
-  )
-  const censusJson = await censusRes.json()
-  const [headers, values] = censusJson as [string[], string[]]
-  const census: Record<string, number> = {}
-  headers.forEach((h, i) => { census[h] = parseInt(values[i]) || 0 })
-  const totalHH     = census.B28002_001E || 1
-  const hasInternet = census.B28002_004E || 0
-  const internetPct   = Math.round(hasInternet / totalHH * 100)
-  const broadbandPct  = Math.round(census.B28002_007E / totalHH * 100)
-  const satellitePct  = Math.round(census.B28002_013E / totalHH * 100)
-  const noInternetPct = Math.round((totalHH - hasInternet) / totalHH * 100)
-
-  setLoadMsg('Scanning cell tower infrastructure...')
-  let towerCount = 0
-  let towerTypes: Record<string, number> = {}
-  try {
-    const ovQuery = `[out:json][timeout:15];node["communication:mobile_phone"="yes"](around:16000,${lat},${lon});out tags;`
-    const ovRes = await fetch('https://overpass-api.de/api/interpreter', {
-      method: 'POST', body: `data=${encodeURIComponent(ovQuery)}`
-    })
-    const ovJson = await ovRes.json()
-    towerCount = ovJson.elements?.length || 0
-    for (const el of (ovJson.elements || [])) {
-      const c: string = el.tags?.['tower:construction'] || 'lattice'
-      towerTypes[c] = (towerTypes[c] || 0) + 1
-    }
-  } catch (_) { /* non-fatal */ }
-
-  setLoadMsg('Scanning power infrastructure...')
-  const power: PowerData = { substationCount: 0, operators: [], nearestSubDist: null, nearestSub: null, voltages: [], plantCount: 0 }
-  try {
-    const pwrQ = `[out:json][timeout:20];(node["power"="substation"](around:40000,${lat},${lon});way["power"="substation"](around:40000,${lat},${lon});way["power"="line"]["voltage"](around:20000,${lat},${lon});node["power"="plant"](around:60000,${lat},${lon});way["power"="plant"](around:60000,${lat},${lon}););out tags center;`
-    const pwrRes = await fetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: `data=${encodeURIComponent(pwrQ)}` })
-    const pwrJson = await pwrRes.json()
-    const opSet = new Set<string>(), voltSet = new Set<number>()
-    let nearDist: number | null = null
-    let nearSub: PowerData['nearestSub'] = null
-    for (const el of (pwrJson.elements || [])) {
-      const t = el.tags || {}
-      if (t.power === 'substation') {
-        const elLat: number = el.lat ?? el.center?.lat
-        const elLon: number = el.lon ?? el.center?.lon
-        if (t.operator) opSet.add(t.operator as string)
-        power.substationCount++
-        if (elLat && elLon) {
-          const d = haversineKm(lat, lon, elLat, elLon)
-          if (nearDist === null || d < nearDist) {
-            nearDist = d
-            nearSub = { name: t.name || 'Substation', operator: t.operator || null, voltage: t.voltage || null, type: t.substation || 'distribution' }
-          }
-        }
-      } else if (t.power === 'line' && t.voltage) {
-        const v = parseInt(t.voltage as string)
-        if (v > 0) voltSet.add(v)
-        if (t.operator) opSet.add(t.operator as string)
-      } else if (t.power === 'plant' || t.power === 'generator') {
-        power.plantCount++
-        if (t.operator) opSet.add(t.operator as string)
-        if (t.name) opSet.add(t.name as string)
-      }
-    }
-    power.operators      = [...opSet].slice(0, 6)
-    power.voltages       = [...voltSet].sort((a, b) => b - a).slice(0, 6)
-    power.nearestSubDist = nearDist !== null ? Math.round(nearDist * 10) / 10 : null
-    power.nearestSub     = nearSub
-  } catch (_) { /* non-fatal */ }
-
-  let verdict: ConnResult['verdict']
-  if (broadbandPct >= 60) verdict = 'ready'
-  else if (broadbandPct >= 35) verdict = 'mixed'
-  else verdict = 'starlink'
-
-  return {
-    lat, lon, display_name, countyName, stateName, stateCode,
-    totalHH, internetPct, broadbandPct, satellitePct, noInternetPct,
-    towerCount, towerTypes, verdict, power,
+  // FCC + Census + Overpass all run server-side via /api/network-lookup
+  // to avoid browser CORS issues with those third-party APIs.
+  setLoadMsg('Scanning infrastructure (FCC, Census, OpenStreetMap)...')
+  const params = new URLSearchParams({
+    lat: String(geo.lat),
+    lng: String(geo.lng),
+    displayName: geo.displayName,
+  })
+  const res = await fetch(`/api/network-lookup?${params}`)
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }))
+    throw new Error(err.error || `Network lookup failed (HTTP ${res.status})`)
   }
+  return (await res.json()) as ConnResult
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
