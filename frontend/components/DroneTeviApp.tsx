@@ -1571,15 +1571,35 @@ export default function DroneTeviApp(){
   const useCasesCtx="LE: "+leCtx+" | Campus: "+csCtx+" | CIP: "+ciCtx;
   const procDecision=(oem.procurement&&oem.procurement.decision)||"None";
   const procConditions=(oem.procurement&&oem.procurement.conditions)||"None";
-  const finalCtx="Results: "+buildAllResultsCtx()+". Decision: "+procDecision+". Conditions: "+procConditions;
+  // Final Evaluation section's own data is the procurement decision + the
+  // sign-offs recorded for it — NOT the cross-section test results.
+  const signoffSummary=((oem.signoffs||[]).filter(s=>s&&s.signature&&s.name).map(s=>s.name+" ("+s.role+")").join(", "))||"none recorded";
+  const finalCtx="Decision: "+procDecision+" | Conditions: "+procConditions+" | Sign-offs: "+signoffSummary;
   const wkCtx=Array.from({length:16},(_,i)=>i+1).map(w=>{const done=WEEKLY_ITEMS.filter(item=>oem.weeklyChecks[w+"_"+item]).length;return "Wk"+w+":"+done+"/"+WEEKLY_ITEMS.length;}).join(", ");
   const pt=oem.payloadTests||{};
   const payloadCtx="Selected: "+Object.keys(pt).filter(k=>pt[k].selected).map(k=>k+": "+(pt[k].result||"Pending")).join(", ")||"None selected";
+  // Overview is the ONLY section whose summary pulls all sections together.
+  // Every other section's summary uses only its own data.
+  const overviewCtx=
+    "Platform: "+(oem.name||"Unknown")+
+    " | Model: "+(oem.model||"N/A")+
+    " | Evaluator: "+(oem.evaluator||"N/A")+
+    " | Site: "+activeSite.label+
+    " | Procurement: "+procDecision+
+    " | Conditions: "+procConditions+
+    " | Aggregate results: "+buildAllResultsCtx()+
+    " | Flight Performance — "+droneCtx+
+    " | Dock Integration — "+dockCtx+
+    " | Sensors & Payload — "+sensorsCtx+
+    " | Operations & Reliability — "+reliabilityCtx+
+    " | Use Cases — "+useCasesCtx+
+    " | Weekly Checks — "+wkCtx+
+    " | Payload — "+payloadCtx;
 
   function renderActiveTab(){
     switch(tab){
       case "Overview":
-        return(<div><ExecSummaryBtn sectionName="Platform Overview" contextData={"Platform: "+(oem.name||"Unknown")+", Model: "+(oem.model||"N/A")+", Active Site: "+((OPSITES.find(s=>s.key===(oem.activeSite||"site_TRG"))||OPSITES[0]).label)}/><div style={{marginTop:16}}><OverviewPanel/></div></div>);
+        return(<div><ExecSummaryBtn sectionName="Platform Overview (Comprehensive)" contextData={overviewCtx}/><div style={{marginTop:16}}><OverviewPanel/></div></div>);
       case "Drone":
         return(<div><ExecSummaryBtn sectionName="Drone / Flight Performance" contextData={droneCtx}/><div style={{marginTop:16}}><InlineWeather sectionKey="Flight Performance"/><SecTable sKey="Flight Performance"/></div><SectionSignOff sectionName="Drone"/></div>);
       case "Dock":
@@ -1599,7 +1619,11 @@ export default function DroneTeviApp(){
       case "Evaluation Checklist":
         return(<div><ExecSummaryBtn sectionName="Combined Evaluation Checklist" contextData={"5 sections: Subjective, Comparative, FMEA, Environmental, Benchmarks. Vendors: "+state.oems.map(o=>o.name||"Unknown").join(", ")}/><div style={{marginTop:16}}><EvaluationChecklist/></div></div>);
       case "Compare":
-        return(<div><ExecSummaryBtn sectionName="Vendor Comparison Matrix" contextData={"Vendors: "+state.oems.map(o=>o.name||"Unknown").join(", ")+". Results: "+buildAllResultsCtx()}/><div style={{marginTop:16}}><VendorMatrix/></div></div>);
+        // Compare section's own data is the vendor list + each vendor's
+        // procurement decision (which is the comparison-relevant field
+        // shown in this section). Cross-section test results are
+        // available in Overview's comprehensive summary, not here.
+        return(<div><ExecSummaryBtn sectionName="Vendor Comparison Matrix" contextData={"Vendors under evaluation: "+state.oems.map(o=>(o.name||"Unknown")+" (decision: "+((o.procurement&&o.procurement.decision)||"None")+")").join(", ")}/><div style={{marginTop:16}}><VendorMatrix/></div></div>);
       case "Weekly Checks":
         return(<div><ExecSummaryBtn sectionName="Weekly Inspection Compliance" contextData={wkCtx}/><div style={{marginTop:16}}><WeeklyChecks/></div><SectionSignOff sectionName="Weekly Checks"/></div>);
       case "6-Month Plan":
@@ -1607,7 +1631,7 @@ export default function DroneTeviApp(){
       case "Demo Missions":
         return(<DemoMissions/>);
       default:
-        return(<div><ExecSummaryBtn sectionName="Platform Overview" contextData={"Platform: "+(oem.name||"Unknown")+", Model: "+(oem.model||"N/A")+", Active Site: "+((OPSITES.find(s=>s.key===(oem.activeSite||"site_TRG"))||OPSITES[0]).label)}/><div style={{marginTop:16}}><OverviewPanel/></div></div>);
+        return(<div><ExecSummaryBtn sectionName="Platform Overview (Comprehensive)" contextData={overviewCtx}/><div style={{marginTop:16}}><OverviewPanel/></div></div>);
     }
   }
 
