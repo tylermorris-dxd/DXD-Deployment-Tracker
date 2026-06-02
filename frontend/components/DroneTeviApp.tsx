@@ -1580,11 +1580,14 @@ export default function DroneTeviApp(){
   const payloadCtx="Selected: "+Object.keys(pt).filter(k=>pt[k].selected).map(k=>k+": "+(pt[k].result||"Pending")).join(", ")||"None selected";
   // Overview is the ONLY section whose summary pulls all sections together.
   // Every other section's summary uses only its own data.
+  // Resolve the active site here (sub-components have their own activeSite
+  // variable scoped to themselves — the main component needs its own).
+  const mainActiveSite=OPSITES.find(s=>s.key===(oem.activeSite||"site_TRG"))||OPSITES[0];
   const overviewCtx=
     "Platform: "+(oem.name||"Unknown")+
     " | Model: "+(oem.model||"N/A")+
     " | Evaluator: "+(oem.evaluator||"N/A")+
-    " | Site: "+activeSite.label+
+    " | Site: "+mainActiveSite.label+
     " | Procurement: "+procDecision+
     " | Conditions: "+procConditions+
     " | Aggregate results: "+buildAllResultsCtx()+
