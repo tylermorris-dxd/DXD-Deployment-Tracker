@@ -14,13 +14,14 @@ import StakeholdersView from './StakeholdersView'
 import ProjectSettingsView from './ProjectSettingsView'
 import OpsPlanner from './OpsPlanner'
 import PricingView from './PricingView'
+import SummaryView from './SummaryView'
 
 interface Props {
   projectId: string
   onBack: () => void
 }
 
-type ViewMode = 'pricing' | 'wx' | 'airspace' | 'map' | 'network' | 'stakeholders' | 'settings' | 'ops'
+type ViewMode = 'pricing' | 'wx' | 'airspace' | 'map' | 'network' | 'summary' | 'stakeholders' | 'settings' | 'ops'
 
 // ── Shared tab-button styles ───────────────────────────────────────────────────
 
@@ -61,6 +62,10 @@ const TABS: Array<{ id: ViewMode; label: string; icon: React.ReactNode }> = [
   {
     id: 'network', label: 'Network',
     icon: <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="6.5" r="2" stroke="currentColor" strokeWidth="1.3"/><path d="M6.5 1v1.5M6.5 10.5V12M1 6.5h1.5M10.5 6.5H12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/><path d="M2.9 2.9l1.1 1.1M9 9l1.1 1.1M9 4L7.9 5.1M4 9L2.9 10.1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>,
+  },
+  {
+    id: 'summary', label: 'Summary',
+    icon: <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="2" y="1" width="10" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.2"/><path d="M4.5 4.5h5M4.5 7h5M4.5 9.5h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>,
   },
   {
     id: 'stakeholders', label: 'Contacts',
@@ -294,6 +299,16 @@ export default function ProjectView({ projectId, onBack }: Props) {
 
         {/* NETWORK view */}
         {viewMode === 'network' && <ConnectivityView project={project} onCacheUpdate={updateNetworkCache} />}
+
+        {/* SUMMARY view — one-page PDF combining airspace + wx + network + map */}
+        {viewMode === 'summary' && (
+          <SummaryView
+            project={project}
+            onAirspaceCache={updateAirspaceCache}
+            onWeatherCache={updateWeatherCache}
+            onNetworkCache={updateNetworkCache}
+          />
+        )}
 
         {/* STAKEHOLDERS view */}
         {viewMode === 'stakeholders' && <StakeholdersView project={project} onUpdate={invalidate} hubspotDeal={hsDeal} />}
