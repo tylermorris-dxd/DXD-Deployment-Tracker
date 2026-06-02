@@ -13,13 +13,14 @@ import SiteMapper from './SiteMapper'
 import StakeholdersView from './StakeholdersView'
 import ProjectSettingsView from './ProjectSettingsView'
 import OpsPlanner from './OpsPlanner'
+import PricingView from './PricingView'
 
 interface Props {
   projectId: string
   onBack: () => void
 }
 
-type ViewMode = 'wx' | 'airspace' | 'map' | 'network' | 'stakeholders' | 'settings' | 'ops'
+type ViewMode = 'pricing' | 'wx' | 'airspace' | 'map' | 'network' | 'stakeholders' | 'settings' | 'ops'
 
 // ── Shared tab-button styles ───────────────────────────────────────────────────
 
@@ -41,6 +42,10 @@ const tabBtn = (active: boolean): React.CSSProperties => ({
 // ── Tab definitions ───────────────────────────────────────────────────────────
 
 const TABS: Array<{ id: ViewMode; label: string; icon: React.ReactNode }> = [
+  {
+    id: 'pricing', label: 'Pricing',
+    icon: <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M4.5 3.5h3.75a1.75 1.75 0 010 3.5H4M4.5 7h4.25a1.75 1.75 0 010 3.5H4.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+  },
   {
     id: 'wx', label: 'WX',
     icon: <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="5" r="3" stroke="currentColor" strokeWidth="1.2"/><path d="M2 11c0-2 2.5-3.5 5-3.5s5 1.5 5 3.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/><path d="M10.5 3.5l1-1M3.5 3.5l-1-1M7 1V0M11 6h1M2 6H1" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/></svg>,
@@ -131,6 +136,14 @@ export default function ProjectView({ projectId, onBack }: Props) {
       invalidate()
     } catch (_) { /* non-fatal */ }
   }, [projectId, invalidate])
+
+  const updatePricingCache = useCallback(async (data: unknown) => {
+    try {
+      await api.projects.update(projectId, { pricingCache: data ? JSON.stringify(data) : null })
+      // No invalidate — the pricing tool owns its own state during the
+      // session; re-fetching the project would reset inputs mid-keystroke.
+    } catch (_) { /* non-fatal */ }
+  }, [projectId])
 
   // ── Loading / error states ────────────────────────────────────────────────
   if (isLoading) {
@@ -267,6 +280,9 @@ export default function ProjectView({ projectId, onBack }: Props) {
 
       {/* ── Content area ──────────────────────────────────────────────────── */}
       <div style={{ display: viewMode === 'ops' ? 'none' : 'block', padding: viewMode === 'map' ? 0 : '24px 24px 0 24px' }}>
+        {/* PRICING view */}
+        {viewMode === 'pricing' && <PricingView project={project} onCacheUpdate={updatePricingCache} />}
+
         {/* WEATHER view */}
         {viewMode === 'wx' && <WeatherIntel project={project} onCacheUpdate={updateWeatherCache} />}
 
