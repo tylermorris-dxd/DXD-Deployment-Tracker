@@ -378,22 +378,43 @@ export default function SummaryView({
   const hasMap      = !!project.mapCache
 
   async function captureMap(): Promise<string> {
-    setStatus('Rendering map for snapshot…')
+    setStatus('Mounting hidden map renderer…')
     setShowHiddenMap(true)
-    // Wait for Leaflet to mount + tiles to load. The hidden SiteMapper
-    // restores from mapCache so docks/boundaries/sites appear too.
-    await new Promise(r => setTimeout(r, 4500))
+
+    // Step 1: poll for the SiteMapper wrap element to mount.
+    // It's not conditional on leafletReady so it should appear within
+    // a few hundred ms of setShowHiddenMap(true).
+    let wrap: HTMLElement | null = null
+    for (let i = 0; i < 60; i++) {
+      await new Promise(r => setTimeout(r, 200))
+      wrap = document.querySelector('[data-summary-hidden-map] [data-sitemap-mapwrap="1"]') as HTMLElement | null
+      if (wrap) break
+    }
+    if (!wrap) {
+      setShowHiddenMap(false)
+      throw new Error('SiteMapper failed to mount in 12s. Try refreshing the page and retrying.')
+    }
+
+    // Step 2: wait for Leaflet tiles to actually load. .leaflet-tile-loaded
+    // is the class Leaflet adds to <img> elements once their src has
+    // successfully resolved. We're satisfied once we've seen at least
+    // some tiles; an extra grace period lets stragglers finish.
+    setStatus('Loading map tiles… (10-20s on first run)')
+    let tileCount = 0
+    for (let i = 0; i < 80; i++) {
+      await new Promise(r => setTimeout(r, 250))
+      tileCount = wrap.querySelectorAll('.leaflet-tile-loaded').length
+      if (tileCount >= 6) break
+    }
+    // Grace period for tile fade-in animations + late-arriving tiles
+    await new Promise(r => setTimeout(r, 1500))
+
     setStatus('Capturing map image…')
     await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js')
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const html2canvas = (window as any).html2canvas
-    const mapEl = document.querySelector('[data-summary-hidden-map] [data-sitemap-mapwrap="1"]') as HTMLElement | null
-    if (!mapEl) {
-      setShowHiddenMap(false)
-      throw new Error('Map render failed — try visiting the Map tab first to seed it')
-    }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const canvas: HTMLCanvasElement = await html2canvas(mapEl, {
+    const canvas: HTMLCanvasElement = await html2canvas(wrap, {
       useCORS: true, scale: 2, backgroundColor: '#0a0404',
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ignoreElements: (el: any) => {
@@ -404,6 +425,11 @@ export default function SummaryView({
     })
     const data = canvas.toDataURL('image/jpeg', 0.85)
     setShowHiddenMap(false)
+    if (tileCount < 1) {
+      // Snapshot succeeded but no tiles were detected — image will be
+      // mostly blank. Surface a clearer signal than failing silently.
+      throw new Error('Map tiles never loaded. Check network / firewall to mt0..3.google.com. The other PDF sections will still work — try again.')
+    }
     return data
   }
 
@@ -412,6 +438,11 @@ export default function SummaryView({
     setError('')
     setGenerating(true)
     try {
+      // Capture the map FIRST. Cache-update calls below trigger project
+      // re-fetches which would otherwise re-render the hidden SiteMapper
+      // and reset its tile-loading state mid-snapshot.
+      const mapDataUrl = await captureMap()
+
       // Airspace
       setStatus('Loading airspace data…')
       const airspace = await runAirspace(project.site)
@@ -426,9 +457,6 @@ export default function SummaryView({
       setStatus('Loading connectivity data…')
       const network = await runNetwork(project.site)
       onNetworkCache({ summarySnapshot: network, ts: new Date().toISOString() })
-
-      // Map
-      const mapDataUrl = await captureMap()
 
       // Build PDF
       setStatus('Building PDF…')
@@ -556,11 +584,14 @@ export default function SummaryView({
 
       {/* Hidden off-screen SiteMapper for capturing the map snapshot.
           Positioned off-screen but rendered at fixed size so Leaflet
-          actually loads tiles. Removed after capture. */}
+          actually loads tiles. Sized generously (1200x920) so the
+          SiteMapper's internal minHeights (820 on wrap, 760 on
+          mapWrap) all fit without clipping or tile-bound miscalcs.
+          Removed after capture. */}
       {showHiddenMap && (
         <div
           data-summary-hidden-map
-          style={{ position: 'fixed', left: -12000, top: 0, width: 1100, height: 700, pointerEvents: 'none', opacity: 1 }}
+          style={{ position: 'fixed', left: -13000, top: 0, width: 1200, height: 920, pointerEvents: 'none', opacity: 1, overflow: 'hidden' }}
         >
           <SiteMapper project={project} onCacheUpdate={() => {/* read-only render */}} />
         </div>
