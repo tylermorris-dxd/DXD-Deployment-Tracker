@@ -16,27 +16,122 @@ import SecurityJobEstimator from '@/components/SecurityJobEstimator'
 
 export type MainTab = 'dashboard' | 'deals' | 'all-deals' | 'admin' | 'equipment' | 'cost' | 'product' | 'events' | 'security-est'
 
-const MENU_ITEMS: { id: MainTab; label: string; dividerBefore?: boolean }[] = [
-  { id: 'dashboard',    label: 'Dashboard' },
-  { id: 'deals',        label: 'Deals' },
-  { id: 'all-deals',    label: 'All Deals' },
-  { id: 'admin',        label: 'Admin',               dividerBefore: true },
-  { id: 'equipment',    label: 'Equipment' },
-  { id: 'cost',         label: 'Cost Estimator' },
-  { id: 'security-est', label: 'Security Job Estimator' },
-  { id: 'events',       label: 'Event Pricing' },
-  { id: 'product',      label: 'Products' },
+interface MenuItem {
+  id: MainTab
+  label: string
+  icon: React.ReactNode
+  section?: string // shown as a heading above this item
+}
+
+const MENU_ITEMS: MenuItem[] = [
+  {
+    id: 'dashboard', label: 'Dashboard', section: 'Workspace',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <rect x="2" y="2" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.4" />
+        <rect x="9" y="2" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.4" />
+        <rect x="2" y="9" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.4" />
+        <rect x="9" y="9" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.4" />
+      </svg>
+    ),
+  },
+  {
+    id: 'deals', label: 'Deals',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <rect x="2" y="5" width="12" height="9" rx="1" stroke="currentColor" strokeWidth="1.4" />
+        <path d="M6 5V3.5a1 1 0 011-1h2a1 1 0 011 1V5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
+    id: 'all-deals', label: 'All Deals',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <line x1="3" y1="4" x2="13" y2="4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+        <line x1="3" y1="8" x2="13" y2="8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+        <line x1="3" y1="12" x2="13" y2="12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
+    id: 'admin', label: 'Admin', section: 'Tools',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.4" />
+        <path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
+    id: 'equipment', label: 'Equipment',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M2 4.5l6-2.5 6 2.5v7L8 14l-6-2.5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+        <path d="M2 4.5L8 7l6-2.5M8 7v7" stroke="currentColor" strokeWidth="1.4" />
+      </svg>
+    ),
+  },
+  {
+    id: 'cost', label: 'Cost Estimator',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <rect x="3" y="2" width="10" height="12" rx="1.2" stroke="currentColor" strokeWidth="1.4" />
+        <rect x="5" y="4" width="6" height="2" rx="0.5" fill="currentColor" />
+        <circle cx="5.6" cy="9" r="0.7" fill="currentColor" />
+        <circle cx="8" cy="9" r="0.7" fill="currentColor" />
+        <circle cx="10.4" cy="9" r="0.7" fill="currentColor" />
+        <circle cx="5.6" cy="11.5" r="0.7" fill="currentColor" />
+        <circle cx="8" cy="11.5" r="0.7" fill="currentColor" />
+        <circle cx="10.4" cy="11.5" r="0.7" fill="currentColor" />
+      </svg>
+    ),
+  },
+  {
+    id: 'security-est', label: 'Security Estimator',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M8 1.5l5 2v4.5c0 3.7-2.4 5.7-5 6.5-2.6-.8-5-2.8-5-6.5V3.5l5-2z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+        <path d="M5.8 8.2l1.7 1.6 2.7-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+  {
+    id: 'events', label: 'Event Pricing',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M3 5a1 1 0 011-1h8a1 1 0 011 1v1.5a1.5 1.5 0 100 3V11a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5a1.5 1.5 0 100-3V5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+        <line x1="7" y1="6.5" x2="7" y2="9.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeDasharray="1.4 1.4" />
+      </svg>
+    ),
+  },
+  {
+    id: 'product', label: 'Products',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <circle cx="3" cy="3" r="1.5" stroke="currentColor" strokeWidth="1.3" />
+        <circle cx="13" cy="3" r="1.5" stroke="currentColor" strokeWidth="1.3" />
+        <circle cx="3" cy="13" r="1.5" stroke="currentColor" strokeWidth="1.3" />
+        <circle cx="13" cy="13" r="1.5" stroke="currentColor" strokeWidth="1.3" />
+        <line x1="4.1" y1="4.1" x2="11.9" y2="11.9" stroke="currentColor" strokeWidth="1.3" />
+        <line x1="11.9" y1="4.1" x2="4.1" y2="11.9" stroke="currentColor" strokeWidth="1.3" />
+        <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.3" fill="currentColor" fillOpacity="0.25" />
+      </svg>
+    ),
+  },
 ]
 
-const C = { bg: 'rgba(10,11,13,0.6)', card: 'rgba(17,19,24,0.75)', border: '#252b38', red: '#D2232A', text: '#e8eaf0', text2: '#9aa3b8', muted: '#5a6380' }
+const C = { bg: 'rgba(10,11,13,0.6)', card: 'rgba(17,19,24,0.75)', sidebarBg: 'rgba(13,15,19,0.85)', border: '#252b38', red: '#D2232A', text: '#e8eaf0', text2: '#9aa3b8', muted: '#5a6380' }
+
+const TOPBAR_HEIGHT = 52
+const SIDEBAR_WIDTH = 232
 
 export default function Home() {
-  const [tab, setTab]               = useState<MainTab>('dashboard')
-  const [panelId, setPanelId]       = useState<string | null>(null)
+  const [tab, setTab] = useState<MainTab>('dashboard')
+  const [panelId, setPanelId] = useState<string | null>(null)
   const [newDealOpen, setNewDealOpen] = useState(false)
-  const [menuOpen, setMenuOpen]     = useState(false)
 
-  const openDeal  = (id: string) => setPanelId(id)
+  const openDeal = (id: string) => setPanelId(id)
   const closeDeal = () => setPanelId(null)
 
   const activeLabel = MENU_ITEMS.find(m => m.id === tab)?.label ?? 'Menu'
@@ -46,13 +141,13 @@ export default function Home() {
 
       {/* ── Topbar ──────────────────────────────────────────────────────────── */}
       <div style={{
-        position: 'sticky', top: 0, height: 52,
-        background: 'rgba(10,11,13,0.75)', borderBottom: `1px solid ${C.border}`,
+        position: 'sticky', top: 0, height: TOPBAR_HEIGHT,
+        background: 'rgba(10,11,13,0.85)', borderBottom: `1px solid ${C.border}`,
         backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
         display: 'flex', alignItems: 'center', zIndex: 200,
       }}>
         {/* Brand */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 20px', borderRight: `1px solid ${C.border}`, height: '100%', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 20px', width: SIDEBAR_WIDTH, borderRight: `1px solid ${C.border}`, height: '100%', flexShrink: 0, boxSizing: 'border-box' }}>
           <img src="/images/logo.png" alt="DXD" style={{ height: 32, width: 'auto', flexShrink: 0 }} />
           <div>
             <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 13, color: C.text, letterSpacing: 0.5, lineHeight: 1.2 }}>Deus X Defense</div>
@@ -60,55 +155,9 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Menu dropdown */}
-        <div style={{ position: 'relative', padding: '0 16px', height: '100%', display: 'flex', alignItems: 'center' }}>
-          <button
-            onClick={() => setMenuOpen(o => !o)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '6px 14px', background: menuOpen ? 'rgba(210,35,42,0.1)' : 'transparent',
-              border: `1px solid ${menuOpen ? C.red + '60' : C.border}`,
-              borderRadius: 7, color: menuOpen ? C.red : C.text2,
-              fontFamily: "'JetBrains Mono', monospace", fontSize: 10, fontWeight: 600,
-              letterSpacing: 0.8, cursor: 'pointer', transition: 'all 0.15s',
-            }}
-          >
-            Menu ▾
-          </button>
-          {menuOpen && (
-            <>
-              <div style={{ position: 'fixed', inset: 0, zIndex: 299 }} onClick={() => setMenuOpen(false)} />
-              <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 300, background: 'rgba(17,19,24,0.97)', border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden', minWidth: 200, boxShadow: '0 12px 40px rgba(0,0,0,0.7)', backdropFilter: 'blur(16px)' }}>
-                {MENU_ITEMS.map(item => (
-                  <React.Fragment key={item.id}>
-                    {item.dividerBefore && <div style={{ height: 1, background: C.border, margin: '4px 0' }} />}
-                    <button
-                      onClick={() => { setTab(item.id); setMenuOpen(false) }}
-                      style={{
-                        display: 'block', width: '100%', textAlign: 'left',
-                        background: tab === item.id ? 'rgba(210,35,42,0.1)' : 'transparent',
-                        border: 'none', padding: '11px 16px',
-                        color: tab === item.id ? C.red : C.text2,
-                        fontFamily: "'JetBrains Mono', monospace", fontSize: 11,
-                        fontWeight: tab === item.id ? 600 : 400,
-                        cursor: 'pointer', letterSpacing: 0.5,
-                        transition: 'background 0.1s, color 0.1s',
-                      }}
-                      onMouseEnter={e => { if (tab !== item.id) e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
-                      onMouseLeave={e => { if (tab !== item.id) e.currentTarget.style.background = 'transparent' }}
-                    >
-                      {item.label}
-                    </button>
-                  </React.Fragment>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Current tab indicator */}
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', paddingLeft: 4 }}>
-          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: C.muted, letterSpacing: 0.5 }}>
+        {/* Current page label */}
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', padding: '0 22px' }}>
+          <span style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 14, color: C.text, letterSpacing: 0.5 }}>
             {activeLabel}
           </span>
         </div>
@@ -121,16 +170,57 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ── Content ─────────────────────────────────────────────────────────── */}
-      {tab === 'dashboard' && <Dashboard onOpenDeal={openDeal} onSwitchTab={setTab} />}
-      {tab === 'deals'     && <ProjectList onSelectProject={openDeal} />}
-      {tab === 'all-deals' && <AllDealsTable onOpenDeal={openDeal} />}
-      {tab === 'admin'     && <AdminPanel />}
-      {tab === 'equipment' && <EquipmentTracker />}
-      {tab === 'cost'      && <CostEstimator />}
-      {tab === 'product'   && <DroneTeviApp />}
-      {tab === 'security-est' && <SecurityJobEstimator />}
-      {tab === 'events'       && <EventPricingApp />}
+      {/* ── Layout: sidebar + main ──────────────────────────────────────────── */}
+      <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+        {/* Sidebar — sticky so it follows scroll */}
+        <aside
+          style={{
+            width: SIDEBAR_WIDTH,
+            flexShrink: 0,
+            position: 'sticky',
+            top: TOPBAR_HEIGHT,
+            height: `calc(100vh - ${TOPBAR_HEIGHT}px)`,
+            overflowY: 'auto',
+            background: C.sidebarBg,
+            borderRight: `1px solid ${C.border}`,
+            padding: '16px 14px 24px',
+            boxSizing: 'border-box',
+          }}
+        >
+          {MENU_ITEMS.map(item => (
+            <React.Fragment key={item.id}>
+              {item.section && (
+                <div style={{
+                  fontFamily: "'JetBrains Mono', monospace", fontSize: 9,
+                  color: C.muted, letterSpacing: 1.8, textTransform: 'uppercase',
+                  padding: '14px 8px 8px', marginTop: 4,
+                }}>
+                  {item.section}
+                </div>
+              )}
+              <SidebarCard
+                active={tab === item.id}
+                onClick={() => setTab(item.id)}
+                icon={item.icon}
+                label={item.label}
+              />
+            </React.Fragment>
+          ))}
+        </aside>
+
+        {/* Main content */}
+        <main style={{ flex: 1, minWidth: 0 }}>
+          {tab === 'dashboard'    && <Dashboard onOpenDeal={openDeal} onSwitchTab={setTab} />}
+          {tab === 'deals'        && <ProjectList onSelectProject={openDeal} />}
+          {tab === 'all-deals'    && <AllDealsTable onOpenDeal={openDeal} />}
+          {tab === 'admin'        && <AdminPanel />}
+          {tab === 'equipment'    && <EquipmentTracker />}
+          {tab === 'cost'         && <CostEstimator />}
+          {tab === 'product'      && <DroneTeviApp />}
+          {tab === 'security-est' && <SecurityJobEstimator />}
+          {tab === 'events'       && <EventPricingApp />}
+        </main>
+      </div>
 
       {/* ── Full-page deal view ──────────────────────────────────────────────── */}
       {panelId && (
@@ -157,10 +247,48 @@ export default function Home() {
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
+function SidebarCard({
+  active, onClick, icon, label,
+}: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) {
+  const [hover, setHover] = useState(false)
+  const bg = active
+    ? 'rgba(210,35,42,0.13)'
+    : hover ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.025)'
+  const borderColor = active
+    ? 'rgba(210,35,42,0.5)'
+    : hover ? 'rgba(255,255,255,0.12)' : C.border
+  const color = active ? C.red : hover ? C.text : C.text2
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 11,
+        width: '100%', padding: '11px 12px', marginBottom: 6,
+        background: bg, border: `1px solid ${borderColor}`,
+        borderRadius: 8, color, cursor: 'pointer',
+        fontFamily: 'Syne, sans-serif', fontWeight: active ? 700 : 600,
+        fontSize: 12.5, letterSpacing: 0.4, textAlign: 'left' as const,
+        transition: 'background 0.12s, border-color 0.12s, color 0.12s',
+        boxShadow: active ? '0 0 0 1px rgba(210,35,42,0.18) inset' : 'none',
+      }}
+    >
+      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 18, flexShrink: 0 }}>
+        {icon}
+      </span>
+      <span style={{ flex: 1 }}>{label}</span>
+      {active && (
+        <span style={{ width: 4, height: 16, background: C.red, borderRadius: 2, flexShrink: 0 }} />
+      )}
+    </button>
+  )
+}
+
 function NewDealModal({ onClose, onCreated }: { onClose: () => void; onCreated: (id: string) => void }) {
-  const [name, setName]     = useState('')
+  const [name, setName] = useState('')
   const [client, setClient] = useState('')
-  const [site, setSite]     = useState('')
+  const [site, setSite] = useState('')
   const [loading, setLoading] = useState(false)
   const qc = useQueryClient()
 
