@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import { s, progressColor } from '@/lib/styles'
+import { s } from '@/lib/styles'
 import { Icons } from '@/lib/icons'
 import type { ProjectSummary, HubSpotActiveDeal } from '@/lib/types'
 
@@ -47,9 +47,6 @@ export default function ProjectList({ onSelectProject }: { onSelectProject: (id:
     if (!newName.trim()) return
     createMutation.mutate()
   }
-
-  const active      = projects.filter(p => p.totalTasks === 0 || p.doneTasks < p.totalTasks)
-  const steadyState = projects.filter(p => p.totalTasks > 0 && p.doneTasks === p.totalTasks)
 
   return (
     <div style={s.container}>
@@ -102,7 +99,8 @@ export default function ProjectList({ onSelectProject }: { onSelectProject: (id:
         </div>
       )}
 
-      {/* Project List */}
+      {/* Project Grid (single section — no more Active/Steady State partition
+          since we removed the task tracker) */}
       {isLoading ? (
         <div style={{ color: 'rgba(255,255,255,0.3)', fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, padding: 40, textAlign: 'center' }}>
           Loading projects...
@@ -114,72 +112,34 @@ export default function ProjectList({ onSelectProject }: { onSelectProject: (id:
           <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>Create your first project to begin tracking a drone deployment.</div>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
-          {/* Active */}
-          <div>
-            <SectionHeader label="ACTIVE" count={active.length} color="#E53935" />
-            {active.length === 0 ? (
-              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: 'rgba(255,255,255,0.25)', padding: '12px 4px' }}>No active deployments</div>
-            ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))', gap: 14 }}>
-                {active.map((p, i) => (
-                  <ProjectCard key={p.id} proj={p} index={i} activeDeal={dealMap.get(p.id)}
-                    onOpen={() => onSelectProject(p.id)}
-                    onDelete={() => { if (window.confirm(`Delete "${p.name}"? This cannot be undone.`)) deleteMutation.mutate(p.id) }} />
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Steady State */}
-          {steadyState.length > 0 && (
-            <div>
-              <SectionHeader label="STEADY STATE" count={steadyState.length} color="#22C55E" />
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))', gap: 14 }}>
-                {steadyState.map((p, i) => (
-                  <ProjectCard key={p.id} proj={p} index={i} isSteadyState activeDeal={dealMap.get(p.id)}
-                    onOpen={() => onSelectProject(p.id)}
-                    onDelete={() => { if (window.confirm(`Delete "${p.name}"? This cannot be undone.`)) deleteMutation.mutate(p.id) }} />
-                ))}
-              </div>
-            </div>
-          )}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))', gap: 14 }}>
+          {projects.map((p, i) => (
+            <ProjectCard key={p.id} proj={p} index={i} activeDeal={dealMap.get(p.id)}
+              onOpen={() => onSelectProject(p.id)}
+              onDelete={() => { if (window.confirm(`Delete "${p.name}"? This cannot be undone.`)) deleteMutation.mutate(p.id) }} />
+          ))}
         </div>
       )}
     </div>
   )
 }
 
-function SectionHeader({ label, count, color }: { label: string; count: number; color: string }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.09)' }}>
-      <span style={{ width: 9, height: 9, borderRadius: '50%', background: color, boxShadow: `0 0 6px ${color}88`, flexShrink: 0, display: 'inline-block' }} />
-      <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, fontWeight: 700, letterSpacing: 3, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>{label}</span>
-      <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: 'rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.05)', padding: '2px 10px', borderRadius: 10 }}>{count}</span>
-    </div>
-  )
-}
-
-function ProjectCard({ proj, index, isSteadyState = false, activeDeal, onOpen, onDelete }: {
+function ProjectCard({ proj, index, activeDeal, onOpen, onDelete }: {
   proj: ProjectSummary
   index: number
-  isSteadyState?: boolean
   activeDeal?: HubSpotActiveDeal
   onOpen: () => void
   onDelete: () => void
 }) {
-  const pct = proj.totalTasks > 0 ? Math.round((proj.doneTasks / proj.totalTasks) * 100) : 0
-  const accentColor = isSteadyState ? '#22C55E' : progressColor(pct)
+  const accentColor = '#E53935' // brand red — no more progress-based color
   const hsStage = activeDeal?.deal.properties.dealstage
 
   return (
     <div
       onClick={onOpen}
       style={{
-        background: isSteadyState
-          ? 'linear-gradient(160deg, rgba(34,197,94,0.07), rgba(22,22,26,0.99))'
-          : 'linear-gradient(160deg, rgba(32,32,36,0.97), rgba(22,22,26,0.99))',
-        border: isSteadyState ? '1px solid rgba(34,197,94,0.25)' : '1px solid rgba(255,255,255,0.09)',
+        background: 'linear-gradient(160deg, rgba(32,32,36,0.97), rgba(22,22,26,0.99))',
+        border: '1px solid rgba(255,255,255,0.09)',
         borderLeft: `3px solid ${accentColor}`,
         borderRadius: 10,
         padding: '18px 20px',
@@ -193,33 +153,32 @@ function ProjectCard({ proj, index, isSteadyState = false, activeDeal, onOpen, o
       onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLDivElement).style.boxShadow = `0 6px 24px rgba(0,0,0,0.5), 0 0 0 1px ${accentColor}33` }}
       onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.transform = ''; (e.currentTarget as HTMLDivElement).style.boxShadow = '0 2px 16px rgba(0,0,0,0.35)' }}
     >
-      {/* Top row: phase/hs tag + pct + delete */}
+      {/* Top row: HS badge + HubSpot stage + delete */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
           {activeDeal && (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 9, letterSpacing: 1, fontWeight: 700, background: 'rgba(255,152,0,0.12)', border: '1px solid rgba(255,152,0,0.35)', borderRadius: 4, padding: '3px 7px', color: '#FF9800', fontFamily: "'Chakra Petch', sans-serif" }}>
               HS
             </span>
           )}
-          <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            fontSize: 10, letterSpacing: 1.5, fontWeight: 700, textTransform: 'uppercase',
-            background: `${accentColor}18`, border: `1px solid ${accentColor}44`,
-            borderRadius: 4, padding: '3px 9px', color: accentColor,
-            fontFamily: "'Chakra Petch', sans-serif",
-          }}>
-            {isSteadyState ? '⟳ STEADY STATE' : hsStage ? hsStage : pct === 0 ? 'PHASE 1' : pct < 30 ? 'PHASE 2' : pct < 60 ? 'PHASE 3' : pct < 85 ? 'PHASE 4' : 'PHASE 5'}
-          </span>
+          {hsStage && (
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              fontSize: 10, letterSpacing: 1.5, fontWeight: 700, textTransform: 'uppercase',
+              background: `${accentColor}18`, border: `1px solid ${accentColor}44`,
+              borderRadius: 4, padding: '3px 9px', color: accentColor,
+              fontFamily: "'Chakra Petch', sans-serif",
+            }}>
+              {hsStage}
+            </span>
+          )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 15, fontWeight: 700, color: accentColor }}>{pct}%</span>
-          <button
-            style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.25)', cursor: 'pointer', padding: 4, borderRadius: 4, lineHeight: 0 }}
-            onClick={e => { e.stopPropagation(); onDelete() }}
-            title="Delete project">
-            {Icons.trash}
-          </button>
-        </div>
+        <button
+          style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.25)', cursor: 'pointer', padding: 4, borderRadius: 4, lineHeight: 0 }}
+          onClick={e => { e.stopPropagation(); onDelete() }}
+          title="Delete project">
+          {Icons.trash}
+        </button>
       </div>
 
       {/* Name */}
@@ -245,18 +204,8 @@ function ProjectCard({ proj, index, isSteadyState = false, activeDeal, onOpen, o
         </div>
       )}
 
-      {/* Progress bar */}
-      <div style={{ marginTop: 16, marginBottom: 6 }}>
-        <div style={{ height: 7, background: 'rgba(255,255,255,0.07)', borderRadius: 4, overflow: 'hidden' }}>
-          <div style={{ height: '100%', borderRadius: 4, transition: 'width 0.6s ease', width: `${pct}%`, background: `linear-gradient(90deg, ${accentColor}cc, ${accentColor})`, boxShadow: `0 0 6px ${accentColor}55` }} />
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-        <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>
-          {proj.doneTasks} / {proj.totalTasks} tasks
-        </span>
+      {/* Footer: created date */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: 14, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
         <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', fontFamily: "'IBM Plex Mono', monospace" }}>
           {new Date(proj.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
         </span>
