@@ -7,25 +7,23 @@ import Dashboard from '@/components/Dashboard'
 import ProjectList from '@/components/ProjectList'
 import ProjectView from '@/components/ProjectView'
 import AdminPanel from '@/components/AdminPanel'
-import AllDealsTable from '@/components/AllDealsTable'
 import EquipmentTracker from '@/components/EquipmentTracker'
 import CostEstimator from '@/components/CostEstimator'
 import DroneTeviApp from '@/components/DroneTeviApp'
 import EventPricingApp from '@/components/EventPricingApp'
 import SecurityJobEstimator from '@/components/SecurityJobEstimator'
 
-export type MainTab = 'dashboard' | 'deals' | 'all-deals' | 'admin' | 'equipment' | 'cost' | 'product' | 'events' | 'security-est'
+export type MainTab = 'dashboard' | 'deals' | 'admin' | 'equipment' | 'cost' | 'product' | 'events' | 'security-est'
 
 interface MenuItem {
   id: MainTab
   label: string
   icon: React.ReactNode
-  section?: string // shown as a heading above this item
 }
 
 const MENU_ITEMS: MenuItem[] = [
   {
-    id: 'dashboard', label: 'Dashboard', section: 'Workspace',
+    id: 'dashboard', label: 'Dashboard',
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
         <rect x="2" y="2" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.4" />
@@ -45,17 +43,7 @@ const MENU_ITEMS: MenuItem[] = [
     ),
   },
   {
-    id: 'all-deals', label: 'All Deals',
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-        <line x1="3" y1="4" x2="13" y2="4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-        <line x1="3" y1="8" x2="13" y2="8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-        <line x1="3" y1="12" x2="13" y2="12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-      </svg>
-    ),
-  },
-  {
-    id: 'admin', label: 'Admin', section: 'Tools',
+    id: 'admin', label: 'Admin',
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
         <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.4" />
@@ -188,23 +176,13 @@ export default function Home() {
           }}
         >
           {MENU_ITEMS.map(item => (
-            <React.Fragment key={item.id}>
-              {item.section && (
-                <div style={{
-                  fontFamily: "'JetBrains Mono', monospace", fontSize: 9,
-                  color: C.muted, letterSpacing: 1.8, textTransform: 'uppercase',
-                  padding: '14px 8px 8px', marginTop: 4,
-                }}>
-                  {item.section}
-                </div>
-              )}
-              <SidebarCard
-                active={tab === item.id}
-                onClick={() => setTab(item.id)}
-                icon={item.icon}
-                label={item.label}
-              />
-            </React.Fragment>
+            <SidebarCard
+              key={item.id}
+              active={tab === item.id}
+              onClick={() => setTab(item.id)}
+              icon={item.icon}
+              label={item.label}
+            />
           ))}
         </aside>
 
@@ -212,7 +190,6 @@ export default function Home() {
         <main style={{ flex: 1, minWidth: 0 }}>
           {tab === 'dashboard'    && <Dashboard onOpenDeal={openDeal} onSwitchTab={setTab} />}
           {tab === 'deals'        && <ProjectList onSelectProject={openDeal} />}
-          {tab === 'all-deals'    && <AllDealsTable onOpenDeal={openDeal} />}
           {tab === 'admin'        && <AdminPanel />}
           {tab === 'equipment'    && <EquipmentTracker />}
           {tab === 'cost'         && <CostEstimator />}
