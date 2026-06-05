@@ -406,19 +406,41 @@ const TeviCtx = createContext(null);
 // user gets the AI-written version; if not, this fallback kicks in.
 
 function _parseTestsCtx(contextData){
-  // contextData looks like "Tests: name1: Pass, name2: Fail, name3: Pending, ..."
-  // Could also be "LE: Tests: ... | Campus: Tests: ... | CIP: Tests: ..." or
-  // "Selected: name: result, ...". We collect every "<label>: <Pass|Fail|Pending>".
+  // The Drone TEVI context comes in two formats:
+  //   1. New line-oriented format from buildTestCtx (per-section):
+  //        "- Test Name: Pass | Standard: ... | Tester: ..."
+  //   2. Legacy single-line/comma-separated format still used by
+  //      use-cases / payload contexts:
+  //        "LE: Tests: name1: Pass, name2: Fail | Campus: Tests: ..."
+  // Try line-anchored first; fall back to legacy if no hits.
   var passes=[],fails=[],pendings=[];
-  var re=/([^,|]+?):\s*(Pass|Fail|Pending|N\/A)/gi;
-  var m;
-  while((m=re.exec(contextData||''))!==null){
-    var name=(m[1]||'').replace(/^Tests:\s*/i,'').trim();
-    if(!name||name.length>120) continue;
+  var lines=String(contextData||'').split('\n');
+  lines.forEach(function(ln){
+    var m=ln.match(/^\s*-\s+(.+?):\s+(Pass|Fail|Pending|N\/A)\b/i);
+    if(!m) return;
+    // Stop at the first " | " so trailing pipe-delimited metadata
+    // (Standard / Tester / Date / Notes) never leaks into the name.
+    var name=m[1].split(' | ')[0].replace(/^Tests:\s*/i,'').trim();
+    if(!name||name.length>120) return;
     var r=m[2].toLowerCase();
     if(r==='pass') passes.push(name);
     else if(r==='fail') fails.push(name);
     else if(r==='pending') pendings.push(name);
+  });
+  if(passes.length+fails.length+pendings.length===0){
+    // Legacy single-line format: "<name>: <result>" segments separated
+    // by commas or pipes. Anchor each match to start at a separator
+    // boundary so we don't grab arbitrary text containing colons.
+    var re=/(?:^|[,|])\s*([^,|:]{2,120}?):\s+(Pass|Fail|Pending|N\/A)\b/gi;
+    var mm;
+    while((mm=re.exec(contextData||''))!==null){
+      var nm=mm[1].replace(/^Tests:\s*/i,'').trim();
+      if(!nm||nm.length>120) continue;
+      var rr=mm[2].toLowerCase();
+      if(rr==='pass') passes.push(nm);
+      else if(rr==='fail') fails.push(nm);
+      else if(rr==='pending') pendings.push(nm);
+    }
   }
   return {passes:passes,fails:fails,pendings:pendings};
 }
@@ -577,17 +599,32 @@ function ExecSummaryBtn({sectionName,contextData}){
     setLoading(true);setText("");setOpen(true);
     // Dump every evaluator-typed note for this OEM into the prompt so the
     // summary actually reflects what was typed — not just pass/fail counts.
+    // Hard char budget so the prompt never overruns the backend's 50K
+    // per-message cap (which would silently kick us into local fallback).
     var notesDump="";
+    var NOTES_BUDGET=28000; // leave headroom for the test rosters + headers
     if(oem.notes){
       var entries=[];
+      var used=0;
+      var truncated=0;
+      // Drop weather-blob, signoff-blob, and the tester/date side-cars
+      // (those metadata fields are noise to a written summary).
       Object.keys(oem.notes).forEach(function(k){
         var v=oem.notes[k];
         if(!v||typeof v!=='string') return;
         if(k.indexOf('section_signoff_')===0) return;
-        if(v.length>500) v=v.slice(0,500)+'…';
-        entries.push("  "+k+": "+v);
+        if(k.indexOf('wx_')===0) return;
+        if(/_tester$|_date$/.test(k)) return;
+        if(v.length>400) v=v.slice(0,400)+'…';
+        var line="  "+k+": "+v;
+        if(used+line.length>NOTES_BUDGET){ truncated++; return; }
+        entries.push(line);
+        used+=line.length+1;
       });
-      if(entries.length>0) notesDump="\n\nEVALUATOR-TYPED NOTES (verbatim — preserve specifics):\n"+entries.join("\n");
+      if(entries.length>0){
+        notesDump="\n\nEVALUATOR-TYPED NOTES (verbatim — preserve specifics):\n"+entries.join("\n");
+        if(truncated>0) notesDump+="\n  (+"+truncated+" additional notes truncated to keep the prompt within size limits)";
+      }
     }
     var promptHeader=isOverview
       ? ("You are a drone procurement analyst. Write a high-level executive report that consolidates EVERY individual tab's findings into one master document. Cover every category: Drone/Flight Performance, Dock Integration, Sensors & Payload, Reliability, Use Cases (LE/Campus/CIP), Weekly Checks, Payload Compatibility, Compare, and Final Evaluation. For each category, write its own subsection with its own KEY FINDINGS, OPERATIONAL IMPACT, and RECOMMENDATION, then close with a CONSOLIDATED RECOMMENDATION (PROCEED / DO NOT PROCEED / CONDITIONAL) backed by aggregate numbers.")
@@ -625,10 +662,14 @@ function ExecSummaryBtn({sectionName,contextData}){
         setText(out||buildLocalSummary(sectionName,contextData,oem));
         setLoading(false);
       })
-      .catch(()=>{
-        // API outage, missing key, or rate limit — local generator always
-        // produces something useful from the data already in state.
-        setText(buildLocalSummary(sectionName,contextData,oem));
+      .catch(err=>{
+        // API outage, missing key, rate limit, or oversized prompt — local
+        // generator always produces something useful from the data already
+        // in state. We surface the real failure reason so silent fallback
+        // doesn't mask a real problem.
+        const reason=(err&&err.message)||"unknown error";
+        const banner="⚠ AI executive summary unavailable — showing the locally-generated version below.\nReason: "+reason+"\n\n────────────────\n\n";
+        setText(banner+buildLocalSummary(sectionName,contextData,oem));
         setLoading(false);
       });
   };
@@ -1779,20 +1820,22 @@ export default function DroneTeviApp(){
     }
   }
 
-  // Verbose context: dumps every test with its standard, result, tester,
-  // date, and notes so the summary can quote evaluator findings directly.
+  // Per-section context: one line per test with result + standard +
+  // tester + date. Per-test notes are intentionally NOT duplicated here
+  // — they're already dumped (verbatim) via the notesDump in the
+  // ExecSummaryBtn prompt, so including them in both places blew the
+  // 50K-char backend cap on prompts and silently kicked the user into
+  // the local fallback.
   const buildTestCtx=sectionKey=>{
     const lines=["Tests for "+sectionKey+":"];
     (TESTS[sectionKey]||[]).forEach(t=>{
       const result=oem.results[t.id+"_pfn"]||"Pending";
       const tester=oem.notes[t.id+"_tester"]||"";
       const date=oem.notes[t.id+"_date"]||"";
-      const note=oem.notes[t.id]||"";
       lines.push("- "+t.test+": "+result
         +" | Standard: "+(t.standard||"-")
         +(tester?" | Tester: "+tester:"")
-        +(date?" | Date: "+date:"")
-        +(note?" | Notes: "+note:""));
+        +(date?" | Date: "+date:""));
     });
     return lines.join("\n");
   };
