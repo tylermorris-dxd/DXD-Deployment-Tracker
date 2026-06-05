@@ -590,20 +590,35 @@ function ExecSummaryBtn({sectionName,contextData}){
       if(entries.length>0) notesDump="\n\nEVALUATOR-TYPED NOTES (verbatim — preserve specifics):\n"+entries.join("\n");
     }
     var promptHeader=isOverview
-      ? ("You are a drone procurement analyst. Write a COMPREHENSIVE, MULTI-PAGE executive report that consolidates EVERY section's findings into one master document. Cover every category: Drone/Flight Performance, Dock Integration, Sensors & Payload, Reliability, Use Cases (LE/Campus/CIP), Weekly Checks, Payload Compatibility, Compare, and Final Evaluation. For each category, write its own subsection with its own KEY FINDINGS, OPERATIONAL IMPACT, and RECOMMENDATION, then close with a CONSOLIDATED RECOMMENDATION (PROCEED / DO NOT PROCEED / CONDITIONAL) backed by aggregate numbers.")
+      ? ("You are a drone procurement analyst. Write a high-level executive report that consolidates EVERY individual tab's findings into one master document. Cover every category: Drone/Flight Performance, Dock Integration, Sensors & Payload, Reliability, Use Cases (LE/Campus/CIP), Weekly Checks, Payload Compatibility, Compare, and Final Evaluation. For each category, write its own subsection with its own KEY FINDINGS, OPERATIONAL IMPACT, and RECOMMENDATION, then close with a CONSOLIDATED RECOMMENDATION (PROCEED / DO NOT PROCEED / CONDITIONAL) backed by aggregate numbers.")
       : ("You are a drone procurement analyst. Write a DETAILED, multi-paragraph executive report focused on the "+sectionName+" section. Summarize every note, finding, and documented result in the data below. Do not skip notes — quote or paraphrase the evaluator's observations verbatim where they add color or context.");
     var structureHint=isOverview
-      ? "\n\nStructure:\n1. EXECUTIVE OVERVIEW (one paragraph — platform, evaluator, site, procurement status)\n2. PER-SECTION DETAILS — one subsection per category with: findings, notes/observations from evaluator, operational impact, and section recommendation\n3. CROSS-CUTTING THEMES (strengths, recurring weak spots, anomalies seen across sections)\n4. RISK & MITIGATION SUMMARY\n5. CONSOLIDATED RECOMMENDATION with rationale\n\nLength: as long as needed to cover every section faithfully (target 900–1300 words). Plain text only, no markdown symbols."
-      : "\n\nStructure:\n1. SECTION OVERVIEW (platform, evaluator, location, scope)\n2. TEST RESULTS — full roster with pass/fail/pending breakdown\n3. EVALUATOR NOTES & OBSERVATIONS — quote or paraphrase typed notes\n4. OPERATIONAL IMPACT\n5. RECOMMENDATION (PROCEED / DO NOT PROCEED / CONDITIONAL) with rationale\n\nLength: 500–800 words. Be thorough — this is meant to be a record, not a teaser. Plain text only, no markdown symbols.";
+      ? "\n\nStructure:\n1. EXECUTIVE OVERVIEW (one paragraph — platform, evaluator, site, procurement status)\n2. PER-SECTION HIGH-LEVEL SUMMARIES — one subsection per category with: findings, notes/observations from evaluator, operational impact, and section recommendation\n3. CROSS-CUTTING THEMES (strengths, recurring weak spots, anomalies seen across sections)\n4. RISK & MITIGATION SUMMARY\n5. CONSOLIDATED RECOMMENDATION with rationale\n\nLENGTH REQUIREMENT: write between 1000 and 1500 words. Do NOT exceed 1500 words. CRITICAL: every sentence must be complete and end with proper punctuation (period, question mark, or exclamation point). If you sense you are approaching the upper word limit, wrap up the current section cleanly with a complete final sentence rather than starting a new thought you cannot finish. Plain text only, no markdown symbols, no headings written with # or *."
+      : "\n\nStructure:\n1. SECTION OVERVIEW (platform, evaluator, location, scope)\n2. TEST RESULTS — full roster with pass/fail/pending breakdown\n3. EVALUATOR NOTES & OBSERVATIONS — quote or paraphrase typed notes\n4. OPERATIONAL IMPACT\n5. RECOMMENDATION (PROCEED / DO NOT PROCEED / CONDITIONAL) with rationale\n\nLENGTH REQUIREMENT: write between 500 and 900 words. Do NOT exceed 900 words. CRITICAL: every sentence must be complete and end with proper punctuation. If you sense you are approaching the upper word limit, finish the current sentence and end the report cleanly rather than starting a new thought you cannot complete. Plain text only, no markdown symbols, no headings written with # or *.";
     const prompt=promptHeader+"\n\nPlatform: "+(oem.name||"Unknown")+" | Manufacturer: "+(oem.manufacturer||"N/A")+" | Model: "+(oem.model||"N/A")+" | Serial: "+(oem.serial||"N/A")+" | Dock: "+(oem.dockModel||"N/A")+(oem.dockSerial?" (S/N "+oem.dockSerial+")":"")+"\nEvaluator: "+(oem.evaluator||"N/A")+" | Start Date: "+(oem.startDate||"N/A")+" | Primary Test Location: "+(oem.location||"N/A")+" | Active Site: "+activeSite.label+"\nProcurement decision: "+((oem.procurement&&oem.procurement.decision)||"Not yet made")+" | Conditions: "+((oem.procurement&&oem.procurement.conditions)||"None")+"\nOEM specifications source URL: "+(oem.specsUrl||"Not provided")+"\n\nSECTION FOCUS: "+sectionName+"\n"+(contextData||"No additional context.")+notesDump+structureHint;
-    fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:isOverview?1500:1200,messages:[{role:"user",content:prompt}]})})
+    fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:isOverview?3500:2000,messages:[{role:"user",content:prompt}]})})
       .then(async r=>{
         const data=await r.json().catch(()=>({}));
         if(!r.ok) throw new Error((data&&data.error)||("HTTP "+r.status));
         return data;
       })
       .then(data=>{
-        const out=(data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n");
+        let out=(data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n");
+        // Defensive: if the model got cut off mid-sentence (stop_reason
+        // === "max_tokens" or trailing text doesn't end in . ! ? ),
+        // trim back to the last complete sentence so the user never
+        // sees a half-finished line.
+        const stop=data.stop_reason;
+        const trailingOk=/[.!?][\s"')\]]*$/.test(out.trim());
+        if(out && (stop==="max_tokens" || !trailingOk)){
+          const trimmed=out.replace(/\s+$/,"");
+          const lastEnd=Math.max(
+            trimmed.lastIndexOf("."),
+            trimmed.lastIndexOf("!"),
+            trimmed.lastIndexOf("?")
+          );
+          if(lastEnd>20) out=trimmed.slice(0,lastEnd+1);
+        }
         // If the API returns an empty payload for any reason, fall back to
         // the deterministic local generator so the user always sees a
         // usable summary instead of "No summary generated."

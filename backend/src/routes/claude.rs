@@ -24,7 +24,7 @@ const ALLOWED_MODELS: &[&str] = &[
 
 // Hard server-side ceilings — frontend-supplied values are clamped /
 // rejected against these regardless of what the client asks for.
-const MAX_TOKENS_CAP: u32 = 1500;
+const MAX_TOKENS_CAP: u32 = 4000;
 const MAX_MESSAGES: usize = 50;
 const MAX_MESSAGE_CHARS: usize = 50_000;
 const MAX_SYSTEM_CHARS: usize = 10_000;
