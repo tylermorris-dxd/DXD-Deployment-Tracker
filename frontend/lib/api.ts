@@ -182,6 +182,14 @@ export const api = {
   claude: (body: unknown) =>
     apiFetch<unknown>('/claude', { method: 'POST', body: JSON.stringify(body) }),
 
+  // OEM spec page proxy — fetches an OEM specification page server-side
+  // (avoids CORS) and returns the cleaned text content so the Products tool
+  // can ask Claude to extract structured specs and pre-fill matrix fields.
+  oemSpecsFetch: (url: string) =>
+    apiFetch<{ url: string; contentType: string; text: string; rawLen: number; cleanLen: number }>(
+      `/oem-specs-fetch?url=${encodeURIComponent(url)}`
+    ),
+
   geocode: (address: string) =>
     apiFetch<{ lat: number; lng: number; display: string; source: string }>(
       `/geocode?address=${encodeURIComponent(address)}`

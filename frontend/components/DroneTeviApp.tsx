@@ -219,12 +219,6 @@ const EVAL_MATRIX = [
     {id:"swlicense",label:"Software Licensing Model",type:"text"},{id:"oemresp",label:"OEM Responsiveness",type:"text"},
     {id:"su_score",label:"Support & Lifecycle Result",type:"pfn"},{id:"su_notes",label:"Notes",type:"notes"},
   ]},
-  {id:"cost",label:"Cost",icon:"💰",color:"#86efac",bg:"rgba(134,239,172,0.07)",border:"rgba(134,239,172,0.25)",rows:[
-    {id:"purchase",label:"Purchase Price ($)",type:"dollar"},{id:"install",label:"Installation ($)",type:"dollar"},
-    {id:"subscription",label:"Annual Subscription ($)",type:"dollar"},{id:"maintenance",label:"Est. Annual Maintenance ($)",type:"dollar"},
-    {id:"training_cost",label:"Training Cost ($)",type:"dollar"},{id:"tco",label:"5-Year TCO ($)",type:"dollar"},
-    {id:"total_cost",label:"Total Cost ($)",type:"dollar"},{id:"co_notes",label:"Notes",type:"notes"},
-  ]},
 ];
 
 const OPSITES = [
@@ -301,6 +295,7 @@ const mkSig = () => ({name:"",role:"",date:"",phase:"",signature:"",notes:"",app
 const mkOEM = (name: string) => ({
   name:name||"",manufacturer:"",model:"",serial:"",dockModel:"",dockSerial:"",
   evaluator:"",startDate:"",location:"",activeSite:"site_TRG",
+  specsUrl:"",specsFetchedAt:"",specsFetchStatus:"",
   scores:{},results:{},notes:{},
   flightLogs:[],weeklyChecks:{},payloadTests:{},
   signoffs:[mkSig()],matrix:{},checklist:{},advChecklist:{},
@@ -442,40 +437,81 @@ function _recommendation(passes,fails,pendings){
 function buildLocalSummary(sectionName, contextData, oem){
   var platform=oem.name||"Unknown";
   var model=oem.model||"";
+  var manufacturer=oem.manufacturer||"";
   var evaluator=oem.evaluator||"N/A";
+  var startDate=oem.startDate||"N/A";
+  var location=oem.location||"N/A";
+  var dockModel=oem.dockModel||"";
+  var dockSerial=oem.dockSerial||"";
+  var serial=oem.serial||"";
   var decision=(oem.procurement&&oem.procurement.decision)||"Not yet made";
+  var conditions=(oem.procurement&&oem.procurement.conditions)||"";
+  var procEvaluator=(oem.procurement&&oem.procurement.evaluatorName)||"";
+  var specsUrl=oem.specsUrl||"";
   var parsed=_parseTestsCtx(contextData||"");
   var p=parsed.passes,f=parsed.fails,pd=parsed.pendings;
   var total=p.length+f.length+pd.length;
   var rate=total>0?Math.round(p.length/total*100):0;
 
+  // Pull every note recorded for this section so the summary actually
+  // reflects what the evaluator typed in — not just pass/fail counts.
+  var sectionNotes=[];
+  if(oem.notes){
+    Object.keys(oem.notes).forEach(function(k){
+      var v=oem.notes[k];
+      if(!v||typeof v!=='string') return;
+      if(k.indexOf('wx_')===0||k.indexOf('section_signoff_')===0) return;
+      // Skip JSON blob notes (weather, signoff metadata)
+      if(v.length>0&&v.length<400) sectionNotes.push(k+': '+v);
+    });
+  }
+
   var lines=[];
   lines.push("SECTION OVERVIEW");
-  lines.push("Evaluation of the "+platform+(model?" ("+model+")":"")+" platform against the "+sectionName+" criteria. Conducted by "+evaluator+". Current procurement status: "+decision+".");
+  lines.push("Detailed evaluation of the "+platform+(model?" ("+model+")":"")+(manufacturer?" — manufactured by "+manufacturer:"")+" platform against the "+sectionName+" criteria. Lead evaluator: "+evaluator+". Evaluation start: "+startDate+". Primary test location: "+location+(serial?". Serial: "+serial:"")+(dockModel?". Dock model: "+dockModel:"")+(dockSerial?" (S/N "+dockSerial+")":"")+". Current procurement status: "+decision+(conditions?". Conditions on procurement: "+conditions:"")+(procEvaluator?". Procurement evaluator of record: "+procEvaluator:"")+(specsUrl?". OEM specification source on file: "+specsUrl:"")+".");
   lines.push("");
-  lines.push("KEY FINDINGS");
+  lines.push("TEST RESULTS — FULL ROSTER");
   if(total===0){
-    lines.push("• No test results recorded yet for this section.");
-    if(contextData) lines.push("• Context: "+String(contextData).slice(0,260));
+    lines.push("No test results recorded yet for this section.");
+    if(contextData) lines.push("Raw context dump: "+String(contextData).slice(0,1200));
   } else {
-    lines.push("• "+p.length+"/"+total+" tests passed ("+rate+"% pass rate)");
-    if(f.length>0)  lines.push("• Failures ("+f.length+"): "+f.slice(0,6).join("; ")+(f.length>6?" (+"+(f.length-6)+" more)":""));
-    if(pd.length>0) lines.push("• Pending: "+pd.length+" test"+(pd.length===1?"":"s")+" awaiting result");
-    if(p.length>0 && f.length===0 && pd.length===0) lines.push("• Clean sweep — no failures or open items in evaluated set.");
-    if(p.length>0)  lines.push("• Notable passes: "+p.slice(0,5).join("; ")+(p.length>5?" …":""));
+    lines.push("Aggregate: "+p.length+" pass, "+f.length+" fail, "+pd.length+" pending ("+rate+"% pass on completed tests).");
+    if(p.length>0){
+      lines.push("");
+      lines.push("PASSING TESTS:");
+      p.forEach(function(n){lines.push("• "+n);});
+    }
+    if(f.length>0){
+      lines.push("");
+      lines.push("FAILING TESTS:");
+      f.forEach(function(n){lines.push("• "+n);});
+    }
+    if(pd.length>0){
+      lines.push("");
+      lines.push("PENDING TESTS:");
+      pd.forEach(function(n){lines.push("• "+n);});
+    }
   }
+
+  if(sectionNotes.length>0){
+    lines.push("");
+    lines.push("EVALUATOR NOTES, OBSERVATIONS & TYPED FINDINGS");
+    sectionNotes.slice(0,40).forEach(function(n){lines.push("• "+n);});
+    if(sectionNotes.length>40) lines.push("• (+"+(sectionNotes.length-40)+" more notes — truncated)");
+  }
+
   lines.push("");
   lines.push("OPERATIONAL IMPACT");
   if(total===0){
     lines.push("Operational readiness cannot be assessed until tests are completed and results entered.");
   } else if(f.length===0 && pd.length===0){
-    lines.push("Platform demonstrates consistent performance across all evaluated requirements in this section. Ready for deployment consideration in this domain.");
+    lines.push("Platform demonstrates consistent performance across every evaluated requirement in this section ("+p.length+"/"+p.length+" pass). Ready for deployment consideration in this domain. No outstanding remediation items.");
   } else if(f.length===0){
-    lines.push("Platform tracking well so far ("+rate+"% pass rate) with "+pd.length+" item"+(pd.length===1?"":"s")+" still outstanding. Prioritize the remaining checks to complete the assessment.");
+    lines.push("Platform tracking well so far ("+rate+"% pass on completed tests) with "+pd.length+" item"+(pd.length===1?"":"s")+" still outstanding. Prioritize the remaining checks to close out the assessment before procurement sign-off.");
   } else if(rate>=60){
-    lines.push("Platform shows acceptable overall performance but has "+f.length+" specific weak point"+(f.length===1?"":"s")+" requiring mitigation. Operators should be briefed on identified failure modes before field deployment.");
+    lines.push("Platform shows acceptable overall performance but has "+f.length+" specific weak point"+(f.length===1?"":"s")+" that require mitigation. Operators should be briefed on the identified failure modes before any field deployment. Re-test after OEM remediation, software/firmware updates, or operator-procedure changes.");
   } else {
-    lines.push("Platform performance is below required threshold for operational deployment in this section. Significant remediation, OEM engagement, or alternative platform consideration required.");
+    lines.push("Platform performance is below the required threshold for operational deployment in this section ("+rate+"% pass). Significant remediation, OEM engagement, or alternative-platform consideration is required before further investment.");
   }
   lines.push("");
   lines.push("RECOMMENDATION");
@@ -536,10 +572,31 @@ function ExecSummaryBtn({sectionName,contextData}){
   const [loading,setLoading]=useState(false);
   const [text,setText]=useState("");
   const activeSite=OPSITES.find(s=>s.key===(oem.activeSite||"site_TRG"))||OPSITES[0];
+  const isOverview=/Platform Overview/i.test(sectionName||"");
   const generate=()=>{
     setLoading(true);setText("");setOpen(true);
-    const prompt="You are a drone procurement analyst. Write a concise ONE-PAGE executive summary focused on the "+sectionName+" section of a drone evaluation.\n\nPlatform: "+(oem.name||"Unknown")+" | Model: "+(oem.model||"N/A")+" | Evaluator: "+(oem.evaluator||"N/A")+" | Site: "+activeSite.label+"\nProcurement decision: "+((oem.procurement&&oem.procurement.decision)||"Not yet made")+"\n\nSECTION FOCUS: "+sectionName+"\n"+(contextData||"No additional context.")+"\n\nWrite a professional executive summary with:\n1. SECTION OVERVIEW (2-3 sentences)\n2. KEY FINDINGS (bullet points)\n3. OPERATIONAL IMPACT\n4. RECOMMENDATION (PROCEED / DO NOT PROCEED / CONDITIONAL)\n\nUnder 350 words. Be direct. Plain text only, no markdown symbols.";
-    fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1000,messages:[{role:"user",content:prompt}]})})
+    // Dump every evaluator-typed note for this OEM into the prompt so the
+    // summary actually reflects what was typed — not just pass/fail counts.
+    var notesDump="";
+    if(oem.notes){
+      var entries=[];
+      Object.keys(oem.notes).forEach(function(k){
+        var v=oem.notes[k];
+        if(!v||typeof v!=='string') return;
+        if(k.indexOf('section_signoff_')===0) return;
+        if(v.length>500) v=v.slice(0,500)+'…';
+        entries.push("  "+k+": "+v);
+      });
+      if(entries.length>0) notesDump="\n\nEVALUATOR-TYPED NOTES (verbatim — preserve specifics):\n"+entries.join("\n");
+    }
+    var promptHeader=isOverview
+      ? ("You are a drone procurement analyst. Write a COMPREHENSIVE, MULTI-PAGE executive report that consolidates EVERY section's findings into one master document. Cover every category: Drone/Flight Performance, Dock Integration, Sensors & Payload, Reliability, Use Cases (LE/Campus/CIP), Weekly Checks, Payload Compatibility, Compare, and Final Evaluation. For each category, write its own subsection with its own KEY FINDINGS, OPERATIONAL IMPACT, and RECOMMENDATION, then close with a CONSOLIDATED RECOMMENDATION (PROCEED / DO NOT PROCEED / CONDITIONAL) backed by aggregate numbers.")
+      : ("You are a drone procurement analyst. Write a DETAILED, multi-paragraph executive report focused on the "+sectionName+" section. Summarize every note, finding, and documented result in the data below. Do not skip notes — quote or paraphrase the evaluator's observations verbatim where they add color or context.");
+    var structureHint=isOverview
+      ? "\n\nStructure:\n1. EXECUTIVE OVERVIEW (one paragraph — platform, evaluator, site, procurement status)\n2. PER-SECTION DETAILS — one subsection per category with: findings, notes/observations from evaluator, operational impact, and section recommendation\n3. CROSS-CUTTING THEMES (strengths, recurring weak spots, anomalies seen across sections)\n4. RISK & MITIGATION SUMMARY\n5. CONSOLIDATED RECOMMENDATION with rationale\n\nLength: as long as needed to cover every section faithfully (target 900–1300 words). Plain text only, no markdown symbols."
+      : "\n\nStructure:\n1. SECTION OVERVIEW (platform, evaluator, location, scope)\n2. TEST RESULTS — full roster with pass/fail/pending breakdown\n3. EVALUATOR NOTES & OBSERVATIONS — quote or paraphrase typed notes\n4. OPERATIONAL IMPACT\n5. RECOMMENDATION (PROCEED / DO NOT PROCEED / CONDITIONAL) with rationale\n\nLength: 500–800 words. Be thorough — this is meant to be a record, not a teaser. Plain text only, no markdown symbols.";
+    const prompt=promptHeader+"\n\nPlatform: "+(oem.name||"Unknown")+" | Manufacturer: "+(oem.manufacturer||"N/A")+" | Model: "+(oem.model||"N/A")+" | Serial: "+(oem.serial||"N/A")+" | Dock: "+(oem.dockModel||"N/A")+(oem.dockSerial?" (S/N "+oem.dockSerial+")":"")+"\nEvaluator: "+(oem.evaluator||"N/A")+" | Start Date: "+(oem.startDate||"N/A")+" | Primary Test Location: "+(oem.location||"N/A")+" | Active Site: "+activeSite.label+"\nProcurement decision: "+((oem.procurement&&oem.procurement.decision)||"Not yet made")+" | Conditions: "+((oem.procurement&&oem.procurement.conditions)||"None")+"\nOEM specifications source URL: "+(oem.specsUrl||"Not provided")+"\n\nSECTION FOCUS: "+sectionName+"\n"+(contextData||"No additional context.")+notesDump+structureHint;
+    fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:isOverview?1500:1200,messages:[{role:"user",content:prompt}]})})
       .then(async r=>{
         const data=await r.json().catch(()=>({}));
         if(!r.ok) throw new Error((data&&data.error)||("HTTP "+r.status));
@@ -579,8 +636,155 @@ function ExecSummaryBtn({sectionName,contextData}){
   );
 }
 
+function OemSpecsUrlPanel({oem,dispatch,activeOEMIdx}){
+  const {state}=useContext(TeviCtx);
+  const [busy,setBusy]=useState(false);
+  const [msg,setMsg]=useState("");
+  const [msgKind,setMsgKind]=useState("info"); // info | ok | err
+  const url=oem.specsUrl||"";
+
+  const setStatusMsg=(text,kind)=>{ setMsg(text); setMsgKind(kind||"info"); };
+
+  // Update a matrix cell for the active OEM column. The matrix is stored
+  // canonically on state.oems[0].matrix with keys "<cat>_<row>_<vendorIdx>".
+  const setMatrixCell=(catId,rowId,val)=>{
+    if(val===null||val===undefined||val==="") return;
+    const cur=(state.oems[0]&&state.oems[0].matrix)||{};
+    const next={...cur,[catId+"_"+rowId+"_"+activeOEMIdx]:String(val)};
+    dispatch({type:"SET_MATRIX",oems:state.oems.map((o,i)=>i===0?{...o,matrix:next}:o)});
+  };
+
+  const handleFetch=async()=>{
+    if(!url.trim()){ setStatusMsg("Paste an OEM specifications URL first.","err"); return; }
+    setBusy(true); setStatusMsg("Fetching page…","info");
+    try{
+      const proxied=await api.oemSpecsFetch(url.trim());
+      const pageText=(proxied&&proxied.text)||"";
+      if(!pageText){ throw new Error("Empty page content"); }
+      setStatusMsg("Asking Claude to extract specs…","info");
+
+      // Hand the cleaned page text to Claude with a strict JSON schema so we
+      // can parse the response and drop values into the Compare matrix
+      // + the Overview identification fields. Anything Claude can't find,
+      // it leaves out — we never overwrite existing values blindly.
+      const prompt=`You are extracting drone OEM specifications from a manufacturer's product page.
+
+Return STRICT JSON ONLY (no prose, no markdown fences) in exactly this shape:
+{
+  "platform": { "manufacturer": "", "model": "" },
+  "compliance": { "ndaa": "", "blueuas": "", "faa": "", "remoteid": "", "radio": "", "data": "" },
+  "payloads":   { "eo": "", "thermal": "", "zoom": "", "radiometric": "", "lowlight": "", "firstparty": "", "thirdparty": "" },
+  "aircraft":   { "flighttime": "", "range": "", "windresist": "", "optemp": "", "launchmethod": "", "iprating": "" },
+  "autonomy":   { "obsavoid": "", "daa": "", "parachute": "", "dockreliab": "", "bvlos": "" },
+  "support":    { "partsavail": "", "repair": "", "warranty": "", "training": "", "swlicense": "", "oemresp": "" }
+}
+
+Rules:
+- For toggle-style fields (ndaa, blueuas, faa, remoteid, radio, data, eo, thermal, radiometric, lowlight, firstparty, thirdparty, obsavoid, daa, parachute, dockreliab, bvlos, training): return "Yes", "No", or "" if unknown.
+- For free-text fields (manufacturer, model, zoom, flighttime, range, windresist, optemp, launchmethod, iprating, partsavail, repair, warranty, swlicense, oemresp): copy the exact number/unit from the page (e.g. "40 min", "6.2 mi", "26 mph", "-20°C to 50°C", "IP54").
+- Omit any field you cannot confidently extract — leave it as an empty string.
+
+PAGE TEXT (truncated):
+${pageText.slice(0, 40000)}`;
+
+      const claudeResp=await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1200,messages:[{role:"user",content:prompt}]})});
+      const claudeJson=await claudeResp.json();
+      if(!claudeResp.ok) throw new Error((claudeJson&&claudeJson.error)||("Claude HTTP "+claudeResp.status));
+      const text=(claudeJson.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n").trim();
+      // Strip markdown fences in case the model adds them anyway
+      const stripped=text.replace(/^```(?:json)?/i,"").replace(/```$/,"").trim();
+      let parsed;
+      try { parsed=JSON.parse(stripped); }
+      catch { throw new Error("Could not parse Claude response as JSON"); }
+
+      let setCount=0;
+      // Identification fields go on the OEM record itself (only fill when empty)
+      if(parsed.platform){
+        if(parsed.platform.manufacturer && !oem.manufacturer){
+          dispatch({type:"UPD_FIELD",f:"manufacturer",v:parsed.platform.manufacturer}); setCount++;
+        }
+        if(parsed.platform.model && !oem.model){
+          dispatch({type:"UPD_FIELD",f:"model",v:parsed.platform.model}); setCount++;
+        }
+      }
+      // Matrix categories — IDs match EVAL_MATRIX
+      const catMap={compliance:"compliance",payloads:"payloads",aircraft:"aircraft",autonomy:"autonomy",support:"support"};
+      Object.keys(catMap).forEach(k=>{
+        const catId=catMap[k];
+        const block=parsed[k]||{};
+        Object.keys(block).forEach(rowId=>{
+          const v=block[rowId];
+          if(v && String(v).trim()){
+            setMatrixCell(catId,rowId,v);
+            setCount++;
+          }
+        });
+      });
+
+      dispatch({type:"UPD_FIELD",f:"specsFetchedAt",v:new Date().toISOString()});
+      dispatch({type:"UPD_FIELD",f:"specsFetchStatus",v:"ok"});
+      if(setCount===0){
+        setStatusMsg("Page fetched, but no spec values could be confidently extracted. Try a more detailed spec sheet URL.","err");
+      } else {
+        setStatusMsg("Pre-filled "+setCount+" field"+(setCount===1?"":"s")+" from the OEM specifications page. Review the Compare tab.","ok");
+      }
+    } catch(e){
+      dispatch({type:"UPD_FIELD",f:"specsFetchStatus",v:"err"});
+      setStatusMsg("Fetch failed: "+(e?.message||"unknown error"),"err");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const msgColor=msgKind==="ok"?"#86efac":msgKind==="err"?"#fca5a5":"#fde68a";
+  const msgBg=msgKind==="ok"?"rgba(20,83,45,0.4)":msgKind==="err"?"rgba(127,29,29,0.4)":"rgba(120,53,15,0.35)";
+  const msgBrd=msgKind==="ok"?"#166534":msgKind==="err"?"#991b1b":"#854d0e";
+
+  return(
+    <div style={{background:C.card,borderRadius:12,padding:20,border:"1px solid rgba(167,139,250,0.3)"}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,paddingBottom:12,borderBottom:"1px solid rgba(167,139,250,0.18)"}}>
+        <div style={{width:3,height:20,borderRadius:2,background:"#a78bfa"}}/>
+        <span style={{color:"#a78bfa",fontWeight:700,fontSize:13,letterSpacing:2,textTransform:"uppercase"}}>OEM Specifications Source</span>
+        {oem.specsFetchedAt && <span style={{marginLeft:"auto",fontSize:10,color:C.muted}}>Last fetched: {new Date(oem.specsFetchedAt).toLocaleString()}</span>}
+      </div>
+      <div style={{fontSize:12,color:C.muted,marginBottom:10,lineHeight:1.5}}>
+        Verify OEM specifications with this link. Paste the manufacturer's spec sheet URL and click <b style={{color:"#a78bfa"}}>Fetch &amp; Pre-fill</b> — the tool will extract published specs (flight time, range, IP rating, NDAA status, payloads, etc.) and pre-populate the Compare matrix for this vendor where applicable.
+      </div>
+      <div style={{display:"flex",alignItems:"flex-end",gap:10,flexWrap:"wrap"}}>
+        <div style={{flex:"1 1 420px",minWidth:280}}>
+          <label style={lbl}>OEM Specs URL</label>
+          <input
+            value={url}
+            onChange={e=>dispatch({type:"UPD_FIELD",f:"specsUrl",v:e.target.value})}
+            placeholder="https://manufacturer.example.com/products/your-drone/specs"
+            style={{...inp,marginTop:4}}
+          />
+        </div>
+        <button
+          onClick={handleFetch}
+          disabled={busy||!url.trim()}
+          style={{padding:"9px 18px",borderRadius:8,border:"1px solid rgba(167,139,250,0.55)",background:busy?"rgba(167,139,250,0.15)":"rgba(167,139,250,0.28)",color:"#a78bfa",fontWeight:800,fontSize:12,letterSpacing:1,cursor:busy||!url.trim()?"not-allowed":"pointer",opacity:!url.trim()?0.5:1,whiteSpace:"nowrap"}}
+        >
+          {busy?"Working…":"⤓ Fetch & Pre-fill"}
+        </button>
+        {url.trim() && (
+          <a href={url.trim()} target="_blank" rel="noreferrer"
+            style={{padding:"9px 14px",borderRadius:8,border:"1px solid "+C.border,background:"rgba(255,255,255,0.04)",color:C.text,fontSize:11,fontWeight:600,textDecoration:"none",whiteSpace:"nowrap"}}>
+            Open ↗
+          </a>
+        )}
+      </div>
+      {msg && (
+        <div style={{marginTop:10,padding:"8px 12px",borderRadius:8,background:msgBg,border:"1px solid "+msgBrd,color:msgColor,fontSize:12}}>
+          {msg}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function OverviewPanel(){
-  const {oem,dispatch}=useContext(TeviCtx);
+  const {oem,dispatch,state}=useContext(TeviCtx);
   const activeKey=oem.activeSite||"site_TRG";
   const activeSite=OPSITES.find(s=>s.key===activeKey)||OPSITES[0];
   return(
@@ -596,6 +800,8 @@ function OverviewPanel(){
           ))}
         </div>
       </div>
+
+      <OemSpecsUrlPanel oem={oem} dispatch={dispatch} activeOEMIdx={state.activeOEM}/>
       <div style={{background:C.card,borderRadius:12,padding:20,border:"1px solid rgba(74,158,255,0.25)"}}>
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16,paddingBottom:12,borderBottom:"1px solid rgba(74,158,255,0.15)"}}>
           <div style={{width:3,height:20,borderRadius:2,background:"#4a9eff"}}/>
@@ -1558,7 +1764,23 @@ export default function DroneTeviApp(){
     }
   }
 
-  const buildTestCtx=sectionKey=>"Tests: "+TESTS[sectionKey].map(t=>t.test+": "+(oem.results[t.id+"_pfn"]||"Pending")).join(", ");
+  // Verbose context: dumps every test with its standard, result, tester,
+  // date, and notes so the summary can quote evaluator findings directly.
+  const buildTestCtx=sectionKey=>{
+    const lines=["Tests for "+sectionKey+":"];
+    (TESTS[sectionKey]||[]).forEach(t=>{
+      const result=oem.results[t.id+"_pfn"]||"Pending";
+      const tester=oem.notes[t.id+"_tester"]||"";
+      const date=oem.notes[t.id+"_date"]||"";
+      const note=oem.notes[t.id]||"";
+      lines.push("- "+t.test+": "+result
+        +" | Standard: "+(t.standard||"-")
+        +(tester?" | Tester: "+tester:"")
+        +(date?" | Date: "+date:"")
+        +(note?" | Notes: "+note:""));
+    });
+    return lines.join("\n");
+  };
   const buildAllResultsCtx=()=>Object.keys(TESTS).map(sec=>{const r=(TESTS[sec]||[]).map(t=>oem.results[t.id+"_pfn"]).filter(Boolean);return sec+": "+r.filter(v=>v==="Pass").length+"P/"+r.filter(v=>v==="Fail").length+"F";}).join(", ");
 
   const droneCtx=buildTestCtx("Flight Performance");
@@ -1583,21 +1805,39 @@ export default function DroneTeviApp(){
   // Resolve the active site here (sub-components have their own activeSite
   // variable scoped to themselves — the main component needs its own).
   const mainActiveSite=OPSITES.find(s=>s.key===(oem.activeSite||"site_TRG"))||OPSITES[0];
+  // Pull the matrix entries for the active OEM column so the Overview
+  // summary reflects everything entered on the Compare tab too.
+  const matrixData=(state.oems[0]&&state.oems[0].matrix)||{};
+  const matrixForActive=[];
+  EVAL_MATRIX.forEach(cat=>{
+    cat.rows.forEach(row=>{
+      const v=matrixData[cat.id+"_"+row.id+"_"+state.activeOEM];
+      if(v) matrixForActive.push(cat.label+" / "+row.label+": "+v);
+    });
+  });
+  const matrixDump=matrixForActive.length>0
+    ? "\n\nCOMPARE-MATRIX VALUES FOR THIS PLATFORM:\n"+matrixForActive.map(l=>"- "+l).join("\n")
+    : "";
   const overviewCtx=
     "Platform: "+(oem.name||"Unknown")+
+    " | Manufacturer: "+(oem.manufacturer||"N/A")+
     " | Model: "+(oem.model||"N/A")+
     " | Evaluator: "+(oem.evaluator||"N/A")+
+    " | Start Date: "+(oem.startDate||"N/A")+
     " | Site: "+mainActiveSite.label+
+    " | OEM Specs URL: "+(oem.specsUrl||"Not provided")+
     " | Procurement: "+procDecision+
     " | Conditions: "+procConditions+
     " | Aggregate results: "+buildAllResultsCtx()+
-    " | Flight Performance — "+droneCtx+
-    " | Dock Integration — "+dockCtx+
-    " | Sensors & Payload — "+sensorsCtx+
-    " | Operations & Reliability — "+reliabilityCtx+
-    " | Use Cases — "+useCasesCtx+
-    " | Weekly Checks — "+wkCtx+
-    " | Payload — "+payloadCtx;
+    "\n\nFLIGHT PERFORMANCE — full detail:\n"+droneCtx+
+    "\n\nDOCK INTEGRATION — full detail:\n"+dockCtx+
+    "\n\nSENSORS & PAYLOAD — full detail:\n"+sensorsCtx+
+    "\n\nOPERATIONS & RELIABILITY — full detail:\n"+reliabilityCtx+
+    "\n\nUSE CASES — full detail:\n"+useCasesCtx+
+    "\n\nWEEKLY CHECKS:\n"+wkCtx+
+    "\n\nPAYLOAD CONFIGURATION:\n"+payloadCtx+
+    "\n\nFINAL EVALUATION & SIGN-OFF: "+finalCtx+
+    matrixDump;
 
   function renderActiveTab(){
     switch(tab){
