@@ -68,7 +68,7 @@ const TESTS = {
     {id:"di1",test:"Charge Time",standard:"Per OEM spec — target 1:1 flight:charge ratio"},
     {id:"di2",test:"Dock Lid Open/Close Cycle",standard:"Per OEM spec — target <15 sec actuation"},
     {id:"di3",test:"Auto-Launch (Scheduled)",standard:"Per OEM spec — target launch within 30 sec of schedule"},
-    {id:"di4",test:"Auto-Return to Dock",standard:"Per OEM spec — target RTD within 16ft of dock center"},
+    {id:"di4",test:"Auto-Return to Dock",standard:"Per OEM spec — target RTD within 6in of dock center"},
     {id:"di5",test:"Remote Mission Trigger",standard:"Per OEM spec — target <5 sec response from command"},
     {id:"di6",test:"Manual Override to Auto Resume",standard:"Per OEM spec — seamless handoff, no mission abort"},
     {id:"di7",test:"GCS/VMS Integration",standard:"Per OEM spec — connects without manual steps"},
@@ -296,6 +296,7 @@ const mkOEM = (name: string) => ({
   name:name||"",manufacturer:"",model:"",serial:"",dockModel:"",dockSerial:"",
   evaluator:"",startDate:"",location:"",activeSite:"site_TRG",
   specsUrl:"",specsFetchedAt:"",specsFetchStatus:"",
+  oemStandards:{},
   scores:{},results:{},notes:{},
   flightLogs:[],weeklyChecks:{},payloadTests:{},
   signoffs:[mkSig()],matrix:{},checklist:{},advChecklist:{},
@@ -973,9 +974,36 @@ function OemSpecsUrlPanel({oem,dispatch,activeOEMIdx}){
       setStatusMsg("Asking Claude to extract specs…","info");
 
       // Hand the cleaned page text to Claude with a strict JSON schema so we
-      // can parse the response and drop values into the Compare matrix
-      // + the Overview identification fields. Anything Claude can't find,
-      // it leaves out — we never overwrite existing values blindly.
+      // can parse the response and drop values into the Compare matrix +
+      // the Overview identification fields + the per-test "Min. Standard"
+      // column on every section table. Anything Claude can't find, it
+      // leaves out — we never overwrite values the user already entered.
+
+      // Build the list of tests Claude should fill OEM-specific standards
+      // for. Format each row as: "id (test name) -- generic default" so
+      // Claude can produce an OEM-targeted equivalent. Limit to physical /
+      // measurable tests where an OEM spec sheet typically gives a value.
+      const STD_TEST_IDS=[
+        // Flight Performance — every test has a quantitative OEM target
+        "fp1","fp2","fp3","fp4","fp5","fp6","fp7","fp8",
+        // Dock Integration — most are dock-mechanism timings & RTD precision
+        "di1","di2","di3","di4","di5","di6","di7","di8","di11","di13",
+        // Sensors & Payload — camera/zoom/thermal capabilities
+        "sp1","sp2","sp3","sp4","sp5","sp6","sp7","sp8","sp9","sp10",
+        "sp11","sp12","sp13","sp14","sp15","sp16","sp17","sp18",
+        "sp19","sp20","sp21","sp22","sp23",
+        // Operations & Reliability — failure-rate and safety timings
+        "or1","or2","or3","or4","or5","or6","or7","or8",
+      ];
+      const idToTest={};
+      Object.keys(TESTS).forEach(sec=>{
+        TESTS[sec].forEach(t=>{ idToTest[t.id]={name:t.test,standard:t.standard,section:sec}; });
+      });
+      const testList=STD_TEST_IDS
+        .filter(id=>idToTest[id])
+        .map(id=>"  "+id+" — "+idToTest[id].section+" / "+idToTest[id].name+" — generic default: \""+idToTest[id].standard+"\"")
+        .join("\n");
+
       const prompt=`You are extracting drone OEM specifications from a manufacturer's product page.
 
 Return STRICT JSON ONLY (no prose, no markdown fences) in exactly this shape:
@@ -985,18 +1013,26 @@ Return STRICT JSON ONLY (no prose, no markdown fences) in exactly this shape:
   "payloads":   { "eo": "", "thermal": "", "zoom": "", "radiometric": "", "lowlight": "", "firstparty": "", "thirdparty": "" },
   "aircraft":   { "flighttime": "", "range": "", "windresist": "", "optemp": "", "launchmethod": "", "iprating": "" },
   "autonomy":   { "obsavoid": "", "daa": "", "parachute": "", "dockreliab": "", "bvlos": "" },
-  "support":    { "partsavail": "", "repair": "", "warranty": "", "training": "", "swlicense": "", "oemresp": "" }
+  "support":    { "partsavail": "", "repair": "", "warranty": "", "training": "", "swlicense": "", "oemresp": "" },
+  "testStandards": {
+    "<test-id>": "Per OEM spec — target <OEM-specific value>",
+    ...
+  }
 }
 
 Rules:
 - For toggle-style fields (ndaa, blueuas, faa, remoteid, radio, data, eo, thermal, radiometric, lowlight, firstparty, thirdparty, obsavoid, daa, parachute, dockreliab, bvlos, training): return "Yes", "No", or "" if unknown.
 - For free-text fields (manufacturer, model, zoom, flighttime, range, windresist, optemp, launchmethod, iprating, partsavail, repair, warranty, swlicense, oemresp): copy the exact number/unit from the page (e.g. "40 min", "6.2 mi", "26 mph", "-20°C to 50°C", "IP54").
+- For testStandards: include ONE entry per test ID below WHERE the OEM page lists a relevant published value. Phrase the value as: "Per OEM spec — target <X>" (e.g. "Per OEM spec — target 40 min flight time", "Per OEM spec — target 6.2 mi C2 range", "Per OEM spec — target stable in 26 mph sustained"). If the spec sheet has no relevant value for a test, OMIT that test's key entirely from testStandards (do not return an empty string).
 - Omit any field you cannot confidently extract — leave it as an empty string.
 
-PAGE TEXT (truncated):
-${pageText.slice(0, 40000)}`;
+TESTS TO PROVIDE OEM-SPECIFIC STANDARDS FOR (return matching keys under testStandards):
+${testList}
 
-      const claudeResp=await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1200,messages:[{role:"user",content:prompt}]})});
+PAGE TEXT (truncated):
+${pageText.slice(0, 38000)}`;
+
+      const claudeResp=await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:3800,messages:[{role:"user",content:prompt}]})});
       const claudeJson=await claudeResp.json();
       if(!claudeResp.ok) throw new Error((claudeJson&&claudeJson.error)||("Claude HTTP "+claudeResp.status));
       const text=(claudeJson.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n").trim();
@@ -1030,12 +1066,31 @@ ${pageText.slice(0, 40000)}`;
         });
       });
 
+      // Per-test Minimum Standard overrides — drop into oem.oemStandards
+      // keyed by test ID. The SecTable rows render this value in place of
+      // the generic "Per OEM spec — target …" placeholder.
+      let stdCount=0;
+      if(parsed.testStandards && typeof parsed.testStandards==="object"){
+        const nextStds={...(oem.oemStandards||{})};
+        Object.keys(parsed.testStandards).forEach(testId=>{
+          const v=parsed.testStandards[testId];
+          if(v && String(v).trim()){
+            nextStds[testId]=String(v).trim();
+            stdCount++;
+          }
+        });
+        if(stdCount>0){
+          dispatch({type:"UPD_FIELD",f:"oemStandards",v:nextStds});
+          setCount+=stdCount;
+        }
+      }
+
       dispatch({type:"UPD_FIELD",f:"specsFetchedAt",v:new Date().toISOString()});
       dispatch({type:"UPD_FIELD",f:"specsFetchStatus",v:"ok"});
       if(setCount===0){
         setStatusMsg("Page fetched, but no spec values could be confidently extracted. Try a more detailed spec sheet URL.","err");
       } else {
-        setStatusMsg("Pre-filled "+setCount+" field"+(setCount===1?"":"s")+" from the OEM specifications page. Review the Compare tab.","ok");
+        setStatusMsg("Pre-filled "+setCount+" field"+(setCount===1?"":"s")+" from the OEM specifications page"+(stdCount>0?" — including "+stdCount+" per-test OEM standard"+(stdCount===1?"":"s"):"")+". Review the Drone / Dock / Sensors / Reliability tabs to verify the standards, then run your tests against them.","ok");
       }
     } catch(e){
       dispatch({type:"UPD_FIELD",f:"specsFetchStatus",v:"err"});
@@ -1057,7 +1112,7 @@ ${pageText.slice(0, 40000)}`;
         {oem.specsFetchedAt && <span style={{marginLeft:"auto",fontSize:10,color:C.muted}}>Last fetched: {new Date(oem.specsFetchedAt).toLocaleString()}</span>}
       </div>
       <div style={{fontSize:12,color:C.muted,marginBottom:10,lineHeight:1.5}}>
-        Verify OEM specifications with this link. Paste the manufacturer's spec sheet URL and click <b style={{color:"#a78bfa"}}>Fetch &amp; Pre-fill</b> — the tool will extract published specs (flight time, range, IP rating, NDAA status, payloads, etc.) and pre-populate the Compare matrix for this vendor where applicable.
+        Verify OEM specifications with this link. Paste the manufacturer's spec sheet URL and click <b style={{color:"#a78bfa"}}>Fetch &amp; Pre-fill</b> — the tool will extract published specs (flight time, range, IP rating, NDAA status, payloads, etc.), pre-populate the Compare matrix for this vendor, AND replace the generic "Per OEM spec — target …" placeholders on every test row in the Drone / Dock / Sensors / Reliability tabs with the OEM's actual published values, so you can test against the OEM's own stated minimum standards.
       </div>
       <div style={{display:"flex",alignItems:"flex-end",gap:10,flexWrap:"wrap"}}>
         <div style={{flex:"1 1 420px",minWidth:280}}>
@@ -1245,16 +1300,28 @@ function SecTable({sKey}){
             {["Test","Min. Standard","Pass / Fail / N/A","Tester","Date","Notes"].map(h=><th key={h} style={{padding:"8px 10px",textAlign:"left",color:tc.color,fontWeight:700,fontSize:11,letterSpacing:0.5,textTransform:"uppercase",whiteSpace:"nowrap"}}>{h}</th>)}
           </tr></thead>
           <tbody>
-            {(TESTS[sKey]||[]).map((t,i)=>(
+            {(TESTS[sKey]||[]).map((t,i)=>{
+              const oemStd=(oem.oemStandards||{})[t.id];
+              const stdVal=(oemStd!==undefined && oemStd!=="")?oemStd:t.standard;
+              const isOverridden=oemStd!==undefined && oemStd!=="" && oemStd!==t.standard;
+              return (
               <tr key={t.id} style={{borderBottom:"1px solid rgba(255,255,255,0.04)",background:i%2===0?"transparent":"rgba(255,255,255,0.02)"}}>
                 <td style={{padding:"7px 10px",color:C.text}}>{t.test}</td>
-                <td style={{padding:"7px 10px",color:C.muted,fontSize:12,whiteSpace:"nowrap"}}>{t.standard}</td>
+                <td style={{padding:"6px 8px"}}>
+                  <input
+                    value={stdVal}
+                    onChange={e=>dispatch({type:"UPD_FIELD",f:"oemStandards",v:{...(oem.oemStandards||{}),[t.id]:e.target.value}})}
+                    title={isOverridden?("OEM-specific. Generic default: "+t.standard):"Per generic default — paste an OEM specs URL on the Overview tab to auto-fill OEM-specific values."}
+                    style={{...inp,fontSize:12,minWidth:280,padding:"5px 8px",color:isOverridden?"#86efac":C.muted,borderColor:isOverridden?"rgba(134,239,172,0.35)":C.border}}
+                  />
+                </td>
                 <td style={{padding:"6px 8px"}}><PFButtons value={getVal(t.id)} onChange={v=>setVal(t.id,v)}/></td>
                 <td style={{padding:"6px 8px"}}><input value={getNote(t.id,"_tester")} onChange={e=>setNote(t.id,"_tester",e.target.value)} style={{...inp,width:100}} placeholder="Name..."/></td>
                 <td style={{padding:"6px 8px"}}><input type="date" value={getNote(t.id,"_date")} onChange={e=>setNote(t.id,"_date",e.target.value)} style={{...inp,width:120}}/></td>
                 <td style={{padding:"6px 8px"}}><input value={getNote(t.id,"")} onChange={e=>setNote(t.id,"",e.target.value)} style={{...inp,minWidth:130}} placeholder="Notes..."/></td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
