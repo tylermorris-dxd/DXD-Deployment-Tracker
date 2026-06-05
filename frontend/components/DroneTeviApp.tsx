@@ -946,6 +946,179 @@ function ExecSummaryBtn({sectionName,contextData}){
   );
 }
 
+// ── Local OEM spec sheet parser ─────────────────────────────────────────
+// Pure-regex extraction from the cleaned page text returned by
+// /api/oem-specs-fetch. Returns the same shape the Claude prompt used to
+// return, so the downstream dispatch code stays identical. This is the
+// "no Anthropic API" path — fragile against unusual page layouts but
+// reliable for the common OEM spec-sheet phrasing.
+function parseOemSpecsLocal(pageText){
+  const text=String(pageText||"");
+  const result={
+    platform:{manufacturer:"",model:""},
+    compliance:{},
+    payloads:{},
+    aircraft:{},
+    autonomy:{},
+    support:{},
+    testStandards:{},
+  };
+  const has=(re)=>re.test(text);
+  const findFirst=function(){
+    for(let i=0;i<arguments.length;i++){
+      const m=text.match(arguments[i]);
+      if(m) return m;
+    }
+    return null;
+  };
+  const toMph=(num,unit)=>{
+    const u=String(unit||"").toLowerCase();
+    if(u==="m/s") return num*2.23694;
+    if(u==="km/h"||u==="kph") return num*0.621371;
+    return num; // assume mph
+  };
+  const trimZeros=(s)=>String(s).replace(/(\.\d*?)0+$/,'$1').replace(/\.$/,'');
+
+  // ── COMPLIANCE ──────────────────────────────────────
+  if(has(/\bNDAA[\s\-]*(?:compliant|listed|approved|section\s*848|2024)\b/i)
+     || has(/\bNDAA\b[^.\n]{0,80}\b(yes|compliant|listed|approved)\b/i)) result.compliance.ndaa="Yes";
+  if(has(/\bBlue\s*UAS\b/i)) result.compliance.blueuas="Yes";
+  if(has(/\b(?:FAA[\s\-]*)?part[\s\-]*107\b/i)) result.compliance.faa="Yes";
+  if(has(/\bRemote[\s\-]*ID\b/i)) result.compliance.remoteid="Yes";
+  if(has(/\b(?:FCC|FCC[\s\-]*part[\s\-]*15)\b/i)) result.compliance.radio="Yes";
+
+  // ── PAYLOADS ────────────────────────────────────────
+  if(has(/\b(?:4K|EO\s*camera|RGB\s*camera|electro[\s\-]?optical)\b/i)) result.payloads.eo="Yes";
+  if(has(/\b(?:thermal|FLIR|IR\s*camera|infra[\s\-]?red)\b/i)) result.payloads.thermal="Yes";
+  let zm;
+  if((zm=text.match(/(\d+(?:\.\d+)?)\s*x\s+(?:optical|hybrid)?\s*zoom/i))){
+    result.payloads.zoom=zm[1]+"x";
+  }
+  if(has(/\bradiometric\b/i)) result.payloads.radiometric="Yes";
+  if(has(/\b(?:low[\s\-]*light|starlight|night[\s\-]*vision)\b/i)) result.payloads.lowlight="Yes";
+  if(has(/\bthird[\s\-]?party\s+payload\b/i)) result.payloads.thirdparty="Yes";
+  if(has(/\bfirst[\s\-]?party\s+payload\b/i)) result.payloads.firstparty="Yes";
+
+  // ── AIRCRAFT + per-test standards ───────────────────
+  let m;
+
+  // Flight time → aircraft.flighttime + fp3
+  if((m=findFirst(
+    /(?:max(?:imum)?\s+)?(?:flight|hover)\s+time[:\s]+(?:up\s+to\s+)?(\d+(?:\.\d+)?)\s*(min(?:ute)?s?|hours?|hrs?)\b/i,
+    /(?:flight\s+)?endurance[:\s]+(?:up\s+to\s+)?(\d+(?:\.\d+)?)\s*(min(?:ute)?s?|hours?|hrs?)\b/i,
+    /(\d+)\s*(min(?:ute)?s?|hours?|hrs?)\s+(?:max\s+)?flight\s+time/i,
+  ))){
+    const unit=m[2].toLowerCase().startsWith("h")?"hr":"min";
+    const val=m[1]+" "+unit;
+    result.aircraft.flighttime=val;
+    result.testStandards.fp3="Per OEM spec — target "+val+" flight time";
+  }
+
+  // Range / C2 → aircraft.range + fp4
+  if((m=findFirst(
+    /(?:max(?:imum)?\s+)?(?:transmission|video\s+transmission|control|c2|comms?)\s+(?:range|distance)[:\s]*(?:up\s+to\s+)?[^.;\n]{0,40}?(\d+(?:\.\d+)?)\s*(km|kilometers|mi|miles)\b/i,
+    /\brange[:\s]+(\d+(?:\.\d+)?)\s*(km|mi)\b/i,
+  ))){
+    const num=parseFloat(m[1]);
+    const isKm=/^k/i.test(m[2]);
+    const mi=isKm?(num*0.621371):num;
+    const miStr=trimZeros(mi.toFixed(2))+" mi";
+    result.aircraft.range=miStr+(isKm?" ("+num+" km)":"");
+    result.testStandards.fp4="Per OEM spec — target "+miStr+" C2 range";
+  }
+
+  // Max speed → fp5
+  if((m=findFirst(
+    /(?:max(?:imum)?|top)\s+speed[:\s]+(?:up\s+to\s+)?(\d+(?:\.\d+)?)\s*(mph|km\/h|m\/s|kph)\b/i,
+    /\bspeed\s+(?:up\s+to|max(?:imum)?)\s+(\d+(?:\.\d+)?)\s*(mph|km\/h|m\/s|kph)/i,
+  ))){
+    const mph=Math.round(toMph(parseFloat(m[1]),m[2]));
+    result.testStandards.fp5="Per OEM spec — target "+mph+" mph max speed";
+  }
+
+  // Wind resistance → aircraft.windresist + fp6
+  if((m=findFirst(
+    /(?:max(?:imum)?\s+)?wind\s+(?:resistance|speed\s+resistance|tolerance)[:\s]+(?:up\s+to\s+)?(\d+(?:\.\d+)?)\s*(mph|m\/s|km\/h|kph)\b/i,
+    /(?:withstands?|stable\s+in|operates?\s+in)\s+winds?\s+(?:up\s+to\s+)?(\d+(?:\.\d+)?)\s*(mph|m\/s|km\/h|kph)/i,
+    /wind\s+(?:resistance|tolerance)\b[^.\n]{0,30}?(\d+(?:\.\d+)?)\s*(mph|m\/s|km\/h)/i,
+  ))){
+    const mph=Math.round(toMph(parseFloat(m[1]),m[2]));
+    const mphStr=mph+" mph";
+    result.aircraft.windresist=mphStr;
+    result.testStandards.fp6="Per OEM spec — target stable in "+mphStr+" sustained";
+  }
+
+  // Operating temperature
+  if((m=text.match(/operating\s+temp(?:erature)?[^\n]{0,40}?(-?\d+)\s*°?\s*([cf])[^\n]{0,30}?(-?\d+)\s*°?\s*([cf])/i))){
+    result.aircraft.optemp=m[1]+"°"+m[2].toUpperCase()+" to "+m[3]+"°"+m[4].toUpperCase();
+  }
+
+  // IP rating
+  if((m=text.match(/\bIP\s*(\d{2})\b/))){
+    result.aircraft.iprating="IP"+m[1];
+  }
+
+  // Launch method
+  if(has(/\bVTOL\b|\bvertical\s+take[\s\-]*off\b/i)) result.aircraft.launchmethod="VTOL";
+
+  // Charge time → di1
+  if((m=text.match(/(?:re)?charge\s+(?:time|duration)[:\s]+(\d+(?:\.\d+)?)\s*(min(?:ute)?s?|hrs?|hours?)\b/i))){
+    const unit=m[2].toLowerCase().startsWith("h")?"hr":"min";
+    result.testStandards.di1="Per OEM spec — target "+m[1]+" "+unit+" charge time";
+  }
+
+  // Climb rate → fp7
+  if((m=text.match(/(?:max(?:imum)?\s+)?(?:climb|ascent)\s+(?:rate|speed)[:\s]+(\d+(?:\.\d+)?)\s*(m\/s|ft\/s|mph|ft\/min)\b/i))){
+    result.testStandards.fp7="Per OEM spec — target "+m[1]+" "+m[2]+" climb rate";
+  }
+  // Descent rate → fp8
+  if((m=text.match(/(?:max(?:imum)?\s+)?(?:descent|descend)\s+(?:rate|speed)[:\s]+(\d+(?:\.\d+)?)\s*(m\/s|ft\/s|mph|ft\/min)\b/i))){
+    result.testStandards.fp8="Per OEM spec — target "+m[1]+" "+m[2]+" descent rate";
+  }
+
+  // Dock lid actuation → di2
+  if((m=text.match(/(?:dock\s+lid|lid\s+open(?:ing)?|hatch)\s+(?:actuation|cycle|time)[:\s]+(\d+(?:\.\d+)?)\s*(sec(?:ond)?s?)\b/i))){
+    result.testStandards.di2="Per OEM spec — target "+m[1]+" sec lid actuation";
+  }
+
+  // Streaming latency → sp21
+  if((m=text.match(/(?:streaming|video|latency|end[\s\-]to[\s\-]end)\s+latency[:\s]+(?:[<>]\s*)?(\d+(?:\.\d+)?)\s*(ms|milliseconds?|sec(?:ond)?s?)\b/i))){
+    result.testStandards.sp21="Per OEM spec — target <"+m[1]+" "+m[2]+" end-to-end latency";
+  }
+
+  // Optical zoom standards → sp7..sp10 if zoom level discovered
+  if(result.payloads.zoom){
+    const z=result.payloads.zoom;
+    result.testStandards.sp7  ="Per OEM spec — target "+z+" zoom stable @ 100ft";
+    result.testStandards.sp8  ="Per OEM spec — target "+z+" zoom plate readable @ 200ft";
+    result.testStandards.sp9  ="Per OEM spec — target "+z+" zoom useable @ 300ft";
+    result.testStandards.sp10 ="Per OEM spec — target "+z+" zoom subject distinguishable @ 400ft";
+  }
+
+  // Thermal-related per-test standards → sp14..sp17 if thermal present
+  if(result.payloads.thermal==="Yes"){
+    result.testStandards.sp14="Per OEM spec — target thermal human detection @ 100ft";
+    result.testStandards.sp15="Per OEM spec — target thermal human detection @ 200ft";
+    result.testStandards.sp16="Per OEM spec — target thermal human detection @ 300ft";
+    result.testStandards.sp17="Per OEM spec — target thermal human detection @ 400ft";
+    result.testStandards.sp18="Per OEM spec — target thermal anomaly detection vs ambient";
+  }
+
+  // ── AUTONOMY ────────────────────────────────────────
+  if(has(/\bobstacle\s+(?:avoidance|detection|sensing)\b/i)) result.autonomy.obsavoid="Yes";
+  if(has(/\bdetect[\s\-]+(?:and|&)[\s\-]+avoid\b|\bDAA\b/i)) result.autonomy.daa="Yes";
+  if(has(/\bparachute\b/i)) result.autonomy.parachute="Yes";
+  if(has(/\bBVLOS\b/i)) result.autonomy.bvlos="Yes";
+
+  // ── SUPPORT ─────────────────────────────────────────
+  if((m=text.match(/warranty[:\s]+(\d+(?:\.\d+)?)\s*(year|yr|month|mo)s?\b/i))){
+    result.support.warranty=m[1]+" "+m[2]+(parseFloat(m[1])===1?"":"s");
+  }
+  if(has(/\btraining\s+(?:provided|included|program|certification)\b/i)) result.support.training="Yes";
+
+  return result;
+}
+
 function OemSpecsUrlPanel({oem,dispatch,activeOEMIdx}){
   const {state}=useContext(TeviCtx);
   const [busy,setBusy]=useState(false);
@@ -971,76 +1144,14 @@ function OemSpecsUrlPanel({oem,dispatch,activeOEMIdx}){
       const proxied=await api.oemSpecsFetch(url.trim());
       const pageText=(proxied&&proxied.text)||"";
       if(!pageText){ throw new Error("Empty page content"); }
-      setStatusMsg("Asking Claude to extract specs…","info");
+      setStatusMsg("Parsing specs from page text…","info");
 
-      // Hand the cleaned page text to Claude with a strict JSON schema so we
-      // can parse the response and drop values into the Compare matrix +
-      // the Overview identification fields + the per-test "Min. Standard"
-      // column on every section table. Anything Claude can't find, it
-      // leaves out — we never overwrite values the user already entered.
-
-      // Build the list of tests Claude should fill OEM-specific standards
-      // for. Format each row as: "id (test name) -- generic default" so
-      // Claude can produce an OEM-targeted equivalent. Limit to physical /
-      // measurable tests where an OEM spec sheet typically gives a value.
-      const STD_TEST_IDS=[
-        // Flight Performance — every test has a quantitative OEM target
-        "fp1","fp2","fp3","fp4","fp5","fp6","fp7","fp8",
-        // Dock Integration — most are dock-mechanism timings & RTD precision
-        "di1","di2","di3","di4","di5","di6","di7","di8","di11","di13",
-        // Sensors & Payload — camera/zoom/thermal capabilities
-        "sp1","sp2","sp3","sp4","sp5","sp6","sp7","sp8","sp9","sp10",
-        "sp11","sp12","sp13","sp14","sp15","sp16","sp17","sp18",
-        "sp19","sp20","sp21","sp22","sp23",
-        // Operations & Reliability — failure-rate and safety timings
-        "or1","or2","or3","or4","or5","or6","or7","or8",
-      ];
-      const idToTest={};
-      Object.keys(TESTS).forEach(sec=>{
-        TESTS[sec].forEach(t=>{ idToTest[t.id]={name:t.test,standard:t.standard,section:sec}; });
-      });
-      const testList=STD_TEST_IDS
-        .filter(id=>idToTest[id])
-        .map(id=>"  "+id+" — "+idToTest[id].section+" / "+idToTest[id].name+" — generic default: \""+idToTest[id].standard+"\"")
-        .join("\n");
-
-      const prompt=`You are extracting drone OEM specifications from a manufacturer's product page.
-
-Return STRICT JSON ONLY (no prose, no markdown fences) in exactly this shape:
-{
-  "platform": { "manufacturer": "", "model": "" },
-  "compliance": { "ndaa": "", "blueuas": "", "faa": "", "remoteid": "", "radio": "", "data": "" },
-  "payloads":   { "eo": "", "thermal": "", "zoom": "", "radiometric": "", "lowlight": "", "firstparty": "", "thirdparty": "" },
-  "aircraft":   { "flighttime": "", "range": "", "windresist": "", "optemp": "", "launchmethod": "", "iprating": "" },
-  "autonomy":   { "obsavoid": "", "daa": "", "parachute": "", "dockreliab": "", "bvlos": "" },
-  "support":    { "partsavail": "", "repair": "", "warranty": "", "training": "", "swlicense": "", "oemresp": "" },
-  "testStandards": {
-    "<test-id>": "Per OEM spec — target <OEM-specific value>",
-    ...
-  }
-}
-
-Rules:
-- For toggle-style fields (ndaa, blueuas, faa, remoteid, radio, data, eo, thermal, radiometric, lowlight, firstparty, thirdparty, obsavoid, daa, parachute, dockreliab, bvlos, training): return "Yes", "No", or "" if unknown.
-- For free-text fields (manufacturer, model, zoom, flighttime, range, windresist, optemp, launchmethod, iprating, partsavail, repair, warranty, swlicense, oemresp): copy the exact number/unit from the page (e.g. "40 min", "6.2 mi", "26 mph", "-20°C to 50°C", "IP54").
-- For testStandards: include ONE entry per test ID below WHERE the OEM page lists a relevant published value. Phrase the value as: "Per OEM spec — target <X>" (e.g. "Per OEM spec — target 40 min flight time", "Per OEM spec — target 6.2 mi C2 range", "Per OEM spec — target stable in 26 mph sustained"). If the spec sheet has no relevant value for a test, OMIT that test's key entirely from testStandards (do not return an empty string).
-- Omit any field you cannot confidently extract — leave it as an empty string.
-
-TESTS TO PROVIDE OEM-SPECIFIC STANDARDS FOR (return matching keys under testStandards):
-${testList}
-
-PAGE TEXT (truncated):
-${pageText.slice(0, 38000)}`;
-
-      const claudeResp=await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:3800,messages:[{role:"user",content:prompt}]})});
-      const claudeJson=await claudeResp.json();
-      if(!claudeResp.ok) throw new Error((claudeJson&&claudeJson.error)||("Claude HTTP "+claudeResp.status));
-      const text=(claudeJson.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n").trim();
-      // Strip markdown fences in case the model adds them anyway
-      const stripped=text.replace(/^```(?:json)?/i,"").replace(/```$/,"").trim();
-      let parsed;
-      try { parsed=JSON.parse(stripped); }
-      catch { throw new Error("Could not parse Claude response as JSON"); }
+      // Local regex extraction — no Anthropic API call. The parser
+      // produces the same shape the LLM used to return so the downstream
+      // dispatch code is identical. It's fragile against unusual spec
+      // sheet layouts, but each populated cell remains editable so the
+      // evaluator can fix any miss manually.
+      const parsed=parseOemSpecsLocal(pageText);
 
       let setCount=0;
       // Identification fields go on the OEM record itself (only fill when empty)
@@ -1112,7 +1223,7 @@ ${pageText.slice(0, 38000)}`;
         {oem.specsFetchedAt && <span style={{marginLeft:"auto",fontSize:10,color:C.muted}}>Last fetched: {new Date(oem.specsFetchedAt).toLocaleString()}</span>}
       </div>
       <div style={{fontSize:12,color:C.muted,marginBottom:10,lineHeight:1.5}}>
-        Verify OEM specifications with this link. Paste the manufacturer's spec sheet URL and click <b style={{color:"#a78bfa"}}>Fetch &amp; Pre-fill</b> — the tool will extract published specs (flight time, range, IP rating, NDAA status, payloads, etc.), pre-populate the Compare matrix for this vendor, AND replace the generic "Per OEM spec — target …" placeholders on every test row in the Drone / Dock / Sensors / Reliability tabs with the OEM's actual published values, so you can test against the OEM's own stated minimum standards.
+        Verify OEM specifications with this link. Paste the manufacturer's spec sheet URL and click <b style={{color:"#a78bfa"}}>Fetch &amp; Pre-fill</b> — the tool will parse published specs (flight time, range, wind resistance, IP rating, NDAA status, payloads, etc.) directly from the page text, pre-populate the Compare matrix for this vendor, AND replace the generic "Per OEM spec — target …" placeholders on every test row in the Drone / Dock / Sensors / Reliability tabs with the OEM's actual published values. Extraction runs entirely locally — no AI service required. Each populated cell remains editable so you can correct any miss before testing.
       </div>
       <div style={{display:"flex",alignItems:"flex-end",gap:10,flexWrap:"wrap"}}>
         <div style={{flex:"1 1 420px",minWidth:280}}>
