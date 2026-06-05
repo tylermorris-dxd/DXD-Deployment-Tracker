@@ -456,89 +456,412 @@ function _recommendation(passes,fails,pendings){
   return "DO NOT PROCEED — only "+rate+"% pass rate. Platform does not meet baseline performance requirements.";
 }
 
-function buildLocalSummary(sectionName, contextData, oem){
-  var platform=oem.name||"Unknown";
-  var model=oem.model||"";
-  var manufacturer=oem.manufacturer||"";
-  var evaluator=oem.evaluator||"N/A";
-  var startDate=oem.startDate||"N/A";
-  var location=oem.location||"N/A";
-  var dockModel=oem.dockModel||"";
-  var dockSerial=oem.dockSerial||"";
-  var serial=oem.serial||"";
-  var decision=(oem.procurement&&oem.procurement.decision)||"Not yet made";
-  var conditions=(oem.procurement&&oem.procurement.conditions)||"";
-  var procEvaluator=(oem.procurement&&oem.procurement.evaluatorName)||"";
-  var specsUrl=oem.specsUrl||"";
-  var parsed=_parseTestsCtx(contextData||"");
-  var p=parsed.passes,f=parsed.fails,pd=parsed.pendings;
-  var total=p.length+f.length+pd.length;
-  var rate=total>0?Math.round(p.length/total*100):0;
+// ── Local executive summary helpers ─────────────────────────────────────
+//
+// All generators below produce narrative prose directly from the OEM
+// state object. They DO NOT depend on the Anthropic API — when API usage
+// is exhausted or unavailable, these run instead and yield the same
+// information, just deterministically rather than written by a model.
 
-  // Pull every note recorded for this section so the summary actually
-  // reflects what the evaluator typed in — not just pass/fail counts.
-  var sectionNotes=[];
-  if(oem.notes){
-    Object.keys(oem.notes).forEach(function(k){
-      var v=oem.notes[k];
-      if(!v||typeof v!=='string') return;
-      if(k.indexOf('wx_')===0||k.indexOf('section_signoff_')===0) return;
-      // Skip JSON blob notes (weather, signoff metadata)
-      if(v.length>0&&v.length<400) sectionNotes.push(k+': '+v);
+// Map a section name (as passed to ExecSummaryBtn) to which TESTS keys
+// it spans, plus whatever ancillary state it draws from.
+function _sectionPlan(sectionName){
+  var sn=sectionName||"";
+  if(/Flight Performance|Drone\b/i.test(sn))    return {key:"section",tests:["Flight Performance"],idPrefix:["fp"],topic:"drone airframe and flight performance"};
+  if(/Dock/i.test(sn))                            return {key:"section",tests:["Dock Integration"],idPrefix:["di"],topic:"dock integration and autonomous launch/recovery"};
+  if(/Sensors/i.test(sn))                         return {key:"section",tests:["Sensors & Payload"],idPrefix:["sp"],topic:"sensor and payload performance"};
+  if(/Reliability|Operations/i.test(sn))          return {key:"section",tests:["Operations & Reliability"],idPrefix:["or"],topic:"operations and reliability"};
+  if(/Use Cases/i.test(sn))                       return {key:"usecases",tests:["Law Enforcement","Campus Security","Critical Infrastructure"],idPrefix:["le","cs","ci"],topic:"law-enforcement, campus-security, and critical-infrastructure mission profiles"};
+  if(/Payload Compatibility/i.test(sn))           return {key:"payload",tests:[],topic:"payload compatibility"};
+  if(/Weekly/i.test(sn))                          return {key:"weekly",tests:[],topic:"weekly inspection compliance"};
+  if(/Final Evaluation|Sign-?Off|Chief Pilot/i.test(sn)) return {key:"final",tests:[],topic:"final procurement evaluation and sign-off"};
+  if(/Vendor Comparison|Compare/i.test(sn))       return {key:"compare",tests:[],topic:"vendor comparison matrix"};
+  if(/Evaluation Checklist/i.test(sn))            return {key:"checklist",tests:[],topic:"combined evaluation checklist (subjective + comparative + FMEA + environmental + benchmarks)"};
+  if(/Test Results Log/i.test(sn))                return {key:"alltests",tests:["Flight Performance","Dock Integration","Sensors & Payload","Operations & Reliability"],topic:"full test results log across every category"};
+  return {key:"section",tests:[],topic:sn};
+}
+
+function _tally(oem, testsKeys){
+  var p=0,f=0,pd=0,total=0;
+  (testsKeys||[]).forEach(function(tk){
+    (TESTS[tk]||[]).forEach(function(t){
+      total++;
+      var r=(oem.results||{})[t.id+"_pfn"]||"Pending";
+      if(r==="Pass") p++;
+      else if(r==="Fail") f++;
+      else pd++;
+    });
+  });
+  var rate=total>0?Math.round(p/(p+f||1)*100):0;
+  return {p:p,f:f,pd:pd,total:total,rate:rate};
+}
+
+// Collect failures with their evaluator note (if any) for a set of TEST keys.
+function _failuresWithNotes(oem, testsKeys){
+  var out=[];
+  (testsKeys||[]).forEach(function(tk){
+    (TESTS[tk]||[]).forEach(function(t){
+      var r=(oem.results||{})[t.id+"_pfn"];
+      if(r==="Fail"){
+        out.push({name:t.test,note:(oem.notes||{})[t.id]||"",section:tk});
+      }
+    });
+  });
+  return out;
+}
+
+// Collect passes that have a notable evaluator note attached.
+function _passesWithNotes(oem, testsKeys, max){
+  var out=[];
+  var cap=max||10;
+  (testsKeys||[]).forEach(function(tk){
+    (TESTS[tk]||[]).forEach(function(t){
+      if(out.length>=cap) return;
+      var r=(oem.results||{})[t.id+"_pfn"];
+      var n=(oem.notes||{})[t.id]||"";
+      if(r==="Pass" && n && n.length>4){
+        out.push({name:t.test,note:n,section:tk});
+      }
+    });
+  });
+  return out;
+}
+
+// Collect every pending test by name for a section.
+function _pendings(oem, testsKeys){
+  var out=[];
+  (testsKeys||[]).forEach(function(tk){
+    (TESTS[tk]||[]).forEach(function(t){
+      var r=(oem.results||{})[t.id+"_pfn"];
+      if(!r || r==="Pending") out.push(t.test);
+    });
+  });
+  return out;
+}
+
+function _platformHeader(oem){
+  var bits=[];
+  if(oem.name)         bits.push(oem.name);
+  if(oem.model)        bits.push("("+oem.model+")");
+  var hdr=bits.join(" ");
+  var mfg=oem.manufacturer?" manufactured by "+oem.manufacturer:"";
+  return hdr+mfg;
+}
+
+function _evaluatorSentence(oem){
+  var parts=[];
+  if(oem.evaluator)  parts.push("Lead evaluator: "+oem.evaluator);
+  if(oem.startDate)  parts.push("evaluation start "+oem.startDate);
+  if(oem.location)   parts.push("primary test location "+oem.location);
+  var actSite=OPSITES.find(function(s){return s.key===(oem.activeSite||"site_TRG");});
+  if(actSite)        parts.push("currently testing at "+actSite.label);
+  return parts.join(", ")+".";
+}
+
+function _procSentence(oem){
+  var d=(oem.procurement&&oem.procurement.decision)||"";
+  var c=(oem.procurement&&oem.procurement.conditions)||"";
+  if(!d) return "No final procurement decision has been recorded yet — this evaluation remains open.";
+  var out="Current procurement status: "+d+".";
+  if(c) out+=" Conditions on record: "+c+".";
+  return out;
+}
+
+function _decisionRule(stats){
+  if(stats.total===0)                return "CONDITIONAL — testing has not started; cannot recommend until results are recorded.";
+  if(stats.f===0 && stats.pd===0)    return "PROCEED — every evaluated test in scope passed. Recommend moving to the next phase of procurement.";
+  if(stats.f===0)                    return "CONDITIONAL — complete the remaining "+stats.pd+" pending test"+(stats.pd===1?"":"s")+" before final decision. No failures observed so far.";
+  if(stats.rate>=80)                 return "CONDITIONAL — "+stats.p+"/"+(stats.p+stats.f)+" completed tests pass ("+stats.rate+"%). Address the "+stats.f+" failing item"+(stats.f===1?"":"s")+" before procurement.";
+  if(stats.rate>=50)                 return "CONDITIONAL — significant gaps ("+stats.f+" failure"+(stats.f===1?"":"s")+", "+stats.rate+"% completed-test pass rate). Re-test after remediation, then revisit the decision.";
+  return                              "DO NOT PROCEED — only "+stats.rate+"% pass rate on completed tests. The platform does not meet baseline performance requirements for this scope.";
+}
+
+function _wordCount(s){
+  return (String(s||"").trim().match(/\S+/g)||[]).length;
+}
+
+// Pad a body of text so its final word count lands in [minWords, maxWords]
+// by appending coherent closing sentences derived from the OEM state.
+function _padToRange(body, oem, stats, minWords, maxWords, scope){
+  var wc=_wordCount(body);
+  var sentences=[];
+  if(wc<minWords){
+    // Build a pool of true, non-redundant closing sentences. Each draws
+    // from real state so the padding is informative rather than filler.
+    var pool=[];
+    var actSite=OPSITES.find(function(s){return s.key===(oem.activeSite||"site_TRG");});
+    if(actSite) pool.push("Tests were conducted against the "+actSite.label+" environment, which informs how representative these results are for production deployment in similar settings.");
+    if(stats.total>0) pool.push("Across the "+scope+" scope, "+stats.p+" test"+(stats.p===1?"":"s")+" passed, "+stats.f+" failed, and "+stats.pd+" remain pending, which yields a completed-test pass rate of "+stats.rate+"%.");
+    if(oem.specsUrl) pool.push("Where ambiguity arose, the OEM specifications source referenced on file ("+oem.specsUrl+") served as the authority for minimum-standard interpretation.");
+    if((oem.flightLogs||[]).length>0) pool.push("Flight log entries on record for this platform ("+oem.flightLogs.length+" entries) provide additional contextual telemetry that should be reviewed alongside this summary.");
+    var sectionSig=Object.keys(oem.notes||{}).filter(function(k){return k.indexOf("section_signoff_")===0;}).filter(function(k){ try{var b=JSON.parse(oem.notes[k]); return b&&b.approved;}catch{return false;} }).length;
+    if(sectionSig>0) pool.push(sectionSig+" section sign-off"+(sectionSig===1?" has":"s have")+" already been formally approved for this platform, which represents prior agreement on the validity of those completed sections.");
+    if(stats.f===0 && stats.total>0) pool.push("The absence of failures in completed tests is a strong indicator that the platform is meeting the documented minimum standards for this scope, though pending items should still be closed out before unconditional sign-off.");
+    if(stats.f>0) pool.push("Each failure should be paired with the corresponding evaluator note to determine whether the root cause is a platform limitation, an environmental condition, an operator-procedure gap, or a misalignment between the OEM specification and the field requirement.");
+    pool.push("This summary was generated locally from the structured evaluation state captured by the evaluator and does not depend on any external AI service; the underlying facts are deterministic given the data entered.");
+    pool.push("Reviewers comparing this platform against alternative vendors should pair this section's findings with the Compare tab matrix values to put the numbers in head-to-head context.");
+    pool.push("Where evaluator notes mention specific environmental conditions, those conditions should be replicated during any re-test so the results are directly comparable rather than apples-to-oranges.");
+    pool.push("The evaluator should treat the recommendation in this report as advisory; final procurement authority remains with the Chief Pilot and the Commanding Officer / Approver listed in the Final Evaluation tab.");
+    // Append sentences until we cross minWords
+    for(var i=0;i<pool.length && _wordCount(body)<minWords; i++){
+      sentences.push(pool[i]);
+      body=body+"\n\n"+pool[i];
+    }
+  }
+  // Hard cap at maxWords — if we somehow overshot, truncate to the last
+  // complete sentence within the cap.
+  if(_wordCount(body)>maxWords){
+    var words=body.split(/(\s+)/);
+    var taken=0; var out=[];
+    for(var j=0;j<words.length;j++){
+      out.push(words[j]);
+      if(/\S/.test(words[j])) taken++;
+      if(taken>=maxWords) break;
+    }
+    body=out.join("");
+    var lastEnd=Math.max(body.lastIndexOf("."), body.lastIndexOf("!"), body.lastIndexOf("?"));
+    if(lastEnd>20) body=body.slice(0,lastEnd+1);
+  }
+  return body;
+}
+
+// ── Per-section summary (500–900 words) ────────────────────────────────
+function _buildSectionSummary(sectionName, oem){
+  var plan=_sectionPlan(sectionName);
+  var stats=_tally(oem, plan.tests);
+  var fails=_failuresWithNotes(oem, plan.tests);
+  var passNotes=_passesWithNotes(oem, plan.tests, 8);
+  var pendings=_pendings(oem, plan.tests);
+
+  var out=[];
+
+  out.push("SECTION OVERVIEW");
+  out.push("This report covers the "+plan.topic+" evaluation of the "+_platformHeader(oem)+" platform against the "+sectionName+" criteria. "+_evaluatorSentence(oem)+" "+_procSentence(oem));
+  if(oem.specsUrl) out.push("OEM specifications source on file: "+oem.specsUrl+".");
+
+  out.push("");
+  out.push("TEST RESULTS — FULL ROSTER");
+  if(stats.total===0){
+    out.push("No tests have been defined or executed for this section yet, so quantitative results are unavailable. The evaluator should populate the test roster before relying on this summary for any procurement decision.");
+  } else {
+    out.push("Across "+stats.total+" defined test"+(stats.total===1?"":"s")+" in scope, "+stats.p+" passed, "+stats.f+" failed, and "+stats.pd+" remain pending. That yields a completed-test pass rate of "+stats.rate+"% ("+(stats.p+stats.f)+" tests completed out of "+stats.total+" total).");
+    // Itemize results inline
+    plan.tests.forEach(function(tk){
+      var rows=(TESTS[tk]||[]).map(function(t){
+        var r=(oem.results||{})[t.id+"_pfn"]||"Pending";
+        return "  • "+t.test+" — "+r;
+      });
+      if(rows.length>0){
+        out.push("");
+        out.push(tk+":");
+        out.push(rows.join("\n"));
+      }
     });
   }
 
-  var lines=[];
-  lines.push("SECTION OVERVIEW");
-  lines.push("Detailed evaluation of the "+platform+(model?" ("+model+")":"")+(manufacturer?" — manufactured by "+manufacturer:"")+" platform against the "+sectionName+" criteria. Lead evaluator: "+evaluator+". Evaluation start: "+startDate+". Primary test location: "+location+(serial?". Serial: "+serial:"")+(dockModel?". Dock model: "+dockModel:"")+(dockSerial?" (S/N "+dockSerial+")":"")+". Current procurement status: "+decision+(conditions?". Conditions on procurement: "+conditions:"")+(procEvaluator?". Procurement evaluator of record: "+procEvaluator:"")+(specsUrl?". OEM specification source on file: "+specsUrl:"")+".");
-  lines.push("");
-  lines.push("TEST RESULTS — FULL ROSTER");
-  if(total===0){
-    lines.push("No test results recorded yet for this section.");
-    if(contextData) lines.push("Raw context dump: "+String(contextData).slice(0,1200));
-  } else {
-    lines.push("Aggregate: "+p.length+" pass, "+f.length+" fail, "+pd.length+" pending ("+rate+"% pass on completed tests).");
-    if(p.length>0){
-      lines.push("");
-      lines.push("PASSING TESTS:");
-      p.forEach(function(n){lines.push("• "+n);});
-    }
-    if(f.length>0){
-      lines.push("");
-      lines.push("FAILING TESTS:");
-      f.forEach(function(n){lines.push("• "+n);});
-    }
-    if(pd.length>0){
-      lines.push("");
-      lines.push("PENDING TESTS:");
-      pd.forEach(function(n){lines.push("• "+n);});
-    }
+  if(fails.length>0){
+    out.push("");
+    out.push("FAILING TESTS — DETAIL");
+    fails.forEach(function(x){
+      out.push("• "+x.name+(x.section&&plan.tests.length>1?" ("+x.section+")":"")+":");
+      out.push("    Evaluator note: "+(x.note?'"'+x.note+'"':"(no note recorded)"));
+    });
   }
 
-  if(sectionNotes.length>0){
-    lines.push("");
-    lines.push("EVALUATOR NOTES, OBSERVATIONS & TYPED FINDINGS");
-    sectionNotes.slice(0,40).forEach(function(n){lines.push("• "+n);});
-    if(sectionNotes.length>40) lines.push("• (+"+(sectionNotes.length-40)+" more notes — truncated)");
+  if(pendings.length>0){
+    out.push("");
+    out.push("PENDING TESTS");
+    out.push(pendings.map(function(n){return "• "+n;}).join("\n"));
   }
 
-  lines.push("");
-  lines.push("OPERATIONAL IMPACT");
-  if(total===0){
-    lines.push("Operational readiness cannot be assessed until tests are completed and results entered.");
-  } else if(f.length===0 && pd.length===0){
-    lines.push("Platform demonstrates consistent performance across every evaluated requirement in this section ("+p.length+"/"+p.length+" pass). Ready for deployment consideration in this domain. No outstanding remediation items.");
-  } else if(f.length===0){
-    lines.push("Platform tracking well so far ("+rate+"% pass on completed tests) with "+pd.length+" item"+(pd.length===1?"":"s")+" still outstanding. Prioritize the remaining checks to close out the assessment before procurement sign-off.");
-  } else if(rate>=60){
-    lines.push("Platform shows acceptable overall performance but has "+f.length+" specific weak point"+(f.length===1?"":"s")+" that require mitigation. Operators should be briefed on the identified failure modes before any field deployment. Re-test after OEM remediation, software/firmware updates, or operator-procedure changes.");
-  } else {
-    lines.push("Platform performance is below the required threshold for operational deployment in this section ("+rate+"% pass). Significant remediation, OEM engagement, or alternative-platform consideration is required before further investment.");
+  if(passNotes.length>0){
+    out.push("");
+    out.push("NOTABLE EVALUATOR OBSERVATIONS ON PASSING TESTS");
+    passNotes.forEach(function(x){
+      out.push('• '+x.name+': "'+x.note+'"');
+    });
   }
-  lines.push("");
-  lines.push("RECOMMENDATION");
-  lines.push(_recommendation(p,f,pd));
-  return lines.join("\n");
+
+  // Pull any non-test free-text notes whose key matches this section's
+  // ID prefix list (e.g. "fp1", "di3"). These are the per-test evaluator
+  // narrative notes the user has typed in.
+  var notesList=[];
+  if(oem.notes && plan.idPrefix){
+    Object.keys(oem.notes).forEach(function(k){
+      // skip metadata side-cars
+      if(/_tester$|_date$/.test(k)) return;
+      if(k.indexOf("section_signoff_")===0 || k.indexOf("wx_")===0) return;
+      for(var i=0;i<plan.idPrefix.length;i++){
+        if(k.indexOf(plan.idPrefix[i])===0){
+          var v=oem.notes[k];
+          if(typeof v==="string" && v.trim()) notesList.push({k:k,v:v});
+          break;
+        }
+      }
+    });
+  }
+  if(notesList.length>0){
+    out.push("");
+    out.push("EVALUATOR-TYPED FINDINGS (VERBATIM)");
+    notesList.slice(0,30).forEach(function(n){
+      var label=n.k;
+      // Try to resolve the test ID -> human name for readability.
+      var resolved=null;
+      Object.keys(TESTS).forEach(function(sec){
+        TESTS[sec].forEach(function(t){ if(t.id===n.k){ resolved=t.test; } });
+      });
+      if(resolved) label=resolved;
+      out.push('• '+label+': "'+n.v+'"');
+    });
+    if(notesList.length>30) out.push("(+"+(notesList.length-30)+" additional notes on file — see the section's test rows for full detail)");
+  }
+
+  out.push("");
+  out.push("OPERATIONAL IMPACT");
+  if(stats.total===0){
+    out.push("Operational readiness for this section cannot be assessed until tests are completed and results entered. Evaluators should treat the section as untested rather than implicitly passing.");
+  } else if(stats.f===0 && stats.pd===0){
+    out.push("The platform demonstrates consistent performance across every evaluated requirement in scope. No remediation items are outstanding, and operators can proceed to deployment consideration within this functional domain with confidence in the documented test outcomes.");
+  } else if(stats.f===0){
+    out.push("The platform is tracking well so far at a "+stats.rate+"% completed-test pass rate with "+stats.pd+" item"+(stats.pd===1?"":"s")+" still outstanding. Priority should be on closing out the remaining checks before final sign-off, since uncompleted tests leave gaps that could surface as deployment-blocking issues only after procurement is committed.");
+  } else if(stats.rate>=60){
+    out.push("The platform shows acceptable overall performance but exhibits "+stats.f+" specific weak point"+(stats.f===1?"":"s")+" that require mitigation. Operators must be briefed on the identified failure modes before any field deployment, and a re-test should be scheduled after OEM remediation, software or firmware updates, or operator-procedure changes have been applied.");
+  } else {
+    out.push("Platform performance is below the required threshold for operational deployment in this section, at only "+stats.rate+"% pass on completed tests. Significant remediation, deeper OEM engagement, or evaluation of an alternative platform is required before any further investment is committed.");
+  }
+
+  out.push("");
+  out.push("RECOMMENDATION");
+  out.push(_decisionRule(stats));
+
+  var body=out.join("\n");
+  body=_padToRange(body, oem, stats, 520, 900, plan.topic);
+  return body;
+}
+
+// ── Overview / comprehensive summary (1000–1500 words) ─────────────────
+function _buildOverviewSummary(oem, state){
+  var allKeys=["Flight Performance","Dock Integration","Sensors & Payload","Operations & Reliability","Law Enforcement","Campus Security","Critical Infrastructure"];
+  var sectionLabels={
+    "Flight Performance":"Drone — Flight Performance",
+    "Dock Integration":"Dock Integration",
+    "Sensors & Payload":"Sensors & Payload",
+    "Operations & Reliability":"Operations & Reliability",
+    "Law Enforcement":"Use Cases — Law Enforcement",
+    "Campus Security":"Use Cases — Campus Security",
+    "Critical Infrastructure":"Use Cases — Critical Infrastructure",
+  };
+  var sectionTopics={
+    "Flight Performance":"core airframe performance, launch/landing precision, endurance, and wind handling",
+    "Dock Integration":"autonomous dock launch and recovery, scheduled mission triggering, and GCS/VMS integration",
+    "Sensors & Payload":"EO, optical-zoom, thermal, and low-light imaging across the standard altitude bands",
+    "Operations & Reliability":"mission success rate, time between failures, and emergency-RTH / failsafe behavior",
+    "Law Enforcement":"law-enforcement mission profiles including alert-to-airborne response, plate readability, and evidence-grade recording",
+    "Campus Security":"campus-security mission profiles including perimeter patrol, intrusion response, and after-hours autonomous coverage",
+    "Critical Infrastructure":"critical-infrastructure mission profiles including perimeter breach detection, thermal anomaly scan, and RF-denied response",
+  };
+
+  var agg=_tally(oem, allKeys);
+
+  var out=[];
+
+  out.push("EXECUTIVE OVERVIEW");
+  out.push("This comprehensive report consolidates every individual section's findings for the "+_platformHeader(oem)+" platform into a single master document. "+_evaluatorSentence(oem)+" "+_procSentence(oem));
+  if(oem.specsUrl) out.push("The OEM specifications source on file for this platform is "+oem.specsUrl+".");
+  out.push("In aggregate across all sections covered below, "+agg.p+" test"+(agg.p===1?"":"s")+" passed, "+agg.f+" failed, and "+agg.pd+" remain pending — a completed-test pass rate of "+agg.rate+"% (calculated against the "+(agg.p+agg.f)+" completed tests out of "+agg.total+" total in scope).");
+
+  out.push("");
+  out.push("PER-SECTION HIGH-LEVEL SUMMARIES");
+
+  allKeys.forEach(function(tk){
+    var s=_tally(oem, [tk]);
+    var fails=_failuresWithNotes(oem, [tk]);
+    var label=sectionLabels[tk]||tk;
+    var topic=sectionTopics[tk]||tk;
+
+    out.push("");
+    out.push(label+":");
+    var summary="Covers "+topic+". ";
+    if(s.total===0){
+      summary+="No tests are populated for this section yet, so no readiness signal is available; the section should be treated as untested.";
+    } else if(s.p===0 && s.f===0){
+      summary+="All "+s.total+" tests in scope remain pending — testing has not progressed in this section yet.";
+    } else {
+      summary+=s.p+" of "+s.total+" tests pass ("+s.rate+"% on completed tests), "+s.f+" failure"+(s.f===1?"":"s")+", "+s.pd+" pending. ";
+      if(s.f===0 && s.pd===0)        summary+="This section is clean — every evaluated requirement passed and there is no remediation work outstanding.";
+      else if(s.f===0)                summary+="No failures yet; the section is on track but cannot be signed off until the pending items are completed.";
+      else if(s.rate>=80)             summary+="Strong performance overall, with a small number of specific weak points that should be mitigated before procurement.";
+      else if(s.rate>=60)             summary+="Mixed performance — the platform meets baseline requirements in most areas but has material weak points that need remediation or operator-procedure controls.";
+      else                             summary+="Below threshold — the platform does not currently meet the minimum standard for this section and would require significant remediation, OEM engagement, or substitution of an alternative platform.";
+    }
+    out.push(summary);
+    if(fails.length>0){
+      out.push("Failures observed: "+fails.map(function(x){return x.name+(x.note?' — "'+x.note+'"':'');}).slice(0,5).join("; ")+(fails.length>5?"; (+"+(fails.length-5)+" more)":"")+".");
+    }
+    // Section sign-off status
+    try{
+      var sigRaw=(oem.notes||{})["section_signoff_"+(label.split(" — ")[0])];
+      if(sigRaw){
+        var sig=JSON.parse(sigRaw);
+        if(sig && sig.approved) out.push("This section has been formally signed off by "+(sig.name||"the evaluator")+(sig.role?" ("+sig.role+")":"")+" on "+(sig.date||"an unrecorded date")+".");
+      }
+    }catch{}
+  });
+
+  // Cross-cutting themes
+  out.push("");
+  out.push("CROSS-CUTTING THEMES");
+  var strongest=null,weakest=null;
+  allKeys.forEach(function(tk){
+    var s=_tally(oem,[tk]);
+    if(s.p+s.f<1) return;
+    if(!strongest || s.rate>strongest.rate) strongest={tk:tk,rate:s.rate};
+    if(!weakest   || s.rate<weakest.rate)   weakest={tk:tk,rate:s.rate};
+  });
+  var themes=[];
+  if(strongest && weakest && strongest.tk!==weakest.tk){
+    themes.push("Strongest section is "+(sectionLabels[strongest.tk]||strongest.tk)+" at "+strongest.rate+"% completed-test pass; weakest is "+(sectionLabels[weakest.tk]||weakest.tk)+" at "+weakest.rate+"%.");
+  }
+  if(agg.f===0 && agg.total>0) themes.push("No failures have been recorded in any section to date, which is a strong consistency signal across categories.");
+  if(agg.pd>agg.p+agg.f) themes.push("More tests are pending than completed across the platform, so the overall picture is still early — directional rather than conclusive.");
+  if(themes.length===0) themes.push("Insufficient completed-test coverage to surface meaningful cross-section themes yet; revisit once more sections have closed out their pending items.");
+  themes.forEach(function(t){ out.push("• "+t); });
+
+  // Risk & mitigation
+  out.push("");
+  out.push("RISK & MITIGATION SUMMARY");
+  var risks=[];
+  allKeys.forEach(function(tk){
+    var fails=_failuresWithNotes(oem,[tk]);
+    if(fails.length>0){
+      risks.push((sectionLabels[tk]||tk)+": "+fails.length+" failure"+(fails.length===1?"":"s")+" — "+fails.map(function(x){return x.name;}).slice(0,3).join(", ")+(fails.length>3?", and "+(fails.length-3)+" more":""));
+    }
+  });
+  if(risks.length===0){
+    out.push("No failure modes have been logged across any section. Primary remaining risk is incomplete coverage: "+agg.pd+" test"+(agg.pd===1?" is":"s are")+" still pending. Mitigation is straightforward — execute the pending tests and refresh this report.");
+  } else {
+    risks.forEach(function(r){ out.push("• "+r); });
+    out.push("Mitigation paths to consider: (1) OEM remediation or firmware updates targeting the specific failure modes; (2) operator-procedure or pre-flight checklist changes to compensate; (3) restricted deployment scope that excludes mission profiles exercising the failing capabilities; (4) deferring procurement and re-testing after the next OEM release.");
+  }
+
+  // Consolidated recommendation
+  out.push("");
+  out.push("CONSOLIDATED RECOMMENDATION");
+  out.push(_decisionRule(agg));
+  if(state && state.oems && state.oems.length>1){
+    out.push("Because multiple vendors are under simultaneous evaluation, this recommendation should be compared head-to-head against the equivalent reports for "+state.oems.filter(function(o,i){return i!==state.activeOEM;}).map(function(o){return o.name||"Vendor";}).join(", ")+" before any final procurement commitment.");
+  }
+
+  var body=out.join("\n");
+  body=_padToRange(body, oem, agg, 1020, 1500, "the full platform evaluation");
+  return body;
+}
+
+function buildLocalSummary(sectionName, contextData, oem, state){
+  if(/Platform Overview/i.test(sectionName||"")){
+    return _buildOverviewSummary(oem, state);
+  }
+  return _buildSectionSummary(sectionName, oem);
 }
 
 function buildLocalDemoSummary(oem, allResultsCtx){
@@ -589,103 +912,33 @@ function buildLocalDemoSummary(oem, allResultsCtx){
 // ── Module-level extracted components ─────────────────────────────────────
 
 function ExecSummaryBtn({sectionName,contextData}){
-  const {oem}=useContext(TeviCtx);
+  const {oem,state}=useContext(TeviCtx);
   const [open,setOpen]=useState(false);
-  const [loading,setLoading]=useState(false);
   const [text,setText]=useState("");
-  const activeSite=OPSITES.find(s=>s.key===(oem.activeSite||"site_TRG"))||OPSITES[0];
-  const isOverview=/Platform Overview/i.test(sectionName||"");
+  // No more Anthropic API call — the local generator runs entirely from
+  // the structured evaluation state and produces narrative output in the
+  // target word range (500–900 per section, 1000–1500 for the Overview).
+  // This makes the feature work even when the API key is missing, rate
+  // limited, or the org's Anthropic usage cap has been hit.
   const generate=()=>{
-    setLoading(true);setText("");setOpen(true);
-    // Dump every evaluator-typed note for this OEM into the prompt so the
-    // summary actually reflects what was typed — not just pass/fail counts.
-    // Hard char budget so the prompt never overruns the backend's 50K
-    // per-message cap (which would silently kick us into local fallback).
-    var notesDump="";
-    var NOTES_BUDGET=28000; // leave headroom for the test rosters + headers
-    if(oem.notes){
-      var entries=[];
-      var used=0;
-      var truncated=0;
-      // Drop weather-blob, signoff-blob, and the tester/date side-cars
-      // (those metadata fields are noise to a written summary).
-      Object.keys(oem.notes).forEach(function(k){
-        var v=oem.notes[k];
-        if(!v||typeof v!=='string') return;
-        if(k.indexOf('section_signoff_')===0) return;
-        if(k.indexOf('wx_')===0) return;
-        if(/_tester$|_date$/.test(k)) return;
-        if(v.length>400) v=v.slice(0,400)+'…';
-        var line="  "+k+": "+v;
-        if(used+line.length>NOTES_BUDGET){ truncated++; return; }
-        entries.push(line);
-        used+=line.length+1;
-      });
-      if(entries.length>0){
-        notesDump="\n\nEVALUATOR-TYPED NOTES (verbatim — preserve specifics):\n"+entries.join("\n");
-        if(truncated>0) notesDump+="\n  (+"+truncated+" additional notes truncated to keep the prompt within size limits)";
-      }
-    }
-    var promptHeader=isOverview
-      ? ("You are a drone procurement analyst. Write a high-level executive report that consolidates EVERY individual tab's findings into one master document. Cover every category: Drone/Flight Performance, Dock Integration, Sensors & Payload, Reliability, Use Cases (LE/Campus/CIP), Weekly Checks, Payload Compatibility, Compare, and Final Evaluation. For each category, write its own subsection with its own KEY FINDINGS, OPERATIONAL IMPACT, and RECOMMENDATION, then close with a CONSOLIDATED RECOMMENDATION (PROCEED / DO NOT PROCEED / CONDITIONAL) backed by aggregate numbers.")
-      : ("You are a drone procurement analyst. Write a DETAILED, multi-paragraph executive report focused on the "+sectionName+" section. Summarize every note, finding, and documented result in the data below. Do not skip notes — quote or paraphrase the evaluator's observations verbatim where they add color or context.");
-    var structureHint=isOverview
-      ? "\n\nStructure:\n1. EXECUTIVE OVERVIEW (one paragraph — platform, evaluator, site, procurement status)\n2. PER-SECTION HIGH-LEVEL SUMMARIES — one subsection per category with: findings, notes/observations from evaluator, operational impact, and section recommendation\n3. CROSS-CUTTING THEMES (strengths, recurring weak spots, anomalies seen across sections)\n4. RISK & MITIGATION SUMMARY\n5. CONSOLIDATED RECOMMENDATION with rationale\n\nLENGTH REQUIREMENT: write between 1000 and 1500 words. Do NOT exceed 1500 words. CRITICAL: every sentence must be complete and end with proper punctuation (period, question mark, or exclamation point). If you sense you are approaching the upper word limit, wrap up the current section cleanly with a complete final sentence rather than starting a new thought you cannot finish. Plain text only, no markdown symbols, no headings written with # or *."
-      : "\n\nStructure:\n1. SECTION OVERVIEW (platform, evaluator, location, scope)\n2. TEST RESULTS — full roster with pass/fail/pending breakdown\n3. EVALUATOR NOTES & OBSERVATIONS — quote or paraphrase typed notes\n4. OPERATIONAL IMPACT\n5. RECOMMENDATION (PROCEED / DO NOT PROCEED / CONDITIONAL) with rationale\n\nLENGTH REQUIREMENT: write between 500 and 900 words. Do NOT exceed 900 words. CRITICAL: every sentence must be complete and end with proper punctuation. If you sense you are approaching the upper word limit, finish the current sentence and end the report cleanly rather than starting a new thought you cannot complete. Plain text only, no markdown symbols, no headings written with # or *.";
-    const prompt=promptHeader+"\n\nPlatform: "+(oem.name||"Unknown")+" | Manufacturer: "+(oem.manufacturer||"N/A")+" | Model: "+(oem.model||"N/A")+" | Serial: "+(oem.serial||"N/A")+" | Dock: "+(oem.dockModel||"N/A")+(oem.dockSerial?" (S/N "+oem.dockSerial+")":"")+"\nEvaluator: "+(oem.evaluator||"N/A")+" | Start Date: "+(oem.startDate||"N/A")+" | Primary Test Location: "+(oem.location||"N/A")+" | Active Site: "+activeSite.label+"\nProcurement decision: "+((oem.procurement&&oem.procurement.decision)||"Not yet made")+" | Conditions: "+((oem.procurement&&oem.procurement.conditions)||"None")+"\nOEM specifications source URL: "+(oem.specsUrl||"Not provided")+"\n\nSECTION FOCUS: "+sectionName+"\n"+(contextData||"No additional context.")+notesDump+structureHint;
-    fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:isOverview?3500:2000,messages:[{role:"user",content:prompt}]})})
-      .then(async r=>{
-        const data=await r.json().catch(()=>({}));
-        if(!r.ok) throw new Error((data&&data.error)||("HTTP "+r.status));
-        return data;
-      })
-      .then(data=>{
-        let out=(data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n");
-        // Defensive: if the model got cut off mid-sentence (stop_reason
-        // === "max_tokens" or trailing text doesn't end in . ! ? ),
-        // trim back to the last complete sentence so the user never
-        // sees a half-finished line.
-        const stop=data.stop_reason;
-        const trailingOk=/[.!?][\s"')\]]*$/.test(out.trim());
-        if(out && (stop==="max_tokens" || !trailingOk)){
-          const trimmed=out.replace(/\s+$/,"");
-          const lastEnd=Math.max(
-            trimmed.lastIndexOf("."),
-            trimmed.lastIndexOf("!"),
-            trimmed.lastIndexOf("?")
-          );
-          if(lastEnd>20) out=trimmed.slice(0,lastEnd+1);
-        }
-        // If the API returns an empty payload for any reason, fall back to
-        // the deterministic local generator so the user always sees a
-        // usable summary instead of "No summary generated."
-        setText(out||buildLocalSummary(sectionName,contextData,oem));
-        setLoading(false);
-      })
-      .catch(err=>{
-        // API outage, missing key, rate limit, or oversized prompt — local
-        // generator always produces something useful from the data already
-        // in state. We surface the real failure reason so silent fallback
-        // doesn't mask a real problem.
-        const reason=(err&&err.message)||"unknown error";
-        const banner="⚠ AI executive summary unavailable — showing the locally-generated version below.\nReason: "+reason+"\n\n────────────────\n\n";
-        setText(banner+buildLocalSummary(sectionName,contextData,oem));
-        setLoading(false);
-      });
+    setOpen(true);
+    setText(buildLocalSummary(sectionName,contextData,oem,state));
   };
   return(
     <div style={{marginTop:16}}>
-      <button onClick={generate} disabled={loading} style={{display:"flex",alignItems:"center",gap:8,padding:"9px 18px",borderRadius:8,border:"1px solid rgba(134,239,172,0.45)",background:"rgba(20,83,45,0.35)",color:"#86efac",fontWeight:700,fontSize:12,cursor:loading?"not-allowed":"pointer",opacity:loading?0.6:1}}>
-        {loading?"Generating...":"📋 Generate Executive Summary"}
+      <button onClick={generate} style={{display:"flex",alignItems:"center",gap:8,padding:"9px 18px",borderRadius:8,border:"1px solid rgba(134,239,172,0.45)",background:"rgba(20,83,45,0.35)",color:"#86efac",fontWeight:700,fontSize:12,cursor:"pointer"}}>
+        📋 Generate Executive Summary
       </button>
       {open&&(
         <div style={{marginTop:12,background:"rgba(0,0,0,0.5)",borderRadius:10,padding:16,border:"1px solid rgba(134,239,172,0.35)"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
             <span style={{color:"#86efac",fontWeight:700,fontSize:12,letterSpacing:1,textTransform:"uppercase"}}>Executive Summary — {sectionName}</span>
-            <button onClick={()=>setOpen(false)} style={{background:"rgba(127,29,29,0.3)",color:"#fca5a5",border:"1px solid rgba(252,165,165,0.3)",borderRadius:5,padding:"2px 9px",fontSize:11,cursor:"pointer"}}>x</button>
+            <div style={{display:"flex",gap:6}}>
+              <button onClick={()=>{ try{ navigator.clipboard.writeText(text||""); }catch{} }} style={{background:"rgba(255,255,255,0.06)",color:C.text,border:"1px solid "+C.border,borderRadius:5,padding:"2px 10px",fontSize:11,cursor:"pointer"}}>Copy</button>
+              <button onClick={()=>setOpen(false)} style={{background:"rgba(127,29,29,0.3)",color:"#fca5a5",border:"1px solid rgba(252,165,165,0.3)",borderRadius:5,padding:"2px 9px",fontSize:11,cursor:"pointer"}}>x</button>
+            </div>
           </div>
-          {loading?<div style={{textAlign:"center",padding:"20px",color:C.muted,fontSize:13}}>Analyzing data...</div>
-            :<div style={{color:C.text,fontSize:12,lineHeight:1.8,whiteSpace:"pre-wrap"}}>{text}</div>}
+          <div style={{color:C.text,fontSize:12,lineHeight:1.8,whiteSpace:"pre-wrap"}}>{text}</div>
         </div>
       )}
     </div>
