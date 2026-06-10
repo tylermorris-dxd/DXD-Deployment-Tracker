@@ -11,9 +11,9 @@ import EquipmentTracker from '@/components/EquipmentTracker'
 import CostEstimator from '@/components/CostEstimator'
 import DroneTeviApp from '@/components/DroneTeviApp'
 import EventPricingApp from '@/components/EventPricingApp'
-import SecurityJobEstimator from '@/components/SecurityJobEstimator'
+import JobEstimator from '@/components/JobEstimator'
 
-export type MainTab = 'dashboard' | 'deals' | 'admin' | 'equipment' | 'cost' | 'product' | 'events' | 'security-est'
+export type MainTab = 'dashboard' | 'deals' | 'admin' | 'equipment' | 'cost' | 'product' | 'events' | 'job-est'
 
 interface MenuItem {
   id: MainTab
@@ -76,11 +76,13 @@ const MENU_ITEMS: MenuItem[] = [
     ),
   },
   {
-    id: 'security-est', label: 'Security Estimator',
+    id: 'job-est', label: 'Job Estimator',
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-        <path d="M8 1.5l5 2v4.5c0 3.7-2.4 5.7-5 6.5-2.6-.8-5-2.8-5-6.5V3.5l5-2z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-        <path d="M5.8 8.2l1.7 1.6 2.7-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M3 2.5h7l3 3v8a1 1 0 01-1 1H3a1 1 0 01-1-1v-10a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+        <path d="M10 2.5v3h3" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+        <line x1="5" y1="9" x2="11" y2="9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+        <line x1="5" y1="11.5" x2="9" y2="11.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
       </svg>
     ),
   },
@@ -194,7 +196,7 @@ export default function Home() {
           {tab === 'equipment'    && <EquipmentTracker />}
           {tab === 'cost'         && <CostEstimator />}
           {tab === 'product'      && <DroneTeviApp />}
-          {tab === 'security-est' && <SecurityJobEstimator />}
+          {tab === 'job-est' && <JobEstimator />}
           {tab === 'events'       && <EventPricingApp />}
         </main>
       </div>

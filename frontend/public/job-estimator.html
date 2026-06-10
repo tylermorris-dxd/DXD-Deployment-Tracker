@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DXD Job Estimator</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700&amp;family=Barlow:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg0:#0f0f0f;--bg1:#1a1a1a;--bg2:#222;--bg3:#2a2a2a;
+  --border:#2e2e2e;--border2:#3a3a3a;
+  --t1:#e8e8e8;--t2:#888;--t3:#555;
+  --red:#c0392b;--red2:#e24b4a;
+  --green:#4ec94e;--yellow:#f5c45b;--blue:#4a9eff;
+}
+body{background:var(--bg0);color:var(--t1);font-family:'Barlow',sans-serif;font-size:13px;padding:16px;min-width:1000px}
+input[type=number],input[type=text],select,textarea{
+  background:var(--bg2);border:0.5px solid var(--border);color:var(--t1);
+  border-radius:3px;font-family:'Barlow',sans-serif;outline:none;
+}
+input[type=number]:focus,input[type=text]:focus,select:focus,textarea:focus{border-color:var(--red)}
+input[type=number]{-moz-appearance:textfield}
+input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+button{cursor:pointer;font-family:'Barlow Condensed',sans-serif}
+.hdr{background:var(--red);padding:10px 18px;border-radius:6px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+.hdr-title{color:#fff;font-weight:700;font-size:18px;font-family:'Barlow Condensed',sans-serif;letter-spacing:1.5px}
+.hdr-sub{color:rgba(255,255,255,0.65);font-size:11px;margin-top:2px}
+.hdr-right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.controls{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+.ctrl-grp{display:flex;align-items:center;gap:8px;background:var(--bg1);padding:6px 12px;border-radius:6px}
+.ctrl-label{font-size:11px;color:var(--t2);font-family:'Barlow Condensed',sans-serif;letter-spacing:0.5px}
+.cfg-btn{padding:3px 10px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--t1);font-size:12px;transition:all .15s;font-family:'Barlow Condensed',sans-serif}
+.cfg-btn.active{border-color:var(--red);background:var(--red);color:#fff;font-weight:700}
+.sky-toggle{padding:3px 12px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--t2);font-size:12px;font-weight:700;transition:all .15s}
+.sky-toggle.active{border-color:var(--yellow);background:var(--yellow);color:#1a0a00}
+.save-btn{padding:4px 12px;border-radius:4px;border:1px solid var(--green);background:transparent;color:var(--green);font-size:12px}
+.reset-btn{padding:4px 12px;border-radius:4px;border:1px solid var(--border2);background:transparent;color:var(--t2);font-size:12px}
+.saved-indicator{font-size:10px;color:var(--t3)}
+.sec{margin-bottom:18px}
+.sec-hdr{background:var(--red);color:#fff;font-weight:700;font-size:11px;padding:5px 12px;letter-spacing:1.5px;border-radius:4px 4px 0 0;text-transform:uppercase;font-family:'Barlow Condensed',sans-serif}
+.sec-body{background:var(--bg0);border:0.5px solid var(--border);border-top:none;border-radius:0 0 4px 4px;padding:12px}
+.row{display:grid;grid-template-columns:1fr 110px;gap:8px;align-items:center;margin-bottom:7px}
+.row-lbl{font-size:12px;color:var(--t1)}
+.row-note{font-size:10px;color:var(--t2);margin-top:1px}
+.row-note.warn{color:var(--yellow)}
+.row-inp-wrap{display:flex;align-items:center;gap:4px}
+.row-pfx{font-size:11px;color:var(--t2);white-space:nowrap}
+.row-inp{width:100%;font-size:12px;padding:3px 6px;text-align:right}
+.stat-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.stat-card{background:var(--bg1);border-radius:6px;padding:8px 12px;flex:1;min-width:110px}
+.stat-lbl{font-size:10px;color:var(--t2);margin-bottom:3px;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.3px}
+.stat-val{font-size:14px;font-weight:600;font-family:'Barlow Condensed',sans-serif}
+.stat-sub{font-size:10px;color:var(--t3);margin-top:2px}
+.notes-area{width:100%;min-height:120px;font-size:12px;padding:8px 10px;border:0.5px solid var(--border);border-radius:4px;background:var(--bg1);color:var(--t1);line-height:1.6;resize:vertical}
+.placeholder-wrap{max-width:880px;margin:32px auto;padding:24px;background:var(--bg1);border-radius:8px;border:1px solid var(--border)}
+.placeholder-title{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;color:#fff;letter-spacing:1.5px;margin-bottom:4px}
+.placeholder-sub{font-size:11px;color:#888;letter-spacing:1px;margin-bottom:20px}
+.placeholder-banner{background:#1a1400;border:1px solid var(--yellow);border-radius:6px;padding:12px 16px;margin-bottom:20px;font-size:12px;color:var(--yellow);line-height:1.6}
+.placeholder-body{font-size:12px;color:#888;line-height:1.7;margin-bottom:16px}
+.placeholder-list{color:#e8e8e8;font-size:12px;line-height:1.8;padding-left:20px;margin-bottom:20px}
+.placeholder-code{background:#222;padding:2px 6px;border-radius:3px;color:#4ec94e;font-family:'JetBrains Mono',monospace}
+.placeholder-summary{font-family:'JetBrains Mono',monospace;font-size:11px;color:#888;padding:12px;background:#0f0f0f;border-radius:4px;border:1px dashed var(--border2)}
+.placeholder-actions{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+.placeholder-btn{padding:6px 14px;border-radius:4px;background:transparent;font-family:'Barlow Condensed',sans-serif;font-size:12px;letter-spacing:1px;cursor:pointer}
+.placeholder-btn.muted{border:1px solid var(--border2);color:#888}
+.placeholder-btn.purple{border:1px solid #a78bfa;color:#a78bfa}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="placeholder-wrap">
+    <div class="placeholder-title">JOB ESTIMATOR</div>
+    <div class="placeholder-sub">DXD BUSINESS MODEL</div>
+
+    <div class="placeholder-banner">
+      <b>Action required to enable the full UI.</b>
+      This shell ships only the persistence layer so your saved scenarios survive. To install the complete v9.0 estimator, paste your full v9 script into the marked block below.
+    </div>
+
+    <div class="placeholder-body">
+      Open <span class="placeholder-code">public/job-estimator.html</span> in your editor. Between the <span class="placeholder-code">BEGIN MODEL CORE</span> and <span class="placeholder-code">END MODEL CORE</span> markers, replace the stub script with your complete v9.0 JavaScript (everything from the <span class="placeholder-code">fmt</span> helper down through <span class="placeholder-code">loadState(); rerender();</span>). Save and refresh — your event types, MRR clients, hardware packages, and notes will hydrate from <span class="placeholder-code">localStorage['dxd_business_model_v10']</span> automatically.
+    </div>
+
+    <ol class="placeholder-list">
+      <li>Open <span class="placeholder-code">frontend/public/job-estimator.html</span>.</li>
+      <li>Find the <span class="placeholder-code">&lt;!-- BEGIN MODEL CORE --&gt;</span> marker near the bottom.</li>
+      <li>Replace the stub <span class="placeholder-code">&lt;script&gt;</span> block with the complete v9.0 script (including the embedded state-injection block at the bottom).</li>
+      <li>Refresh this page — saved state will hydrate automatically.</li>
+    </ol>
+
+    <div id="state-summary" class="placeholder-summary"></div>
+
+    <div class="placeholder-actions">
+      <button class="placeholder-btn muted" onclick="window.__dxdResetState()">RESET LOCAL STATE</button>
+      <button class="placeholder-btn purple" onclick="window.__dxdExportState()">EXPORT STATE (JSON)</button>
+    </div>
+  </div>
+</div>
+
+<!-- BEGIN MODEL CORE -->
+<script>
+// Stub persistence layer. Replace with the full v9.0 script (the version
+// attached in the chat: helpers + state objects + render pipeline + state
+// injection + loadState/rerender bootstrap). The localStorage key is the
+// same so saved scenarios will hydrate automatically after the swap.
+const STORAGE_KEY = 'dxd_business_model_v10';
+const S   = { eventTypes: [], hwPackages: [] };
+const MRR = { clients: [], hwPackages: [], marginFloor: 20 };
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    const saved = JSON.parse(raw);
+    if (saved.S)   Object.keys(saved.S  ).forEach(k => { S  [k] = saved.S  [k]; });
+    if (saved.MRR) Object.keys(saved.MRR).forEach(k => { MRR[k] = saved.MRR[k]; });
+    return true;
+  } catch (e) { console.warn('Load failed:', e); return false; }
+}
+
+function saveState() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify({S, MRR})); return true; }
+  catch (e) { return false; }
+}
+
+window.__dxdResetState = function () {
+  if (!confirm('Reset all values to defaults? This clears your saved Job Estimator state.')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  location.reload();
+};
+
+window.__dxdExportState = function () {
+  const raw = localStorage.getItem(STORAGE_KEY) || JSON.stringify({S, MRR});
+  const blob = new Blob([raw], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const ts = new Date().toISOString().slice(0, 16).replace('T', '_').replace(/:/g, '');
+  a.download = 'dxd_job_estimator_state_' + ts + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+function rerender() {
+  saveState();
+  const summary = document.getElementById('state-summary');
+  if (!summary) return;
+  const eventCount = (S.eventTypes  || []).length;
+  const mrrCount   = (MRR.clients   || []).length;
+  const pkgEvents  = (S.hwPackages  || []).length;
+  const pkgMrr     = (MRR.hwPackages|| []).length;
+  summary.innerHTML =
+    '<div style="font-weight:700;color:#fff;margin-bottom:6px;letter-spacing:0.5px;">SAVED STATE</div>'
+    + 'Event Types: <span style="color:#4ec94e;">' + eventCount + '</span> &middot; '
+    + 'MRR Clients: <span style="color:#4ec94e;">' + mrrCount + '</span> &middot; '
+    + 'HW Packages (Events): <span style="color:#4ec94e;">' + pkgEvents + '</span> &middot; '
+    + 'HW Packages (MRR): <span style="color:#4ec94e;">' + pkgMrr + '</span>';
+}
+
+loadState();
+rerender();
+</script>
+<!-- END MODEL CORE -->
+</body></html>
