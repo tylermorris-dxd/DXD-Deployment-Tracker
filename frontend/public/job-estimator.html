@@ -51,114 +51,2011 @@ button{cursor:pointer;font-family:'Barlow Condensed',sans-serif}
 .stat-lbl{font-size:10px;color:var(--t2);margin-bottom:3px;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.3px}
 .stat-val{font-size:14px;font-weight:600;font-family:'Barlow Condensed',sans-serif}
 .stat-sub{font-size:10px;color:var(--t3);margin-top:2px}
+.ptbl{width:100%;border-collapse:collapse;font-size:12px}
+.ptbl th{text-align:right;padding:6px 10px;color:var(--t2);font-weight:500;font-size:11px;background:var(--bg1)}
+.ptbl th:first-child{text-align:left}
+.ptbl td{padding:5px 10px;border-bottom:0.5px solid var(--border)}
+.ptbl td:not(:first-child){text-align:right}
+.ptbl tr.bold td{background:var(--bg1);font-weight:600}
+.ptbl tr.dim td{font-size:10px;color:var(--t3)}
+.ptbl tr.be td{background:#1a1400;font-style:italic}
+.portfolio-grid{display:grid;gap:12px}
+.et-card{background:var(--bg1);border-radius:6px;border:0.5px solid var(--border);overflow:hidden;min-width:0}
+.et-header{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg2);cursor:pointer;user-select:none}
+.et-color-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.et-name-inp{font-size:13px;font-weight:600;background:transparent;border:none;color:var(--t1);font-family:'Barlow Condensed',sans-serif;letter-spacing:0.5px;flex:1;min-width:0;outline:none}
+.et-name-inp:focus{background:var(--bg3);border-radius:3px;padding:1px 4px}
+.et-badges{display:flex;gap:6px;align-items:center;flex-shrink:0}
+.et-badge{font-size:10px;padding:2px 7px;border-radius:10px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:0.5px}
+.et-badge.vlos{background:rgba(74,158,255,0.15);color:var(--blue);border:0.5px solid var(--blue)}
+.et-badge.bvlos{background:rgba(78,201,78,0.15);color:var(--green);border:0.5px solid var(--green)}
+.et-badge.events{background:var(--bg0);color:var(--t2);border:0.5px solid var(--border)}
+.et-stats{display:flex;gap:16px;font-size:11px;flex-shrink:0}
+.et-stat{text-align:right}
+.et-stat-lbl{color:var(--t2);font-size:10px}
+.et-stat-val{font-weight:600}
+.et-remove{background:transparent;border:none;color:var(--t3);font-size:16px;padding:0 0 0 6px;line-height:1}
+.et-remove:hover{color:var(--red2)}
+.et-body{padding:12px;display:none;overflow:hidden;min-width:0}
+.et-body.open{display:block}
+.et-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.util-bar-wrap{background:var(--bg2);border-radius:4px;height:18px;overflow:hidden;margin:8px 0;position:relative}
+.util-bar-segment{height:100%;display:inline-block;position:absolute;top:0}
+.util-bar-label{position:absolute;right:6px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--t1);font-weight:600;font-family:'Barlow Condensed',sans-serif;pointer-events:none}
+.itbl-hdr{display:grid;gap:4px;margin-bottom:5px;padding-bottom:4px;border-bottom:0.5px solid var(--border)}
+.itbl-col{font-size:10px;color:var(--t2);font-weight:700;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.itbl-col:first-child{text-align:left}
+.itbl-row{display:grid;gap:4px;align-items:center;margin-bottom:5px}
+.itbl-inp{font-size:11px;padding:2px 3px;text-align:right;width:100%;min-width:0}
+.itbl-name{font-size:11px;padding:2px 5px;width:100%;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.itbl-sel{font-size:10px;padding:2px 1px;width:100%;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.itbl-remove{background:transparent;border:none;color:var(--red2);font-size:14px;padding:0;text-align:center}
+.itbl-footer{border-top:0.5px solid var(--border);padding-top:6px;margin-top:4px;display:flex;justify-content:space-between;align-items:center}
+.add-btn{font-size:11px;padding:3px 10px;border-radius:4px;border:1px solid var(--border2);background:transparent;color:var(--t1)}
+.name-cell{display:flex;align-items:center;gap:4px;min-width:0}
+.badge-sky{font-size:9px;color:var(--green);font-weight:700;flex-shrink:0}
+.badge-dji{font-size:9px;color:var(--red2);font-weight:700;flex-shrink:0}
+.risk-flag{display:flex;gap:8px;margin-bottom:5px;align-items:flex-start}
+.risk-dot{width:6px;height:6px;border-radius:50%;margin-top:4px;flex-shrink:0}
+.risk-txt{font-size:11px;color:var(--t2)}
 .notes-area{width:100%;min-height:120px;font-size:12px;padding:8px 10px;border:0.5px solid var(--border);border-radius:4px;background:var(--bg1);color:var(--t1);line-height:1.6;resize:vertical}
-.placeholder-wrap{max-width:880px;margin:32px auto;padding:24px;background:var(--bg1);border-radius:8px;border:1px solid var(--border)}
-.placeholder-title{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;color:#fff;letter-spacing:1.5px;margin-bottom:4px}
-.placeholder-sub{font-size:11px;color:#888;letter-spacing:1px;margin-bottom:20px}
-.placeholder-banner{background:#1a1400;border:1px solid var(--yellow);border-radius:6px;padding:12px 16px;margin-bottom:20px;font-size:12px;color:var(--yellow);line-height:1.6}
-.placeholder-body{font-size:12px;color:#888;line-height:1.7;margin-bottom:16px}
-.placeholder-list{color:#e8e8e8;font-size:12px;line-height:1.8;padding-left:20px;margin-bottom:20px}
-.placeholder-code{background:#222;padding:2px 6px;border-radius:3px;color:#4ec94e;font-family:'JetBrains Mono',monospace}
-.placeholder-summary{font-family:'JetBrains Mono',monospace;font-size:11px;color:#888;padding:12px;background:#0f0f0f;border-radius:4px;border:1px dashed var(--border2)}
-.placeholder-actions{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
-.placeholder-btn{padding:6px 14px;border-radius:4px;background:transparent;font-family:'Barlow Condensed',sans-serif;font-size:12px;letter-spacing:1px;cursor:pointer}
-.placeholder-btn.muted{border:1px solid var(--border2);color:#888}
-.placeholder-btn.purple{border:1px solid #a78bfa;color:#a78bfa}
+.notes-footer{display:flex;justify-content:space-between;align-items:center;margin-top:6px}
+.notes-char{font-size:10px;color:var(--t2)}
+.notes-clear{font-size:11px;padding:2px 10px;border-radius:4px;border:1px solid var(--border2);background:transparent;color:var(--t2)}
+.sky-banner{background:#1a1200;border:1px solid var(--yellow);border-radius:6px;padding:8px 14px;margin-bottom:14px;font-size:12px;color:var(--yellow)}
+.sec-sub{font-size:10px;color:var(--t2);margin-bottom:6px}
+.sw-note{font-size:10px;color:var(--red2);margin-top:6px}
+.mini-stats{background:var(--bg1);border-radius:4px;padding:8px;margin-top:6px}
+.mini-row{display:flex;justify-content:space-between;font-size:11px;padding-bottom:2px}
+.mini-lbl{color:var(--t2)}
+.overflow-x{overflow-x:auto}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.add-et-btn{width:100%;padding:8px;border-radius:6px;border:1px dashed var(--border2);background:transparent;color:var(--t2);font-size:12px;margin-top:4px;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.5px;transition:all .15s}
+.add-et-btn:hover{border-color:var(--red);color:var(--red2)}
+.cb-hdr{display:grid;grid-template-columns:1fr 80px 80px;gap:5px;padding-bottom:4px;border-bottom:0.5px solid var(--border);margin-bottom:4px}
+.cb-col{font-size:10px;color:var(--t2);font-weight:700}
+.cb-col:not(:first-child){text-align:right}
+.cb-row{display:grid;grid-template-columns:1fr 80px 80px;gap:5px;padding-bottom:3px;border-bottom:0.5px solid var(--border)}
+.cb-lbl{font-size:12px;color:var(--t2)}
+.cb-val{font-size:12px;text-align:right}
+.ttime-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;margin-top:8px}
+.panel-scroll::-webkit-scrollbar{height:5px}
+.panel-scroll::-webkit-scrollbar-track{background:var(--bg2)}
+.panel-scroll::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+.panel-scroll::-webkit-scrollbar-thumb:hover{background:var(--red)}
+.ttime-cell{background:var(--bg1);border-radius:4px;padding:6px 8px}
+.ttime-lbl{font-size:10px;color:var(--t2)}
+.ttime-val{font-size:12px;font-weight:500}
+.ttime-sub{font-size:10px;color:var(--t3)}
+.hw-kit-box{background:var(--bg2);border-radius:4px;padding:8px 10px;margin-bottom:8px;border:0.5px solid var(--border)}
+.hw-kit-title{font-size:10px;font-weight:700;color:var(--t2);letter-spacing:0.5px;margin-bottom:4px;font-family:'Barlow Condensed',sans-serif}
+.hw-kit-row{display:flex;justify-content:space-between;font-size:11px;padding-bottom:2px}
+.hw-kit-lbl{color:var(--t2)}
+.hw-kit-val{font-weight:500}
 </style>
 </head>
 <body>
-<div id="app">
-  <div class="placeholder-wrap">
-    <div class="placeholder-title">JOB ESTIMATOR</div>
-    <div class="placeholder-sub">DXD BUSINESS MODEL</div>
-
-    <div class="placeholder-banner">
-      <b>Action required to enable the full UI.</b>
-      This shell ships only the persistence layer so your saved scenarios survive. To install the complete v9.0 estimator, paste your full v9 script into the marked block below.
-    </div>
-
-    <div class="placeholder-body">
-      Open <span class="placeholder-code">public/job-estimator.html</span> in your editor. Between the <span class="placeholder-code">BEGIN MODEL CORE</span> and <span class="placeholder-code">END MODEL CORE</span> markers, replace the stub script with your complete v9.0 JavaScript (everything from the <span class="placeholder-code">fmt</span> helper down through <span class="placeholder-code">loadState(); rerender();</span>). Save and refresh — your event types, MRR clients, hardware packages, and notes will hydrate from <span class="placeholder-code">localStorage['dxd_business_model_v10']</span> automatically.
-    </div>
-
-    <ol class="placeholder-list">
-      <li>Open <span class="placeholder-code">frontend/public/job-estimator.html</span>.</li>
-      <li>Find the <span class="placeholder-code">&lt;!-- BEGIN MODEL CORE --&gt;</span> marker near the bottom.</li>
-      <li>Replace the stub <span class="placeholder-code">&lt;script&gt;</span> block with the complete v9.0 script (including the embedded state-injection block at the bottom).</li>
-      <li>Refresh this page — saved state will hydrate automatically.</li>
-    </ol>
-
-    <div id="state-summary" class="placeholder-summary"></div>
-
-    <div class="placeholder-actions">
-      <button class="placeholder-btn muted" onclick="window.__dxdResetState()">RESET LOCAL STATE</button>
-      <button class="placeholder-btn purple" onclick="window.__dxdExportState()">EXPORT STATE (JSON)</button>
-    </div>
-  </div>
-</div>
-
-<!-- BEGIN MODEL CORE -->
+<div id="app"></div>
 <script>
-// Stub persistence layer. Replace with the full v9.0 script (the version
-// attached in the chat: helpers + state objects + render pipeline + state
-// injection + loadState/rerender bootstrap). The localStorage key is the
-// same so saved scenarios will hydrate automatically after the swap.
-const STORAGE_KEY = 'dxd_business_model_v10';
-const S   = { eventTypes: [], hwPackages: [] };
-const MRR = { clients: [], hwPackages: [], marginFloor: 20 };
+// =============================================================
+// DXD JOB ESTIMATOR — Business Model v9.0
+// Standalone tool. Persists to localStorage key 'dxd_business_model_v10'.
+// =============================================================
 
-function loadState() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return false;
-    const saved = JSON.parse(raw);
-    if (saved.S)   Object.keys(saved.S  ).forEach(k => { S  [k] = saved.S  [k]; });
-    if (saved.MRR) Object.keys(saved.MRR).forEach(k => { MRR[k] = saved.MRR[k]; });
+const fmt  = n => "$" + Math.round(n).toLocaleString();
+const fmtD = n => "$" + (+n).toFixed(2);
+const pct  = n => (n * 100).toFixed(1) + "%";
+const clone = arr => arr.map(o => ({...o}));
+
+const DJI_VLOS_HW = [
+  {id:1, name:"Matrice 4T",           qty:3,  unitCost:8901.23,  margin:30, annual:false, isDji:true,  isSkydio:false},
+  {id:2, name:"AL1 Spotlight",         qty:3,  unitCost:390.00,   margin:30, annual:false, isDji:true,  isSkydio:false},
+  {id:3, name:"AVSS Parachute",        qty:3,  unitCost:3057.60,  margin:30, annual:false, isDji:true,  isSkydio:false},
+  {id:4, name:"DJI Batteries",         qty:20, unitCost:451.00,   margin:30, annual:false, isDji:true,  isSkydio:false},
+  {id:5, name:"Battery Hub w/Adapter", qty:1,  unitCost:399.62,   margin:30, annual:false, isDji:true,  isSkydio:false},
+  {id:6, name:"Starlink Hardware",     qty:1,  unitCost:400.00,   margin:30, annual:false, isDji:false, isSkydio:false},
+  {id:7, name:"Drone Tag Hardware",    qty:1,  unitCost:7115.00,  margin:30, annual:false, isDji:false, isSkydio:false},
+  {id:8, name:"DJI Maintenance",       qty:1,  unitCost:13500.00, margin:30, annual:false, isDji:true,  isSkydio:false},
+];
+const DJI_BVLOS_HW = [
+  {id:1,  name:"Dock 3",               qty:3,  unitCost:15189.20, margin:30, annual:false, isDji:true,  isSkydio:false},
+  {id:2,  name:"Matrice 4T",           qty:3,  unitCost:8901.23,  margin:30, annual:false, isDji:true,  isSkydio:false},
+  {id:3,  name:"AL1 Spotlight",        qty:3,  unitCost:390.00,   margin:30, annual:false, isDji:true,  isSkydio:false},
+  {id:4,  name:"AVSS Parachute",       qty:3,  unitCost:3057.60,  margin:30, annual:false, isDji:true,  isSkydio:false},
+  {id:5,  name:"DJI Batteries",        qty:20, unitCost:451.00,   margin:30, annual:false, isDji:true,  isSkydio:false},
+  {id:6,  name:"Battery Hub w/Adapter",qty:1,  unitCost:399.62,   margin:30, annual:false, isDji:true,  isSkydio:false},
+  {id:7,  name:"Starlink Hardware",    qty:1,  unitCost:400.00,   margin:30, annual:false, isDji:false, isSkydio:false},
+  {id:8,  name:"Axis Camera",          qty:1,  unitCost:1038.70,  margin:30, annual:false, isDji:false, isSkydio:false},
+  {id:9,  name:"Drone Tag Hardware",   qty:1,  unitCost:7115.00,  margin:30, annual:false, isDji:false, isSkydio:false},
+  {id:10, name:"Casia G",              qty:1,  unitCost:26000.00, margin:30, annual:true,  isDji:false, isSkydio:false},
+  {id:11, name:"Installation",         qty:1,  unitCost:3000.00,  margin:30, annual:false, isDji:false, isSkydio:false},
+  {id:12, name:"Draxon Trailer",       qty:1,  unitCost:75000.00, margin:30, annual:false, isDji:true,  isSkydio:false},
+  {id:13, name:"DJI Maintenance",      qty:1,  unitCost:13500.00, margin:30, annual:false, isDji:true,  isSkydio:false},
+];
+const SKYDIO_VLOS_HW = [
+  {id:101,name:"Sky X10 Drone",          qty:1,  unitCost:20000.00,  margin:30, annual:false, isDji:false, isSkydio:true},
+  {id:102,name:"Sky Spotlight",           qty:1,  unitCost:372.06,    margin:30, annual:false, isDji:false, isSkydio:true},
+  {id:103,name:"Sky Speaker",             qty:1,  unitCost:449.28,    margin:30, annual:false, isDji:false, isSkydio:true},
+  {id:104,name:"Sky AVSS Parachute",      qty:1,  unitCost:10140.00,  margin:30, annual:false, isDji:false, isSkydio:true},
+  {id:105,name:"Sky Maintenance",         qty:1,  unitCost:104325.00, margin:30, annual:true,  isDji:false, isSkydio:true},
+  {id:106,name:"Sky Commission/Training", qty:1,  unitCost:31193.50,  margin:30, annual:false, isDji:false, isSkydio:true},
+  {id:107,name:"Sky Thermal Refresh",     qty:1,  unitCost:20835.36,  margin:30, annual:false, isDji:false, isSkydio:true},
+  {id:108,name:"Sky Batteries",           qty:10, unitCost:800.00,    margin:30, annual:false, isDji:false, isSkydio:true},
+  {id:109,name:"Sky Battery Hub",         qty:1,  unitCost:600.00,    margin:30, annual:false, isDji:false, isSkydio:true},
+  {id:110,name:"Starlink Hardware",       qty:1,  unitCost:400.00,    margin:30, annual:false, isDji:false, isSkydio:false},
+  {id:111,name:"Axis Camera",             qty:1,  unitCost:1038.70,   margin:30, annual:false, isDji:false, isSkydio:false},
+  {id:112,name:"Drone Tag",               qty:1,  unitCost:7115.00,   margin:30, annual:false, isDji:false, isSkydio:false},
+  {id:113,name:"Installation",            qty:1,  unitCost:3250.00,   margin:30, annual:false, isDji:false, isSkydio:false},
+];
+const SKYDIO_BVLOS_HW = [
+  {id:201,name:"Sky X10 Dock w/ VT300Z",  qty:1,  unitCost:90318.80,  margin:30, annual:false, isDji:false, isSkydio:true},
+  {id:202,name:"Sky Spotlight",            qty:1,  unitCost:372.06,    margin:30, annual:false, isDji:false, isSkydio:true},
+  {id:203,name:"Sky Speaker",              qty:1,  unitCost:449.28,    margin:30, annual:false, isDji:false, isSkydio:true},
+  {id:204,name:"Sky AVSS Parachute",       qty:1,  unitCost:10140.00,  margin:30, annual:false, isDji:false, isSkydio:true},
+  {id:205,name:"Sky Maintenance",          qty:1,  unitCost:104325.00, margin:30, annual:true,  isDji:false, isSkydio:true},
+  {id:206,name:"Sky Commission/Training",  qty:1,  unitCost:31193.50,  margin:30, annual:false, isDji:false, isSkydio:true},
+  {id:207,name:"Sky Thermal Refresh",      qty:1,  unitCost:20835.36,  margin:30, annual:false, isDji:false, isSkydio:true},
+  {id:208,name:"Sky Batteries",            qty:10, unitCost:800.00,    margin:30, annual:false, isDji:false, isSkydio:true},
+  {id:209,name:"Sky Battery Hub",          qty:1,  unitCost:600.00,    margin:30, annual:false, isDji:false, isSkydio:true},
+  {id:210,name:"Starlink Hardware",        qty:1,  unitCost:400.00,    margin:30, annual:false, isDji:false, isSkydio:false},
+  {id:211,name:"Axis Camera",              qty:1,  unitCost:1038.70,   margin:30, annual:false, isDji:false, isSkydio:false},
+  {id:212,name:"Drone Tag",                qty:1,  unitCost:7115.00,   margin:30, annual:false, isDji:false, isSkydio:false},
+  {id:213,name:"Installation",             qty:1,  unitCost:3250.00,   margin:30, annual:false, isDji:false, isSkydio:false},
+];
+
+let _etId = 100;
+function defSwItems() {
+  return [
+    {id:Date.now()+Math.random(), name:"Starlink Subscription", qty:1, unitCost:70,  margin:30, perDrone:false},
+    {id:Date.now()+Math.random(), name:"Drone Tag License",      qty:1, unitCost:30,  margin:30, perDrone:false},
+    {id:Date.now()+Math.random(), name:"DroneSense",             qty:1, unitCost:700, margin:30, perDrone:true},
+  ];
+}
+function newEventType(overrides={}) {
+  const base = {
+    id: ++_etId,
+    name: "New Event Type",
+    color: "#4a9eff",
+    activeConfig: "bvlos",
+    eventsPerYear: 10,
+    revenuePerEvent: 45000,
+    open: false,
+    vlos: {
+      packageId: 1,
+      daysPerEvent: 7,
+      coverageHours: 24,
+      otMultiplier: 1.0,
+      rate1099: 68.46,
+      pilots: 4,
+      dronesCount: 3,
+      perDiemRate: 75,
+      otherItems: [],
+      shipping: {outbound:0, inbound:0},
+      travel: {airfare:350, numTravelers:4, numFlights:4, lodgingNights:8, lodgingRate:150, perDiemDays:8, rental:540, gas:100, eventWeeks:1},
+      swItems: defSwItems(),
+    },
+    bvlos: {
+      packageId: 2,
+      daysPerEvent: 7,
+      coverageHours: 24,
+      otMultiplier: 1.0,
+      intRate: 65,
+      intCount: 1,
+      intDays: 7,
+      pilotRate: 68.46,
+      pilotCount: 2,
+      dronesCount: 3,
+      perDiemRate: 75,
+      otherItems: [],
+      shipping: {outbound:0, inbound:0},
+      travel: {airfare:350, numTravelers:1, numFlights:1, lodgingNights:7, lodgingRate:150, perDiemDays:7, rental:0, gas:0, eventWeeks:1},
+      swItems: defSwItems(),
+    },
+  };
+  const merged = Object.assign(base, overrides);
+  if(overrides.vlos1099Rate)   merged.vlos.rate1099   = overrides.vlos1099Rate;
+  if(overrides.vlosPilots)     merged.vlos.pilots      = overrides.vlosPilots;
+  if(overrides.bvlosIntRate)   merged.bvlos.intRate    = overrides.bvlosIntRate;
+  if(overrides.bvlos1099Rate)  merged.bvlos.pilotRate  = overrides.bvlos1099Rate;
+  if(overrides.daysPerEvent)   { merged.vlos.daysPerEvent = overrides.daysPerEvent; merged.bvlos.daysPerEvent = overrides.daysPerEvent; }
+  if(overrides.coverageHours)  { merged.vlos.coverageHours = overrides.coverageHours; merged.bvlos.coverageHours = overrides.coverageHours; }
+  if(overrides.configType)     merged.activeConfig = overrides.configType;
+  if(overrides.travel) {
+    if(merged.activeConfig==='vlos') merged.vlos.travel = overrides.travel;
+    else merged.bvlos.travel = overrides.travel;
+  }
+  return merged;
+}
+
+const ET_COLORS = ["#e24b4a","#4a9eff","#f5c45b","#4ec94e","#a78bfa","#fb923c","#34d399","#f472b6"];
+
+let _pkgId = 10;
+function newHwPackage(overrides={}) {
+  return Object.assign({
+    id: ++_pkgId,
+    name: "New Package",
+    kitType: "bvlos",
+    hasDji: true,
+    open: false,
+    hwItems: clone(DJI_BVLOS_HW),
+  }, overrides);
+}
+function defaultVlosPackage()  { return newHwPackage({id:1, name:"DJI VLOS Package 1",  kitType:"vlos",  hasDji:true, hwItems:clone(DJI_VLOS_HW),  open:false}); }
+function defaultBvlosPackage() { return newHwPackage({id:2, name:"DJI BVLOS Package 1", kitType:"bvlos", hasDji:true, hwItems:clone(DJI_BVLOS_HW), open:false}); }
+
+// MRR (sustained) preset hardware
+const DJI_SUSTAINED_HW = [
+  {id:301, name:"Dock 3",                qty:1,  unitCost:15189.20, margin:30, annual:false, isDji:true,  isSkydio:false},
+  {id:302, name:"Matrice 4T",            qty:1,  unitCost:8901.23,  margin:30, annual:false, isDji:true,  isSkydio:false},
+  {id:303, name:"AL1 Spotlight",         qty:1,  unitCost:390.00,   margin:30, annual:false, isDji:true,  isSkydio:false},
+  {id:304, name:"AVSS Parachute",        qty:1,  unitCost:3057.60,  margin:30, annual:false, isDji:true,  isSkydio:false},
+  {id:305, name:"DJI Batteries",         qty:4,  unitCost:451.00,   margin:30, annual:false, isDji:true,  isSkydio:false},
+  {id:306, name:"Battery Hub w/Adapter", qty:1,  unitCost:399.62,   margin:30, annual:false, isDji:true,  isSkydio:false},
+  {id:307, name:"Starlink Hardware",     qty:1,  unitCost:400.00,   margin:30, annual:false, isDji:false, isSkydio:false},
+  {id:308, name:"Axis Camera",           qty:1,  unitCost:1038.70,  margin:30, annual:false, isDji:false, isSkydio:false},
+  {id:309, name:"Drone Tag Hardware",    qty:1,  unitCost:7115.00,  margin:30, annual:false, isDji:false, isSkydio:false},
+  {id:310, name:"Casia G",               qty:1,  unitCost:26000.00, margin:30, annual:true,  isDji:false, isSkydio:false},
+  {id:311, name:"Installation",          qty:1,  unitCost:3000.00,  margin:30, annual:false, isDji:false, isSkydio:false},
+  {id:312, name:"DJI Maintenance",       qty:1,  unitCost:13500.00, margin:30, annual:false, isDji:true,  isSkydio:false},
+];
+const SKY_SUSTAINED_HW = [
+  {id:401, name:"Sky X10 Dock w/ VT300Z", qty:1, unitCost:90318.80, margin:30, annual:false, isDji:false, isSkydio:true},
+  {id:402, name:"Sky Spotlight",          qty:1, unitCost:372.06,   margin:30, annual:false, isDji:false, isSkydio:true},
+  {id:403, name:"Sky AVSS Parachute",     qty:1, unitCost:10140.00, margin:30, annual:false, isDji:false, isSkydio:true},
+  {id:404, name:"Sky Maintenance",        qty:1, unitCost:104325.00,margin:30, annual:true,  isDji:false, isSkydio:true},
+  {id:405, name:"Sky Commission/Training",qty:1, unitCost:31193.50, margin:30, annual:false, isDji:false, isSkydio:true},
+  {id:406, name:"Sky Thermal Refresh",    qty:1, unitCost:20835.36, margin:30, annual:false, isDji:false, isSkydio:true},
+  {id:407, name:"Starlink Hardware",      qty:1, unitCost:400.00,   margin:30, annual:false, isDji:false, isSkydio:false},
+  {id:408, name:"Axis Camera",            qty:1, unitCost:1038.70,  margin:30, annual:false, isDji:false, isSkydio:false},
+  {id:409, name:"Drone Tag",              qty:1, unitCost:7115.00,  margin:30, annual:false, isDji:false, isSkydio:false},
+  {id:410, name:"Installation",           qty:1, unitCost:3250.00,  margin:30, annual:false, isDji:false, isSkydio:false},
+];
+const SFL_SUSTAINED_HW = [
+  {id:451, name:"SFL Bee Pro Dock",  qty:1, unitCost:14990.00, margin:30, annual:false, isDji:false, isSkydio:false, isSfl:true},
+  {id:452, name:"SFL Bee Pro Drone", qty:1, unitCost:0,        margin:30, annual:false, isDji:false, isSkydio:false, isSfl:true},
+  {id:453, name:"SFL Subscription",  qty:1, unitCost:4188.00,  margin:30, annual:true,  isDji:false, isSkydio:false, isSfl:true},
+  {id:454, name:"SFL Installation",  qty:1, unitCost:2500.00,  margin:30, annual:false, isDji:false, isSkydio:false, isSfl:true},
+  {id:455, name:"Starlink Hardware", qty:1, unitCost:400.00,   margin:30, annual:false, isDji:false, isSkydio:false, isSfl:false},
+  {id:456, name:"Axis Camera",       qty:1, unitCost:1038.70,  margin:30, annual:false, isDji:false, isSkydio:false, isSfl:false},
+];
+
+const SFL_PILOT_TIERS = [
+  {hrsPerDay:4,  maxFlightsPerWindow:8,  monthlyCost:400},
+  {hrsPerDay:8,  maxFlightsPerWindow:16, monthlyCost:700},
+  {hrsPerDay:12, maxFlightsPerWindow:28, monthlyCost:1000},
+  {hrsPerDay:16, maxFlightsPerWindow:40, monthlyCost:1300},
+  {hrsPerDay:24, maxFlightsPerWindow:60, monthlyCost:1700},
+];
+const SFL_PILOT_SETUP_FEE = 250;
+
+let _mrrPkgId = 500;
+function newMrrPackage(overrides={}) {
+  return Object.assign({
+    id: ++_mrrPkgId,
+    name: "New Sustained Package",
+    vendor: "dji",
+    defaultAmortMonths: 24,
+    open: false,
+    hwItems: clone(DJI_SUSTAINED_HW),
+  }, overrides);
+}
+function defaultMrrDjiPackage() { return newMrrPackage({id:501, name:"DJI Sustained Package 1",    vendor:"dji",       defaultAmortMonths:24, hwItems:clone(DJI_SUSTAINED_HW), open:false}); }
+function defaultMrrSkyPackage() { return newMrrPackage({id:502, name:"Skydio Sustained Package 1", vendor:"skydio",    defaultAmortMonths:36, hwItems:clone(SKY_SUSTAINED_HW), open:false}); }
+function defaultMrrSflPackage() { return newMrrPackage({id:503, name:"Sunflower Labs Package 1",   vendor:"sunflower", defaultAmortMonths:36, hwItems:clone(SFL_SUSTAINED_HW), open:false}); }
+
+let _mrrId = 200;
+function newMrrClient(overrides={}) {
+  return Object.assign({
+    id: ++_mrrId,
+    name: "New Client",
+    color: "#c084fc",
+    open: true,
+    status: 'active',
+    contractMonths: 24,
+    hwAmortMonths: 24,
+    monthlyFee: 8000,
+    dronesCount: 1,
+    hwPackageId: null,
+    pkgOverrideItems: null,
+    hwItems: clone(DJI_SUSTAINED_HW),
+    swItems: [
+      {id:Date.now()+Math.random(), name:"Starlink Subscription", qty:1, unitCost:70,  margin:30, perDrone:false},
+      {id:Date.now()+Math.random(), name:"Drone Tag License",      qty:1, unitCost:30,  margin:30, perDrone:false},
+      {id:Date.now()+Math.random(), name:"DroneSense",             qty:1, unitCost:700, margin:30, perDrone:true},
+    ],
+    hwAcquisition: 'amortized',
+    hwPurchaseMarkup: 30,
+    packagesOnSite: 1,
+    activeDrones: 1,
+    pilotsFlying: 1,
+    coverageHrsDay: 8,
+    daysPerMonth: 30,
+    pilotMode: 'dxd',
+    surgeHrsDay: 4,
+    surgeHourlyRate: 150,
+    surgeEstHrsMonth: 20,
+    pilotCostRate: 52.67,
+    pilotBillRate: 68.46,
+    sharedRouteClients: 4,
+    sharedShiftHrs: 8,
+    sharedDaysPerMonth: 30,
+    sflPilotMode: 'dxd',
+    sflMonitoredHrsDay: 8,
+    sflDxdHrsDay: 0,
+    sflSetupFeeIncluded: true,
+    remoteOpsHrsMonth: 10,
+    remoteOpsCostRate: 52.67,
+    adsbEnabled: false,
+    adsbItems: [],
+    droneTagEnabled: false,
+    droneTagItems: [],
+    networkingEnabled: false,
+    networkingItems: [],
+    waiverMode: 'none',
+    waiverDraftFee: 5000,
+    waiverDraftAmortized: true,
+    waiverMgmtFeeMonth: 250,
+    waiverTrainingFeePerPilot: 1500,
+    waiverTrainingPilots: 1,
+    waiverTrainingAmortized: true,
+    installTrip: { numTravelers:2, numFlights:2, airfare:350, lodgingNights:3, lodgingRate:150, perDiemDays:3, perDiemRate:75, rental:300, gas:60 },
+    monthlyVisits: 1,
+    visitTrip:   { numTravelers:1, numFlights:1, airfare:350, lodgingNights:1, lodgingRate:150, perDiemDays:1, perDiemRate:75, rental:0,   gas:0 },
+    notes: "",
+  }, overrides);
+}
+
+const MRR = {
+  clients: [
+    newMrrClient({id:201, name:"Sample Client", color:"#f97316", contractMonths:18, hwAmortMonths:18, monthlyFee:9500,
+      packagesOnSite:2, activeDrones:1, pilotsFlying:1, coverageHrsDay:8, daysPerMonth:30, open:true}),
+  ],
+  hwPackages: [ defaultMrrDjiPackage(), defaultMrrSkyPackage(), defaultMrrSflPackage() ],
+  marginFloor: 20,
+};
+
+const S = {
+  activeTab: 'events',
+  skydioRisk: false,
+  amortWeeks: 36,
+  seasonWeeks: 36,
+  djiVlosHw:  clone(DJI_VLOS_HW),
+  djiBvlosHw: clone(DJI_BVLOS_HW),
+  skyVlosHw:  clone(SKYDIO_VLOS_HW),
+  skyBvlosHw: clone(SKYDIO_BVLOS_HW),
+  hwPackages: [ defaultVlosPackage(), defaultBvlosPackage() ],
+  eventTypes: [
+    newEventType({id:1, name:"PGA Tour",        color:"#4ec94e", configType:"bvlos", eventsPerYear:20, revenuePerEvent:45000, daysPerEvent:7, coverageHours:24,
+      bvlosIntRate:65, bvlos1099Rate:68.46,
+      travel:{airfare:350,numTravelers:1,numFlights:1,lodgingNights:7,lodgingRate:150,perDiemDays:7,rental:0,gas:0,eventWeeks:1}, open:true}),
+    newEventType({id:2, name:"Fill-In Events",  color:"#4a9eff", configType:"vlos",  eventsPerYear:8,  revenuePerEvent:25000, daysPerEvent:4, coverageHours:12,
+      vlos1099Rate:68.46, vlosPilots:3,
+      travel:{airfare:350,numTravelers:3,numFlights:3,lodgingNights:4,lodgingRate:120,perDiemDays:4,rental:400,gas:80,eventWeeks:1}, open:false}),
+  ],
+  notes: "",
+  marginFloor: 20,
+};
+
+// ── Calculation engine ─────────────────────────────────────────
+
+function calcTableTotals(items, dronesCount, isSwTable, amortWeeks, eventDays, skydioMode) {
+  let cost=0, bill=0;
+  items.forEach(it => {
+    if (skydioMode && it.isDji) return;
+    const eq = isSwTable ? (it.perDrone ? it.qty*dronesCount : it.qty) : it.qty;
+    const tc = it.unitCost*eq;
+    const tb = tc + tc*(it.margin/100);
+    const ac = isSwTable ? tc : (it.annual ? tc/52 : (tc/amortWeeks)*(eventDays/7));
+    const ab = isSwTable ? tb : (it.annual ? tb/52 : (tb/amortWeeks)*(eventDays/7));
+    cost+=ac; bill+=ab;
+  });
+  return {cost, bill};
+}
+
+function calcHwOneTime(items, skydioMode) {
+  return items.reduce((s,it)=>(skydioMode&&it.isDji)?s:s+it.unitCost*it.qty, 0);
+}
+
+function calcHwAnnualRecurring(items, skydioMode) {
+  return items.filter(i=>i.annual&&!(skydioMode&&i.isDji)).reduce((s,i)=>s+i.unitCost*i.qty, 0);
+}
+
+function calcTravelTotal(t, perDiemRate) {
+  const pd = (perDiemRate !== undefined ? perDiemRate : 75);
+  const numFlights = t.numFlights !== undefined ? t.numFlights : (t.numTravelers||1);
+  const airfareCost = (t.airfareRows && t.airfareRows.length>0)
+    ? calcAirfareRows(t.airfareRows)
+    : (t.airfare||0)*numFlights;
+  const mileageCost = (+( t.miles||0)) * (+(t.mileageRate||0.70));
+  const extrasCost  = (t.travelExtras||[]).reduce((s,x)=>s+(+x.cost||0),0);
+  return airfareCost+(t.lodgingNights*t.lodgingRate*(t.numTravelers||1))+(pd*t.perDiemDays*(t.numTravelers||1))+t.rental+t.gas+mileageCost+extrasCost;
+}
+function calcOtherTotal(items) {
+  return (items||[]).reduce((s,it)=>s+(+it.cost||0), 0);
+}
+
+// Airline bag-fee schedules (per bag, per person)
+const AIRLINE_BAGS = {
+  'Southwest': {fees:[0,0,75],   oversize:0,   label:'bags 1-2 free, bag 3+ $75'},
+  'Delta':     {fees:[35,45,150],oversize:200, label:'bag 1 $35, bag 2 $45, bag 3+ $150, oversize $200'},
+  'American':  {fees:[40,45,150],oversize:200, label:'bag 1 $40, bag 2 $45, bag 3+ $150, oversize $200'},
+  'United':    {fees:[35,45,200],oversize:200, label:'bag 1 $35, bag 2 $45, bag 3+ $200, oversize $200'},
+};
+function calcBagFee(airline, bags) {
+  const sched = AIRLINE_BAGS[airline];
+  if(!sched) return 0;
+  let fee=0;
+  for(let i=1;i<=bags;i++){
+    if(i-1 < sched.fees.length) fee += sched.fees[i-1];
+    else fee += sched.fees[sched.fees.length-1];
+  }
+  return fee;
+}
+function calcBagBreakdown(airline, bags) {
+  const sched = AIRLINE_BAGS[airline];
+  if(!sched || bags===0) return '';
+  if(airline==='Southwest' && bags<=2) return 'bags 1-2 free';
+  let parts=[];
+  for(let i=1;i<=Math.min(bags,3);i++){
+    const fee = i-1<sched.fees.length ? sched.fees[i-1] : sched.fees[sched.fees.length-1];
+    if(bags>2 && i===3) parts.push('bag 3+: $'+fee+' x '+(bags-2));
+    else parts.push('bag '+i+': $'+fee);
+  }
+  return parts.join(', ');
+}
+function calcAirfareRows(rows) {
+  return (rows||[]).reduce((s,r)=>{
+    const bagFee = calcBagFee(r.airline||'Southwest', +(r.bags||0));
+    return s + ((+(r.ticket||0)) + bagFee) * (+(r.people||1));
+  }, 0);
+}
+function calcShippingTotal(shipping) {
+  return ((+shipping?.outbound)||0) + ((+shipping?.inbound)||0);
+}
+
+function getPackageItems(packageId, configType) {
+  const pkg = S.hwPackages && S.hwPackages.find(p=>p.id===packageId);
+  if(pkg) return pkg.hwItems || [];
+  const sm = S.skydioRisk;
+  if(configType==='vlos') return sm ? [...S.djiVlosHw,...S.skyVlosHw] : S.djiVlosHw;
+  return sm ? [...S.djiBvlosHw,...S.skyBvlosHw] : S.djiBvlosHw;
+}
+function getActiveHw(configType) {
+  const sm = S.skydioRisk;
+  if(configType==='vlos') return sm ? [...S.djiVlosHw,...S.skyVlosHw] : S.djiVlosHw;
+  return sm ? [...S.djiBvlosHw,...S.skyBvlosHw] : S.djiBvlosHw;
+}
+
+function calcProfileCost(et, configType) {
+  if(!et.vlos || !et.bvlos) {
+    const migrated = migrateEventType(et);
+    et.vlos = migrated.vlos;
+    et.bvlos = migrated.bvlos;
+    if(!et.activeConfig) et.activeConfig = migrated.activeConfig;
+  }
+  const prof = et[configType];
+  if(!prof) return {labor:0,swCost:0,swBill:0,hwCost:0,hwBill:0,travel:0,otherCost:0,shipping:0,totalCost:0,totalBill:0,laborBill:0,laborMargin:0};
+  const isVlos = configType === "vlos";
+
+  let billLabor, costLabor;
+  if (isVlos) {
+    const costRate1099 = prof.costRate1099 !== undefined ? prof.costRate1099 : prof.rate1099;
+    billLabor = prof.pilots * prof.rate1099   * prof.coverageHours * prof.otMultiplier * prof.daysPerEvent;
+    costLabor = prof.pilots * costRate1099    * prof.coverageHours * prof.otMultiplier * prof.daysPerEvent;
+  } else {
+    const intCount   = prof.intCount   !== undefined ? prof.intCount   : 1;
+    const intDays    = prof.intDays    !== undefined ? prof.intDays    : 7;
+    const pilotCount = prof.pilotCount !== undefined ? prof.pilotCount : 2;
+    const costIntRate   = prof.costIntRate   !== undefined ? prof.costIntRate   : prof.intRate;
+    const costPilotRate = prof.costPilotRate !== undefined ? prof.costPilotRate : prof.pilotRate;
+    const billIntCost   = intCount   * prof.intRate   * prof.coverageHours * prof.otMultiplier * intDays;
+    const billPilotCost = pilotCount * prof.pilotRate * prof.coverageHours * prof.otMultiplier * prof.daysPerEvent;
+    const costIntCost   = intCount   * costIntRate    * prof.coverageHours * prof.otMultiplier * intDays;
+    const costPilotCost = pilotCount * costPilotRate  * prof.coverageHours * prof.otMultiplier * prof.daysPerEvent;
+    billLabor = billIntCost + billPilotCost;
+    costLabor = costIntCost + costPilotCost;
+  }
+  const sw       = calcTableTotals(prof.swItems, prof.dronesCount, true, S.amortWeeks, prof.daysPerEvent, false);
+  const perDiemRate = prof.perDiemRate !== undefined ? prof.perDiemRate : 75;
+  const travel   = calcTravelTotal(prof.travel, perDiemRate);
+  const otherCost= calcOtherTotal(prof.otherItems);
+  const shipping = calcShippingTotal(prof.shipping);
+  const pkgId    = prof.packageId || (isVlos ? 1 : 2);
+  const hwItems  = getPackageItems(pkgId, configType);
+  const hw       = calcTableTotals(hwItems, prof.dronesCount, false, S.amortWeeks, prof.daysPerEvent, false);
+  const _pkg     = S.hwPackages ? S.hwPackages.find(p=>p.id===pkgId) : null;
+
+  return {
+    labor: costLabor,
+    laborBill: billLabor,
+    laborMargin: billLabor > 0 ? (billLabor - costLabor) / billLabor : 0,
+    swCost: sw.cost,  swBill: sw.bill,
+    hwCost: hw.cost,  hwBill: hw.bill,
+    travel, otherCost, shipping,
+    packageName: _pkg ? _pkg.name : 'Unknown Package',
+    totalCost: costLabor + hw.cost + sw.cost + travel + otherCost + shipping,
+    totalBill: billLabor + hw.bill + sw.bill + travel + otherCost + shipping,
+  };
+}
+
+function calcEventTypeCostPerEvent(et) {
+  return calcProfileCost(et, et.activeConfig || 'bvlos');
+}
+
+function derivePortfolio() {
+  const sm = S.skydioRisk;
+  const ets = S.eventTypes;
+
+  const usedPkgIds = new Set();
+  ets.forEach(et => {
+    const prof = et[et.activeConfig||'bvlos'] || et.bvlos || et.vlos;
+    if(prof && et.eventsPerYear > 0) usedPkgIds.add(prof.packageId || (et.activeConfig==='vlos'?1:2));
+  });
+  const usedPkgs = [...usedPkgIds].map(id => S.hwPackages ? S.hwPackages.find(p=>p.id===id) : null).filter(Boolean);
+
+  const vlosHwItems  = getActiveHw("vlos");
+  const bvlosHwItems = getActiveHw("bvlos");
+  const hasVlosEvents  = ets.some(e=>e.activeConfig==='vlos'  && e.eventsPerYear>0);
+  const hasBvlosEvents = ets.some(e=>e.activeConfig==='bvlos' && e.eventsPerYear>0);
+
+  const pkgCapEx = {}, pkgAnnual = {};
+  if(S.hwPackages && S.hwPackages.length > 0){
+    usedPkgs.forEach(pkg => {
+      pkgCapEx[pkg.id]  = pkg.hwItems.reduce((s,i)=>s+i.unitCost*i.qty, 0);
+      pkgAnnual[pkg.id] = pkg.hwItems.filter(i=>i.annual).reduce((s,i)=>s+i.unitCost*i.qty, 0);
+    });
+  }
+
+  const vlosPkgId  = (() => { const et=ets.find(e=>e.activeConfig==='vlos');  const p=et&&(et.vlos||et.bvlos); return p ? (p.packageId||1) : 1; })();
+  const bvlosPkgId = (() => { const et=ets.find(e=>e.activeConfig==='bvlos'); const p=et&&(et.bvlos||et.vlos); return p ? (p.packageId||2) : 2; })();
+  const hwOneTimeVlos  = pkgCapEx[vlosPkgId]  || calcHwOneTime(vlosHwItems,  sm);
+  const hwOneTimeBvlos = pkgCapEx[bvlosPkgId] || calcHwOneTime(bvlosHwItems, sm);
+  const hwAnnualVlos   = pkgAnnual[vlosPkgId]  || calcHwAnnualRecurring(vlosHwItems,  sm);
+  const hwAnnualBvlos  = pkgAnnual[bvlosPkgId] || calcHwAnnualRecurring(bvlosHwItems, sm);
+
+  const hwOneTime     = usedPkgs.length > 0
+    ? Object.values(pkgCapEx).reduce((s,v)=>s+v,0)
+    : (hasVlosEvents?hwOneTimeVlos:0)+(hasBvlosEvents?hwOneTimeBvlos:0);
+  const hwAnnualTotal = usedPkgs.length > 0
+    ? Object.values(pkgAnnual).reduce((s,v)=>s+v,0)
+    : (hasVlosEvents?hwAnnualVlos:0)+(hasBvlosEvents?hwAnnualBvlos:0);
+
+  const etCalcs = ets.map(et => {
+    const perEvt = calcEventTypeCostPerEvent(et);
+    const totalRevenue    = et.eventsPerYear * et.revenuePerEvent;
+    const totalCostFull   = et.eventsPerYear * perEvt.totalCost;
+    const totalBillFull   = et.eventsPerYear * perEvt.totalBill;
+    const totalOpCostNoHw = et.eventsPerYear * (perEvt.labor + perEvt.swCost + perEvt.travel);
+    const profit          = totalRevenue - totalCostFull;
+    const margin          = totalRevenue > 0 ? profit/totalRevenue : 0;
+    const weeksUsed       = et.eventsPerYear * ((et[et.activeConfig||'bvlos']||et.bvlos||et.vlos||{daysPerEvent:7}).daysPerEvent/7);
+    const profitPerEvt    = et.revenuePerEvent - perEvt.totalCost;
+    const marginPerEvt    = et.revenuePerEvent > 0 ? profitPerEvt/et.revenuePerEvent : 0;
+    return { et, perEvt, totalRevenue, totalCostFull, totalBillFull, totalOpCostNoHw, profit, margin, weeksUsed, profitPerEvt, marginPerEvt };
+  });
+
+  const totalRevenue   = etCalcs.reduce((s,e)=>s+e.totalRevenue, 0);
+  const totalOpCost    = etCalcs.reduce((s,e)=>s+e.totalOpCostNoHw, 0);
+  const totalEvents    = ets.reduce((s,e)=>s+e.eventsPerYear, 0);
+  const totalWeeksUsed = etCalcs.reduce((s,e)=>s+e.weeksUsed,    0);
+  const utilPct        = S.seasonWeeks > 0 ? Math.min(1, totalWeeksUsed/S.seasonWeeks) : 0;
+
+  const totalFullCost    = etCalcs.reduce((s,e)=>s+e.totalCostFull, 0);
+  const opProfitBeforeHw = totalRevenue - totalOpCost;
+  const netProfitAfterHw = opProfitBeforeHw - hwOneTime;
+  const fullProfit       = totalRevenue - totalFullCost;
+  const opMargin         = totalRevenue > 0 ? opProfitBeforeHw/totalRevenue : 0;
+  const fullMargin       = totalRevenue > 0 ? fullProfit/totalRevenue : 0;
+
+  const vlosEventsPerYear  = ets.filter(e=>e.activeConfig==='vlos').reduce((s,e)=>s+e.eventsPerYear,0);
+  const bvlosEventsPerYear = ets.filter(e=>e.activeConfig==='bvlos').reduce((s,e)=>s+e.eventsPerYear,0);
+  const vlosProfitPerEvt = (() => {
+    const c = etCalcs.filter(e=>e.et.activeConfig==='vlos');
+    const rev = c.reduce((s,e)=>s+e.totalRevenue,0);
+    const cst = c.reduce((s,e)=>s+e.totalCostFull,0);
+    return vlosEventsPerYear > 0 ? (rev-cst)/vlosEventsPerYear : 0;
+  })();
+  const bvlosProfitPerEvt = (() => {
+    const c = etCalcs.filter(e=>e.et.activeConfig==='bvlos');
+    const rev = c.reduce((s,e)=>s+e.totalRevenue,0);
+    const cst = c.reduce((s,e)=>s+e.totalCostFull,0);
+    return bvlosEventsPerYear > 0 ? (rev-cst)/bvlosEventsPerYear : 0;
+  })();
+  const vlosBeEvents  = hasVlosEvents  && vlosProfitPerEvt  > 0 ? Math.ceil(hwOneTimeVlos /vlosProfitPerEvt)  : null;
+  const bvlosBeEvents = hasBvlosEvents && bvlosProfitPerEvt > 0 ? Math.ceil(hwOneTimeBvlos/bvlosProfitPerEvt) : null;
+
+  function calcPeriod(months) {
+    const scale  = months/12;
+    const rev    = totalRevenue * scale;
+    const opCst  = totalOpCost  * scale;
+    const annHw  = hwAnnualTotal * scale;
+    const cost   = hwOneTime + opCst + annHw;
+    const profit = rev - cost;
+    const days   = months * 30.4;
+    return {
+      rev, opCst, annHw, cost, profit,
+      margin: rev > 0 ? profit/rev : 0,
+      events: Math.round(totalEvents * scale),
+      dailyRev:  rev/days,   hourlyRev:  rev/(days*24),
+      dailyCost: cost/days,  hourlyCost: cost/(days*24),
+      dailyProfit: profit/days, hourlyProfit: profit/(days*24),
+    };
+  }
+
+  return {
+    etCalcs, vlosHwItems, bvlosHwItems,
+    hwOneTimeVlos, hwOneTimeBvlos, hwOneTime,
+    hwAnnualVlos, hwAnnualBvlos, hwAnnualTotal,
+    hasVlosEvents, hasBvlosEvents,
+    vlosBeEvents, bvlosBeEvents,
+    totalRevenue, totalOpCost, totalFullCost, totalEvents, totalWeeksUsed, utilPct,
+    opProfitBeforeHw, netProfitAfterHw, opMargin,
+    fullProfit, fullMargin, sm,
+    periods: [
+      {label:"12 Months", data:calcPeriod(12)},
+      {label:"24 Months", data:calcPeriod(24)},
+      {label:"36 Months", data:calcPeriod(36)},
+      {label:"48 Months", data:calcPeriod(48)},
+      {label:"60 Months", data:calcPeriod(60)},
+    ],
+  };
+}
+
+// ── DOM helpers ────────────────────────────────────────────────
+function el(tag, props, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k,v] of Object.entries(props||{})) {
+    if (k==='class') e.className=v;
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2).toLowerCase(), v);
+    else e.setAttribute(k,v);
+  }
+  kids.forEach(c=>c!=null&&e.append(typeof c==='string'?c:c));
+  return e;
+}
+const div = (cls,...kids) => el('div',{class:cls},...kids);
+
+function makeSection(title,...kids) {
+  const s=div('sec'), h=div('sec-hdr'), b=div('sec-body');
+  h.textContent=title; kids.forEach(k=>k&&b.append(k)); s.append(h,b); return s;
+}
+
+function makeRow(label, value, onChange, opts={}) {
+  const w=div('row'), lw=div(''), lb=div('row-lbl');
+  lb.textContent=label; lw.append(lb);
+  if(opts.note){const n=div('row-note'+(opts.warn?' warn':'')); n.textContent=opts.note; lw.append(n);}
+  const iw=div('row-inp-wrap');
+  const pfx=el('span',{class:'row-pfx'}); pfx.textContent=opts.prefix||'$';
+  const inp=el('input',{type:'number',class:'row-inp',value:value});
+  if(onChange){
+    inp.addEventListener('blur',e=>onChange(+e.target.value));
+    inp.addEventListener('keydown',e=>{if(e.key==='Enter')e.target.blur();});
+  }
+  iw.append(pfx,inp); w.append(lw,iw); return w;
+}
+
+function makeStatCard(label,value,color,sub) {
+  const c=div('stat-card'), l=div('stat-lbl'), v=div('stat-val');
+  l.textContent=label; v.textContent=value; if(color)v.style.color=color; c.append(l,v);
+  if(sub){const s=div('stat-sub'); s.textContent=sub; c.append(s);}
+  return c;
+}
+
+function miniRow(label, value, valueColor) {
+  const r=div('mini-row');
+  const lb=div('mini-lbl'); lb.textContent=label;
+  const vl=el('span',{}); vl.textContent=value; if(valueColor)vl.style.color=valueColor;
+  r.append(lb,vl); return r;
+}
+
+function makeItemTable(getItems, setItems, getDrops, isSwTable, getAmort, getEventDays, getSkydioMode, getMrrMonths) {
+  const HW_COLS="2fr 40px 75px 52px 80px 82px 22px";
+  const SW_COLS="2fr 40px 75px 52px 80px 82px 22px";
+  const container=div('');
+  container.style.cssText='min-width:480px;';
+
+  function rebuild() {
+    container.innerHTML='';
+    const items=getItems(), dronesCount=getDrops(), amortWeeks=getAmort();
+    const eventDays=getEventDays(), skydioMode=getSkydioMode();
+    const mrrMonths = getMrrMonths ? getMrrMonths() : null;
+    const isMrr = mrrMonths !== null && mrrMonths > 0;
+    const cols=isSwTable?SW_COLS:HW_COLS;
+    const amortColLabel = isSwTable ? "Scope" : (isMrr ? "Mo Cost" : "Amort");
+    const billColLabel  = isMrr ? "Bill/Mo" : "Bill/Event";
+    const headers=["Item Name","Qty","Unit Cost","Markup%",billColLabel,amortColLabel,""];
+
+    const hdr=div('itbl-hdr'); hdr.style.gridTemplateColumns=cols;
+    headers.forEach((h,i)=>{const d=div('itbl-col');d.textContent=h;if(i>0)d.style.textAlign='center';hdr.append(d);});
+    container.append(hdr);
+
+    let totalCostAmort=0, totalBillAmort=0;
+    items.forEach(it=>{
+      const skip=skydioMode&&it.isDji;
+      const eq=isSwTable?(it.perDrone?it.qty*dronesCount:it.qty):it.qty;
+      const tc=it.unitCost*eq, tb=tc+tc*(it.margin/100);
+      let ac, ab;
+      if(isSwTable){
+        ac=tc; ab=tb;
+      } else if(isMrr){
+        ac = it.annual ? tc/12 : tc/mrrMonths;
+        ab = it.annual ? tb/12 : tb/mrrMonths;
+      } else {
+        ac = it.annual ? tc/52 : (tc/amortWeeks)*(eventDays/7);
+        ab = it.annual ? tb/52 : (tb/amortWeeks)*(eventDays/7);
+      }
+      if(!skip){totalCostAmort+=ac;totalBillAmort+=ab;}
+
+      const rowBg=skydioMode&&it.isSkydio?"#0d2a1a":skydioMode&&it.isDji?"#2a0d0d":"transparent";
+      const row=div('itbl-row'); row.style.gridTemplateColumns=cols;
+      if(rowBg!=='transparent'){row.style.background=rowBg;row.style.borderRadius='3px';row.style.padding='2px 3px';}
+
+      const nameCell=div('name-cell');
+      if(skydioMode&&it.isSkydio){const b=div('badge-sky');b.textContent='SKY';nameCell.append(b);}
+      if(skydioMode&&it.isDji){const b=div('badge-dji');b.textContent='DJI';nameCell.append(b);}
+      const nameInp=el('input',{type:'text',class:'itbl-name',value:it.name});
+      nameInp.addEventListener('blur',e=>{it.name=e.target.value;setItems([...items]);rerender();});
+      nameInp.addEventListener('keydown',e=>{if(e.key==='Enter')e.target.blur();});
+      nameCell.append(nameInp);
+
+      const qtyInp=el('input',{type:'number',class:'itbl-inp',value:it.qty});
+      qtyInp.addEventListener('blur',e=>{it.qty=+e.target.value;setItems([...items]);rerender();});
+      qtyInp.addEventListener('keydown',e=>{if(e.key==='Enter')e.target.blur();});
+
+      const costInp=el('input',{type:'number',class:'itbl-inp',value:it.unitCost,step:'0.01'});
+      costInp.addEventListener('blur',e=>{it.unitCost=+e.target.value;setItems([...items]);rerender();});
+      costInp.addEventListener('keydown',e=>{if(e.key==='Enter')e.target.blur();});
+
+      const mWrap=div('row-inp-wrap');
+      const mInp=el('input',{type:'number',class:'itbl-inp',value:it.margin});
+      mInp.addEventListener('blur',e=>{it.margin=+e.target.value;setItems([...items]);rerender();});
+      mInp.addEventListener('keydown',e=>{if(e.key==='Enter')e.target.blur();});
+      const pctSp=el('span',{class:'row-pfx'});pctSp.textContent='%';
+      mWrap.append(mInp,pctSp);
+
+      const billDiv=div('');
+      billDiv.style.cssText='font-size:11px;text-align:right;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+      billDiv.style.color=it.margin>0?'#4ec94e':it.margin<0?'#e24b4a':'#888';
+      billDiv.textContent=fmt(skip?0:ab);
+
+      const typeEl=el('select',{class:'itbl-sel'});
+      if(isSwTable){
+        ['Per site','Per drone'].forEach((opt,idx)=>{
+          const o=el('option',{value:idx===0?'site':'drone'});o.textContent=opt;
+          if(it.perDrone===(idx===1))o.selected=true;typeEl.append(o);
+        });
+        typeEl.addEventListener('change',e=>{it.perDrone=e.target.value==='drone';setItems([...items]);rerender();});
+      } else if(isMrr){
+        ['Per contract','Annual /12'].forEach((opt,idx)=>{
+          const o=el('option',{value:idx===0?'contract':'annual'});o.textContent=opt;
+          if(it.annual===(idx===1))o.selected=true;typeEl.append(o);
+        });
+        typeEl.addEventListener('change',e=>{it.annual=e.target.value==='annual';setItems([...items]);rerender();});
+      } else {
+        ['Per event','Annual/52'].forEach((opt,idx)=>{
+          const o=el('option',{value:idx===0?'event':'annual'});o.textContent=opt;
+          if(it.annual===(idx===1))o.selected=true;typeEl.append(o);
+        });
+        typeEl.addEventListener('change',e=>{it.annual=e.target.value==='annual';setItems([...items]);rerender();});
+      }
+
+      const removeBtn=el('button',{class:'itbl-remove'});removeBtn.textContent='x';
+      removeBtn.addEventListener('click',()=>{setItems(items.filter(x=>x.id!==it.id));rerender();});
+
+      row.append(nameCell,qtyInp,costInp,mWrap,billDiv,typeEl,removeBtn);
+      container.append(row);
+    });
+
+    const footer=div('itbl-footer');
+    const totDiv=div('');totDiv.style.cssText='font-size:11px;font-weight:500';
+    const periodLabel = isMrr ? 'Total/Month' : 'Total/Event';
+    totDiv.innerHTML=periodLabel+' &nbsp;<span style="color:var(--t2);font-weight:400">Cost: '+fmt(totalCostAmort)+'</span>&nbsp;<span style="color:var(--green)">Billable: '+fmt(totalBillAmort)+'</span>';
+    const addBtn=el('button',{class:'add-btn'});addBtn.textContent='+ Add Item';
+    addBtn.addEventListener('click',()=>{
+      const newItem=isSwTable
+        ?{id:Date.now()+Math.random(),name:"New Item",qty:1,unitCost:0,margin:30,perDrone:false}
+        :{id:Date.now()+Math.random(),name:"New Item",qty:1,unitCost:0,margin:30,annual:false,isDji:false,isSkydio:false};
+      setItems([...items,newItem]);rerender();
+    });
+    footer.append(totDiv,addBtn); container.append(footer);
+  }
+  rebuild();
+  return container;
+}
+
+function makeProfilePanel(et, configType, profCalc, isActive) {
+  const prof = et[configType];
+  const isVlos = configType === 'vlos';
+  const isBvlos = configType === 'bvlos';
+
+  const panel = div('');
+  panel.style.cssText = 'background:var(--bg1);border-radius:6px;border:1.5px solid '+(isActive?'var(--red)':'var(--border)')+';overflow:hidden;min-width:0;';
+
+  const ph = div('');
+  ph.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:7px 12px;background:'+(isActive?'rgba(192,57,43,0.18)':'var(--bg2)')+';';
+  const phLeft = div('');
+  phLeft.style.cssText = 'display:flex;align-items:center;gap:8px;';
+  const configBadge = div('et-badge '+(isVlos?'vlos':'bvlos'));
+  configBadge.textContent = configType.toUpperCase();
+  const activeLbl = div('');
+  activeLbl.style.cssText = "font-size:10px;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.5px;color:"+(isActive?'var(--red2)':'var(--t3)')+";font-weight:700;";
+  activeLbl.textContent = isActive ? '> ACTIVE (counts toward portfolio)' : 'COMPARISON VIEW';
+  phLeft.append(configBadge, activeLbl);
+  const setActiveBtn = el('button', {class:'cfg-btn'+(isActive?' active':'')});
+  setActiveBtn.textContent = isActive ? 'Active' : 'Set Active';
+  setActiveBtn.style.cssText = 'font-size:10px;padding:2px 8px;';
+  setActiveBtn.addEventListener('click', () => { et.activeConfig = configType; rerender(); });
+  ph.append(phLeft, setActiveBtn);
+  panel.append(ph);
+
+  const statsBar = div('');
+  statsBar.style.cssText = 'display:flex;gap:16px;padding:6px 12px;background:var(--bg2);border-top:0.5px solid var(--border);flex-wrap:wrap;';
+  const rev = et.revenuePerEvent;
+  const profitRaw = rev - profCalc.totalCost;
+  const margRaw   = profitRaw / Math.max(1,rev);
+  [['Cost/Event', fmt(profCalc.totalCost), undefined],
+   ['Profit/Event', fmt(profitRaw), profitRaw<0?'#e24b4a':'#4ec94e'],
+   ['Margin', pct(margRaw), margRaw<0?'#e24b4a':margRaw<0.15?'#f5c45b':'#4ec94e'],
+  ].forEach(([lbl,val,color]) => {
+    const s=div('');s.style.cssText='min-width:90px;';
+    const l=div('et-stat-lbl');l.textContent=lbl;
+    const v=div('et-stat-val');v.textContent=val;if(color)v.style.color=color;
+    s.append(l,v);statsBar.append(s);
+  });
+  panel.append(statsBar);
+
+  const innerScroll = div('');
+  innerScroll.className = 'panel-scroll';
+  innerScroll.style.cssText = 'overflow-x:auto;max-width:100%;';
+  const inner = div('');
+  inner.style.cssText = 'display:grid;grid-template-columns:repeat(3,minmax(260px,1fr));gap:0;min-width:780px;';
+
+  // Column A — Scheduling + Personnel + Software + Other
+  const colA = div('');
+  colA.style.cssText = 'padding:10px;border-right:0.5px solid var(--border);';
+  const s1=div('');s1.style.cssText='font-size:10px;font-weight:700;color:var(--t2);letter-spacing:1px;margin-bottom:8px;text-transform:uppercase;';s1.textContent='Scheduling';
+  colA.append(s1);
+
+  if(S.hwPackages && S.hwPackages.length > 0){
+    const pkgRow = div('row');
+    const pkgLbl = div('row-lbl'); pkgLbl.textContent = 'HW Package';
+    const pkgNote = div('row-note'); pkgNote.textContent = 'Select hardware kit for this event';
+    const pkgLblWrap = div(''); pkgLblWrap.append(pkgLbl, pkgNote);
+    const pkgSel = el('select', {class:'itbl-sel'}); pkgSel.style.cssText='font-size:11px;padding:3px 6px;width:100%';
+    S.hwPackages.forEach(pkg => {
+      const o = el('option', {value:String(pkg.id)});
+      const djiBanWarning = S.skydioRisk && pkg.hasDji !== false ? ' [DJI BAN]' : '';
+      o.textContent = pkg.name + ' (' + pkg.kitType.toUpperCase() + ')' + djiBanWarning;
+      if(pkg.id === (prof.packageId||(isVlos?1:2))) o.selected = true;
+      pkgSel.append(o);
+    });
+    pkgSel.addEventListener('change', e => { prof.packageId = +e.target.value; rerender(); });
+    const selPkg = S.hwPackages.find(p=>p.id===(prof.packageId||(isVlos?1:2)));
+    const selCapex = selPkg ? selPkg.hwItems.reduce((s,i)=>s+i.unitCost*i.qty,0) : 0;
+    const pkgCapexNote = div(''); pkgCapexNote.style.cssText='font-size:10px;color:var(--yellow);text-align:right;margin-top:2px;';
+    pkgCapexNote.textContent = selPkg ? 'CapEx: '+fmt(selCapex) : '';
+    const pkgRight = div(''); pkgRight.append(pkgSel, pkgCapexNote);
+    pkgRow.append(pkgLblWrap, pkgRight);
+    colA.append(pkgRow);
+  }
+
+  colA.append(
+    makeRow(isVlos ? "Days On Site" : "Active Flying Days",
+      prof.daysPerEvent, v=>{prof.daysPerEvent=Math.max(1,v);rerender();},
+      {prefix:'#', note:isVlos?"Full days on site = event duration":"Remote pilot days (integrator=7)", warn:isVlos&&prof.daysPerEvent<7}),
+    makeRow("Coverage Hrs/Day", prof.coverageHours, v=>{prof.coverageHours=Math.min(24,Math.max(1,v));rerender();}, {prefix:'hr'}),
+    makeRow("OT Multiplier",    prof.otMultiplier,  v=>{prof.otMultiplier=v;rerender();}, {prefix:'x',warn:true,note:"1.5=time-and-a-half"}),
+  );
+
+  const s2=div('');s2.style.cssText='font-size:10px;font-weight:700;color:var(--t2);letter-spacing:1px;margin:10px 0 8px;text-transform:uppercase;';s2.textContent='Personnel';
+  colA.append(s2);
+  if(isVlos) {
+    if(prof.costRate1099===undefined) prof.costRate1099=prof.rate1099;
+    colA.append(
+      makeRow("1099 Cost Rate ($/hr)", prof.costRate1099, v=>{prof.costRate1099=v;rerender();}, {note:"What you actually pay pilots"}),
+      makeRow("1099 Bill Rate ($/hr)", prof.rate1099,     v=>{prof.rate1099=v;rerender();},     {note:"What you charge the client"}),
+      makeRow("# Pilots",              prof.pilots,       v=>{prof.pilots=Math.max(1,v);rerender();}, {prefix:'#',note:"= # travelers to site"}),
+    );
+    const costRate1099 = prof.costRate1099 !== undefined ? prof.costRate1099 : prof.rate1099;
+    const lpdCost=prof.pilots*costRate1099*prof.coverageHours*prof.otMultiplier;
+    const lpdBill=prof.pilots*prof.rate1099*prof.coverageHours*prof.otMultiplier;
+    const ltCost=lpdCost*prof.daysPerEvent;
+    const ltBill=lpdBill*prof.daysPerEvent;
+    const lMgn=ltBill>0?(ltBill-ltCost)/ltBill:0;
+    const pm=div('mini-stats');
+    pm.append(
+      miniRow("Labor cost/event", fmt(ltCost)),
+      miniRow("Labor bill/event", fmt(ltBill), '#4ec94e'),
+      miniRow("Labor margin",     (lMgn*100).toFixed(1)+'%', lMgn>0?'#4ec94e':'#e24b4a'),
+    );
+    colA.append(pm);
+  } else {
+    const _intCount   = prof.intCount   !== undefined ? prof.intCount   : 1;
+    const _intDays    = prof.intDays    !== undefined ? prof.intDays    : 7;
+    const _pilotCount = prof.pilotCount !== undefined ? prof.pilotCount : 2;
+    if(prof.costIntRate===undefined)   prof.costIntRate=prof.intRate;
+    if(prof.costPilotRate===undefined) prof.costPilotRate=prof.pilotRate;
+    colA.append(
+      makeRow("Integrator Cost Rate ($/hr)",  prof.costIntRate,   v=>{prof.costIntRate=v;rerender();},   {note:"Your cost"}),
+      makeRow("Integrator Bill Rate ($/hr)",  prof.intRate,       v=>{prof.intRate=v;rerender();},       {note:"What you charge client"}),
+      makeRow("# Integrators",                _intCount,          v=>{prof.intCount=Math.max(1,v);rerender();}, {prefix:'#'}),
+      makeRow("Integrator Billed Days",       _intDays,           v=>{prof.intDays=Math.max(1,v);rerender();},  {prefix:'#'}),
+      makeRow("Remote Pilot Cost Rate ($/hr)",prof.costPilotRate, v=>{prof.costPilotRate=v;rerender();}, {note:"Your cost"}),
+      makeRow("Remote Pilot Bill Rate ($/hr)",prof.pilotRate,     v=>{prof.pilotRate=v;rerender();},     {note:"What you charge client"}),
+      makeRow("# Remote Pilots",              _pilotCount,        v=>{prof.pilotCount=Math.max(1,v);rerender();},{prefix:'#'}),
+    );
+    const costIntRate   = prof.costIntRate   !== undefined ? prof.costIntRate   : prof.intRate;
+    const costPilotRate = prof.costPilotRate !== undefined ? prof.costPilotRate : prof.pilotRate;
+    const iCost=_intCount*costIntRate*prof.coverageHours*prof.otMultiplier*_intDays;
+    const pCost=_pilotCount*costPilotRate*prof.coverageHours*prof.otMultiplier*prof.daysPerEvent;
+    const iBill=_intCount*prof.intRate*prof.coverageHours*prof.otMultiplier*_intDays;
+    const pBill=_pilotCount*prof.pilotRate*prof.coverageHours*prof.otMultiplier*prof.daysPerEvent;
+    const totalLaborCost=iCost+pCost, totalLaborBill=iBill+pBill;
+    const lMgn=totalLaborBill>0?(totalLaborBill-totalLaborCost)/totalLaborBill:0;
+    const pm=div('mini-stats');
+    pm.append(
+      miniRow("Labor cost/event",  fmt(totalLaborCost)),
+      miniRow("Labor bill/event",  fmt(totalLaborBill), '#4ec94e'),
+      miniRow("Labor margin",      (lMgn*100).toFixed(1)+'%', lMgn>0?'#4ec94e':'#e24b4a'),
+    );
+    colA.append(pm);
+  }
+  const s3=div('');s3.style.cssText='font-size:10px;font-weight:700;color:var(--t2);letter-spacing:1px;margin:10px 0 8px;text-transform:uppercase;';s3.textContent='Software';
+  colA.append(s3);
+  const swSub2=div('sec-sub');swSub2.textContent='Per site=flat. Per drone=x count. Recurring.';
+  colA.append(swSub2,makeRow("# Drones",prof.dronesCount,v=>{prof.dronesCount=Math.max(1,v);rerender();},{prefix:'#'}));
+  const swTableWrap=div('overflow-x');swTableWrap.style.cssText='overflow-x:auto;';
+  const swTableInner=div('');swTableInner.style.cssText='min-width:480px;';
+  swTableInner.append(makeItemTable(()=>prof.swItems,newItems=>{prof.swItems=newItems;},()=>prof.dronesCount,true,()=>S.amortWeeks,()=>prof.daysPerEvent,()=>false));
+  swTableWrap.append(swTableInner);
+  colA.append(swTableWrap);
+
+  // Column B — Travel
+  const colB = div('');
+  colB.style.cssText = 'padding:10px;border-right:0.5px solid var(--border);';
+  const s4=div('');s4.style.cssText='font-size:10px;font-weight:700;color:var(--t2);letter-spacing:1px;margin-bottom:8px;text-transform:uppercase;';s4.textContent='Travel';colB.append(s4);
+
+  const t=prof.travel;
+  if(!t.airfareRows) t.airfareRows=[];
+  if(t.numTravelers===undefined) t.numTravelers=1;
+  if(t.numFlights===undefined) t.numFlights=t.numTravelers;
+  if(t.miles===undefined) t.miles=0;
+  if(t.mileageRate===undefined) t.mileageRate=0.70;
+  if(!t.travelExtras) t.travelExtras=[];
+
+  colB.append(
+    makeRow("Airfare/ticket",   t.airfare,        v=>{t.airfare=v;rerender();}),
+    makeRow("# Travelers",      t.numTravelers,   v=>{t.numTravelers=Math.max(1,Math.round(v));rerender();}, {prefix:'#'}),
+    makeRow("# Flights",        t.numFlights,     v=>{t.numFlights=Math.max(0,Math.round(v));rerender();},  {prefix:'#'}),
+    makeRow("Lodging nights",   t.lodgingNights,  v=>{t.lodgingNights=v;rerender();}, {prefix:'#'}),
+    makeRow("Lodging rate/night", t.lodgingRate,  v=>{t.lodgingRate=v;rerender();}),
+    makeRow("Per Diem Rate ($/day)", prof.perDiemRate!==undefined?prof.perDiemRate:75, v=>{prof.perDiemRate=v;rerender();}, {note:"GSA standard $75/day"}),
+    makeRow("Per Diem Days",    t.perDiemDays,    v=>{t.perDiemDays=v;rerender();}, {prefix:'#'}),
+    makeRow("Rental Car",       t.rental,         v=>{t.rental=v;rerender();}),
+    makeRow("Gas / Fuel",       t.gas,            v=>{t.gas=v;rerender();}),
+    makeRow("Miles Driven",     t.miles,          v=>{t.miles=Math.max(0,v);rerender();}, {prefix:'mi'}),
+    makeRow("Rate ($/mi)",      t.mileageRate,    v=>{t.mileageRate=v;rerender();}, {note:"IRS 2025: $0.70/mi"}),
+  );
+
+  if(!prof.shipping) prof.shipping={outbound:0,inbound:0};
+  const sShip=div('');sShip.style.cssText='font-size:10px;font-weight:700;color:var(--t2);letter-spacing:1px;margin:10px 0 6px;text-transform:uppercase;';sShip.textContent='Shipping';colB.append(sShip);
+  colB.append(
+    makeRow("Outbound Shipping", prof.shipping.outbound, v=>{prof.shipping.outbound=v;rerender();}),
+    makeRow("Inbound / Return",  prof.shipping.inbound,  v=>{prof.shipping.inbound=v;rerender();}),
+  );
+
+  const pdRate=prof.perDiemRate!==undefined?prof.perDiemRate:75;
+  const _numFlights = t.numFlights!==undefined?t.numFlights:(t.numTravelers||1);
+  const tA2=(t.airfare||0)*_numFlights;
+  const tPax=t.numTravelers||1;
+  const tMile=(+(t.miles||0))*(+(t.mileageRate||0.70));
+  const tL2=t.lodgingNights*t.lodgingRate*tPax,tP2=pdRate*t.perDiemDays*tPax;
+  const tShip=(prof.shipping.outbound||0)+(prof.shipping.inbound||0),tT2=tA2+tL2+tP2+t.rental+t.gas+tMile+tShip;
+  const tdiv=div('');tdiv.style.cssText='border-top:0.5px solid var(--border);padding-top:6px;margin-top:6px';
+  [['Travelers',tPax+' pax'],['Flights',_numFlights+' flying'],['Airfare',fmt(tA2)],['Lodging',fmt(tL2)],['Per Diem',fmt(tP2)],['Mileage',fmt(tMile)],['Shipping',fmt(tShip)],['Total / Event',fmt(tT2)]].forEach(([l,v])=>{
+    const r=div('mini-row');const lb=div('mini-lbl');lb.textContent=l;const vl=el('span',{});vl.textContent=v;if(l.startsWith('Total'))vl.style.fontWeight='500';r.append(lb,vl);tdiv.append(r);
+  });
+  colB.append(tdiv);
+
+  // Column C — Cost Breakdown
+  const colC = div('');
+  colC.style.cssText = 'padding:10px;';
+  const s5=div('');s5.style.cssText='font-size:10px;font-weight:700;color:var(--t2);letter-spacing:1px;margin-bottom:8px;text-transform:uppercase;';s5.textContent='Cost Breakdown';colC.append(s5);
+  const cbHdr2=div('cb-hdr');
+  [''  ,'Cost/Event','Bill/Event'].forEach((h,i)=>{const d=div('cb-col');d.textContent=h;if(i>0)d.style.textAlign='right';cbHdr2.append(d);});
+  colC.append(cbHdr2);
+  const p=profCalc,rv=et.revenuePerEvent;
+  const pRaw=rv-p.totalCost,pBill=rv-p.totalBill;
+  const mRaw=pRaw/Math.max(1,rv),mBill=pBill/Math.max(1,rv);
+  const laborBill = p.laborBill !== undefined ? p.laborBill : p.labor;
+  [
+    ['Labor (cost)',     fmt(p.labor),          fmt(laborBill)],
+    ['HW (amort)',       fmt(p.hwCost),         fmt(p.hwBill)],
+    ['Software',         fmt(p.swCost),         fmt(p.swBill)],
+    ['Travel',           fmt(p.travel),         fmt(p.travel)],
+    ['Other',            fmt(p.otherCost||0),   fmt(p.otherCost||0)],
+    ['Shipping',         fmt(p.shipping||0),    fmt(p.shipping||0)],
+    ['Total Cost',       fmt(p.totalCost),      fmt(p.totalBill)],
+    ['Revenue',          fmt(rv),               fmt(rv)],
+    ['Profit',           fmt(pRaw),             fmt(pBill)],
+    ['Margin',           pct(mRaw),             pct(mBill)],
+  ].forEach(([l,raw,bill])=>{
+    const row=div('cb-row');const bold=['Total Cost','Profit','Margin'].includes(l);
+    const lb=div('cb-lbl');lb.textContent=l;
+    const rv2=div('cb-val');rv2.textContent=raw;if(bold)rv2.style.fontWeight='600';
+    const bv=div('cb-val');bv.textContent=bill;if(bold)bv.style.fontWeight='600';
+    if(l==='Profit'){rv2.style.color=pRaw<0?'#e24b4a':'#4ec94e';bv.style.color=pBill<0?'#e24b4a':'#4ec94e';}
+    else if(l==='Margin'){rv2.style.color=mRaw<0?'#e24b4a':mRaw<0.15?'#f5c45b':'#4ec94e';bv.style.color=rv2.style.color;}
+    else if(!['Labor (cost)','Revenue'].includes(l)){bv.style.color='#4ec94e';}
+    row.append(lb,rv2,bv);colC.append(row);
+  });
+  const annSep=div('');annSep.style.cssText='border-top:0.5px solid var(--border2);margin-top:6px;padding-top:4px;font-size:10px;color:var(--t2);font-weight:700;letter-spacing:0.5px';
+  annSep.textContent='ANNUAL ('+et.eventsPerYear+' events)';colC.append(annSep);
+  const aRev=et.eventsPerYear*rv,aCost=et.eventsPerYear*p.totalCost,aProfit=aRev-aCost;
+  [['Revenue',fmt(aRev),undefined],['Full Cost',fmt(aCost),undefined],['Profit',fmt(aProfit),aProfit<0?'#e24b4a':'#4ec94e'],['Margin',pct(aProfit/Math.max(1,aRev)),aProfit/aRev<0?'#e24b4a':aProfit/aRev<0.15?'#f5c45b':'#4ec94e']].forEach(([l,v,c])=>{
+    const r=div('mini-row');const lb=div('mini-lbl');lb.textContent=l;const vl=el('span',{});vl.textContent=v;if(c)vl.style.color=c;r.append(lb,vl);colC.append(r);
+  });
+
+  inner.append(colA,colB,colC);innerScroll.append(inner);panel.append(innerScroll);return panel;
+}
+
+function makeEventTypeCard(et, etCalc) {
+  const card=div('et-card');
+  const hdr=div('et-header');
+  hdr.addEventListener('click',e=>{
+    if(e.target.tagName==='INPUT'||e.target.tagName==='BUTTON'||e.target.tagName==='SELECT')return;
+    et.open=!et.open;rerender();
+  });
+  const dot=div('et-color-dot');dot.style.background=et.color;
+  const nameInp=el('input',{type:'text',class:'et-name-inp',value:et.name});
+  nameInp.addEventListener('blur',e=>{et.name=e.target.value;rerender();});
+  nameInp.addEventListener('keydown',e=>{if(e.key==='Enter')e.target.blur();});
+  const badges=div('et-badges');
+  const cfgBadge=div('et-badge '+(et.activeConfig==='vlos'?'vlos':'bvlos'));
+  cfgBadge.textContent=et.activeConfig.toUpperCase()+' ACTIVE';
+  const evtBadge=div('et-badge events');evtBadge.textContent=et.eventsPerYear+' events/yr';
+  const wkBadge=div('et-badge events');wkBadge.textContent=etCalc.weeksUsed.toFixed(1)+' wks';
+  badges.append(cfgBadge,evtBadge,wkBadge);
+  const vc=calcProfileCost(et,'vlos'),bc=calcProfileCost(et,'bvlos'),rv=et.revenuePerEvent;
+  const stats=div('et-stats');
+  const addStat=(lbl,val,color)=>{const s=div('et-stat'),l=div('et-stat-lbl'),v=div('et-stat-val');l.textContent=lbl;v.textContent=val;if(color)v.style.color=color;s.append(l,v);stats.append(s);};
+  addStat('VLOS Cost',fmt(vc.totalCost),undefined);
+  addStat('VLOS Margin',pct((rv-vc.totalCost)/Math.max(1,rv)),(rv-vc.totalCost)<0?'#e24b4a':(rv-vc.totalCost)/rv<0.15?'#f5c45b':'#4ec94e');
+  addStat('BVLOS Cost',fmt(bc.totalCost),undefined);
+  addStat('BVLOS Margin',pct((rv-bc.totalCost)/Math.max(1,rv)),(rv-bc.totalCost)<0?'#e24b4a':(rv-bc.totalCost)/rv<0.15?'#f5c45b':'#4ec94e');
+  const removeBtn=el('button',{class:'et-remove'});removeBtn.textContent='x';
+  removeBtn.title='Remove event type';
+  removeBtn.addEventListener('click',e=>{e.stopPropagation();if(S.eventTypes.length<=1){alert('Need at least one event type.');return;}S.eventTypes=S.eventTypes.filter(x=>x.id!==et.id);rerender();});
+  hdr.append(dot,nameInp,badges,stats,removeBtn);card.append(hdr);
+
+  const body=div('et-body'+(et.open?' open':''));
+  const sharedRow=div('');sharedRow.style.cssText='display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap;padding:8px 0;border-bottom:0.5px solid var(--border);';
+  const colorLbl=div('');colorLbl.style.cssText='font-size:11px;color:var(--t2)';colorLbl.textContent='Color:';
+  const colorInp=el('input',{type:'color',value:et.color});
+  colorInp.style.cssText='width:26px;height:20px;border:none;background:none;cursor:pointer;padding:0';
+  colorInp.addEventListener('input',e=>{et.color=e.target.value;dot.style.background=et.color;});
+  colorInp.addEventListener('change',()=>rerender());
+  const sharedF=div('');sharedF.style.cssText='display:flex;gap:24px;align-items:flex-start;flex:1;flex-wrap:wrap;';
+  const _sharedDays = (et[et.activeConfig||'bvlos']||et.bvlos||et.vlos||{daysPerEvent:7}).daysPerEvent;
+  sharedF.append(
+    makeRow("Event Revenue",et.revenuePerEvent,v=>{et.revenuePerEvent=v;rerender();}),
+    makeRow("Event Duration (days)",_sharedDays,v=>{
+      const d=Math.max(1,v);
+      if(et.vlos) et.vlos.daysPerEvent=d;
+      if(et.bvlos) et.bvlos.daysPerEvent=d;
+      rerender();
+    },{prefix:'#',note:"Days on site — updates both VLOS & BVLOS"}),
+    makeRow("Occurrences / Year",et.eventsPerYear,v=>{et.eventsPerYear=Math.max(0,v);rerender();},{prefix:'#'}),
+  );
+  if(et.showVlos===undefined) et.showVlos=true;
+  if(et.showBvlos===undefined) et.showBvlos=true;
+  sharedRow.append(colorLbl,colorInp,sharedF);body.append(sharedRow);
+
+  const visibleCount=(et.showVlos?1:0)+(et.showBvlos?1:0);
+  const panelRow=div('');panelRow.style.cssText='display:grid;grid-template-columns:repeat('+visibleCount+',1fr);gap:10px;overflow-x:auto;min-width:0;';
+  if(et.showVlos)  panelRow.append(makeProfilePanel(et,'vlos', calcProfileCost(et,'vlos'),  et.activeConfig==='vlos'));
+  if(et.showBvlos) panelRow.append(makeProfilePanel(et,'bvlos',calcProfileCost(et,'bvlos'), et.activeConfig==='bvlos'));
+  body.append(panelRow);card.append(body);return card;
+}
+
+function makeUtilBar(etCalcs, totalWeeksUsed, seasonWeeks) {
+  const wrap=div('util-bar-wrap');
+  let offset=0;
+  etCalcs.forEach(ec=>{
+    const w=Math.min(100-offset,(ec.weeksUsed/seasonWeeks)*100);
+    const seg=div('util-bar-segment');
+    seg.style.left=offset+'%';seg.style.width=w+'%';
+    seg.style.background=ec.et.color;seg.style.opacity='0.85';
+    seg.title=ec.et.name+': '+ec.weeksUsed.toFixed(1)+' wks';
+    wrap.append(seg);offset+=w;
+  });
+  if(offset<100){
+    const idle=div('util-bar-segment');
+    idle.style.left=offset+'%';idle.style.width=(100-offset)+'%';
+    idle.style.background='#2a2a2a';idle.title='Idle';wrap.append(idle);
+  }
+  const lbl=div('util-bar-label');
+  const used=Math.min(totalWeeksUsed,seasonWeeks).toFixed(1);
+  const idle=Math.max(0,seasonWeeks-totalWeeksUsed).toFixed(1);
+  lbl.textContent=used+' / '+seasonWeeks+' wks · '+idle+' idle';
+  wrap.append(lbl);
+  return wrap;
+}
+
+// ── MRR (sustained / monthly recurring) engine ─────────────────
+
+function calcMrrClient(client) {
+  const months      = client.contractMonths || 24;
+  const amortMonths = client.hwAmortMonths  || months;
+  const packagesOnSite = client.packagesOnSite || 1;
+
+  const resolvedPkgObj = (client.hwPackageId && MRR.hwPackages)
+    ? (MRR.hwPackages.find(p=>p.id===client.hwPackageId)||null)
+    : null;
+  const baseHwItems = resolvedPkgObj ? resolvedPkgObj.hwItems : (client.hwItems||[]);
+  const resolvedHwItems = (client.pkgOverrideItems !== null && client.pkgOverrideItems !== undefined)
+    ? client.pkgOverrideItems
+    : baseHwItems;
+  const isSflPkg = resolvedPkgObj ? (resolvedPkgObj.vendor==='sunflower') : false;
+
+  const hwAcquisition = client.hwAcquisition || 'amortized';
+  let hwCapex=0, hwMonthCost=0, hwMonthBill=0;
+  let hwOneTimeSalePrice=0;
+  resolvedHwItems.forEach(it=>{
+    const tc = it.unitCost * it.qty * packagesOnSite;
+    const tb = tc * (1 + (it.margin||30)/100);
+    if(hwAcquisition==='client-purchase'){
+      if(it.annual){
+        const mc = tc/12, mb = tb/12;
+        hwMonthCost+= mc; hwMonthBill+= mb;
+      } else {
+        hwOneTimeSalePrice += tb;
+        hwCapex += tc;
+      }
+    } else {
+      const mc = it.annual ? tc/12 : (amortMonths>0 ? tc/amortMonths : 0);
+      const mb = it.annual ? tb/12 : (amortMonths>0 ? tb/amortMonths : 0);
+      hwCapex    += tc;
+      hwMonthCost+= mc;
+      hwMonthBill+= mb;
+    }
+  });
+
+  // ADS-B
+  let adsbMonthCost=0, adsbMonthBill=0, adsbCapex=0;
+  if(client.adsbEnabled && (client.adsbItems||[]).length>0){
+    (client.adsbItems).forEach(it=>{
+      const tc = it.unitCost * it.qty;
+      const tb = tc * (1 + (it.margin||30)/100);
+      const mc = it.annual ? tc/12 : (amortMonths>0 ? tc/amortMonths : 0);
+      const mb = it.annual ? tb/12 : (amortMonths>0 ? tb/amortMonths : 0);
+      adsbCapex+=tc; adsbMonthCost+=mc; adsbMonthBill+=mb;
+    });
+  }
+  // Drone Tag (site-level)
+  let droneTagMonthCost=0, droneTagMonthBill=0, droneTagCapex=0;
+  if(client.droneTagEnabled && (client.droneTagItems||[]).length>0){
+    (client.droneTagItems).forEach(it=>{
+      const tc = it.unitCost * it.qty;
+      const tb = tc * (1 + (it.margin||30)/100);
+      const mc = it.annual ? tc/12 : (amortMonths>0 ? tc/amortMonths : 0);
+      const mb = it.annual ? tb/12 : (amortMonths>0 ? tb/amortMonths : 0);
+      droneTagCapex+=tc; droneTagMonthCost+=mc; droneTagMonthBill+=mb;
+    });
+  }
+  // Networking (site-level)
+  let networkingMonthCost=0, networkingMonthBill=0, networkingCapex=0;
+  if(client.networkingEnabled && (client.networkingItems||[]).length>0){
+    (client.networkingItems).forEach(it=>{
+      const tc = it.unitCost * it.qty;
+      const tb = tc * (1 + (it.margin||30)/100);
+      const mc = it.annual ? tc/12 : (amortMonths>0 ? tc/amortMonths : 0);
+      const mb = it.annual ? tb/12 : (amortMonths>0 ? tb/amortMonths : 0);
+      networkingCapex+=tc; networkingMonthCost+=mc; networkingMonthBill+=mb;
+    });
+  }
+
+  // Software
+  const activeDrones = client.activeDrones || 1;
+  let swMonthCost=0, swMonthBill=0;
+  (client.swItems||[]).forEach(it=>{
+    const eq = it.perDrone ? it.qty*activeDrones : it.qty;
+    const tc = it.unitCost * eq;
+    const tb = tc * (1 + (it.margin||30)/100);
+    swMonthCost += tc; swMonthBill += tb;
+  });
+
+  // Piloting
+  const coverageHrsDay = client.coverageHrsDay || 8;
+  const daysPerMonth   = client.daysPerMonth   || 30;
+  const pilotsFlying   = client.pilotsFlying   || 1;
+  const sflMode        = isSflPkg ? (client.sflPilotMode||'dxd') : 'dxd';
+  const pilotMode      = !isSflPkg ? (client.pilotMode||'dxd') : 'dxd';
+
+  let pilotCost=0, pilotBill=0, sflPilotCost=0, sflPilotBill=0;
+  let dxdHrsDay=coverageHrsDay, sflHrsDay=0;
+
+  if(!isSflPkg){
+    if(pilotMode==='client'){
+      dxdHrsDay=0; pilotCost=0; pilotBill=0;
+    } else if(pilotMode==='surge'){
+      dxdHrsDay = 0;
+      const surgeHrs = client.surgeEstHrsMonth || 0;
+      pilotCost = (client.pilotCostRate||52.67) * surgeHrs;
+      pilotBill = (client.surgeHourlyRate||150) * surgeHrs;
+    } else if(pilotMode==='shared'){
+      dxdHrsDay = 0;
+      const sharedClients  = Math.max(1, client.sharedRouteClients || 4);
+      const sharedShiftHrs = client.sharedShiftHrs || 8;
+      const sharedDays     = client.sharedDaysPerMonth || daysPerMonth;
+      const totalRouteHrsMo = sharedShiftHrs * sharedDays;
+      pilotCost = (client.pilotCostRate||52.67) * totalRouteHrsMo / sharedClients;
+      pilotBill = (client.pilotBillRate||68.46) * totalRouteHrsMo / sharedClients;
+    } else {
+      dxdHrsDay = coverageHrsDay;
+      const hrs = dxdHrsDay * daysPerMonth * pilotsFlying;
+      pilotCost = (client.pilotCostRate||52.67) * hrs;
+      pilotBill = (client.pilotBillRate||68.46) * hrs;
+    }
+  } else if(sflMode==='dxd'){
+    dxdHrsDay = coverageHrsDay;
+    const hrs = dxdHrsDay * daysPerMonth * pilotsFlying;
+    pilotCost = (client.pilotCostRate||52.67) * hrs;
+    pilotBill = (client.pilotBillRate||68.46) * hrs;
+  } else if(sflMode==='sfl'){
+    dxdHrsDay = 0;
+    sflHrsDay = coverageHrsDay;
+    if(sflHrsDay > 0) {
+      const tier = SFL_PILOT_TIERS.reduce((best,t)=>Math.abs(t.hrsPerDay-sflHrsDay)<Math.abs(best.hrsPerDay-sflHrsDay)?t:best, SFL_PILOT_TIERS[0]);
+      sflPilotCost = tier.monthlyCost;
+      sflPilotBill = tier.monthlyCost * (1 + (client.sflPilotMarkup||30)/100);
+      if(client.sflSetupFeeIncluded!==false && months>0) sflPilotCost += SFL_PILOT_SETUP_FEE/months;
+    }
+  } else {
+    dxdHrsDay  = Math.min(client.sflDxdHrsDay||0, coverageHrsDay);
+    sflHrsDay  = Math.max(0, coverageHrsDay - dxdHrsDay);
+    const dxdHrs = dxdHrsDay * daysPerMonth * pilotsFlying;
+    pilotCost = (client.pilotCostRate||52.67) * dxdHrs;
+    pilotBill = (client.pilotBillRate||68.46) * dxdHrs;
+    if(sflHrsDay>0){
+      const tier = SFL_PILOT_TIERS.reduce((best,t)=>Math.abs(t.hrsPerDay-sflHrsDay)<Math.abs(best.hrsPerDay-sflHrsDay)?t:best, SFL_PILOT_TIERS[0]);
+      sflPilotCost = tier.monthlyCost;
+      sflPilotBill = tier.monthlyCost * (1 + (client.sflPilotMarkup||30)/100);
+      if(client.sflSetupFeeIncluded!==false && months>0) sflPilotCost += SFL_PILOT_SETUP_FEE/months;
+    }
+  }
+
+  const remoteOpsCost  = (client.remoteOpsCostRate||52.67) * (client.remoteOpsHrsMonth||0);
+
+  // Waiver
+  const waiverMode = client.waiverMode || 'none';
+  let waiverMonthCost=0, waiverMonthBill=0;
+  let waiverOneTimeCost=0, waiverOneTimeBill=0;
+  if(waiverMode==='dxd-writes'){
+    const draftFee = client.waiverDraftFee || 0;
+    const mgmtFee  = client.waiverMgmtFeeMonth || 0;
+    if(client.waiverDraftAmortized!==false){
+      const draftPerMonth = months>0 ? draftFee/months : 0;
+      waiverMonthCost += draftPerMonth;
+      waiverMonthBill += draftPerMonth;
+    } else {
+      waiverOneTimeCost += draftFee;
+      waiverOneTimeBill += draftFee;
+    }
+    waiverMonthCost += mgmtFee;
+    waiverMonthBill += mgmtFee;
+  } else if(waiverMode==='under-dxd'){
+    const trainFee = (client.waiverTrainingFeePerPilot||0) * (client.waiverTrainingPilots||1);
+    if(client.waiverTrainingAmortized!==false){
+      const trainPerMonth = months>0 ? trainFee/months : 0;
+      waiverMonthCost += trainPerMonth;
+      waiverMonthBill += trainPerMonth;
+    } else {
+      waiverOneTimeCost += trainFee;
+      waiverOneTimeBill += trainFee;
+    }
+  }
+
+  const laborCostMonth = pilotCost + sflPilotCost + remoteOpsCost;
+  const laborBillMonth = pilotBill + sflPilotBill;
+
+  function tripCost(t) {
+    if(!t) return 0;
+    const flights = (t.numFlights!==undefined?t.numFlights:(t.numTravelers||1));
+    return (t.airfare||0)*flights
+      + (t.lodgingNights||0)*(t.lodgingRate||150)*(t.numTravelers||1)
+      + (t.perDiemRate||75)*(t.perDiemDays||0)*(t.numTravelers||1)
+      + (t.rental||0) + (t.gas||0);
+  }
+  const installOneTime  = tripCost(client.installTrip);
+  const installPerMonth = months>0 ? installOneTime/months : 0;
+  const visitCostEach   = tripCost(client.visitTrip);
+  const visitCostMonth  = visitCostEach * (client.monthlyVisits||0);
+
+  const totalCostMonth = laborCostMonth + hwMonthCost + adsbMonthCost + droneTagMonthCost + networkingMonthCost + swMonthCost + installPerMonth + visitCostMonth + waiverMonthCost;
+  const totalBillMonth = laborBillMonth + hwMonthBill + adsbMonthBill + droneTagMonthBill + networkingMonthBill + swMonthBill + installPerMonth + visitCostMonth + waiverMonthBill;
+  const revenue        = client.monthlyFee || 0;
+  const profitMonth    = revenue - totalCostMonth;
+  const marginMonth    = revenue > 0 ? profitMonth / revenue : 0;
+  const billMargin     = revenue > 0 ? (revenue - totalBillMonth) / revenue : 0;
+  const totalOneTime   = (hwAcquisition==='amortized' ? hwCapex : 0) + adsbCapex + droneTagCapex + networkingCapex + installOneTime + waiverOneTimeCost;
+  const beMonths       = profitMonth > 0 ? Math.ceil(totalOneTime / profitMonth) : null;
+
+  return {
+    hwCapex, hwMonthCost, hwMonthBill,
+    hwAcquisition, hwOneTimeSalePrice,
+    adsbCapex, adsbMonthCost, adsbMonthBill,
+    droneTagCapex, droneTagMonthCost, droneTagMonthBill,
+    networkingCapex, networkingMonthCost, networkingMonthBill,
+    swMonthCost, swMonthBill,
+    laborCostMonth, laborBillMonth,
+    pilotCost, pilotBill, sflPilotCost, sflPilotBill,
+    remoteOpsCost, sflMode, isSflPkg, pilotMode,
+    dxdHrsDay, sflHrsDay,
+    pilotHrsMonth: dxdHrsDay*daysPerMonth*pilotsFlying,
+    coverageHrsDay, daysPerMonth, pilotsFlying, activeDrones,
+    installOneTime, installPerMonth, visitCostMonth,
+    waiverMonthCost, waiverMonthBill, waiverOneTimeCost, waiverOneTimeBill,
+    totalCostMonth, totalBillMonth,
+    revenue, profitMonth, marginMonth, billMargin,
+    totalOneTime, beMonths,
+    contractMonths: months, amortMonths, packagesOnSite,
+  };
+}
+
+function deriveMrrPortfolio() {
+  const calcs = MRR.clients.map(c=>({client:c, calc:calcMrrClient(c)}));
+  function grpStats(filter){
+    const g=calcs.filter(filter);
+    const rev=g.reduce((s,x)=>s+x.calc.revenue,0);
+    const cost=g.reduce((s,x)=>s+x.calc.totalCostMonth,0);
+    const profit=rev-cost;
+    return {count:g.length, rev, cost, profit, margin:rev>0?profit/rev:0, capex:g.reduce((s,x)=>s+x.calc.hwCapex,0)};
+  }
+  const active    = grpStats(x=>(x.client.status||'active')==='active');
+  const potential = grpStats(x=>(x.client.status||'active')==='potential');
+  const template  = grpStats(x=>(x.client.status||'active')==='template');
+  const totalMRR    = active.rev;
+  const totalCost   = active.cost;
+  const totalProfit = active.profit;
+  const blendMargin = active.margin;
+  const totalCapex  = active.capex;
+  return {calcs, active, potential, template, totalMRR, totalCost, totalProfit, blendMargin, totalCapex};
+}
+
+function makeMrrTripRow(label, tripObj, onUpdate, opts={}) {
+  const wrap=div('');wrap.style.cssText='margin-bottom:2px;';
+  const hdr=div('');hdr.style.cssText='font-size:10px;font-weight:700;color:var(--t2);letter-spacing:1px;text-transform:uppercase;margin:8px 0 4px;';
+  hdr.textContent=label;wrap.append(hdr);
+  if(opts.note){const n=div('');n.style.cssText='font-size:9px;color:var(--t3);margin-bottom:4px;';n.textContent=opts.note;wrap.append(n);}
+  const fields=[
+    ['# Travelers','numTravelers','#'],['# Flights','numFlights','#'],
+    ['Airfare/ticket','airfare','$'],['Lodging nights','lodgingNights','#'],
+    ['Lodging rate/night','lodgingRate','$'],['Per diem days','perDiemDays','#'],
+    ['Per diem rate/day','perDiemRate','$'],['Rental','rental','$'],['Gas','gas','$'],
+  ];
+  fields.forEach(([lbl,key,pfx])=>{
+    wrap.append(makeRow(lbl, tripObj[key], v=>{tripObj[key]=v;onUpdate();}, {prefix:pfx}));
+  });
+  return wrap;
+}
+
+function makeMrrClientCard(client, clientIdx) {
+  const calc = calcMrrClient(client);
+  if(client.status===undefined) client.status='active';
+  const card=div('');
+  card.style.cssText='background:var(--bg2);border:0.5px solid var(--border);border-top:3px solid '+client.color+';border-radius:6px;margin-bottom:12px;overflow:hidden;opacity:'+(client.status==='template'?'0.75':'1')+';';
+
+  const cardHdr=div('');cardHdr.style.cssText='display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;user-select:none;';
+  const dot=div('');dot.style.cssText='width:10px;height:10px;border-radius:50%;background:'+client.color+';flex-shrink:0;';
+  const nameInp=el('input',{type:'text',value:client.name});
+  nameInp.style.cssText="background:none;border:none;color:var(--t1);font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;letter-spacing:1px;flex:1;cursor:text;";
+  nameInp.addEventListener('click',e=>e.stopPropagation());
+  nameInp.addEventListener('change',e=>{client.name=e.target.value;rerender();});
+
+  const statusColors={active:'#4ec94e',potential:'#4a9eff',template:'#a78bfa'};
+  const statusLabels={active:'ACTIVE',potential:'POTENTIAL',template:'TEMPLATE'};
+  const statusBtn=el('button',{class:'cfg-btn'});
+  const sc=statusColors[client.status||'active'];
+  statusBtn.textContent=statusLabels[client.status||'active'];
+  statusBtn.style.cssText='font-size:9px;padding:2px 8px;border-color:'+sc+';color:'+sc+';white-space:nowrap;';
+  statusBtn.title='Click to cycle: Active → Potential → Template';
+  statusBtn.addEventListener('click',e=>{
+    e.stopPropagation();
+    const cycle={active:'potential',potential:'template',template:'active'};
+    client.status=cycle[client.status||'active'];rerender();
+  });
+
+  const badge=div('');
+  const mPct=(calc.marginMonth*100).toFixed(1);
+  const mColor=calc.marginMonth<0?'#e24b4a':calc.marginMonth<(MRR.marginFloor/100)?'#f5c45b':'#4ec94e';
+  badge.style.cssText='font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(0,0,0,0.3);color:'+mColor+';border:0.5px solid '+mColor+';font-weight:700;white-space:nowrap;';
+  badge.textContent=fmt(calc.revenue)+'/mo · '+mPct+'% margin';
+  const toggleBtn=el('button',{class:'cfg-btn'+(client.open?' active':'')});toggleBtn.textContent=client.open?'COLLAPSE':'EXPAND';
+  toggleBtn.style.cssText='font-size:10px;padding:2px 10px;';
+
+  const dupBtn=el('button',{class:'cfg-btn'});dupBtn.textContent='COPY';dupBtn.style.cssText='font-size:10px;padding:2px 10px;color:#a78bfa;border-color:#a78bfa;';
+  dupBtn.addEventListener('click',e=>{
+    e.stopPropagation();
+    const copy=JSON.parse(JSON.stringify(client));
+    copy.id=++_mrrId;
+    copy.name=client.name+' (Copy)';
+    copy.color='#a78bfa';
+    copy.open=true;
+    const idx=MRR.clients.findIndex(c=>c.id===client.id);
+    MRR.clients.splice(idx+1,0,copy);
+    rerender();
+  });
+  const delBtn=el('button',{class:'cfg-btn'});delBtn.textContent='X';delBtn.style.cssText='font-size:10px;padding:2px 8px;color:var(--red2);';
+  delBtn.addEventListener('click',e=>{e.stopPropagation();if(MRR.clients.length>1&&confirm('Remove '+client.name+'?')){MRR.clients=MRR.clients.filter(c=>c.id!==client.id);rerender();}});
+  cardHdr.addEventListener('click',()=>{client.open=!client.open;rerender();});
+  cardHdr.append(dot,nameInp,statusBtn,badge,toggleBtn,dupBtn,delBtn);
+  card.append(cardHdr);
+
+  if(!client.open) return card;
+
+  const body=div('');body.style.cssText='overflow-x:auto;';
+  const inner=div('');inner.style.cssText='display:grid;grid-template-columns:repeat(3,minmax(260px,1fr));gap:0;min-width:780px;';
+
+  // Column A — Contract / Coverage / Piloting / Ops / ADS-B / Drone Tag / Networking / Waiver
+  const colA=div('');colA.style.cssText='padding:14px;border-right:0.5px solid var(--border);';
+  const colAhdr=div('');colAhdr.style.cssText='font-size:10px;font-weight:700;color:var(--t2);letter-spacing:1px;margin-bottom:10px;text-transform:uppercase;';
+  colAhdr.textContent='Contract & Coverage';colA.append(colAhdr);
+
+  if(client.hwAmortMonths===undefined) client.hwAmortMonths=client.contractMonths||24;
+  colA.append(
+    makeRow("Monthly Fee ($)",          client.monthlyFee,     v=>{client.monthlyFee=v;rerender();}),
+    makeRow("Contract Length (months)", client.contractMonths, v=>{client.contractMonths=Math.max(1,Math.round(v));rerender();},{prefix:'#'}),
+    makeRow("HW Amort Window (months)", client.hwAmortMonths,  v=>{client.hwAmortMonths=Math.max(1,Math.round(v));rerender();},{prefix:'#',note:"Extend to model renewals"}),
+  );
+
+  const pkgCountHdr=div('');pkgCountHdr.style.cssText='font-size:10px;font-weight:700;color:var(--t2);letter-spacing:1px;margin:12px 0 4px;text-transform:uppercase;';pkgCountHdr.textContent='Deployment';colA.append(pkgCountHdr);
+  if(client.packagesOnSite===undefined) client.packagesOnSite=1;
+  if(client.activeDrones===undefined)   client.activeDrones=1;
+  colA.append(
+    makeRow("Packages on Site",  client.packagesOnSite, v=>{client.packagesOnSite=Math.max(1,Math.round(v));rerender();},{prefix:'#'}),
+    makeRow("# Active Coverage", client.activeDrones,   v=>{client.activeDrones=Math.max(1,Math.round(v));rerender();},{prefix:'#'}),
+  );
+
+  const covHdr=div('');covHdr.style.cssText='font-size:10px;font-weight:700;color:var(--t2);letter-spacing:1px;margin:12px 0 4px;text-transform:uppercase;';covHdr.textContent='Coverage Schedule';colA.append(covHdr);
+  if(client.coverageHrsDay===undefined) client.coverageHrsDay=8;
+  if(client.daysPerMonth===undefined)   client.daysPerMonth=30;
+  const covHrsWrap=div('');covHrsWrap.style.cssText='display:flex;align-items:center;gap:8px;padding:3px 0;';
+  const covLbl=div('mini-lbl');covLbl.textContent='Coverage hrs/day';
+  const covSel=el('select',{class:'itbl-sel'});covSel.style.cssText='width:auto;font-size:11px;padding:3px 6px;';
+  [4,5,6,8,10,12,16,20,24].forEach(h=>{const o=el('option',{value:h});o.textContent=h+' hrs';if(client.coverageHrsDay===h)o.selected=true;covSel.append(o);});
+  covSel.value=String(client.coverageHrsDay||8);
+  covSel.addEventListener('change',e=>{client.coverageHrsDay=+e.target.value;rerender();});
+  covHrsWrap.append(covLbl,covSel);colA.append(covHrsWrap);
+  colA.append(makeRow("Days/month",client.daysPerMonth,v=>{client.daysPerMonth=Math.max(1,Math.min(31,Math.round(v)));rerender();},{prefix:'#'}));
+
+  // Piloting — simplified to dxd-only here for stability; advanced modes are state-preserved
+  const pilotHdr=div('');pilotHdr.style.cssText='font-size:10px;font-weight:700;color:var(--t2);letter-spacing:1px;margin:12px 0 4px;text-transform:uppercase;';pilotHdr.textContent='Piloting';colA.append(pilotHdr);
+  if(client.pilotsFlying===undefined)  client.pilotsFlying=1;
+  if(client.pilotCostRate===undefined) client.pilotCostRate=52.67;
+  if(client.pilotBillRate===undefined) client.pilotBillRate=68.46;
+  colA.append(
+    makeRow("# Pilots Flying",        client.pilotsFlying,  v=>{client.pilotsFlying=Math.max(1,Math.round(v));rerender();},{prefix:'#'}),
+    makeRow("Pilot Cost Rate ($/hr)", client.pilotCostRate, v=>{client.pilotCostRate=v;rerender();}, {note:"Your cost"}),
+    makeRow("Pilot Bill Rate ($/hr)", client.pilotBillRate, v=>{client.pilotBillRate=v;rerender();}, {note:"Client rate"}),
+  );
+  const pilotHrsMonth=(calc.dxdHrsDay||0)*(client.daysPerMonth||30)*(client.pilotsFlying||1);
+  const pilotMgn=calc.pilotBill>0?(calc.pilotBill-calc.pilotCost)/calc.pilotBill:0;
+  const lStats=div('mini-stats');
+  lStats.append(miniRow("Pilot hrs/mo",pilotHrsMonth+''),miniRow("Pilot cost/mo",fmt(calc.pilotCost)),miniRow("Pilot bill/mo",fmt(calc.pilotBill),'#4ec94e'),miniRow("Pilot margin",(pilotMgn*100).toFixed(1)+'%',pilotMgn>0?'#4ec94e':'#e24b4a'));
+  colA.append(lStats);
+
+  // Remote ops
+  const opsHdr=div('');opsHdr.style.cssText='font-size:10px;font-weight:700;color:var(--t2);letter-spacing:1px;margin:12px 0 2px;text-transform:uppercase;';opsHdr.textContent='Remote Ops / Acct Mgmt';colA.append(opsHdr);
+  if(client.remoteOpsHrsMonth===undefined) client.remoteOpsHrsMonth=10;
+  if(client.remoteOpsCostRate===undefined) client.remoteOpsCostRate=52.67;
+  colA.append(makeRow("Ops Hrs/Month",client.remoteOpsHrsMonth,v=>{client.remoteOpsHrsMonth=Math.max(0,v);rerender();},{prefix:'#'}),makeRow("Ops Cost Rate ($/hr)",client.remoteOpsCostRate,v=>{client.remoteOpsCostRate=v;rerender();}));
+  if(calc.remoteOpsCost>0){const opsStats=div('mini-stats');opsStats.append(miniRow("Ops cost/mo",fmt(calc.remoteOpsCost),'#f5c45b'));colA.append(opsStats);}
+
+  // Column B — Hardware Package + Software
+  const colB=div('');colB.style.cssText='padding:14px;border-right:0.5px solid var(--border);';
+  const colBhdr=div('');colBhdr.style.cssText='font-size:10px;font-weight:700;color:var(--t2);letter-spacing:1px;margin-bottom:6px;text-transform:uppercase;';
+  colBhdr.textContent='Sustained HW Package';colB.append(colBhdr);
+
+  const pkgSelWrap=div('');pkgSelWrap.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:10px;';
+  const pkgSelLbl=div('');pkgSelLbl.style.cssText='font-size:11px;color:var(--t2);white-space:nowrap;';pkgSelLbl.textContent='Package:';
+  const pkgSel=el('select',{class:'itbl-sel'});pkgSel.style.cssText='flex:1;font-size:11px;padding:4px 6px;';
+  const noneOpt=el('option',{value:''});noneOpt.textContent='— Custom (inline items) —';pkgSel.append(noneOpt);
+  (MRR.hwPackages||[]).forEach(pkg=>{
+    const vendorLabel={dji:'DJI',skydio:'Skydio',sunflower:'Sunflower'}[pkg.vendor||'dji']||'';
+    const o=el('option',{value:String(pkg.id)});
+    o.textContent=(vendorLabel?'['+vendorLabel+'] ':'')+pkg.name;
+    if(client.hwPackageId===pkg.id) o.selected=true;
+    pkgSel.append(o);
+  });
+  pkgSel.value = client.hwPackageId ? String(client.hwPackageId) : '';
+  pkgSel.addEventListener('change',e=>{
+    client.hwPackageId = e.target.value ? Number(e.target.value) : null;
+    rerender();
+  });
+  pkgSelWrap.append(pkgSelLbl,pkgSel);colB.append(pkgSelWrap);
+
+  const resolvedPkg = client.hwPackageId ? (MRR.hwPackages||[]).find(p=>p.id===client.hwPackageId) : null;
+  if(resolvedPkg) {
+    const amortMo = client.hwAmortMonths || client.contractMonths;
+    const pkgSumBox=div('hw-kit-box');
+    const pkgBaseCapex=(resolvedPkg.hwItems||[]).reduce((s,i)=>s+i.unitCost*i.qty,0);
+    const pos = client.packagesOnSite || 1;
+    const pkgCapex=pkgBaseCapex*pos;
+    [['One-Time CapEx',     fmt(pkgCapex),                '#f5c45b'],
+     ['Items in Package',   (resolvedPkg.hwItems||[]).length+'', undefined],
+     ['Amort Window',       amortMo+' mo', 'var(--t2)'],
+     ['HW Cost/Month',      fmt(pkgCapex/amortMo),        'var(--t2)'],
+    ].forEach(([l,v,c])=>{
+      const r=div('hw-kit-row');const lb=div('hw-kit-lbl');lb.textContent=l;const vl=div('hw-kit-val');vl.textContent=v;if(c)vl.style.color=c;r.append(lb,vl);pkgSumBox.append(r);
+    });
+    colB.append(pkgSumBox);
+  } else {
+    const amortMo = client.hwAmortMonths || client.contractMonths;
+    const hwWrap=div('');hwWrap.style.cssText='overflow-x:auto;';
+    const hwInner=div('');hwInner.style.cssText='min-width:480px;';
+    hwInner.append(makeItemTable(
+      ()=>client.hwItems,
+      items=>{client.hwItems=items;},
+      ()=>client.activeDrones||1,
+      false,
+      ()=>S.amortWeeks, ()=>7, ()=>false,
+      ()=>amortMo
+    ));
+    hwWrap.append(hwInner);colB.append(hwWrap);
+  }
+
+  const hwStats=div('mini-stats');
+  hwStats.append(
+    miniRow("HW CapEx (total)", fmt(calc.hwCapex), '#f5c45b'),
+    miniRow("HW cost/mo (amort)", fmt(calc.hwMonthCost)),
+    miniRow("HW bill/mo", fmt(calc.hwMonthBill), '#4ec94e'),
+  );
+  colB.append(hwStats);
+
+  const swHdr=div('');swHdr.style.cssText='font-size:10px;font-weight:700;color:var(--t2);letter-spacing:1px;margin:10px 0 6px;text-transform:uppercase;';swHdr.textContent='Software (Monthly)';colB.append(swHdr);
+  const swWrap=div('');swWrap.style.cssText='overflow-x:auto;';
+  const swInner=div('');swInner.style.cssText='min-width:480px;';
+  swInner.append(makeItemTable(
+    ()=>client.swItems,
+    items=>{client.swItems=items;},
+    ()=>client.activeDrones||1,
+    true,
+    ()=>S.amortWeeks, ()=>7, ()=>false,
+    ()=>client.contractMonths
+  ));
+  swWrap.append(swInner);colB.append(swWrap);
+
+  // Column C — Travel & Cost Breakdown
+  const colC=div('');colC.style.cssText='padding:14px;';
+  const colChdr=div('');colChdr.style.cssText='font-size:10px;font-weight:700;color:var(--t2);letter-spacing:1px;margin-bottom:10px;text-transform:uppercase;';
+  colChdr.textContent='Travel & Cost Breakdown';colC.append(colChdr);
+
+  colC.append(makeRow("Site Visits / Month", client.monthlyVisits, v=>{client.monthlyVisits=Math.max(0,Math.round(v));rerender();}, {prefix:'#'}));
+
+  if(!client.installTrip) client.installTrip={numTravelers:2,numFlights:2,airfare:350,lodgingNights:3,lodgingRate:150,perDiemDays:3,perDiemRate:75,rental:300,gas:60};
+  colC.append(makeMrrTripRow("Install Trip (one-time)", client.installTrip, rerender, {note:"Amortized — "+fmt(calc.installPerMonth)+"/mo"}));
+
+  if(!client.visitTrip) client.visitTrip={numTravelers:1,numFlights:1,airfare:350,lodgingNights:1,lodgingRate:150,perDiemDays:1,perDiemRate:75,rental:0,gas:0};
+  colC.append(makeMrrTripRow("Per Visit Trip Cost", client.visitTrip, rerender, {note:client.monthlyVisits+" visit(s)/mo = "+fmt(calc.visitCostMonth)+"/mo"}));
+
+  const cbHdr=div('');cbHdr.style.cssText='font-size:10px;font-weight:700;color:var(--t2);letter-spacing:1px;margin:14px 0 6px;text-transform:uppercase;';cbHdr.textContent='Monthly Cost Breakdown';colC.append(cbHdr);
+
+  const cbColHdr=div('');cbColHdr.style.cssText='display:grid;grid-template-columns:1fr auto auto;gap:2px 8px;font-size:9px;color:var(--t3);letter-spacing:0.5px;margin-bottom:4px;';
+  ['','Cost/Mo','Bill/Mo'].forEach((h,i)=>{const d=div('');d.textContent=h;if(i>0)d.style.textAlign='right';cbColHdr.append(d);});
+  colC.append(cbColHdr);
+
+  const cbGrid=div('');cbGrid.style.cssText='display:grid;grid-template-columns:1fr auto auto;gap:2px 8px;font-size:11px;align-items:baseline;';
+  const rows=[
+    ['Pilot labor',          fmt(calc.pilotCost),       fmt(calc.pilotBill)],
+    ['Remote ops (cost)',    fmt(calc.remoteOpsCost),   '— cost only'],
+    ['HW (amort/mo)',        fmt(calc.hwMonthCost),     fmt(calc.hwMonthBill)],
+    ['Software',             fmt(calc.swMonthCost),     fmt(calc.swMonthBill)],
+    ['Install (amort)',      fmt(calc.installPerMonth), fmt(calc.installPerMonth)],
+    ['Site Visits',          fmt(calc.visitCostMonth),  fmt(calc.visitCostMonth)],
+    ['Total Cost/Mo',        fmt(calc.totalCostMonth),  fmt(calc.totalBillMonth)],
+    ['Monthly Fee',          fmt(calc.revenue),         fmt(calc.revenue)],
+    ['Monthly Profit',       fmt(calc.profitMonth),     ''],
+    ['Margin',               pct(calc.marginMonth),     pct(calc.billMargin)],
+  ];
+  rows.forEach(([l,cv,bv])=>{
+    const bold=['Total Cost/Mo','Monthly Profit','Margin'].includes(l);
+    const lEl=div('');lEl.textContent=l;if(bold)lEl.style.fontWeight='600';
+    const cEl=div('');cEl.textContent=cv;cEl.style.textAlign='right';if(bold)cEl.style.fontWeight='600';
+    const bEl=div('');bEl.textContent=bv;bEl.style.textAlign='right';
+    if(l==='Monthly Profit'){cEl.style.color=calc.profitMonth<0?'#e24b4a':'#4ec94e';}
+    else if(l==='Margin'){const c=calc.marginMonth<0?'#e24b4a':calc.marginMonth<MRR.marginFloor/100?'#f5c45b':'#4ec94e';cEl.style.color=c;bEl.style.color=c;}
+    else if(l==='Remote ops (cost)'){cEl.style.color='#f5c45b';}
+    cbGrid.append(lEl,cEl,bEl);
+  });
+  colC.append(cbGrid);
+
+  inner.append(colA,colB,colC);
+  body.append(inner);
+  card.append(body);
+  return card;
+}
+
+function renderMrrTab(root) {
+  const p = deriveMrrPortfolio();
+
+  const controls=div('controls');
+  const floorGrp=div('ctrl-grp');
+  const floorLbl=div('ctrl-label');floorLbl.textContent='MRR MARGIN FLOOR:';
+  const floorInp=el('input',{type:'number',class:'row-inp',value:MRR.marginFloor,style:'width:45px'});
+  floorInp.addEventListener('blur',e=>{MRR.marginFloor=Math.max(0,Math.min(100,+e.target.value));rerender();});
+  const floorSfx=el('span',{class:'ctrl-label'});floorSfx.textContent='%';
+  floorGrp.append(floorLbl,floorInp,floorSfx);controls.append(floorGrp);
+  root.append(controls);
+
+  // Top-line stats
+  const statRow=div('stat-row');
+  [
+    ['Total MRR',         fmt(p.totalMRR),    undefined,                       p.active.count+' active client'+(p.active.count!==1?'s':'')],
+    ['Total Monthly Cost',fmt(p.totalCost),   undefined,                       'all clients combined'],
+    ['Monthly Profit',    fmt(p.totalProfit), p.totalProfit<0?'#e24b4a':'#4ec94e', pct(p.blendMargin)+' blended margin'],
+    ['Annual Run Rate',   fmt(p.totalMRR*12), undefined,                       fmt(p.totalProfit*12)+' annual profit'],
+    ['Total HW CapEx',    fmt(p.totalCapex),  '#f5c45b',                       'sustained kits combined'],
+  ].forEach(([l,v,c,s])=>statRow.append(makeStatCard(l,v,c,s)));
+  root.append(statRow);
+
+  // Margin health
+  const floor = MRR.marginFloor/100;
+  const belowFloor=p.calcs.filter(x=>x.calc.marginMonth<floor);
+  if(belowFloor.length>0){
+    const mhBody=div('');
+    const grid=div('');grid.style.cssText='display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px;';
+    belowFloor.forEach(({client,calc})=>{
+      const isCrit=calc.marginMonth<0;
+      const cd=div('');cd.style.cssText='padding:10px 14px;border-radius:6px;background:'+(isCrit?'#1f0d0d':'#1a1400')+';border:0.5px solid '+(isCrit?'var(--red2)':'var(--yellow)')+';';
+      const ch=div('');ch.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:6px;';
+      const d=div('');d.style.cssText='width:8px;height:8px;border-radius:50%;background:'+client.color+';flex-shrink:0;';
+      const n=div('');n.style.cssText="font-size:12px;font-weight:600;font-family:'Barlow Condensed',sans-serif;";n.textContent=client.name;
+      const b=div('');b.style.cssText='margin-left:auto;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:'+(isCrit?'rgba(226,75,74,0.15)':'rgba(245,196,91,0.12)')+';color:'+(isCrit?'var(--red2)':'var(--yellow)')+';border:0.5px solid '+(isCrit?'var(--red2)':'var(--yellow)')+';';
+      b.textContent=isCrit?'NEGATIVE':'BELOW FLOOR';ch.append(d,n,b);cd.append(ch);
+      const revenueNeeded=calc.totalCostMonth/(1-floor);
+      [['Actual Margin',(calc.marginMonth*100).toFixed(1)+'%',isCrit?'var(--red2)':'var(--yellow)'],
+       ['Floor Target',MRR.marginFloor+'%','var(--t2)'],
+       ['Cost/Month',fmt(calc.totalCostMonth),'var(--t2)'],
+       ['Current Fee',fmt(calc.revenue),'var(--t2)'],
+       ['Fee Needed @ Floor',fmt(revenueNeeded),'var(--t1)'],
+       ['Add to Monthly Fee',fmt(revenueNeeded-calc.revenue),isCrit?'var(--red2)':'var(--yellow)'],
+      ].forEach(([lbl,val,c])=>{const r=div('mini-row');const lb=div('mini-lbl');lb.textContent=lbl;const vl=el('span',{});vl.textContent=val;if(c)vl.style.color=c;r.append(lb,vl);cd.append(r);});
+      grid.append(cd);
+    });
+    mhBody.append(grid);
+    root.append(makeSection('MRR MARGIN HEALTH — '+MRR.marginFloor+'% FLOOR — '+belowFloor.length+' CLIENT'+(belowFloor.length>1?'S':'')+' BELOW TARGET', mhBody));
+  }
+
+  // Client cards
+  const clientsBody=div('');
+  p.calcs.forEach(({client},idx)=>clientsBody.append(makeMrrClientCard(client,idx)));
+  const addClientBtn=el('button',{class:'add-et-btn'});addClientBtn.textContent='+ ADD MRR CLIENT';
+  addClientBtn.addEventListener('click',()=>{
+    const colors=['#f97316','#c084fc','#38bdf8','#fb7185','#a3e635','#fbbf24'];
+    const used=MRR.clients.map(c=>c.color);
+    const color=colors.find(c=>!used.includes(c))||colors[MRR.clients.length%colors.length];
+    MRR.clients.push(newMrrClient({color}));rerender();
+  });
+  root.append(makeSection('MRR CLIENT PROFILES — Click header to expand / collapse', clientsBody, addClientBtn));
+
+  // Notes
+  const mrrNotes=MRR.notes||'';
+  const ta=el('textarea',{class:'notes-area',placeholder:"MRR client context, pricing notes, contract status..."});
+  ta.value=mrrNotes;
+  const notesFooter=div('notes-footer');
+  const charCount=div('notes-char');charCount.textContent=mrrNotes.length+' chars';
+  ta.addEventListener('input',e=>{MRR.notes=e.target.value;charCount.textContent=MRR.notes.length+' chars';});
+  const clearBtn=el('button',{class:'notes-clear'});clearBtn.textContent='Clear';
+  clearBtn.addEventListener('click',()=>{MRR.notes='';ta.value='';charCount.textContent='0 chars';});
+  notesFooter.append(charCount,clearBtn);
+  const notesWrap=div('');notesWrap.append(ta,notesFooter);
+  root.append(makeSection('NOTES',notesWrap));
+
+  return root;
+}
+
+function renderApp() {
+  const p=derivePortfolio();
+  const root=div('');
+  const idleWks=Math.max(0,S.seasonWeeks-p.totalWeeksUsed);
+
+  // Header
+  const hdr=div('hdr');
+  const hdrL=div('');
+  const ht=div('hdr-title');ht.textContent='DXD // JOB ESTIMATOR';
+  const hs=div('hdr-sub');
+  hs.textContent=(S.skydioRisk?'[!] DJI BAN FLAGGED':'DJI config active')+
+    ' · $75 GSA per diem · HW amort '+S.amortWeeks+' wks · '+
+    S.eventTypes.length+' event type'+(S.eventTypes.length!==1?'s':'')+
+    ' · '+MRR.clients.length+' MRR client'+(MRR.clients.length!==1?'s':'');
+  hdrL.append(ht,hs);
+  const hdrR=div('hdr-right');
+  const saveBtn=el('button',{class:'save-btn'});saveBtn.textContent='SAVE';
+  saveBtn.addEventListener('click',()=>{if(saveState()){saveBtn.textContent='SAVED';saveBtn.style.background='rgba(78,201,78,0.15)';setTimeout(()=>{saveBtn.textContent='SAVE';saveBtn.style.background='transparent';},1500);}});
+  const resetBtn=el('button',{class:'reset-btn'});resetBtn.textContent='RESET';
+  resetBtn.addEventListener('click',resetState);
+  const savedInd=div('saved-indicator');savedInd.textContent=localStorage.getItem(STORAGE_KEY)?'Auto-saved':'No saved state';
+  hdrR.append(saveBtn,resetBtn,savedInd);
+  hdr.append(hdrL,hdrR);root.append(hdr);
+
+  // Tab bar
+  const tabBar=div('');tabBar.style.cssText='display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--bg2);padding:0 20px;';
+  [['events','EVENTS'],['mrr','MRR CLIENTS']].forEach(([key,label])=>{
+    const tab=el('button',{});
+    tab.textContent=label;
+    const active=S.activeTab===key;
+    tab.style.cssText="background:none;border:none;border-bottom:2px solid "+(active?'var(--red2)':'transparent')+
+      ";color:"+(active?'var(--t1)':'var(--t3)')+";font-family:'Barlow Condensed',sans-serif;font-size:13px;"+
+      "font-weight:700;letter-spacing:1.5px;padding:10px 20px;cursor:pointer;transition:color 0.15s;";
+    tab.addEventListener('click',()=>{S.activeTab=key;rerender();});
+    tabBar.append(tab);
+  });
+  root.append(tabBar);
+
+  if(S.activeTab==='mrr') return renderMrrTab(root);
+
+  // ── Events tab ──
+  const controls=div('controls');
+
+  const skyGrp=div('ctrl-grp');
+  skyGrp.style.cssText=S.skydioRisk?'background:#2a1f00;border:1px solid var(--yellow)':'';
+  const skyLbl=div('ctrl-label');skyLbl.style.cssText=S.skydioRisk?'color:var(--yellow);font-weight:700':'';
+  skyLbl.textContent='DJI BAN / SKYDIO:';
+  const skyBtn=el('button',{class:'sky-toggle'+(S.skydioRisk?' active':'')});
+  skyBtn.textContent=S.skydioRisk?'ON — SKYDIO ACTIVE':'OFF';
+  skyBtn.addEventListener('click',()=>{S.skydioRisk=!S.skydioRisk;rerender();});
+  skyGrp.append(skyLbl,skyBtn);controls.append(skyGrp);
+
+  const amortGrp=div('ctrl-grp');
+  const amortLbl=div('ctrl-label');amortLbl.textContent='HW AMORT:';
+  const amortInp=el('input',{type:'number',class:'row-inp',value:S.amortWeeks,style:'width:55px'});
+  amortInp.addEventListener('blur',e=>{S.amortWeeks=Math.max(1,+e.target.value);rerender();});
+  const amortSfx=el('span',{class:'ctrl-label'});amortSfx.textContent='wks';
+  amortGrp.append(amortLbl,amortInp,amortSfx);controls.append(amortGrp);
+
+  const seasonGrp=div('ctrl-grp');
+  const seasonLbl=div('ctrl-label');seasonLbl.textContent='DXD SEASON:';
+  const seasonInp=el('input',{type:'number',class:'row-inp',value:S.seasonWeeks,style:'width:55px'});
+  seasonInp.addEventListener('blur',e=>{S.seasonWeeks=Math.max(1,+e.target.value);rerender();});
+  const seasonSfx=el('span',{class:'ctrl-label'});seasonSfx.textContent='wks / yr';
+  seasonGrp.append(seasonLbl,seasonInp,seasonSfx);controls.append(seasonGrp);
+
+  const floorGrp=div('ctrl-grp');
+  const floorLbl=div('ctrl-label');floorLbl.textContent='MARGIN FLOOR:';
+  const floorInp=el('input',{type:'number',class:'row-inp',value:S.marginFloor,style:'width:45px'});
+  floorInp.addEventListener('blur',e=>{S.marginFloor=Math.max(0,Math.min(100,+e.target.value));rerender();});
+  const floorSfx=el('span',{class:'ctrl-label'});floorSfx.textContent='%';
+  floorGrp.append(floorLbl,floorInp,floorSfx);controls.append(floorGrp);
+
+  root.append(controls);
+
+  if(S.skydioRisk){
+    const banner=div('sky-banner');
+    banner.innerHTML='<strong>DJI BAN SCENARIO FLAGGED</strong> — DJI packages are highlighted below. Add a Skydio package and assign it to model the replacement cost.';
+    root.append(banner);
+  }
+
+  // Top stats
+  const statRow=div('stat-row');
+  [
+    ['Total Annual Revenue',  fmt(p.totalRevenue),         undefined,              p.totalEvents+' events / yr'],
+    ['Total Full Cost',       fmt(p.totalFullCost),        undefined,              'labor + HW + SW + travel'],
+    ['Full Op Profit',        fmt(p.fullProfit),           p.fullProfit<0?'#e24b4a':'#4ec94e', pct(p.fullMargin)+' margin'],
+    ['Net P&L (HW one-time)', fmt(p.netProfitAfterHw),     p.netProfitAfterHw<0?'#e24b4a':'#4ec94e', 'ex-CapEx view'],
+    ['VLOS HW CapEx',         p.hasVlosEvents?fmt(p.hwOneTimeVlos):'N/A',  '#f5c45b', p.vlosBeEvents?p.vlosBeEvents+' events to break even':'not in use'],
+    ['BVLOS HW CapEx',        p.hasBvlosEvents?fmt(p.hwOneTimeBvlos):'N/A','#f5c45b', p.bvlosBeEvents?p.bvlosBeEvents+' events to break even':'not in use'],
+    ['Season Utilization',    (p.utilPct*100).toFixed(1)+'%', p.utilPct<0.5?'#e24b4a':p.utilPct<0.75?'#f5c45b':'#4ec94e', p.totalWeeksUsed.toFixed(1)+' / '+S.seasonWeeks+' wks'],
+    ['Idle Weeks',            idleWks.toFixed(1)+' wks',   idleWks>8?'#e24b4a':idleWks>4?'#f5c45b':'#4ec94e', 'unused HW capacity'],
+  ].forEach(([l,v,c,s])=>statRow.append(makeStatCard(l,v,c,s)));
+  root.append(statRow);
+
+  // Utilization
+  const utilBody=div('');
+  utilBody.append(makeUtilBar(p.etCalcs, p.totalWeeksUsed, S.seasonWeeks));
+  root.append(makeSection('DXD SEASON UTILIZATION — '+S.seasonWeeks+' WK / YR TARGET', utilBody));
+
+  // 5-yr table
+  const tableRows=[
+    {label:"Events in Period",           fn:d=>d.events+''},
+    {label:"Gross Revenue",              fn:d=>fmt(d.rev)},
+    {label:"VLOS HW (one-time CapEx)",   fn:()=>p.hasVlosEvents?fmt(p.hwOneTimeVlos):'—'},
+    {label:"BVLOS HW (one-time CapEx)",  fn:()=>p.hasBvlosEvents?fmt(p.hwOneTimeBvlos):'—'},
+    {label:"Op Costs (labor+SW+travel)", fn:d=>fmt(d.opCst)},
+    {label:"Annual HW Recurring",        fn:d=>fmt(d.annHw), color:'#f5c45b'},
+    {label:"Total Costs",                fn:d=>fmt(d.cost),   bold:true},
+    {label:"Net Profit",                 fn:d=>fmt(d.profit), bold:true, colorFn:d=>d.profit<0?'#e24b4a':'#4ec94e'},
+    {label:"Net Margin",                 fn:d=>pct(d.margin), bold:true, colorFn:d=>d.margin<0?'#e24b4a':d.margin<0.15?'#f5c45b':'#4ec94e'},
+  ];
+  const tbl=el('table',{class:'ptbl'});
+  const thead=el('thead',{});const thr=el('tr',{});
+  const th0=el('th',{});th0.textContent='Portfolio '+(S.skydioRisk?'(Skydio)':'(DJI)');th0.style.textAlign='left';thr.append(th0);
+  p.periods.forEach(pp=>{const th=el('th',{});th.textContent=pp.label;thr.append(th);});
+  thead.append(thr);tbl.append(thead);
+  const tbody=el('tbody',{});
+  tableRows.forEach(row=>{
+    const tr=el('tr',{class:row.bold?'bold':row.dim?'dim':''});
+    const td0=el('td',{});td0.textContent=row.label;tr.append(td0);
+    p.periods.forEach(pp=>{
+      const td=el('td',{});td.textContent=row.fn(pp.data);
+      if(row.colorFn)td.style.color=row.colorFn(pp.data);
+      else if(row.color)td.style.color=row.color;
+      tr.append(td);
+    });
+    tbody.append(tr);
+  });
+  tbl.append(tbody);
+  const tblWrap=div('overflow-x');tblWrap.append(tbl);
+  root.append(makeSection('5-YEAR NET ANALYSIS — PORTFOLIO (12 / 24 / 36 / 48 / 60 MONTHS)', tblWrap));
+
+  // Event-type cards
+  const etBody=div('portfolio-grid');
+  p.etCalcs.forEach(ec=>etBody.append(makeEventTypeCard(ec.et, ec)));
+  const addBtn=el('button',{class:'add-et-btn'});addBtn.textContent='+ ADD EVENT TYPE';
+  addBtn.addEventListener('click',()=>{
+    const usedColors=S.eventTypes.map(e=>e.color);
+    const color=ET_COLORS.find(c=>!usedColors.includes(c))||ET_COLORS[S.eventTypes.length%ET_COLORS.length];
+    S.eventTypes.push(newEventType({color,open:true}));rerender();
+  });
+  root.append(makeSection('EVENT TYPE PORTFOLIO — Click header to expand / collapse', etBody, addBtn));
+
+  // Hardware Package Library
+  const pkgLibBody = div('portfolio-grid');
+  S.hwPackages.forEach(pkg => {
+    const capex   = pkg.hwItems.reduce((s,i)=>s+i.unitCost*i.qty, 0);
+    const inUse   = S.eventTypes.some(et => {
+      const vp = et.vlos||{}; const bp = et.bvlos||{};
+      return (vp.packageId===pkg.id || bp.packageId===pkg.id);
+    });
+    const card = div('et-card');
+    card.style.border = inUse ? '1px solid var(--red)' : '0.5px solid var(--border)';
+    const pkgHdr = div('et-header');
+    pkgHdr.addEventListener('click', e => {
+      if(e.target.tagName==='INPUT'||e.target.tagName==='BUTTON'||e.target.tagName==='SELECT') return;
+      pkg.open = !pkg.open; rerender();
+    });
+    const pkgNameInp = el('input',{type:'text',class:'et-name-inp',value:pkg.name});
+    pkgNameInp.addEventListener('blur', e=>{pkg.name=e.target.value;rerender();});
+    const pkgBadges = div('et-badges');
+    const ktBadge = div('et-badge '+(pkg.kitType==='vlos'?'vlos':'bvlos'));
+    ktBadge.textContent = pkg.kitType.toUpperCase();
+    const inUseBadge = div('et-badge events');
+    inUseBadge.textContent = inUse ? 'In Use' : 'Unassigned';
+    if(inUse) inUseBadge.style.color = 'var(--green)';
+    pkgBadges.append(ktBadge, inUseBadge);
+
+    const pkgStats = div('et-stats');
+    const addPS = (l,v,c) => {const s=div('et-stat'),lb=div('et-stat-lbl'),vl=div('et-stat-val');lb.textContent=l;vl.textContent=v;if(c)vl.style.color=c;s.append(lb,vl);pkgStats.append(s);};
+    addPS('CapEx', fmt(capex), '#f5c45b');
+    addPS('Items', pkg.hwItems.length);
+
+    const removePkgBtn = el('button',{class:'et-remove'});removePkgBtn.textContent='x';
+    removePkgBtn.addEventListener('click',e=>{
+      e.stopPropagation();
+      if(inUse){alert('This package is assigned to one or more events. Re-assign before deleting.');return;}
+      if(S.hwPackages.length<=1){alert('Need at least one package.');return;}
+      S.hwPackages=S.hwPackages.filter(p=>p.id!==pkg.id);rerender();
+    });
+
+    pkgHdr.append(pkgNameInp, pkgBadges, pkgStats, removePkgBtn);
+    card.append(pkgHdr);
+
+    const pkgBody = div('et-body'+(pkg.open?' open':''));
+    const pkgHwSub=div('sec-sub');pkgHwSub.textContent='Hardware items — amortized per event based on Amort Period above';
+    const pkgHwTable=makeItemTable(
+      ()=>pkg.hwItems,
+      newItems=>{pkg.hwItems=newItems;},
+      ()=>3, false, ()=>S.amortWeeks, ()=>7, ()=>false
+    );
+    pkgBody.append(pkgHwSub, pkgHwTable);
+    card.append(pkgBody);
+    pkgLibBody.append(card);
+  });
+
+  const addPkgRow = div('');
+  addPkgRow.style.cssText = 'display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap;';
+  const newPkgNameInp = el('input',{type:'text',placeholder:'Package name'});
+  newPkgNameInp.style.cssText = 'flex:1;min-width:200px;font-size:12px;padding:5px 8px;border-radius:4px;border:1px dashed var(--border2);background:var(--bg2);color:var(--t1);';
+  const newPkgKtSel = el('select',{class:'itbl-sel'});
+  newPkgKtSel.style.cssText = 'font-size:12px;padding:5px 8px;border-radius:4px;width:auto;';
+  [['bvlos','BVLOS Kit'],['vlos','VLOS Kit']].forEach(([v,l])=>{const o=el('option',{value:v});o.textContent=l;newPkgKtSel.append(o);});
+  const addPkgBtn=el('button',{class:'cfg-btn'});addPkgBtn.textContent='+ ADD PACKAGE';
+  addPkgBtn.style.cssText='border-color:var(--green);color:var(--green);padding:4px 12px;';
+  addPkgBtn.addEventListener('click',()=>{
+    const name = newPkgNameInp.value.trim();
+    if(!name){newPkgNameInp.style.borderColor='var(--red2)';return;}
+    const kt = newPkgKtSel.value;
+    S.hwPackages.push(newHwPackage({name, kitType:kt, hwItems:clone(kt==='vlos'?DJI_VLOS_HW:DJI_BVLOS_HW), open:true}));
+    newPkgNameInp.value = '';
+    rerender();
+  });
+  addPkgRow.append(newPkgNameInp, newPkgKtSel, addPkgBtn);
+  root.append(makeSection('HARDWARE PACKAGE LIBRARY', pkgLibBody, addPkgRow));
+
+  // Notes
+  const ta=el('textarea',{class:'notes-area',placeholder:"Notes, assumptions, open questions, client context..."});
+  ta.value=S.notes;
+  const notesFooter=div('notes-footer');
+  const charCount=div('notes-char');charCount.textContent=S.notes.length+' chars';
+  ta.addEventListener('input',e=>{S.notes=e.target.value;charCount.textContent=S.notes.length+' chars';});
+  const clearBtn=el('button',{class:'notes-clear'});clearBtn.textContent='Clear';
+  clearBtn.addEventListener('click',()=>{S.notes='';ta.value='';charCount.textContent='0 chars';});
+  notesFooter.append(charCount,clearBtn);
+  const notesWrap=div('');notesWrap.append(ta,notesFooter);
+  root.append(makeSection('NOTES',notesWrap));
+
+  return root;
+}
+
+// ── Storage ────────────────────────────────────────────────────
+const STORAGE_KEY='dxd_business_model_v10';
+function saveState(){
+  try{localStorage.setItem(STORAGE_KEY,JSON.stringify({S,MRR}));return true;}
+  catch(e){console.warn('Save failed:',e);return false;}
+}
+function migrateEventType(et) {
+  if(et.vlos && et.bvlos) return et;
+  const isOldVlos = et.configType === 'vlos' || et.activeConfig === 'vlos';
+  const days = et.daysPerEvent || 7;
+  const hrs  = et.coverageHours || 24;
+  const ot   = et.otMultiplier || 1.0;
+  const defSw = () => [
+    {id:Date.now()+Math.random(), name:"Starlink Subscription", qty:1, unitCost:70,  margin:30, perDrone:false},
+    {id:Date.now()+Math.random(), name:"Drone Tag License",      qty:1, unitCost:30,  margin:30, perDrone:false},
+    {id:Date.now()+Math.random(), name:"DroneSense",             qty:1, unitCost:700, margin:30, perDrone:true},
+  ];
+  return Object.assign({}, et, {
+    activeConfig: et.activeConfig || et.configType || 'bvlos',
+    vlos: {packageId:1, daysPerEvent:days, coverageHours:hrs, otMultiplier:ot, rate1099:68.46, pilots:4, dronesCount:3, perDiemRate:75, otherItems:[], shipping:{outbound:0,inbound:0}, travel:{airfare:350,numTravelers:4,numFlights:4,airfareRows:[],lodgingNights:days+1,lodgingRate:150,perDiemDays:days+1,rental:540,gas:100,miles:0,mileageRate:0.70,travelExtras:[],eventWeeks:1}, swItems:defSw()},
+    bvlos:{packageId:2, daysPerEvent:days, coverageHours:hrs, otMultiplier:ot, intRate:65, intCount:1, intDays:7, pilotRate:68.46, pilotCount:2, dronesCount:3, perDiemRate:75, otherItems:[], shipping:{outbound:0,inbound:0}, travel:{airfare:350,numTravelers:1,numFlights:1,airfareRows:[],lodgingNights:days,lodgingRate:150,perDiemDays:days,rental:0,gas:0,miles:0,mileageRate:0.70,travelExtras:[],eventWeeks:1}, swItems:defSw()},
+  });
+}
+function loadState(){
+  if(window.__DXD_INJECTED__) return false;
+  try{
+    const raw=localStorage.getItem(STORAGE_KEY);
+    if(!raw) return false;
+    const saved=JSON.parse(raw);
+    const savedS=saved.S||saved;
+    if(savedS.eventTypes) savedS.eventTypes=savedS.eventTypes.map(et=>(!et.vlos||!et.bvlos)?migrateEventType(et):et);
+    Object.keys(savedS).forEach(k=>{ S[k]=savedS[k]; });
+    if(!S.hwPackages||S.hwPackages.length===0) S.hwPackages=[defaultVlosPackage(),defaultBvlosPackage()];
+    if(saved.MRR){
+      const m=saved.MRR;
+      if(!m.hwPackages||m.hwPackages.length===0) m.hwPackages=[defaultMrrDjiPackage(),defaultMrrSkyPackage(),defaultMrrSflPackage()];
+      const seen=new Map();
+      (m.hwPackages||[]).forEach(p=>seen.set(p.id,p));
+      m.hwPackages=[...seen.values()];
+      MRR.clients    = m.clients    || MRR.clients;
+      MRR.hwPackages = m.hwPackages || MRR.hwPackages;
+      MRR.marginFloor= m.marginFloor!==undefined ? m.marginFloor : MRR.marginFloor;
+      MRR.notes      = m.notes      !==undefined ? m.notes : MRR.notes;
+      const maxPkgId=Math.max(500,...(MRR.hwPackages||[]).map(p=>p.id||0));
+      if(maxPkgId>_mrrPkgId) _mrrPkgId=maxPkgId;
+      const maxClientId=Math.max(200,...(MRR.clients||[]).map(c=>c.id||0));
+      if(maxClientId>_mrrId) _mrrId=maxClientId;
+    }
     return true;
-  } catch (e) { console.warn('Load failed:', e); return false; }
+  }catch(e){console.warn('Load failed:',e);try{localStorage.removeItem(STORAGE_KEY);}catch(e2){}return false;}
 }
-
-function saveState() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify({S, MRR})); return true; }
-  catch (e) { return false; }
-}
-
-window.__dxdResetState = function () {
-  if (!confirm('Reset all values to defaults? This clears your saved Job Estimator state.')) return;
+function resetState(){
+  if(!confirm('Reset all values to defaults?'))return;
   localStorage.removeItem(STORAGE_KEY);
   location.reload();
-};
-
-window.__dxdExportState = function () {
-  const raw = localStorage.getItem(STORAGE_KEY) || JSON.stringify({S, MRR});
-  const blob = new Blob([raw], {type: 'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  const ts = new Date().toISOString().slice(0, 16).replace('T', '_').replace(/:/g, '');
-  a.download = 'dxd_job_estimator_state_' + ts + '.json';
-  a.click();
-  URL.revokeObjectURL(url);
-};
+}
 
 function rerender() {
   saveState();
-  const summary = document.getElementById('state-summary');
-  if (!summary) return;
-  const eventCount = (S.eventTypes  || []).length;
-  const mrrCount   = (MRR.clients   || []).length;
-  const pkgEvents  = (S.hwPackages  || []).length;
-  const pkgMrr     = (MRR.hwPackages|| []).length;
-  summary.innerHTML =
-    '<div style="font-weight:700;color:#fff;margin-bottom:6px;letter-spacing:0.5px;">SAVED STATE</div>'
-    + 'Event Types: <span style="color:#4ec94e;">' + eventCount + '</span> &middot; '
-    + 'MRR Clients: <span style="color:#4ec94e;">' + mrrCount + '</span> &middot; '
-    + 'HW Packages (Events): <span style="color:#4ec94e;">' + pkgEvents + '</span> &middot; '
-    + 'HW Packages (MRR): <span style="color:#4ec94e;">' + pkgMrr + '</span>';
+  try {
+    const newApp = renderApp();
+    const appEl = document.getElementById('app');
+    appEl.innerHTML='';
+    appEl.append(newApp);
+  } catch(e) {
+    console.error('Job Estimator rerender failed:', e);
+  }
 }
 
 loadState();
 rerender();
 </script>
-<!-- END MODEL CORE -->
 </body></html>
