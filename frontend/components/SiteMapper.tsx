@@ -77,7 +77,7 @@ function fmtTime(sec: number): string {
 // ── Drone models ──────────────────────────────────────────────────────────────
 
 const DRONE_MODELS: Record<string, { label: string; launchDelaySec: number; speedMph: number; ringsSec: number[]; available: boolean }> = {
-  'dji-dock-3':    { label: 'DJI Dock 3',      launchDelaySec: 30, speedMph: 33, ringsSec: [60,90,120,150,180,210], available: true },
+  'dji-dock-3':    { label: 'DJI Dock 3',      launchDelaySec: 30, speedMph: 33, ringsSec: [60,90,120,150,180,210,248], available: true },
   'sunflower-labs': { label: 'Sunflower Labs', launchDelaySec: 5,  speedMph: 9,  ringsSec: [60,90,120,150,180,210], available: true },
   'skydio-x10':    { label: 'Skydio X10',      launchDelaySec: 20, speedMph: 45, ringsSec: [60,90,120,150,180,210], available: true },
 }
