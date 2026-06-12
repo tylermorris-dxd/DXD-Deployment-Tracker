@@ -1,9 +1,8 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import type { ProjectFull } from '@/lib/types'
 import { geocodeAddress } from '@/lib/geocode'
-import SiteMapper from './SiteMapper'
 
 interface Props {
   project: ProjectFull
@@ -221,7 +220,6 @@ interface PdfOpts {
   airspace: AirspaceData
   weather: WeatherData
   network: NetworkData
-  mapDataUrl: string
 }
 
 function loadScript(src: string): Promise<void> {
@@ -247,15 +245,19 @@ async function buildPDF(opts: PdfOpts) {
   const M = 32 // margin
   const colW = (W - M * 2 - 12) / 2
 
+  // ─ Page background: solid black ─
+  pdf.setFillColor(0, 0, 0)
+  pdf.rect(0, 0, W, H, 'F')
+
   // ─ Header ─
   pdf.setFillColor(229, 57, 53)
   pdf.rect(0, 0, W, 6, 'F')
-  pdf.setTextColor(20)
+  pdf.setTextColor(235, 235, 235)
   pdf.setFont('helvetica', 'bold'); pdf.setFontSize(16)
   pdf.text('SITE DEPLOYMENT SUMMARY', M, M)
-  pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9); pdf.setTextColor(110)
+  pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9); pdf.setTextColor(150, 150, 150)
   pdf.text(`Generated ${new Date().toLocaleString()}`, M, M + 13)
-  pdf.setTextColor(20); pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9)
+  pdf.setTextColor(220, 220, 220); pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9)
   pdf.text(`Project: ${opts.project.name || '—'}`, M, M + 28)
   pdf.text(`Client: ${opts.project.client || '—'}`, M + colW + 12, M + 28)
   const siteText = pdf.splitTextToSize(`Site: ${opts.project.site || '—'}`, W - M * 2) as string[]
@@ -277,15 +279,21 @@ async function buildPDF(opts: PdfOpts) {
       const col = i % 2, row = Math.floor(i / 2)
       const x = M + col * (cardW + 8)
       const cy = y + row * (cardH + 6)
-      pdf.setFillColor(245, 246, 248)
+      // Card body: dark surface with a thin border so it reads on the black page
+      pdf.setFillColor(22, 22, 26)
       pdf.roundedRect(x, cy, cardW, cardH, 4, 4, 'F')
-      pdf.setFont('helvetica', 'normal'); pdf.setFontSize(7); pdf.setTextColor(110)
+      pdf.setDrawColor(45, 45, 52); pdf.setLineWidth(0.5)
+      pdf.roundedRect(x, cy, cardW, cardH, 4, 4, 'S')
+      // Label
+      pdf.setFont('helvetica', 'normal'); pdf.setFontSize(7); pdf.setTextColor(150, 150, 150)
       pdf.text(c.label.toUpperCase(), x + 8, cy + 11)
+      // Value
       pdf.setFont('helvetica', 'bold'); pdf.setFontSize(15)
-      pdf.setTextColor(...(c.valueColor || [20, 20, 20] as [number, number, number]))
+      pdf.setTextColor(...(c.valueColor || [235, 235, 235] as [number, number, number]))
       pdf.text(c.value, x + 8, cy + 27)
+      // Sub
       if (c.sub) {
-        pdf.setFont('helvetica', 'normal'); pdf.setFontSize(7); pdf.setTextColor(110)
+        pdf.setFont('helvetica', 'normal'); pdf.setFontSize(7); pdf.setTextColor(170, 170, 170)
         const wrapped = pdf.splitTextToSize(c.sub, cardW - 16) as string[]
         pdf.text(wrapped, x + 8, cy + 37)
       }
@@ -297,10 +305,10 @@ async function buildPDF(opts: PdfOpts) {
   // ─ AIRSPACE ─
   const a = opts.airspace
   drawSection('Airspace', [229, 57, 53], [
-    { label: 'Deployment Verdict', value: a.verdict, valueColor: a.isClassG ? [34, 197, 94] : [196, 30, 58], sub: a.isClassG ? 'Class G — No auth needed under 400ft' : `Controlled airspace — Max ${a.ceilingVal} ft AGL` },
+    { label: 'Deployment Verdict', value: a.verdict, valueColor: a.isClassG ? [34, 197, 94] : [239, 68, 68], sub: a.isClassG ? 'Class G — No auth needed under 400ft' : `Controlled airspace — Max ${a.ceilingVal} ft AGL` },
     { label: 'Airspace Class', value: a.classLetter, sub: a.className },
     { label: 'Max Altitude', value: `${a.ceilingVal ?? 400} ft AGL`, sub: a.isClassG ? 'Standard Part 107 ceiling' : 'Per FAA UASFM' },
-    { label: 'FAA DroneZone', value: a.droneZone, valueColor: a.droneZone === 'REQUIRED' ? [230, 152, 0] : [34, 197, 94], sub: a.droneZone === 'REQUIRED' ? 'Submit via LAANC / DroneZone' : 'No airspace auth required' },
+    { label: 'FAA DroneZone', value: a.droneZone, valueColor: a.droneZone === 'REQUIRED' ? [245, 158, 11] : [34, 197, 94], sub: a.droneZone === 'REQUIRED' ? 'Submit via LAANC / DroneZone' : 'No airspace auth required' },
   ])
 
   // ─ WEATHER ─
@@ -315,36 +323,26 @@ async function buildPDF(opts: PdfOpts) {
   // ─ CONNECTIVITY ─
   const n = opts.network
   const vColor: [number, number, number] = n.verdict === 'ready' ? [34, 197, 94] : n.verdict === 'mixed' ? [245, 158, 11] : [239, 68, 68]
-  // Banner verdict spans full width
-  pdf.setFillColor(...color255(vColor, 0.10))
+  // Banner verdict spans full width — tint the verdict color toward black
+  pdf.setFillColor(...tintForDark(vColor, 0.18))
   pdf.roundedRect(M, y, W - M * 2, 36, 4, 4, 'F')
+  pdf.setDrawColor(vColor[0], vColor[1], vColor[2]); pdf.setLineWidth(0.5)
+  pdf.roundedRect(M, y, W - M * 2, 36, 4, 4, 'S')
   pdf.setFont('helvetica', 'bold'); pdf.setFontSize(11); pdf.setTextColor(...vColor)
   pdf.text('CONNECTIVITY', M + 10, y + 13)
   pdf.setFontSize(12); pdf.text(n.verdictLabel, M + 110, y + 13)
-  pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8); pdf.setTextColor(80)
+  pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8); pdf.setTextColor(200, 200, 200)
   pdf.text(n.verdictSub, M + 10, y + 28)
   y += 42
   drawSection('', [229, 57, 53], [
     { label: 'Any Internet', value: `${n.internetPct}%`, valueColor: [34, 197, 94], sub: 'of households' },
     { label: 'Wired Broadband', value: `${n.broadbandPct}%`, valueColor: n.broadbandPct >= 60 ? [34, 197, 94] : n.broadbandPct >= 35 ? [245, 158, 11] : [239, 68, 68], sub: 'cable · fiber · DSL' },
-    { label: 'Satellite Only', value: `${n.satellitePct}%`, valueColor: [196, 30, 58], sub: 'satellite dependent' },
-    { label: 'No Access', value: `${n.noInternetPct}%`, valueColor: [196, 30, 58], sub: 'underserved' },
+    { label: 'Satellite Only', value: `${n.satellitePct}%`, valueColor: [239, 68, 68], sub: 'satellite dependent' },
+    { label: 'No Access', value: `${n.noInternetPct}%`, valueColor: [239, 68, 68], sub: 'underserved' },
   ])
 
-  // ─ MAP ─
-  if (opts.mapDataUrl) {
-    pdf.setFont('helvetica', 'bold'); pdf.setFontSize(11); pdf.setTextColor(229, 57, 53)
-    pdf.text('SITE MAP', M, y + 10)
-    y += 16
-    const mapW = W - M * 2
-    const remaining = H - y - 30
-    const mapH = Math.min(remaining, 220)
-    pdf.addImage(opts.mapDataUrl, 'JPEG', M, y, mapW, mapH)
-    y += mapH + 4
-  }
-
   // ─ Footer ─
-  pdf.setFont('helvetica', 'italic'); pdf.setFontSize(7); pdf.setTextColor(140)
+  pdf.setFont('helvetica', 'italic'); pdf.setFontSize(7); pdf.setTextColor(130, 130, 130)
   pdf.text('Sources: FAA UAS Facility Map · Open-Meteo · FCC Broadband · US Census ACS · OpenStreetMap · Generated by DXD Ops Tracker', M, H - 16)
 
   const safe = (opts.project.name || 'site').replace(/[^a-z0-9]+/gi, '-').toLowerCase()
@@ -352,9 +350,9 @@ async function buildPDF(opts: PdfOpts) {
   pdf.save(`summary-${safe}-${stamp}.pdf`)
 }
 
-function color255(c: [number, number, number], alpha: number): [number, number, number] {
-  // Blend toward white to get a light tint version for backgrounds
-  const blend = (v: number) => Math.round(v * alpha + 255 * (1 - alpha))
+// Blend a vivid accent color toward black for subtle dark-mode banner tints.
+function tintForDark(c: [number, number, number], alpha: number): [number, number, number] {
+  const blend = (v: number) => Math.round(v * alpha)
   return [blend(c[0]), blend(c[1]), blend(c[2])]
 }
 
@@ -368,81 +366,18 @@ export default function SummaryView({
 }: Props) {
   const [generating, setGenerating] = useState(false)
   const [status, setStatus] = useState<string>('')
-  const [showHiddenMap, setShowHiddenMap] = useState(false)
   const [error, setError] = useState<string>('')
 
   // Read currently-cached data to show preview status
   const hasAirspace = !!project.airspaceCache
   const hasWeather  = !!project.weatherCache
   const hasNetwork  = !!project.networkCache
-  const hasMap      = !!project.mapCache
-
-  async function captureMap(): Promise<string> {
-    setStatus('Mounting hidden map renderer…')
-    setShowHiddenMap(true)
-
-    // Step 1: poll for the SiteMapper wrap element to mount.
-    // It's not conditional on leafletReady so it should appear within
-    // a few hundred ms of setShowHiddenMap(true).
-    let wrap: HTMLElement | null = null
-    for (let i = 0; i < 60; i++) {
-      await new Promise(r => setTimeout(r, 200))
-      wrap = document.querySelector('[data-summary-hidden-map] [data-sitemap-mapwrap="1"]') as HTMLElement | null
-      if (wrap) break
-    }
-    if (!wrap) {
-      setShowHiddenMap(false)
-      throw new Error('SiteMapper failed to mount in 12s. Try refreshing the page and retrying.')
-    }
-
-    // Step 2: wait for Leaflet tiles to actually load. .leaflet-tile-loaded
-    // is the class Leaflet adds to <img> elements once their src has
-    // successfully resolved. We're satisfied once we've seen at least
-    // some tiles; an extra grace period lets stragglers finish.
-    setStatus('Loading map tiles… (10-20s on first run)')
-    let tileCount = 0
-    for (let i = 0; i < 80; i++) {
-      await new Promise(r => setTimeout(r, 250))
-      tileCount = wrap.querySelectorAll('.leaflet-tile-loaded').length
-      if (tileCount >= 6) break
-    }
-    // Grace period for tile fade-in animations + late-arriving tiles
-    await new Promise(r => setTimeout(r, 1500))
-
-    setStatus('Capturing map image…')
-    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const html2canvas = (window as any).html2canvas
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const canvas: HTMLCanvasElement = await html2canvas(wrap, {
-      useCORS: true, scale: 2, backgroundColor: '#0a0404',
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ignoreElements: (el: any) => {
-        const cls = el.className
-        if (typeof cls !== 'string') return false
-        return cls.includes('leaflet-popup') || cls.includes('leaflet-control-attribution') || cls.includes('leaflet-control-zoom')
-      },
-    })
-    const data = canvas.toDataURL('image/jpeg', 0.85)
-    setShowHiddenMap(false)
-    if (tileCount < 1) {
-      // Snapshot succeeded but no tiles were detected — image will be
-      // mostly blank. Surface a clearer signal than failing silently.
-      throw new Error('Map tiles never loaded. Check network / firewall to mt0..3.google.com. The other PDF sections will still work — try again.')
-    }
-    return data
-  }
 
   async function handleGenerate() {
     if (generating) return
     setError('')
     setGenerating(true)
     try {
-      // Capture the map FIRST. Cache-update calls below trigger project
-      // re-fetches which would otherwise re-render the hidden SiteMapper
-      // and reset its tile-loading state mid-snapshot.
-      const mapDataUrl = await captureMap()
-
       // Airspace
       setStatus('Loading airspace data…')
       const airspace = await runAirspace(project.site)
@@ -460,22 +395,16 @@ export default function SummaryView({
 
       // Build PDF
       setStatus('Building PDF…')
-      await buildPDF({ project, airspace, weather, network, mapDataUrl })
+      await buildPDF({ project, airspace, weather, network })
       setStatus('Done')
       setTimeout(() => setStatus(''), 2500)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
       setStatus('')
-      setShowHiddenMap(false)
     } finally {
       setGenerating(false)
     }
   }
-
-  // Auto-cleanup of stuck hidden map on unmount
-  useEffect(() => {
-    return () => setShowHiddenMap(false)
-  }, [])
 
   const cardSt: React.CSSProperties = {
     background: 'rgba(30,30,34,0.7)', border: '1px solid rgba(255,255,255,0.06)',
@@ -496,18 +425,17 @@ export default function SummaryView({
         <div>
           <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, letterSpacing: 1, fontFamily: "'Chakra Petch', sans-serif", color: '#fff' }}>1-PAGE SITE SUMMARY</h2>
           <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: 'rgba(255,255,255,0.35)', letterSpacing: 1.5, marginTop: 2 }}>
-            AIRSPACE · WEATHER · CONNECTIVITY · MAP — DOWNLOADABLE PDF
+            AIRSPACE · WEATHER · CONNECTIVITY — DOWNLOADABLE PDF
           </div>
         </div>
       </div>
 
       {/* Status indicator panel — shows what's currently cached */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 20 }}>
         {[
           { label: 'Airspace', has: hasAirspace },
           { label: 'Weather',  has: hasWeather },
           { label: 'Network',  has: hasNetwork },
-          { label: 'Map',      has: hasMap },
         ].map(s => (
           <div key={s.label} style={{ ...cardSt, padding: '10px 14px' }}>
             <div style={lblSt}>{s.label}</div>
@@ -524,7 +452,7 @@ export default function SummaryView({
           <div>
             <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 13, fontWeight: 700, color: '#fff', marginBottom: 4 }}>Generate PDF</div>
             <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>
-              Runs airspace, weather, and connectivity lookups on the project&apos;s site address, snapshots the map, and<br/>builds a single-page PDF with the verdict cards from each tool plus the map image.
+              Runs airspace, weather, and connectivity lookups on the project&apos;s site address and<br/>builds a single-page PDF with the verdict cards from each tool. Black background.
             </div>
           </div>
           <button
@@ -562,7 +490,7 @@ export default function SummaryView({
         <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontWeight: 700, fontSize: 12, color: '#fff', marginBottom: 12, letterSpacing: 1 }}>
           PDF CONTENTS
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: 'rgba(255,255,255,0.6)', lineHeight: 1.6 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: 'rgba(255,255,255,0.6)', lineHeight: 1.6 }}>
           <div>
             <strong style={{ color: '#E53935' }}>AIRSPACE</strong><br/>
             Deployment Verdict · Airspace Class · Max Altitude · FAA DroneZone
@@ -575,27 +503,8 @@ export default function SummaryView({
             <strong style={{ color: '#E53935' }}>CONNECTIVITY</strong><br/>
             BVLOS Verdict · Any Internet · Wired Broadband · Satellite Only · No Access
           </div>
-          <div>
-            <strong style={{ color: '#E53935' }}>MAP</strong><br/>
-            Satellite snapshot with any docks, boundary, and pins you&apos;ve placed on the Map tab.
-          </div>
         </div>
       </div>
-
-      {/* Hidden off-screen SiteMapper for capturing the map snapshot.
-          Positioned off-screen but rendered at fixed size so Leaflet
-          actually loads tiles. Sized generously (1200x920) so the
-          SiteMapper's internal minHeights (820 on wrap, 760 on
-          mapWrap) all fit without clipping or tile-bound miscalcs.
-          Removed after capture. */}
-      {showHiddenMap && (
-        <div
-          data-summary-hidden-map
-          style={{ position: 'fixed', left: -13000, top: 0, width: 1200, height: 920, pointerEvents: 'none', opacity: 1, overflow: 'hidden' }}
-        >
-          <SiteMapper project={project} onCacheUpdate={() => {/* read-only render */}} fitToContentOnLoad />
-        </div>
-      )}
 
       <style>{`@keyframes pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }`}</style>
     </div>
