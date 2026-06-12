@@ -811,8 +811,13 @@ export default function SiteMapper({ project, onCacheUpdate }: Props) {
         </div>
       </div>
 
-      {/* Map container */}
-      <div style={S.mapWrap}>
+      {/* Map container.
+          The data-sitemap-mapwrap marker is queried by SummaryView's
+          hidden-map snapshot pipeline to know when Leaflet has actually
+          mounted into this DOM subtree. Without it, the Summary tab's
+          PDF capture would time out at 12s with "SiteMapper failed to
+          mount" even though the map was fine. */}
+      <div style={S.mapWrap} data-sitemap-mapwrap="1">
         <div ref={mapContainerRef} style={{ ...S.mapEl, visibility: mapStyle === 'streetview' ? 'hidden' : 'visible' }} />
 
         {mapStyle === 'streetview' && (
