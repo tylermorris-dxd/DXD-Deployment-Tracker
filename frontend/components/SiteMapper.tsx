@@ -9,6 +9,11 @@ import { geocodeAddress as sharedGeocode } from '@/lib/geocode'
 interface Props {
   project: ProjectFull
   onCacheUpdate: (data: unknown) => void
+  // When true, after the cached boundary is drawn the map auto-fits to it
+  // (with padding). Used by SummaryView's hidden snapshot pipeline so the
+  // PDF map image always frames the property no matter how big or small
+  // each deal's boundary is.
+  fitToContentOnLoad?: boolean
 }
 
 interface SiteEntry { id: string; address: string; lat: number; lng: number }
@@ -204,7 +209,7 @@ const S = {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export default function SiteMapper({ project, onCacheUpdate }: Props) {
+export default function SiteMapper({ project, onCacheUpdate, fitToContentOnLoad }: Props) {
   const cachedData = (() => {
     try { return project.mapCache ? JSON.parse(project.mapCache) : null }
     catch { return null }
@@ -449,6 +454,33 @@ export default function SiteMapper({ project, onCacheUpdate }: Props) {
     if (pendingRestore.current) {
       restoreFromCache(L, map, pendingRestore.current)
       pendingRestore.current = null
+    }
+
+    // SummaryView hidden-snapshot pipeline: fit to whatever's been placed.
+    // Boundary wins if present (matches user request — "zoom out so you can
+    // see the boundary"). Otherwise fall back to docks, then site pin.
+    // Padding [40,40] leaves some breathing room around the edge for the PDF.
+    if (fitToContentOnLoad) {
+      const tryFit = () => {
+        const lr = layersRef.current
+        if (!mapRef.current) return false
+        if (lr.boundaryPoly) {
+          mapRef.current.fitBounds(lr.boundaryPoly.getBounds(), { padding: [40, 40], maxZoom: 19 })
+          return true
+        }
+        if (lr.dockMarkers && lr.dockMarkers.length > 0) {
+          const grp = L.featureGroup(lr.dockMarkers.map((d: { marker: unknown }) => d.marker))
+          mapRef.current.fitBounds(grp.getBounds(), { padding: [60, 60], maxZoom: 19 })
+          return true
+        }
+        return false
+      }
+      // First attempt is synchronous-ish (boundary is already drawn from
+      // cache by this point). If nothing was placed yet, try again after a
+      // beat in case geocoding is still resolving the primary site pin —
+      // even though we don't fit to the lone pin, leaving the map at its
+      // default lat/lng is worse than waiting one frame.
+      if (!tryFit()) setTimeout(tryFit, 400)
     }
 
     return () => { map.remove(); mapRef.current = null }

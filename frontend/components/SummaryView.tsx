@@ -593,7 +593,7 @@ export default function SummaryView({
           data-summary-hidden-map
           style={{ position: 'fixed', left: -13000, top: 0, width: 1200, height: 920, pointerEvents: 'none', opacity: 1, overflow: 'hidden' }}
         >
-          <SiteMapper project={project} onCacheUpdate={() => {/* read-only render */}} />
+          <SiteMapper project={project} onCacheUpdate={() => {/* read-only render */}} fitToContentOnLoad />
         </div>
       )}
 
