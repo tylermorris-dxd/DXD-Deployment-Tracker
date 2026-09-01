@@ -8,7 +8,9 @@ pub mod misc;
 pub mod network;
 pub mod oem_specs;
 pub mod pricing;
+pub mod project_attachments;
 pub mod projects;
+pub mod signoff_email;
 pub mod tasks;
 pub mod team;
 pub mod tevi;
@@ -28,6 +30,8 @@ pub fn api_router(state: AppState) -> Router {
         .merge(claude::router())
         .merge(network::router())
         .merge(oem_specs::router())
+        .merge(project_attachments::router())
+        .merge(signoff_email::router())
         .merge(misc::router())
         .with_state(state)
 }

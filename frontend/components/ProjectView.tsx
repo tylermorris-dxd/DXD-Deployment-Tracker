@@ -15,13 +15,14 @@ import ProjectSettingsView from './ProjectSettingsView'
 import OpsPlanner from './OpsPlanner'
 import PricingView from './PricingView'
 import SummaryView from './SummaryView'
+import CustomerSignoff from './CustomerSignoff'
 
 interface Props {
   projectId: string
   onBack: () => void
 }
 
-type ViewMode = 'pricing' | 'wx' | 'airspace' | 'map' | 'network' | 'summary' | 'stakeholders' | 'settings' | 'ops'
+type ViewMode = 'pricing' | 'wx' | 'airspace' | 'map' | 'network' | 'summary' | 'signoff' | 'stakeholders' | 'settings' | 'ops'
 
 // ── Shared tab-button styles ───────────────────────────────────────────────────
 
@@ -66,6 +67,10 @@ const TABS: Array<{ id: ViewMode; label: string; icon: React.ReactNode }> = [
   {
     id: 'summary', label: 'Summary',
     icon: <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="2" y="1" width="10" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.2"/><path d="M4.5 4.5h5M4.5 7h5M4.5 9.5h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>,
+  },
+  {
+    id: 'signoff', label: 'Signoff',
+    icon: <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 3.5h6M2 6h6M2 8.5h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/><path d="M8.5 10l2 2 2.5-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/><rect x="1" y="1.5" width="10" height="11" rx="1.2" stroke="currentColor" strokeWidth="1.2"/></svg>,
   },
   {
     id: 'stakeholders', label: 'Contacts',
@@ -284,7 +289,7 @@ export default function ProjectView({ projectId, onBack }: Props) {
       </div>
 
       {/* ── Content area ──────────────────────────────────────────────────── */}
-      <div style={{ display: viewMode === 'ops' ? 'none' : 'block', padding: viewMode === 'map' ? 0 : '24px 24px 0 24px' }}>
+      <div style={{ display: viewMode === 'ops' ? 'none' : 'block', padding: (viewMode === 'map' || viewMode === 'signoff') ? 0 : '24px 24px 0 24px' }}>
         {/* PRICING view */}
         {viewMode === 'pricing' && <PricingView project={project} onCacheUpdate={updatePricingCache} />}
 
@@ -309,6 +314,10 @@ export default function ProjectView({ projectId, onBack }: Props) {
             onNetworkCache={updateNetworkCache}
           />
         )}
+
+        {/* SIGNOFF view — customer acceptance form, PDF archived on the
+            deal + emailed via Resend when the operator clicks Save. */}
+        {viewMode === 'signoff' && <CustomerSignoff project={project} />}
 
         {/* STAKEHOLDERS view */}
         {viewMode === 'stakeholders' && <StakeholdersView project={project} onUpdate={invalidate} hubspotDeal={hsDeal} />}

@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Customer Acceptance & Signoff</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Aldrich&family=Tomorrow:wght@400;500;600;700&family=Anonymous+Pro:wght@400;700&display=swap');
+
+  :root {
+    --paper: #ffffff;
+    --ink: #000000;
+    --ink-2: #25252a;
+    --red: #b81917;
+    --green: #575B41;
+    --yellow: #ffde59;
+    --navy: #00205B;
+    --line: #d4d4d8;
+    --line-2: #e6e6ea;
+    --muted: #6b6b70;
+    --field: #fbfbfc;
+    --serif: 'Aldrich', 'Oswald', 'Impact', sans-serif;
+    --sans: 'Tomorrow', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --mono: 'Anonymous Pro', ui-monospace, 'SF Mono', Consolas, monospace;
+  }
+
+  html, body { background: #e9e9ec; color: var(--ink); font-family: var(--sans); }
+  body { margin: 0; padding: 20px 0; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+
+  /* Toolbar — screen only */
+  .toolbar {
+    width: 8.5in; max-width: calc(100% - 24px);
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+    font-family: var(--mono); font-size: 11px; color: var(--ink);
+    background: #fff; border: 1px solid var(--line); padding: 10px 14px;
+  }
+  .toolbar .label { text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); }
+  .toolbar .group { display: inline-flex; align-items: center; gap: 8px; }
+  .toolbar .segmented { display: inline-flex; border: 1px solid var(--ink); }
+  .toolbar .segmented button {
+    all: unset; cursor: pointer; padding: 6px 14px; font-family: var(--mono); font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink); background: #fff;
+  }
+  .toolbar .segmented button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+  .toolbar .btn {
+    all: unset; cursor: pointer; padding: 6px 12px; border: 1px solid var(--ink); font-family: var(--mono);
+    font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink); background: #fff;
+  }
+  .toolbar .btn:hover { background: var(--ink); color: #fff; }
+  .toolbar .btn.primary { background: var(--red); color: #fff; border-color: var(--red); }
+  .toolbar .btn.primary:hover { background: #8f1310; border-color: #8f1310; }
+  .toolbar .btn.ghost { border-color: var(--line); color: var(--muted); }
+  .toolbar .btn.ghost:hover { background: var(--field); color: var(--ink); }
+  .toolbar .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .toolbar .status { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 0.06em; }
+  .toolbar .status.ok  { color: #1f7a1f; }
+  .toolbar .status.err { color: #b81917; }
+
+  /* Page */
+  .page {
+    width: 8.5in; min-height: 11in; background: var(--paper); color: var(--ink);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.06);
+    display: grid; grid-template-rows: auto 1fr auto;
+    padding: 0;
+  }
+
+  /* Header band */
+  .hdr { background: var(--ink); color: #fff; padding: 14px 34px 12px 34px; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 18px; }
+  .hdr .mark { display: flex; align-items: center; gap: 14px; }
+  .hdr img.logo { height: 46px; width: auto; display: block; }
+  .hdr .brand { line-height: 1; }
+  .hdr .brand .name { font-family: var(--serif); font-weight: 400; font-size: 17px; letter-spacing: 0.02em; }
+  .hdr .brand .name .x { color: var(--red); }
+  .hdr .brand .tag { font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.16em; color: #b8b8bd; margin-top: 5px; text-transform: uppercase; }
+  .hdr .title { text-align: right; }
+  .hdr .title .t { font-family: var(--serif); font-weight: 400; font-size: 13.5px; letter-spacing: 0.01em; text-transform: uppercase; }
+  .hdr .title .path { font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.16em; color: var(--red); margin-top: 5px; text-transform: uppercase; }
+  .rule-red { height: 3px; background: var(--red); }
+
+  /* Body */
+  .body { padding: 12px 34px 8px 34px; display: flex; flex-direction: column; gap: 8px; }
+
+  /* Section bar */
+  .sec { position: relative; background: var(--ink); color: #fff; padding: 5px 10px 5px 16px; font-family: var(--serif); font-weight: 400; font-size: 11px; letter-spacing: 0.02em; text-transform: uppercase; display: flex; align-items: center; }
+  .sec::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: var(--red); }
+  .sec .num { color: #fff; margin-right: 8px; }
+  .sec .aside { margin-left: auto; font-family: var(--mono); font-weight: 400; font-size: 9px; letter-spacing: .1em; opacity: .75; text-transform: uppercase; }
+
+  /* Field grid */
+  .grid { display: grid; gap: 6px 10px; }
+  .grid.g3 { grid-template-columns: 1.4fr 1fr 0.9fr; }
+  .grid.g4 { grid-template-columns: 1.3fr 1fr 1fr 0.9fr; }
+  .field { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .field label { font-size: 8.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+  .field input.txt {
+    height: 22px; border: 1px solid var(--line); background: var(--field);
+    font-family: var(--sans); font-size: 11px; color: var(--ink);
+    padding: 0 6px; outline: none; width: 100%; box-sizing: border-box; border-radius: 0;
+  }
+  .field input.txt:focus { border-color: var(--red); background: #fff; }
+  .field input.txt::placeholder { color: #b5b5ba; font-style: italic; }
+
+  /* Dock SN dynamic list */
+  .dock-sn-block { display: flex; flex-direction: column; gap: 4px; margin-top: 2px; }
+  .dock-sn-block > label { font-size: 8.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+  .dock-sn-list { display: flex; flex-direction: column; gap: 4px; }
+  .dock-sn-row { display: flex; align-items: center; gap: 6px; }
+  .dock-sn-row input.dock-sn-input {
+    flex: 1; height: 22px; border: 1px solid var(--line); background: var(--field);
+    font-family: var(--sans); font-size: 11px; color: var(--ink);
+    padding: 0 6px; outline: none; box-sizing: border-box; border-radius: 0; min-width: 0;
+  }
+  .dock-sn-row input.dock-sn-input:focus { border-color: var(--red); background: #fff; }
+  .dock-sn-row input.dock-sn-input::placeholder { color: #b5b5ba; font-style: italic; }
+  .dock-sn-remove {
+    all: unset; cursor: pointer; width: 20px; height: 20px; flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid var(--line); color: var(--muted); font-size: 13px; line-height: 1;
+  }
+  .dock-sn-remove:hover { border-color: var(--red); color: var(--red); }
+  .dock-sn-add {
+    all: unset; cursor: pointer; align-self: flex-start; margin-top: 2px;
+    font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--red); padding: 3px 0;
+  }
+  .dock-sn-add:hover { text-decoration: underline; }
+
+  /* Attestation checkboxes */
+  .attest { display: grid; grid-template-columns: 22px 1fr; gap: 6px 8px; font-size: 9.5px; line-height: 1.42; align-items: start; }
+  .attest input.chk {
+    appearance: none; -webkit-appearance: none;
+    width: 14px; height: 14px; border: 1.6px solid var(--ink); background: #fff;
+    margin: 1px 0 0 0; display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer; border-radius: 0; position: relative;
+  }
+  .attest input.chk:checked::after {
+    content: ""; position: absolute; left: 2px; top: -2px;
+    width: 6px; height: 11px; border: solid var(--red); border-width: 0 2.4px 2.4px 0; transform: rotate(45deg);
+  }
+  .attest input.chk:focus-visible { outline: 2px solid var(--red); outline-offset: 1px; }
+  .attest .item strong { font-weight: 700; }
+  .attest label.item { cursor: pointer; }
+
+  /* Variant selector */
+  .variant-strip { display: flex; align-items: stretch; border: 1px solid var(--ink); }
+  .variant-strip .lbl { background: var(--ink); color: #fff; font-family: var(--serif); font-weight: 400; font-size: 10px; letter-spacing: 0.03em; text-transform: uppercase; padding: 6px 12px; display: flex; align-items: center; }
+  .variant-strip .opts { display: flex; flex: 1; }
+  .variant-strip label.opt {
+    flex: 1; padding: 6px 12px; display: flex; align-items: center; gap: 8px; cursor: pointer;
+    font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600;
+    border-left: 1px solid var(--line);
+  }
+  .variant-strip label.opt:first-of-type { border-left: none; }
+  .variant-strip input[type="radio"] { appearance: none; -webkit-appearance: none; margin: 0; width: 14px; height: 14px; border: 1.6px solid var(--ink); background: #fff; display: inline-flex; align-items: center; justify-content: center; border-radius: 0; cursor: pointer; position: relative; }
+  .variant-strip input[type="radio"]:checked::after { content: ""; width: 8px; height: 8px; background: var(--red); }
+  .variant-strip input[type="radio"]:checked ~ * , .variant-strip label.opt:has(input:checked) { background: #fff5f6; }
+
+  /* Legal clauses */
+  .clause { font-size: 9px; line-height: 1.42; color: var(--ink); }
+  .clause p { margin: 0 0 4px 0; }
+  .clause p:last-child { margin-bottom: 0; }
+  .clause strong { font-weight: 700; }
+  .clause .caps { text-transform: uppercase; letter-spacing: 0.02em; font-weight: 600; }
+  .variant-body { border: 1px solid var(--line); border-top: none; padding: 8px 12px; background: #fff; }
+  [data-variant="leased"] .v-sold { display: none; }
+  [data-variant="sold"] .v-leased { display: none; }
+
+  /* Exceptions */
+  textarea.exceptions {
+    width: 100%; height: 46px; box-sizing: border-box;
+    border: 1px solid var(--line); background: var(--field);
+    font-family: var(--sans); font-size: 10px; color: var(--ink);
+    padding: 6px 8px; resize: none; outline: none; border-radius: 0;
+  }
+  textarea.exceptions:focus { border-color: var(--red); background: #fff; }
+
+  /* Signatures */
+  .sigs { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 2px; }
+  .sig { display: flex; flex-direction: column; gap: 4px; }
+  .sig .role { font-family: var(--serif); font-weight: 400; font-size: 10px; letter-spacing: 0.03em; text-transform: uppercase; display: flex; align-items: center; gap: 8px; }
+  .sig .role .clr { margin-left: auto; font-family: var(--mono); font-weight: 400; font-size: 8.5px; letter-spacing: .08em; color: var(--muted); cursor: pointer; text-transform: uppercase; border: none; background: none; padding: 0; }
+  .sig .role .clr:hover { color: var(--red); }
+  .sig .pad-wrap { position: relative; height: 58px; border: 1px solid var(--line); background: #fff; }
+  .sig canvas.pad { width: 100%; height: 100%; display: block; cursor: crosshair; touch-action: none; }
+  .sig .pad-hint { position: absolute; left: 8px; bottom: 4px; font-family: var(--mono); font-size: 8px; letter-spacing: .1em; color: #bcbcc0; text-transform: uppercase; pointer-events: none; }
+  .sig .pad-wrap.filled .pad-hint { display: none; }
+  .sig .pad-baseline { position: absolute; left: 8px; right: 8px; bottom: 14px; height: 1px; background: repeating-linear-gradient(to right, #dcdce0 0 4px, transparent 4px 8px); pointer-events: none; }
+  .sig .sub { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 8px; }
+  .sig .sub .field input.txt { height: 20px; background: #fff; }
+
+  /* Universal footer disclaimer */
+  .savings {
+    border-top: 1px solid var(--ink); padding: 6px 0 0 0; margin-top: 2px;
+    font-family: var(--mono); font-size: 7.8px; line-height: 1.5; letter-spacing: 0.01em; color: var(--ink);
+  }
+  .savings strong { text-transform: uppercase; letter-spacing: 0.08em; }
+
+  /* Footer band */
+  .ftr {
+    padding: 8px 34px 12px 34px;
+    border-top: 1px solid var(--line);
+    display: grid; grid-template-columns: 1fr auto 1fr;
+    align-items: center; gap: 12px;
+    font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.14em; color: var(--muted);
+    text-transform: uppercase;
+  }
+  .ftr .r { text-align: right; }
+  .ftr .c { text-align: center; display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .ftr .c img.ftr-mark { height: 14px; width: auto; opacity: 0.85; display: block; }
+
+  /* Print */
+  @media print {
+    @page { size: Letter; margin: 0; }
+    html, body { background: #fff; padding: 0; }
+    body { display: block; }
+    .toolbar { display: none; }
+    .page { box-shadow: none; width: 8.5in; min-height: 11in; }
+    input.txt, input.dock-sn-input, textarea.exceptions { background: transparent !important; border-color: #7a7a7f !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    input.txt:focus, input.dock-sn-input:focus, textarea.exceptions:focus { border-color: #7a7a7f !important; }
+    .dock-sn-remove, .dock-sn-add { display: none !important; }
+    .sig .pad-wrap { border-color: #7a7a7f !important; }
+    .sig .pad-hint, .sig .pad-baseline, .sig .role .clr { display: none !important; }
+    .hdr, .sec, .variant-strip .lbl, .rule-red, .savings { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+
+  @media (max-width: 900px) {
+    .page { width: 100%; }
+    body { padding: 10px; }
+  }
+</style>
+</head>
+<body>
+
+
+<div class="toolbar" role="region" aria-label="Signoff controls">
+  <span class="group">
+    <span class="label">Variant</span>
+    <span class="segmented" role="group" aria-label="Choose sold or leased">
+      <button type="button" data-set="sold" aria-pressed="true">Sold</button>
+      <button type="button" data-set="leased" aria-pressed="false">Leased</button>
+    </span>
+  </span>
+  <span class="status" id="status">Ready</span>
+  <span class="group">
+    <button type="button" class="btn ghost" id="clearAll">Clear form</button>
+    <button type="button" class="btn" onclick="window.print()">Print / Save PDF</button>
+    <button type="button" class="btn primary" id="saveToDeal">Save to Deal &amp; Email</button>
+  </span>
+</div>
+
+<article class="page" data-variant="sold" id="page">
+  <header>
+    <div class="hdr">
+      <div class="mark">
+        <img class="logo" src="/images/logo.png" alt="Deus X Defense logo">
+        <div class="brand">
+          <div class="name">DEUS <span class="x">X</span> DEFENSE</div>
+          <div class="tag">We're here. We know. We're ready.</div>
+        </div>
+      </div>
+      <div></div>
+      <div class="title">
+        <div class="t">Customer Acceptance &amp; Signoff</div>
+        <div class="path">Solutions Architect &nbsp;&gt;&nbsp; Deployment &nbsp;&gt;&nbsp; Acceptance</div>
+      </div>
+    </div>
+    <div class="rule-red"></div>
+  </header>
+
+  <main class="body">
+
+    <div class="sec"><span class="num">1.</span>Deployment Identifier</div>
+    <div class="grid g3">
+      <div class="field"><label for="f-project">Project Name</label><input class="txt" id="f-project" name="project" autocomplete="off"></div>
+      <div class="field"><label for="f-client">Client Organization</label><input class="txt" id="f-client" name="client" autocomplete="off"></div>
+      <div class="field"><label for="f-ref">Deal / PO Ref.</label><input class="txt" id="f-ref" name="ref" autocomplete="off"></div>
+    </div>
+    <div class="grid g3">
+      <div class="field"><label for="f-site">Site Address</label><input class="txt" id="f-site" name="site" autocomplete="off"></div>
+      <div class="field"><label for="f-siteid">Site ID</label><input class="txt" id="f-siteid" name="siteid" autocomplete="off"></div>
+      <div class="field"><label for="f-date">Deployment Date</label><input class="txt" id="f-date" name="date" placeholder="MM/DD/YYYY" autocomplete="off"></div>
+    </div>
+    <div class="dock-sn-block">
+      <label>Dock SN(s)</label>
+      <div class="dock-sn-list" id="dock-sn-list">
+        <div class="dock-sn-row">
+          <input class="dock-sn-input" name="sn" placeholder="Dock serial number" autocomplete="off">
+          <button type="button" class="dock-sn-remove" aria-label="Remove dock">&times;</button>
+        </div>
+      </div>
+      <button type="button" class="dock-sn-add" id="dock-sn-add">+ Add another dock</button>
+    </div>
+
+    <div class="sec"><span class="num">2.</span>Installer &amp; Customer Attestation <span class="aside">Check each</span></div>
+    <div class="attest">
+      <input type="checkbox" class="chk" id="a1" name="a1">
+      <label for="a1" class="item"><strong>Workmanlike installation.</strong> Equipment was installed in a good and workmanlike manner in accordance with Deus X Defense standard practices, applicable manufacturer guidance, and the approved Site Intake specifications for this site.</label>
+      <input type="checkbox" class="chk" id="a2" name="a2">
+      <label for="a2" class="item"><strong>No damage to site.</strong> The premises were left in substantially the same condition as received. No material damage was done to the structure, roof, grounds, utilities, or existing systems, except any item expressly noted in Section 4 (Exceptions / Punch List).</label>
+      <input type="checkbox" class="chk" id="a3" name="a3">
+      <label for="a3" class="item"><strong>Powered on and functionally tested.</strong> The system was powered on and functionally tested in the Customer's presence — including a successful first flight or bench acceptance as applicable — and observed to operate to specification.</label>
+      <input type="checkbox" class="chk" id="a4" name="a4">
+      <label for="a4" class="item"><strong>Equipment and services explained.</strong> Customer received a walkthrough covering dock operation, DroneSense access, emergency stop / return-to-home, weekly preflight inspection, media storage, and DXD Ops support contact. Customer's designated Weekly Preflight Inspection Owner was identified and trained.</label>
+      <input type="checkbox" class="chk" id="a5" name="a5">
+      <label for="a5" class="item"><strong>Opportunity to inspect.</strong> Customer inspected the installation and equipment at completion and had a reasonable opportunity to raise questions or objections before signing.</label>
+    </div>
+
+    <div class="sec"><span class="num">3.</span>Acceptance Terms</div>
+    <div class="variant-strip" role="radiogroup" aria-label="Deployment type">
+      <div class="lbl">Deployment Type</div>
+      <div class="opts">
+        <label class="opt"><input type="radio" name="variant" value="sold" checked> Sold — Customer-Owned</label>
+        <label class="opt"><input type="radio" name="variant" value="leased"> Leased — DXD-Owned</label>
+      </div>
+    </div>
+
+    <div class="variant-body">
+      <div class="clause v-sold">
+        <p><strong>Acceptance of Sold Equipment.</strong> Customer accepts the equipment identified in Section 1 as installed and confirms deployment is complete. Title to the hardware passes to Customer upon final payment as set forth in the applicable Purchase Order and Master Services Agreement between Customer and Deus X Defense, LLC ("DXD"). Ongoing service — including software access (DroneSense), firmware, and support — remains governed by any subscription or services agreement then in force.</p>
+        <p><strong>Warranty; no other warranties.</strong> Warranty coverage is strictly as stated in the applicable Purchase Order and Master Services Agreement. <span class="caps">Except as expressly set forth in those documents, DXD makes no other warranties, express or implied, and specifically disclaims any implied warranty of merchantability, fitness for a particular purpose, or non-infringement</span> with respect to the equipment, installation, and services rendered.</p>
+        <p><strong>Release; latent defects preserved.</strong> By signing below, Customer releases DXD from further claims relating to the quality of installation or condition of the site, <strong>except</strong> (i) items listed in Section 4 (Exceptions / Punch List) and (ii) latent defects not reasonably discoverable at signoff, which must be reported in writing to DXD Ops within the warranty period stated in the governing agreement.</p>
+      </div>
+
+      <div class="clause v-leased">
+        <p><strong>Acceptance of Leased Equipment.</strong> Customer accepts delivery and installation of the equipment identified in Section 1 under the terms of the Equipment Lease and Master Services Agreement between Customer and Deus X Defense, LLC ("DXD"). <strong>Title to the hardware remains with DXD at all times</strong>; Customer receives only a limited, non-transferable right to use the equipment during the lease term. Ongoing service — support, DroneSense access, firmware, and scheduled maintenance — is provided under the Lease and any linked services agreement.</p>
+        <p><strong>Care, custody, and return condition.</strong> Customer is responsible for the reasonable care, physical security, and permitted use of the equipment while on site. Damage, loss, unauthorized modification, or relocation without DXD's prior written consent is chargeable to Customer as set forth in the Lease. At the end of the lease term the equipment must be returned in the condition delivered, ordinary wear and tear excepted.</p>
+        <p><strong>Release; latent defects preserved.</strong> By signing below, Customer releases DXD from further claims relating to the quality of installation or condition of the site, <strong>except</strong> (i) items listed in Section 4 (Exceptions / Punch List) and (ii) latent defects not reasonably discoverable at signoff, which must be reported in writing to DXD Ops within the timeframes stated in the Lease. <span class="caps">Except as expressly set forth in the Lease and Master Services Agreement, DXD makes no other warranties, express or implied, including any implied warranty of merchantability or fitness for a particular purpose.</span></p>
+      </div>
+    </div>
+
+    <div class="sec"><span class="num">4.</span>Exceptions / Punch List <span class="aside">Write "NONE" if none</span></div>
+    <textarea class="exceptions" id="f-exceptions" name="exceptions" placeholder="List any items not complete or any noted site condition..."></textarea>
+
+    <div class="sec"><span class="num">5.</span>Signatures</div>
+    <div class="sigs">
+      <div class="sig">
+        <div class="role">Customer — Authorized Signer <button type="button" class="clr" data-clear="sig-cust">Clear</button></div>
+        <div class="pad-wrap" id="wrap-sig-cust">
+          <canvas class="pad" id="sig-cust" width="800" height="140" aria-label="Customer signature"></canvas>
+          <div class="pad-baseline"></div>
+          <div class="pad-hint">Sign here — click and drag, or tap</div>
+        </div>
+        <div class="sub">
+          <div class="field"><label for="f-cust-name">Printed Name</label><input class="txt" id="f-cust-name" name="cust_name" autocomplete="off"></div>
+          <div class="field"><label for="f-cust-title">Title</label><input class="txt" id="f-cust-title" name="cust_title" autocomplete="off"></div>
+          <div class="field"><label for="f-cust-date">Date</label><input class="txt" id="f-cust-date" name="cust_date" placeholder="MM/DD/YYYY" autocomplete="off"></div>
+        </div>
+      </div>
+      <div class="sig">
+        <div class="role">Deus X Defense — Deployment Lead <button type="button" class="clr" data-clear="sig-dxd">Clear</button></div>
+        <div class="pad-wrap" id="wrap-sig-dxd">
+          <canvas class="pad" id="sig-dxd" width="800" height="140" aria-label="DXD deployment lead signature"></canvas>
+          <div class="pad-baseline"></div>
+          <div class="pad-hint">Sign here — click and drag, or tap</div>
+        </div>
+        <div class="sub">
+          <div class="field"><label for="f-dxd-name">Printed Name</label><input class="txt" id="f-dxd-name" name="dxd_name" autocomplete="off"></div>
+          <div class="field"><label for="f-dxd-role">Role</label><input class="txt" id="f-dxd-role" name="dxd_role" autocomplete="off"></div>
+          <div class="field"><label for="f-dxd-date">Date</label><input class="txt" id="f-dxd-date" name="dxd_date" placeholder="MM/DD/YYYY" autocomplete="off"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="savings">
+      <strong>Governing agreements control.</strong> This signoff evidences delivery, installation quality, and Customer acceptance only. In the event of any inconsistency between this document and the governing Master Services Agreement, Purchase Order, Equipment Lease, or subscription/services agreement between the parties, that governing agreement controls. Deus X Defense, LLC's aggregate liability arising out of the installation and equipment addressed here is limited as set forth in the governing agreement. Nothing in this signoff creates a new warranty, waives any right expressly preserved in the governing agreement, or modifies the parties' respective indemnity, insurance, or limitation-of-liability provisions.
+    </div>
+
+  </main>
+
+  <footer class="ftr">
+    <div>Deus X Defense · Customer Signoff</div>
+    <div class="c"><img class="ftr-mark" src="/images/logo.png" alt="Deus X Defense mark"><span>One Form Per Deployment</span></div>
+    <div class="r">Rev A · 08/2026</div>
+  </footer>
+</article>
+
+<script>
+  (function () {
+    var page = document.getElementById('page');
+    var status = document.getElementById('status');
+    var STORAGE_KEY = 'dxd_signoff_v1';
+
+    /* -------- Variant toggle -------- */
+    var toolBtns = document.querySelectorAll('.toolbar .segmented button');
+    var radios = document.querySelectorAll('input[name="variant"]');
+
+    function setVariant(v, source) {
+      if (v !== 'sold' && v !== 'leased') return;
+      page.setAttribute('data-variant', v);
+      toolBtns.forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-set') === v ? 'true' : 'false'); });
+      radios.forEach(function (r) { if (source !== 'radio') r.checked = r.value === v; });
+      saveDraft();
+    }
+    toolBtns.forEach(function (b) { b.addEventListener('click', function () { setVariant(b.getAttribute('data-set'), 'button'); }); });
+    radios.forEach(function (r) { r.addEventListener('change', function () { if (r.checked) setVariant(r.value, 'radio'); }); });
+
+    /* -------- Signature pads -------- */
+    function initPad(id) {
+      var canvas = document.getElementById(id);
+      var wrap = document.getElementById('wrap-' + id);
+      var ctx = canvas.getContext('2d');
+      var drawing = false;
+      var last = null;
+      var hasStroke = false;
+
+      function resize() {
+        var dpr = window.devicePixelRatio || 1;
+        var rect = canvas.getBoundingClientRect();
+        var prev;
+        try { prev = canvas.toDataURL(); } catch (e) { prev = null; }
+        canvas.width = Math.max(1, Math.round(rect.width * dpr));
+        canvas.height = Math.max(1, Math.round(rect.height * dpr));
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.lineWidth = 1.6;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.strokeStyle = '#0a0a0b';
+        if (prev && hasStroke) {
+          var img = new Image();
+          img.onload = function () { ctx.drawImage(img, 0, 0, rect.width, rect.height); };
+          img.src = prev;
+        }
+      }
+      resize();
+      window.addEventListener('resize', resize);
+
+      function pt(evt) {
+        var rect = canvas.getBoundingClientRect();
+        var x, y;
+        if (evt.touches && evt.touches[0]) { x = evt.touches[0].clientX; y = evt.touches[0].clientY; }
+        else { x = evt.clientX; y = evt.clientY; }
+        return { x: x - rect.left, y: y - rect.top };
+      }
+
+      function begin(e) {
+        e.preventDefault();
+        drawing = true;
+        last = pt(e);
+        hasStroke = true;
+        wrap.classList.add('filled');
+      }
+      function move(e) {
+        if (!drawing) return;
+        e.preventDefault();
+        var p = pt(e);
+        ctx.beginPath();
+        ctx.moveTo(last.x, last.y);
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+        last = p;
+      }
+      function end() {
+        if (!drawing) return;
+        drawing = false;
+        last = null;
+        saveDraft();
+      }
+
+      canvas.addEventListener('mousedown', begin);
+      canvas.addEventListener('mousemove', move);
+      window.addEventListener('mouseup', end);
+      canvas.addEventListener('touchstart', begin, { passive: false });
+      canvas.addEventListener('touchmove', move, { passive: false });
+      canvas.addEventListener('touchend', end);
+
+      return {
+        clear: function () {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          hasStroke = false;
+          wrap.classList.remove('filled');
+          saveDraft();
+        },
+        dataUrl: function () { return hasStroke ? canvas.toDataURL('image/png') : ''; },
+        restore: function (url) {
+          if (!url) return;
+          var img = new Image();
+          img.onload = function () {
+            var rect = canvas.getBoundingClientRect();
+            ctx.drawImage(img, 0, 0, rect.width, rect.height);
+            hasStroke = true;
+            wrap.classList.add('filled');
+          };
+          img.src = url;
+        }
+      };
+    }
+
+    var padCust = initPad('sig-cust');
+    var padDxd  = initPad('sig-dxd');
+
+    document.querySelectorAll('.sig .clr').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var id = btn.getAttribute('data-clear');
+        if (id === 'sig-cust') padCust.clear();
+        if (id === 'sig-dxd') padDxd.clear();
+      });
+    });
+
+    /* -------- Dock SN dynamic rows -------- */
+    var dockList = document.getElementById('dock-sn-list');
+    var dockAddBtn = document.getElementById('dock-sn-add');
+
+    function dockRows() { return dockList.querySelectorAll('.dock-sn-row'); }
+
+    function makeDockRow(value) {
+      var row = document.createElement('div');
+      row.className = 'dock-sn-row';
+      var input = document.createElement('input');
+      input.className = 'dock-sn-input';
+      input.name = 'sn';
+      input.placeholder = 'Dock serial number';
+      input.autocomplete = 'off';
+      input.value = value || '';
+      input.addEventListener('input', saveDraft);
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'dock-sn-remove';
+      btn.setAttribute('aria-label', 'Remove dock');
+      btn.innerHTML = '&times;';
+      btn.addEventListener('click', function () {
+        var rows = dockRows();
+        if (rows.length > 1) {
+          row.remove();
+        } else {
+          input.value = '';
+        }
+        saveDraft();
+      });
+      row.appendChild(input);
+      row.appendChild(btn);
+      return row;
+    }
+
+    function addDockRow(value, focus) {
+      var row = makeDockRow(value);
+      dockList.appendChild(row);
+      if (focus) row.querySelector('input').focus();
+      return row;
+    }
+
+    function resetDockRows() {
+      dockList.innerHTML = '';
+      addDockRow('');
+    }
+
+    // wire the row already present in the markup on page load
+    dockRows().forEach(function (row) {
+      var input = row.querySelector('.dock-sn-input');
+      input.addEventListener('input', saveDraft);
+      row.querySelector('.dock-sn-remove').addEventListener('click', function () {
+        var rows = dockRows();
+        if (rows.length > 1) {
+          row.remove();
+        } else {
+          input.value = '';
+        }
+        saveDraft();
+      });
+    });
+
+    dockAddBtn.addEventListener('click', function () { addDockRow('', true); saveDraft(); });
+
+    /* -------- Draft autosave (per viewer, per browser) -------- */
+    var textInputs = document.querySelectorAll('input.txt, textarea.exceptions');
+    var checks = document.querySelectorAll('.attest input.chk');
+
+    function saveDraft() {
+      try {
+        var data = { variant: page.getAttribute('data-variant'), inputs: {}, checks: {}, sigs: {}, dockSns: [] };
+        textInputs.forEach(function (el) { data.inputs[el.id] = el.value; });
+        checks.forEach(function (el) { data.checks[el.id] = el.checked; });
+        dockList.querySelectorAll('.dock-sn-input').forEach(function (el) { data.dockSns.push(el.value); });
+        data.sigs['sig-cust'] = padCust.dataUrl();
+        data.sigs['sig-dxd'] = padDxd.dataUrl();
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        flashStatus('Draft saved · this browser only', 'ok');
+      } catch (e) { /* private mode, quota, etc. — non-fatal */ }
+    }
+    function loadDraft() {
+      try {
+        var raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        var data = JSON.parse(raw);
+        if (data.variant) setVariant(data.variant, 'restore');
+        if (data.inputs) textInputs.forEach(function (el) { if (data.inputs[el.id] != null) el.value = data.inputs[el.id]; });
+        if (data.checks) checks.forEach(function (el) { if (data.checks[el.id] != null) el.checked = !!data.checks[el.id]; });
+        if (data.dockSns && data.dockSns.length) {
+          dockList.innerHTML = '';
+          data.dockSns.forEach(function (v) { addDockRow(v, false); });
+        }
+        if (data.sigs) { padCust.restore(data.sigs['sig-cust']); padDxd.restore(data.sigs['sig-dxd']); }
+      } catch (e) {}
+    }
+    var flashT;
+    function flashStatus(msg, kind) {
+      if (!status) return;
+      status.textContent = msg;
+      status.classList.remove('ok', 'err');
+      if (kind === 'ok')  status.classList.add('ok');
+      if (kind === 'err') status.classList.add('err');
+      clearTimeout(flashT);
+      flashT = setTimeout(function () {
+        status.textContent = 'Ready';
+        status.classList.remove('ok', 'err');
+      }, 3000);
+    }
+    textInputs.forEach(function (el) { el.addEventListener('input', saveDraft); });
+    checks.forEach(function (el) { el.addEventListener('change', saveDraft); });
+
+    /* -------- Clear form -------- */
+    document.getElementById('clearAll').addEventListener('click', function () {
+      if (!confirm('Clear all fields and signatures on this device?')) return;
+      textInputs.forEach(function (el) { el.value = ''; });
+      checks.forEach(function (el) { el.checked = false; });
+      resetDockRows();
+      padCust.clear(); padDxd.clear();
+      setVariant('sold', 'button');
+      try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+      flashStatus('Cleared');
+    });
+
+    loadDraft();
+
+    /* ==================================================================
+       Parent-app bridge (postMessage)
+       -----------------------------------------------------------------
+       This section is what makes the tool live inside a deal page. The
+       React parent posts down a "context" message with the project's
+       name / client / site so we can pre-fill Section 1, and listens
+       for a "save" message that carries the generated PDF back up.
+
+       When the user clicks "Save to Deal & Email", we:
+         1. Load jsPDF + html2canvas from CDN (only on first click).
+         2. Rasterize the .page element to a canvas.
+         3. Package that canvas into a Letter-sized PDF.
+         4. postMessage the base64 PDF to the parent, which uploads it
+            as a project attachment and emails a copy via Resend.
+       ================================================================== */
+
+    var parentReady = false;
+    var projectCtx = { id: '', name: '', client: '', site: '' };
+
+    function postToParent(payload) {
+      try { window.parent.postMessage(payload, '*'); } catch (e) {}
+    }
+
+    // Prefill the identifier fields whenever we get context. Only fill
+    // fields the user hasn't already typed into so we don't clobber
+    // their edits on re-mount.
+    function applyContext(ctx) {
+      projectCtx = Object.assign({}, projectCtx, ctx || {});
+      function setIfEmpty(id, val) {
+        if (val == null || val === '') return;
+        var el = document.getElementById(id);
+        if (el && !el.value) el.value = val;
+      }
+      setIfEmpty('f-project', projectCtx.name);
+      setIfEmpty('f-client',  projectCtx.client);
+      setIfEmpty('f-site',    projectCtx.site);
+      saveDraft();
+    }
+
+    window.addEventListener('message', function (evt) {
+      var msg = evt && evt.data;
+      if (!msg || typeof msg !== 'object') return;
+      if (msg.type === 'signoff:context') applyContext(msg.payload || {});
+    });
+
+    // Tell the parent we're mounted and ready for context.
+    postToParent({ type: 'signoff:ready' });
+
+    var loadingCdns = null;
+    function loadScript(src) {
+      return new Promise(function (resolve, reject) {
+        if (document.querySelector('script[src="' + src + '"]')) { resolve(); return; }
+        var sc = document.createElement('script');
+        sc.src = src;
+        sc.onload = function () { resolve(); };
+        sc.onerror = function () { reject(new Error('Failed to load ' + src)); };
+        document.head.appendChild(sc);
+      });
+    }
+
+    function ensureLibs() {
+      if (loadingCdns) return loadingCdns;
+      loadingCdns = Promise.all([
+        loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'),
+        loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'),
+      ]);
+      return loadingCdns;
+    }
+
+    async function buildPdfBase64() {
+      await ensureLibs();
+      var pageEl = document.getElementById('page');
+      // Snapshot the .page at full print DPR so signatures/text stay crisp.
+      var canvas = await window.html2canvas(pageEl, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+      });
+      // Build a Letter-sized PDF and fit the snapshot into it.
+      var jsPDF = window.jspdf.jsPDF;
+      var pdf = new jsPDF({ unit: 'pt', format: 'letter', orientation: 'portrait' });
+      var pageW = pdf.internal.pageSize.getWidth();
+      var pageH = pdf.internal.pageSize.getHeight();
+      // Preserve aspect: fit width, let height cascade; if it overflows a
+      // single page we still add it — Letter with our 8.5x11 source is
+      // 1:1 by design so this is normally a clean fit.
+      var ratio = canvas.height / canvas.width;
+      var drawW = pageW;
+      var drawH = pageW * ratio;
+      if (drawH > pageH) {
+        drawH = pageH;
+        drawW = pageH / ratio;
+      }
+      var img = canvas.toDataURL('image/jpeg', 0.92);
+      pdf.addImage(img, 'JPEG', 0, 0, drawW, drawH);
+      // datauristring → strip the "data:application/pdf;base64," prefix so
+      // the backend gets pure base64 bytes.
+      var dataUri = pdf.output('datauristring');
+      var comma = dataUri.indexOf(',');
+      return comma >= 0 ? dataUri.slice(comma + 1) : dataUri;
+    }
+
+    function slugify(s) {
+      return String(s || 'signoff').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'signoff';
+    }
+
+    async function saveToDeal() {
+      var btn = document.getElementById('saveToDeal');
+      btn.disabled = true;
+      var oldLabel = btn.textContent;
+      btn.textContent = 'Saving…';
+      flashStatus('Generating PDF…');
+      try {
+        var pdfB64 = await buildPdfBase64();
+        var stamp = new Date().toISOString().slice(0, 10);
+        var proj  = document.getElementById('f-project').value || projectCtx.name;
+        var filename = 'signoff-' + slugify(proj) + '-' + stamp + '.pdf';
+        flashStatus('Uploading + emailing…');
+        // Hand the PDF to the React parent. It knows the project id, the
+        // /api endpoints, and the auth cookies. We stay out of that.
+        postToParent({
+          type: 'signoff:save',
+          payload: {
+            pdf_base64: pdfB64,
+            filename: filename,
+            project: proj,
+            client:  document.getElementById('f-client').value,
+            site:    document.getElementById('f-site').value,
+          },
+        });
+        // The parent will fire back a signoff:result message.
+      } catch (e) {
+        flashStatus('PDF build failed: ' + (e && e.message ? e.message : e), 'err');
+        btn.disabled = false;
+        btn.textContent = oldLabel;
+      }
+    }
+
+    // Listen for the parent's outcome so we can restore the button state
+    // and surface success or the actual error message the API returned.
+    window.addEventListener('message', function (evt) {
+      var msg = evt && evt.data;
+      if (!msg || msg.type !== 'signoff:result') return;
+      var btn = document.getElementById('saveToDeal');
+      btn.disabled = false;
+      btn.textContent = 'Save to Deal & Email';
+      if (msg.payload && msg.payload.ok) {
+        flashStatus('Saved to deal + emailed', 'ok');
+      } else {
+        var err = (msg.payload && msg.payload.error) || 'unknown error';
+        flashStatus('Save failed: ' + err, 'err');
+      }
+    });
+
+    document.getElementById('saveToDeal').addEventListener('click', saveToDeal);
+  })();
+</script>
+
+</body>
+</html>

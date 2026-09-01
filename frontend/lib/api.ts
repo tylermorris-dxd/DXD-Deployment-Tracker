@@ -1,5 +1,6 @@
 import type {
   ProjectSummary, ProjectFull, Phase, Task, Subtask, Contact, AttachmentMeta,
+  ProjectAttachmentMeta,
   TeamMember, AdminTask,
   CreateProject, UpdateProject, UpdatePhase, UpdateTask, UpdateSubtask, UpdateContact,
   EquipmentItem, CreateEquipment, UpdateEquipment, EquipmentSection,
@@ -117,6 +118,52 @@ export const api = {
     delete: (attachmentId: string) =>
       apiFetch<void>(`/attachments/${attachmentId}`, { method: 'DELETE' }),
   },
+
+  // Project-scoped attachments (parallel to the task-scoped set above).
+  // Used by the Customer Signoff tab: the browser generates the PDF and
+  // uploads it here so it's persisted on the deal itself.
+  projectAttachments: {
+    list: (projectId: string) =>
+      apiFetch<ProjectAttachmentMeta[]>(`/projects/${projectId}/attachments`),
+    upload: async (
+      projectId: string,
+      file: File | Blob,
+      opts: { filename?: string; kind?: string } = {},
+    ): Promise<ProjectAttachmentMeta> => {
+      const form = new FormData()
+      const name = opts.filename ?? (file as File).name ?? 'upload.bin'
+      form.append('file', file, name)
+      if (opts.kind) form.append('kind', opts.kind)
+      const res = await fetch(`/api/projects/${projectId}/attachments`, {
+        method: 'POST',
+        body: form,
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: res.statusText }))
+        throw new ApiError(res.status, err.error ?? 'Upload failed')
+      }
+      return res.json()
+    },
+    downloadUrl: (attachmentId: string) => `/api/project-attachments/${attachmentId}`,
+    delete: (attachmentId: string) =>
+      apiFetch<void>(`/project-attachments/${attachmentId}`, { method: 'DELETE' }),
+  },
+
+  // Email a Customer Signoff PDF via the server-side Resend proxy.
+  // pdfBase64 is the raw PDF encoded as base64 (no data: prefix).
+  sendSignoffEmail: (body: {
+    to?: string
+    subject?: string
+    project?: string
+    client?: string
+    site?: string
+    filename: string
+    pdf_base64: string
+  }) =>
+    apiFetch<unknown>('/send-signoff-email', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
 
   team: {
     list: () => apiFetch<TeamMember[]>('/team'),

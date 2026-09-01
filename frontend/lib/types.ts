@@ -150,6 +150,20 @@ export interface AttachmentMeta {
   addedBy: string
 }
 
+// Project-scoped attachments (Customer Signoff etc.). Field names match
+// the backend's serde output, which uses snake_case — different casing
+// from AttachmentMeta above, intentionally left uncorrected because the
+// backend is the source of truth.
+export interface ProjectAttachmentMeta {
+  id: string
+  project_id: string
+  name: string
+  mime_type: string
+  size_bytes: number
+  kind: string
+  added_at: string
+}
+
 export interface TeamMember {
   id: string
   name: string
