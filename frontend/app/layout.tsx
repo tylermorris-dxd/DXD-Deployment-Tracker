@@ -2,6 +2,7 @@
 
 import React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import MobileDebug from '@/components/MobileDebug'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -9,6 +10,47 @@ const queryClient = new QueryClient({
     mutations: { retry: 0 },
   },
 })
+
+// Top-level error boundary — on mobile Safari we can't attach a devtools
+// inspector, so any thrown error would just result in a blank page. This
+// makes the failure visible instead of silent.
+class AppErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { err: Error | null }
+> {
+  state = { err: null as Error | null }
+  static getDerivedStateFromError(err: Error) { return { err } }
+  componentDidCatch(err: Error, info: React.ErrorInfo) {
+    // eslint-disable-next-line no-console
+    console.error('App error boundary caught:', err, info)
+  }
+  render() {
+    if (this.state.err) {
+      return (
+        <div style={{
+          padding: 20, color: '#fca5a5', fontFamily: 'monospace',
+          fontSize: 12, lineHeight: 1.6, wordBreak: 'break-word',
+          minHeight: '100vh', background: '#0a0b0d',
+        }}>
+          <div style={{ color: '#e24b4a', fontWeight: 700, fontSize: 14, marginBottom: 12 }}>
+            SOMETHING BROKE
+          </div>
+          <div style={{ color: '#e8e8e8' }}>{this.state.err.message}</div>
+          <pre style={{ marginTop: 12, fontSize: 10, color: '#888', whiteSpace: 'pre-wrap' }}>
+            {(this.state.err.stack || '').split('\n').slice(0, 8).join('\n')}
+          </pre>
+          <button
+            onClick={() => this.setState({ err: null })}
+            style={{ marginTop: 16, padding: '8px 16px', background: '#c0392b', color: '#fff', border: 'none', borderRadius: 4, fontFamily: 'monospace', fontSize: 12 }}
+          >
+            RETRY
+          </button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -95,9 +137,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <QueryClientProvider client={queryClient}>
-          <div style={{ position: 'relative', zIndex: 1, minHeight: '100vh' }}>
-            {children}
-          </div>
+          <AppErrorBoundary>
+            <div style={{ position: 'relative', zIndex: 1, minHeight: '100vh' }}>
+              {children}
+            </div>
+            <MobileDebug />
+          </AppErrorBoundary>
         </QueryClientProvider>
       </body>
     </html>
