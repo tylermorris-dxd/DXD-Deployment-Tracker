@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import Dashboard from '@/components/Dashboard'
@@ -115,14 +115,38 @@ const C = { bg: 'rgba(10,11,13,0.6)', card: 'rgba(17,19,24,0.75)', sidebarBg: 'r
 
 const TOPBAR_HEIGHT = 52
 const SIDEBAR_WIDTH = 232
+const MOBILE_BREAKPOINT = 768
+
+function useIsMobile(): boolean {
+  const [isMobile, setIsMobile] = useState(false)
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= MOBILE_BREAKPOINT)
+    check()
+    window.addEventListener('resize', check)
+    window.addEventListener('orientationchange', check)
+    return () => {
+      window.removeEventListener('resize', check)
+      window.removeEventListener('orientationchange', check)
+    }
+  }, [])
+  return isMobile
+}
 
 export default function Home() {
   const [tab, setTab] = useState<MainTab>('dashboard')
   const [panelId, setPanelId] = useState<string | null>(null)
   const [newDealOpen, setNewDealOpen] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const isMobile = useIsMobile()
 
   const openDeal = (id: string) => setPanelId(id)
   const closeDeal = () => setPanelId(null)
+
+  // Close the drawer whenever we switch tabs so tapping a sidebar entry
+  // takes the user straight to the content (rather than leaving the
+  // drawer covering the page). Also close it whenever we transition off
+  // mobile (rotate the phone or resize the browser).
+  useEffect(() => { if (!isMobile) setMobileMenuOpen(false) }, [isMobile])
 
   const activeLabel = MENU_ITEMS.find(m => m.id === tab)?.label ?? 'Menu'
 
@@ -136,18 +160,35 @@ export default function Home() {
         backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
         display: 'flex', alignItems: 'center', zIndex: 200,
       }}>
-        {/* Brand */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 20px', width: SIDEBAR_WIDTH, borderRight: `1px solid ${C.border}`, height: '100%', flexShrink: 0, boxSizing: 'border-box' }}>
-          <img src="/images/logo.png" alt="DXD" style={{ height: 32, width: 'auto', flexShrink: 0 }} />
-          <div>
-            <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 13, color: C.text, letterSpacing: 0.5, lineHeight: 1.2 }}>Deus X Defense</div>
-            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: C.muted, letterSpacing: 1, textTransform: 'uppercase' }}>Ops Tracker</div>
+        {isMobile ? (
+          /* Mobile: compact brand + hamburger. The full menu lives in the
+             slide-out drawer below. */
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 14px', height: '100%', flexShrink: 0 }}>
+            <button
+              onClick={() => setMobileMenuOpen(v => !v)}
+              aria-label="Open menu"
+              style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 4, width: 38, height: 38, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, marginRight: 4 }}
+            >
+              <span style={{ width: 20, height: 2, background: C.text, borderRadius: 1, transform: mobileMenuOpen ? 'translateY(6px) rotate(45deg)' : 'none', transition: 'transform 0.2s' }} />
+              <span style={{ width: 20, height: 2, background: C.text, borderRadius: 1, opacity: mobileMenuOpen ? 0 : 1, transition: 'opacity 0.2s' }} />
+              <span style={{ width: 20, height: 2, background: C.text, borderRadius: 1, transform: mobileMenuOpen ? 'translateY(-6px) rotate(-45deg)' : 'none', transition: 'transform 0.2s' }} />
+            </button>
+            <img src="/images/logo.png" alt="DXD" style={{ height: 26, width: 'auto', flexShrink: 0 }} />
           </div>
-        </div>
+        ) : (
+          /* Desktop brand block, sized to align with the sidebar. */
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 20px', width: SIDEBAR_WIDTH, borderRight: `1px solid ${C.border}`, height: '100%', flexShrink: 0, boxSizing: 'border-box' }}>
+            <img src="/images/logo.png" alt="DXD" style={{ height: 32, width: 'auto', flexShrink: 0 }} />
+            <div>
+              <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 13, color: C.text, letterSpacing: 0.5, lineHeight: 1.2 }}>Deus X Defense</div>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: C.muted, letterSpacing: 1, textTransform: 'uppercase' }}>Ops Tracker</div>
+            </div>
+          </div>
+        )}
 
         {/* Current page label */}
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', padding: '0 22px' }}>
-          <span style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 14, color: C.text, letterSpacing: 0.5 }}>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', padding: isMobile ? '0 12px' : '0 22px', minWidth: 0 }}>
+          <span style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: isMobile ? 13 : 14, color: C.text, letterSpacing: 0.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {activeLabel}
           </span>
         </div>
@@ -160,36 +201,56 @@ export default function Home() {
         </div>
       </div>
 
+      {/* ── Mobile backdrop: dims the page + closes the drawer on tap ─────── */}
+      {isMobile && mobileMenuOpen && (
+        <div
+          onClick={() => setMobileMenuOpen(false)}
+          style={{
+            position: 'fixed', top: TOPBAR_HEIGHT, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0,0,0,0.5)', zIndex: 199,
+            backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)',
+          }}
+        />
+      )}
+
       {/* ── Layout: sidebar + main ──────────────────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'flex-start' }}>
-        {/* Sidebar — sticky so it follows scroll */}
+        {/* Sidebar
+            Desktop: sticky column beside main content.
+            Mobile:  fixed slide-out drawer overlaid on the content, closed
+                     by default, opened via the hamburger. */}
         <aside
           style={{
-            width: SIDEBAR_WIDTH,
+            width: isMobile ? Math.min(300, SIDEBAR_WIDTH + 20) : SIDEBAR_WIDTH,
             flexShrink: 0,
-            position: 'sticky',
+            position: isMobile ? 'fixed' : 'sticky',
             top: TOPBAR_HEIGHT,
+            left: 0,
             height: `calc(100vh - ${TOPBAR_HEIGHT}px)`,
             overflowY: 'auto',
-            background: C.sidebarBg,
+            background: isMobile ? 'rgba(10,11,13,0.98)' : C.sidebarBg,
             borderRight: `1px solid ${C.border}`,
             padding: '16px 14px 24px',
             boxSizing: 'border-box',
+            zIndex: isMobile ? 210 : 'auto',
+            transform: isMobile && !mobileMenuOpen ? 'translateX(-110%)' : 'translateX(0)',
+            transition: isMobile ? 'transform 0.24s ease' : 'none',
+            boxShadow: isMobile && mobileMenuOpen ? '0 0 24px rgba(0,0,0,0.6)' : 'none',
           }}
         >
           {MENU_ITEMS.map(item => (
             <SidebarCard
               key={item.id}
               active={tab === item.id}
-              onClick={() => setTab(item.id)}
+              onClick={() => { setTab(item.id); setMobileMenuOpen(false) }}
               icon={item.icon}
               label={item.label}
             />
           ))}
         </aside>
 
-        {/* Main content */}
-        <main style={{ flex: 1, minWidth: 0 }}>
+        {/* Main content — full width on mobile, flexible column on desktop */}
+        <main style={{ flex: 1, minWidth: 0, width: isMobile ? '100%' : undefined }}>
           {tab === 'dashboard'    && <Dashboard onOpenDeal={openDeal} onSwitchTab={setTab} />}
           {tab === 'deals'        && <ProjectList onSelectProject={openDeal} />}
           {tab === 'admin'        && <AdminPanel />}

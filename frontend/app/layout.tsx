@@ -15,7 +15,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <head>
         <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1, viewport-fit=cover"
+        />
+        {/* Let iOS Safari style its top/bottom UI chrome to match the dark app */}
+        <meta name="theme-color" content="#0a0b0d" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <title>DXD — Ops Tracker</title>
         <link
           rel="stylesheet"
@@ -24,12 +31,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
         <style>{`
           *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+          /* iOS Safari: neutralize the double-tap-zoom delay + tap flash.
+             tap-highlight-color and touch-action are the two knobs that
+             usually explain "the page loads but nothing responds". */
+          html { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; }
           html, body { height: 100%; }
           body {
             background: #0a0b0d; color: #e8eaf0; font-family: 'JetBrains Mono', monospace;
             background-image: url('/images/dxd-bg.jpg');
             background-size: cover; background-position: center top;
-            background-attachment: fixed; background-repeat: no-repeat;
+            /* background-attachment: fixed is broken on iOS Safari and can
+               cause layout thrash + touch-routing weirdness. We fake the
+               "fixed" look with a body::before below that IS position:fixed
+               (pointer-events:none), which works everywhere. */
+            background-attachment: scroll; background-repeat: no-repeat;
+            overscroll-behavior-y: none;
           }
           body::before {
             content: '';
