@@ -154,7 +154,11 @@
   .variant-strip label.opt:first-of-type { border-left: none; }
   .variant-strip input[type="radio"] { appearance: none; -webkit-appearance: none; margin: 0; width: 14px; height: 14px; border: 1.6px solid var(--ink); background: #fff; display: inline-flex; align-items: center; justify-content: center; border-radius: 0; cursor: pointer; position: relative; }
   .variant-strip input[type="radio"]:checked::after { content: ""; width: 8px; height: 8px; background: var(--red); }
-  .variant-strip input[type="radio"]:checked ~ * , .variant-strip label.opt:has(input:checked) { background: #fff5f6; }
+  /* Highlighting the checked option used to use :has(), but html2canvas
+     1.4.1 (used for the Save to Deal PDF) can't parse :has() and errors
+     with "unexpected EOF" during PDF build. We swap in a JS-driven class
+     — see the "variant-strip option highlight" block in the script. */
+  .variant-strip label.opt.is-selected { background: #fff5f6; }
 
   /* Legal clauses */
   .clause { font-size: 9px; line-height: 1.42; color: var(--ink); }
@@ -390,6 +394,13 @@
       page.setAttribute('data-variant', v);
       toolBtns.forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-set') === v ? 'true' : 'false'); });
       radios.forEach(function (r) { if (source !== 'radio') r.checked = r.value === v; });
+      // variant-strip option highlight — see CSS note for why this is
+      // JS instead of :has()
+      document.querySelectorAll('.variant-strip label.opt').forEach(function (lbl) {
+        var input = lbl.querySelector('input[type="radio"]');
+        if (input && input.checked) lbl.classList.add('is-selected');
+        else lbl.classList.remove('is-selected');
+      });
       saveDraft();
     }
     toolBtns.forEach(function (b) { b.addEventListener('click', function () { setVariant(b.getAttribute('data-set'), 'button'); }); });
