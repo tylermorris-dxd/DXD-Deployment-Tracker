@@ -189,7 +189,11 @@
   .sig canvas.pad { width: 100%; height: 100%; display: block; cursor: crosshair; touch-action: none; }
   .sig .pad-hint { position: absolute; left: 8px; bottom: 4px; font-family: var(--mono); font-size: 8px; letter-spacing: .1em; color: #bcbcc0; text-transform: uppercase; pointer-events: none; }
   .sig .pad-wrap.filled .pad-hint { display: none; }
-  .sig .pad-baseline { position: absolute; left: 8px; right: 8px; bottom: 14px; height: 1px; background: repeating-linear-gradient(to right, #dcdce0 0 4px, transparent 4px 8px); pointer-events: none; }
+  /* Baseline dashes: rewritten in the classic 4-stop syntax (color pos,
+     color pos, color pos, color pos). The CSS Images Level 4 shorthand
+     "#dcdce0 0 4px" that groups start+end into one stop is what tripped
+     html2canvas here with "unexpected EOF". */
+  .sig .pad-baseline { position: absolute; left: 8px; right: 8px; bottom: 14px; height: 1px; background: repeating-linear-gradient(to right, #dcdce0 0, #dcdce0 4px, transparent 4px, transparent 8px); pointer-events: none; }
   .sig .sub { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 8px; }
   .sig .sub .field input.txt { height: 20px; background: #fff; }
 
@@ -695,9 +699,14 @@
 
     function ensureLibs() {
       if (loadingCdns) return loadingCdns;
+      // html2canvas 1.4.1 (2021) can't parse modern CSS: :has(), all: unset,
+      // double-position gradient stops, oklch(), etc. It errors with
+      // "unexpected EOF" mid-parse and never gets to render.
+      // html2canvas-pro is an actively-maintained fork with modern CSS support.
+      // It exposes the same window.html2canvas global so no other code changes.
       loadingCdns = Promise.all([
         loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'),
-        loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'),
+        loadScript('https://cdn.jsdelivr.net/npm/html2canvas-pro@1.5.8/dist/html2canvas-pro.min.js'),
       ]);
       return loadingCdns;
     }
