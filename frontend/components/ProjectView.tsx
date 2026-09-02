@@ -192,8 +192,27 @@ export default function ProjectView({ projectId, onBack }: Props) {
           <button style={{ ...s.ghostBtn, flexShrink: 0 }} onClick={onBack}>{Icons.back}<span style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 11, letterSpacing: 1 }}>ALL PROJECTS</span></button>
 
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 17, fontWeight: 700, color: '#E8ECF4', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {project.name}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+              <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 17, fontWeight: 700, color: '#E8ECF4', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {project.name}
+              </div>
+              {/* Status pills — show only when there's signal */}
+              {project.steadyState && (
+                <span title="Deal is in steady state" style={pillSt('#3FB95A')}>STEADY</span>
+              )}
+              {project.faaAuthorizationRequired && (
+                <span title="FAA authorization tracking active" style={pillSt('#3b82f6')}>FAA</span>
+              )}
+              {hsDeal?.properties?.dealstage && (
+                <span title="HubSpot deal stage" style={pillSt('#FF9800')}>
+                  {String(hsDeal.properties.dealstage).toUpperCase()}
+                </span>
+              )}
+              {hsDeal?.properties?.amount && parseFloat(hsDeal.properties.amount) > 0 && (
+                <span title="HubSpot deal amount" style={pillSt('#3FB95A')}>
+                  {fmtMoneyShort(parseFloat(hsDeal.properties.amount))}
+                </span>
+              )}
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 2, flexWrap: 'wrap' }}>
               {project.client && (
@@ -205,54 +224,14 @@ export default function ProjectView({ projectId, onBack }: Props) {
             </div>
           </div>
 
-          {/* FAA Authorization toggle */}
-          <button
-            onClick={() => toggleFaa.mutate(!project.faaAuthorizationRequired)}
-            disabled={toggleFaa.isPending}
-            title={project.faaAuthorizationRequired ? 'FAA authorization active — click to disable' : 'Enable FAA authorization tracking'}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', flexShrink: 0,
-              background: project.faaAuthorizationRequired ? 'rgba(37,99,235,0.15)' : 'rgba(255,255,255,0.04)',
-              border: `1px solid ${project.faaAuthorizationRequired ? 'rgba(37,99,235,0.5)' : 'rgba(255,255,255,0.1)'}`,
-              borderRadius: 7, cursor: 'pointer', transition: 'all 0.2s',
-            }}
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <path d="M6 1l1.5 3h3l-2.5 2 1 3L6 7.5 3 9l1-3L1.5 4h3L6 1z" stroke={project.faaAuthorizationRequired ? '#3b82f6' : 'rgba(255,255,255,0.35)'} strokeWidth="1.2" strokeLinejoin="round" fill={project.faaAuthorizationRequired ? 'rgba(37,99,235,0.3)' : 'none'}/>
-            </svg>
-            <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, letterSpacing: 0.8, color: project.faaAuthorizationRequired ? '#3b82f6' : 'rgba(255,255,255,0.35)', textTransform: 'uppercase' }}>
-              FAA Auth
-            </span>
-          </button>
-
-          {/* Steady-state toggle — mark the deal as fully deployed / in ongoing ops */}
-          <button
-            onClick={() => toggleSteady.mutate(!project.steadyState)}
-            disabled={toggleSteady.isPending}
-            title={project.steadyState ? 'Deal is in steady state — click to return to active deployment' : 'Mark this deal as steady-state (deployed + running)'}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', flexShrink: 0,
-              background: project.steadyState ? 'rgba(63,185,90,0.15)' : 'rgba(255,255,255,0.04)',
-              border: `1px solid ${project.steadyState ? 'rgba(63,185,90,0.5)' : 'rgba(255,255,255,0.1)'}`,
-              borderRadius: 7, cursor: 'pointer', transition: 'all 0.2s',
-            }}
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <path d="M1 6 L3 6 L4 3 L6 9 L8 3 L9 6 L11 6" stroke={project.steadyState ? '#3FB95A' : 'rgba(255,255,255,0.35)'} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-            </svg>
-            <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, letterSpacing: 0.8, color: project.steadyState ? '#3FB95A' : 'rgba(255,255,255,0.35)', textTransform: 'uppercase' }}>
-              Steady State
-            </span>
-          </button>
-
-          {/* Delete project */}
-          <button
-            style={{ ...s.ghostBtn, flexShrink: 0, color: 'rgba(255,255,255,0.35)', borderColor: 'transparent' }}
-            onClick={() => { if (window.confirm(`Delete "${project.name}"? This cannot be undone.`)) deleteMutation.mutate() }}
-            disabled={deleteMutation.isPending}
-            title="Delete project">
-            {Icons.trash}
-          </button>
+          {/* Overflow menu — FAA / Steady State toggles + Delete */}
+          <OverflowMenu
+            faaOn={project.faaAuthorizationRequired}
+            steadyOn={project.steadyState}
+            onToggleFaa={() => toggleFaa.mutate(!project.faaAuthorizationRequired)}
+            onToggleSteady={() => toggleSteady.mutate(!project.steadyState)}
+            onDelete={() => { if (window.confirm(`Delete "${project.name}"? This cannot be undone.`)) deleteMutation.mutate() }}
+          />
         </div>
 
         {/* Row 2: view mode tabs */}
@@ -401,6 +380,126 @@ function Stat({ label, value, accent }: { label: string; value: string; accent?:
     <div>
       <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 8, letterSpacing: 1.5, color: 'rgba(255,255,255,0.3)', marginBottom: 3 }}>{label}</div>
       <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: accent ?? 'rgba(255,255,255,0.7)', fontWeight: accent ? 700 : 400 }}>{value}</div>
+    </div>
+  )
+}
+
+// Small status pill next to the deal name — one style, colored by state.
+function pillSt(color: string): React.CSSProperties {
+  return {
+    fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, fontWeight: 700, letterSpacing: 1,
+    color, background: `${color}18`, border: `1px solid ${color}44`,
+    borderRadius: 4, padding: '2px 7px', textTransform: 'uppercase' as const,
+    whiteSpace: 'nowrap' as const, flexShrink: 0,
+  }
+}
+
+function fmtMoneyShort(n: number): string {
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 1_000)     return `$${(n / 1_000).toFixed(0)}K`
+  return `$${n.toFixed(0)}`
+}
+
+// Overflow menu — FAA / Steady State / Delete. Closes on outside click
+// and on Escape. Uses a small popover anchored under the ⋯ button.
+function OverflowMenu({
+  faaOn, steadyOn, onToggleFaa, onToggleSteady, onDelete,
+}: {
+  faaOn: boolean
+  steadyOn: boolean
+  onToggleFaa: () => void
+  onToggleSteady: () => void
+  onDelete: () => void
+}) {
+  const [open, setOpen] = React.useState(false)
+  const wrapRef = React.useRef<HTMLDivElement>(null)
+
+  React.useEffect(() => {
+    if (!open) return
+    const onDoc = (e: MouseEvent) => {
+      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    window.addEventListener('mousedown', onDoc)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('mousedown', onDoc)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  const row = (
+    label: string, color: string, active: boolean, onClick: () => void, desc: string,
+  ) => (
+    <button
+      onClick={() => { onClick(); setOpen(false) }}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+        padding: '10px 14px', background: 'transparent', border: 'none',
+        color: '#E8ECF4', cursor: 'pointer', textAlign: 'left' as const,
+        transition: 'background 0.1s',
+      }}
+      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
+      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+    >
+      <span style={{ width: 8, height: 8, borderRadius: '50%', background: active ? color : 'rgba(255,255,255,0.15)', boxShadow: active ? `0 0 6px ${color}88` : 'none', flexShrink: 0 }} />
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ display: 'block', fontFamily: 'Syne, sans-serif', fontSize: 12, fontWeight: 600, color: '#E8ECF4' }}>
+          {active ? `Disable ${label}` : `Enable ${label}`}
+        </span>
+        <span style={{ display: 'block', fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, color: 'rgba(255,255,255,0.35)', marginTop: 1 }}>
+          {desc}
+        </span>
+      </span>
+    </button>
+  )
+
+  return (
+    <div ref={wrapRef} style={{ position: 'relative', flexShrink: 0 }}>
+      <button
+        onClick={() => setOpen(v => !v)}
+        title="Deal options"
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          width: 34, height: 32, background: open ? 'rgba(255,255,255,0.08)' : 'transparent',
+          border: `1px solid ${open ? 'rgba(255,255,255,0.15)' : 'transparent'}`,
+          borderRadius: 7, color: 'rgba(255,255,255,0.6)', cursor: 'pointer', padding: 0,
+        }}
+      >
+        <svg width="16" height="4" viewBox="0 0 16 4" fill="none">
+          <circle cx="2"  cy="2" r="1.6" fill="currentColor" />
+          <circle cx="8"  cy="2" r="1.6" fill="currentColor" />
+          <circle cx="14" cy="2" r="1.6" fill="currentColor" />
+        </svg>
+      </button>
+
+      {open && (
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 6px)', right: 0, minWidth: 260,
+          background: '#12141a', border: '1px solid #2a3040', borderRadius: 10,
+          boxShadow: '0 20px 60px rgba(0,0,0,0.6)', overflow: 'hidden', zIndex: 150,
+        }}>
+          {row('FAA Auth', '#3b82f6', faaOn, onToggleFaa, faaOn ? 'Stop tracking waiver clock' : 'Track FAA waiver progress')}
+          {row('Steady State', '#3FB95A', steadyOn, onToggleSteady, steadyOn ? 'Return deal to active deployment' : 'Mark deal as deployed + running')}
+          <div style={{ height: 1, background: 'rgba(255,255,255,0.06)' }} />
+          <button
+            onClick={() => { setOpen(false); onDelete() }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+              padding: '10px 14px', background: 'transparent', border: 'none',
+              color: '#E53935', cursor: 'pointer', textAlign: 'left' as const,
+              fontFamily: 'Syne, sans-serif', fontSize: 12, fontWeight: 600,
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(229,57,53,0.10)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M2.5 3.5h7M4.5 3.5V2.5a1 1 0 011-1h1a1 1 0 011 1v1M3.5 3.5v6a1 1 0 001 1h3a1 1 0 001-1v-6" stroke="#E53935" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span style={{ flex: 1 }}>Delete deal</span>
+          </button>
+        </div>
+      )}
     </div>
   )
 }
