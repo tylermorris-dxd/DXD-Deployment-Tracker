@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { toastBus, ToastPayload } from '@/lib/toast'
+import { sfx } from '@/lib/sfx'
 
 // Global toast renderer. Subscribes to the toast bus and stacks live
 // toasts in the lower-right. Each toast tracks its own countdown ring
@@ -18,6 +19,10 @@ export default function Toaster() {
   useEffect(() => {
     return toastBus.subscribe(t => {
       setToasts(prev => [...prev, { ...t, bornAt: Date.now() }])
+      // Slight sonar chirp so the operator hears success without looking.
+      if (t.tone === 'error') sfx.err()
+      else if (t.tone === 'undo') sfx.whoosh()
+      else sfx.ack()
     })
   }, [])
 

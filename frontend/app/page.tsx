@@ -16,6 +16,8 @@ import CommandPalette from '@/components/CommandPalette'
 import FleetMap from '@/components/FleetMap'
 import Toaster from '@/components/Toaster'
 import BootSequence from '@/components/BootSequence'
+import SettingsPopover from '@/components/SettingsPopover'
+import { sfx } from '@/lib/sfx'
 import { useIsMobile } from '@/lib/useIsMobile'
 
 export type MainTab = 'dashboard' | 'deals' | 'fleet' | 'admin' | 'equipment' | 'cost' | 'product' | 'events' | 'job-est'
@@ -153,6 +155,7 @@ export default function Home() {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault()
         setPaletteOpen(v => !v)
+        sfx.ping()
       }
     }
     window.addEventListener('keydown', onKey)
@@ -229,7 +232,8 @@ export default function Home() {
               <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: C.muted, background: '#0d1017', border: `1px solid ${C.border}`, borderRadius: 3, padding: '1px 5px', marginLeft: 4 }}>⌘K</span>
             </button>
           )}
-          <button onClick={() => setNewDealOpen(true)} style={{ padding: '7px 18px', background: C.red, border: 'none', borderRadius: 7, color: '#fff', fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 11, letterSpacing: 0.5, cursor: 'pointer' }}>
+          <SettingsPopover />
+          <button onClick={() => { setNewDealOpen(true); sfx.ack() }} style={{ padding: '7px 18px', background: C.red, border: 'none', borderRadius: 7, color: '#fff', fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 11, letterSpacing: 0.5, cursor: 'pointer' }}>
             New Deal
           </button>
         </div>
@@ -276,7 +280,7 @@ export default function Home() {
             <SidebarCard
               key={item.id}
               active={tab === item.id}
-              onClick={() => { setTab(item.id); setMobileMenuOpen(false) }}
+              onClick={() => { if (tab !== item.id) sfx.whoosh(); setTab(item.id); setMobileMenuOpen(false) }}
               icon={item.icon}
               label={item.label}
             />
