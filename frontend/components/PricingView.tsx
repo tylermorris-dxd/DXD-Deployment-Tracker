@@ -67,7 +67,7 @@ export default function PricingView({ project, onCacheUpdate }: Props) {
       src="/solutions-tool.html"
       style={{
         width: '100%',
-        height: 'calc(100vh - 56px)',
+        height: 'calc(var(--dxd-vh, 100vh) - 56px)',
         border: 'none',
         display: 'block',
         background: '#0E0E0F',

@@ -91,8 +91,12 @@ export default function AlertBell() {
 
       {open && (
         <div style={{
-          position: 'absolute', top: 'calc(100% + 8px)', right: 0,
-          width: 380, maxWidth: 'calc(100vw - 24px)', maxHeight: '70vh', overflowY: 'auto',
+          position: 'fixed',
+          // On mobile pin below the topbar and center; the anchored popover
+          // was drifting off-screen when the topbar wraps. Cap to 70dvh so
+          // long lists scroll instead of getting cut off by iOS chrome.
+          top: 60, right: 12, left: 'auto',
+          width: 380, maxWidth: 'calc(100vw - 24px)', maxHeight: '70dvh', overflowY: 'auto',
           background: '#12141a', border: '1px solid #2a3040',
           borderRadius: 10, boxShadow: '0 20px 60px rgba(0,0,0,0.6)', zIndex: 400,
         }}>

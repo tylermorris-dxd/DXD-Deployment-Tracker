@@ -109,7 +109,7 @@ export interface FleetMapProps {
   compact?: boolean // dashboard mode — hides the legend and status footer
 }
 
-export default function FleetMap({ onOpenDeal, height = 'calc(100vh - 120px)', compact = false }: FleetMapProps) {
+export default function FleetMap({ onOpenDeal, height = 'calc(var(--dxd-vh, 100vh) - 120px)', compact = false }: FleetMapProps) {
   const isMobile = useIsMobile()
   const settings = useSettings()
   const containerRef = useRef<HTMLDivElement>(null)

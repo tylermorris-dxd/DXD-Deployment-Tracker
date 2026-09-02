@@ -348,7 +348,7 @@ export default function Home() {
             position: isMobile ? 'fixed' : 'sticky',
             top: TOPBAR_HEIGHT,
             left: 0,
-            height: `calc(100vh - ${TOPBAR_HEIGHT}px)`,
+            height: `calc(var(--dxd-vh, 100vh) - ${TOPBAR_HEIGHT}px)`,
             overflowY: 'auto',
             background: isMobile ? 'rgba(10,11,13,0.98)' : C.sidebarBg,
             borderRight: `1px solid ${C.border}`,

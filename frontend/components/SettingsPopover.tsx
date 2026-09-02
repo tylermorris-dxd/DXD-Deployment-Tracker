@@ -77,8 +77,9 @@ export default function SettingsPopover() {
 
       {open && (
         <div style={{
-          position: 'absolute', top: 'calc(100% + 8px)', right: 0,
-          width: 320, background: '#12141a', border: '1px solid #2a3040',
+          position: 'fixed', top: 60, right: 12, left: 'auto',
+          width: 320, maxWidth: 'calc(100vw - 24px)',
+          background: '#12141a', border: '1px solid #2a3040',
           borderRadius: 10, overflow: 'hidden', zIndex: 300,
           boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
         }}>

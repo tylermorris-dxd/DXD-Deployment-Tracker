@@ -132,7 +132,7 @@ export default function CustomerSignoff({ project }: Props) {
   }, [project.id, project.name, project.client, project.site])
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 56px)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(var(--dxd-vh, 100vh) - 56px)' }}>
       <iframe
         ref={iframeRef}
         src="/customer-signoff.html"

@@ -11,14 +11,32 @@
 // Document directly (extending is what tripped the TS declaration merge).
 type StartVT = (cb: () => void | Promise<void>) => unknown
 
+// iOS Safari's View Transitions implementation has enough bugs (frozen
+// scroll, missed frames on the clip-path animation) that skipping it on
+// mobile gives a better experience than using it.
+function isMobileLike(): boolean {
+  if (typeof navigator === 'undefined') return false
+  const ua = navigator.userAgent
+  if (/iPhone|iPad|iPod|Android|Mobile/i.test(ua)) return true
+  if (typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches) return true
+  return false
+}
+
 export function withViewTransition<T>(update: () => T): T {
   if (typeof document === 'undefined') return update()
+  if (isMobileLike()) return update()
   const start = (document as unknown as { startViewTransition?: StartVT }).startViewTransition
   if (typeof start !== 'function') return update()
   let out: T | undefined
   // startViewTransition invokes its callback synchronously before returning,
   // so `out` is populated by the time we hit `return out`.
-  start.call(document, () => { out = update() })
+  try {
+    start.call(document, () => { out = update() })
+  } catch {
+    // Some UAs throw when starting a transition while a previous one is
+    // still resolving. Fall back to the plain state change.
+    return update()
+  }
   return out as T
 }
 

@@ -192,7 +192,7 @@ export default function ConstellationView({ onOpenDeal }: Props) {
   const galaxyAngle = (nowMs * speed) / 60000 // one revolution / minute at 1×
 
   return (
-    <div style={{ position: 'relative', height: 'calc(100vh - 100px)', background: 'radial-gradient(ellipse at center, #0a0e1a 0%, #050608 100%)', border: '1px solid #252b38', borderRadius: 10, overflow: 'hidden' }}>
+    <div style={{ position: 'relative', height: 'calc(var(--dxd-vh, 100vh) - 100px)', background: 'radial-gradient(ellipse at center, #0a0e1a 0%, #050608 100%)', border: '1px solid #252b38', borderRadius: 10, overflow: 'hidden' }}>
       <style>{`
         @keyframes dxd-twinkle { 0%,100% { opacity: 0.15 } 50% { opacity: 0.65 } }
         @keyframes dxd-solar   { 0%,100% { transform: scale(1); opacity: 0.5 } 50% { transform: scale(1.15); opacity: 0.9 } }
@@ -202,7 +202,7 @@ export default function ConstellationView({ onOpenDeal }: Props) {
 
       <svg
         ref={svgRef}
-        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', cursor: panRef.current ? 'grabbing' : 'grab' }}
+        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', cursor: panRef.current ? 'grabbing' : 'grab', touchAction: 'none' }}
         viewBox="-600 -400 1200 800"
         preserveAspectRatio="xMidYMid meet"
         onMouseDown={startPan}

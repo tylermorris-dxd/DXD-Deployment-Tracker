@@ -231,6 +231,7 @@ export default function FleetCopilot({ open, onClose, onOpenDeal }: Props) {
     sfx.whoosh()
   }
 
+  const isNarrow = typeof window !== 'undefined' && window.innerWidth <= 768
   const width = 420
 
   return (
@@ -242,13 +243,19 @@ export default function FleetCopilot({ open, onClose, onOpenDeal }: Props) {
           position: 'fixed', inset: 0, background: open ? 'rgba(0,0,0,0.35)' : 'transparent',
           transition: 'background 0.2s', zIndex: 550,
           pointerEvents: open ? 'auto' : 'none',
-          backdropFilter: open ? 'blur(2px)' : 'none',
+          // backdrop-filter is a heavy op on mobile — skip when narrow.
+          backdropFilter: open && !isNarrow ? 'blur(2px)' : 'none',
         }}
       />
-      {/* Panel */}
+      {/* Panel — full-width on narrow screens so the copilot is usable
+          without pinching, and pinned to the dvh so iOS Safari's chrome
+          doesn't hide the input box. */}
       <aside
         style={{
-          position: 'fixed', top: 0, right: 0, bottom: 0, width, maxWidth: '92vw',
+          position: 'fixed', top: 0, right: 0,
+          height: 'var(--dxd-vh, 100vh)',
+          width: isNarrow ? '100%' : width,
+          maxWidth: '100vw',
           background: 'linear-gradient(160deg, #12141a 0%, #0d1017 100%)',
           borderLeft: '1px solid #2a3040', zIndex: 560,
           transform: open ? 'translateX(0)' : 'translateX(105%)',

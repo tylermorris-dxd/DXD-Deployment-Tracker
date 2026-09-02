@@ -203,6 +203,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
              usually explain "the page loads but nothing responds". */
           html { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; }
           html, body { height: 100%; }
+          /* --dxd-vh is a mobile-safe viewport height. iOS Safari's 100vh
+             doesn't shrink for the URL bar; 100dvh does but isn't supported
+             everywhere. Modern browsers get the dvh value; older ones fall
+             back to plain vh (still correct on desktop). */
+          :root { --dxd-vh: 100vh; --dxd-vh: 100dvh; }
           body {
             background: #0a0b0d; color: #e8eaf0; font-family: 'JetBrains Mono', monospace;
             background-image: url('/images/dxd-bg.jpg');

@@ -17,7 +17,7 @@ export default function OpsPlanner({ site, name, projectId, maximized }: Props) 
   return (
     <iframe
       src={src}
-      style={{ width: '100%', height: maximized ? '100vh' : 'calc(100vh - 56px)', border: 'none', display: 'block' }}
+      style={{ width: '100%', height: maximized ? '100vh' : 'calc(var(--dxd-vh, 100vh) - 56px)', border: 'none', display: 'block' }}
       title="Ops Planner"
     />
   )
