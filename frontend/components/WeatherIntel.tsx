@@ -38,20 +38,49 @@ async function fetchWeatherFromOpenMeteo(location: string, onStatus: (s: string)
   const { lat, lng } = geo
 
   onStatus('Fetching weather data from Open-Meteo (2015–2025)...')
+  // We pull weather_code at HOURLY resolution instead of daily. Open-Meteo's
+  // daily weather_code collapses each day to one "dominant" condition, so a
+  // brief afternoon thunderstorm gets erased by the surrounding calmer hours
+  // — that's why the daily counter kept coming back at 0 thunder days/month
+  // even for lightning-heavy regions. Any hour with a thunder/fog code counts
+  // the day. ~96k hourly ints for one variable, ~400 KB response.
   const params = new URLSearchParams({
     latitude: lat.toFixed(4), longitude: lng.toFixed(4),
     start_date: '2015-01-01', end_date: '2025-12-31',
-    daily: ['temperature_2m_max','temperature_2m_min','precipitation_sum','rain_sum','snowfall_sum','wind_speed_10m_max','wind_gusts_10m_max','relative_humidity_2m_max','relative_humidity_2m_min','weather_code'].join(','),
+    daily: ['temperature_2m_max','temperature_2m_min','precipitation_sum','rain_sum','snowfall_sum','wind_speed_10m_max','wind_gusts_10m_max','relative_humidity_2m_max','relative_humidity_2m_min'].join(','),
+    hourly: 'weather_code',
     timezone: 'UTC', temperature_unit: 'fahrenheit', wind_speed_unit: 'mph', precipitation_unit: 'inch',
   })
   const wxRes = await fetch(`https://archive-api.open-meteo.com/v1/archive?${params}`)
   if (!wxRes.ok) { const err = await wxRes.json().catch(() => ({})); throw new Error((err as {reason?: string}).reason || `Open-Meteo error (${wxRes.status})`) }
-  const wxData = await wxRes.json() as { daily: Record<string, (number | null)[]> }
+  const wxData = await wxRes.json() as {
+    daily: Record<string, (number | null)[]>
+    hourly?: { time: string[]; weather_code: (number | null)[] }
+  }
 
   onStatus('Calculating monthly averages...')
   const d = wxData.daily
   const dates = d.time as unknown as string[]
   const avg = (arr: number[]) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0
+
+  // Build a per-day summary from hourly weather_code. A day counts as a
+  // thunder day if ANY hour in that day has code 95/96/99 (WMO thunder codes)
+  // and as a fog day if ANY hour has 45/48. This is the fix for the "0
+  // thunderstorms/month" bug.
+  const perDay = new Map<string, { thunder: boolean; fog: boolean }>()
+  const hourlyTimes = wxData.hourly?.time
+  const hourlyCodes = wxData.hourly?.weather_code
+  if (hourlyTimes && hourlyCodes) {
+    for (let i = 0; i < hourlyTimes.length; i++) {
+      const c = hourlyCodes[i]
+      if (c == null) continue
+      const dayKey = hourlyTimes[i].slice(0, 10)
+      let entry = perDay.get(dayKey)
+      if (!entry) { entry = { thunder: false, fog: false }; perDay.set(dayKey, entry) }
+      if (c === 95 || c === 96 || c === 99) entry.thunder = true
+      else if (c === 45 || c === 48) entry.fog = true
+    }
+  }
 
   const md = Array.from({ length: 12 }, () => ({ highs: [] as number[], lows: [] as number[], windSpeeds: [] as number[], gusts: [] as number[], humidities: [] as number[], rainDays: 0, snowDays: 0, fogDays: 0, thunderDays: 0 }))
   const monthYearPrecip: Record<string, number> = {}
@@ -66,11 +95,11 @@ async function fetchWeatherFromOpenMeteo(location: string, onStatus: (s: string)
     if (d.wind_gusts_10m_max[i] != null) m.gusts.push(d.wind_gusts_10m_max[i]!)
     const hMax = d.relative_humidity_2m_max?.[i]; const hMin = d.relative_humidity_2m_min?.[i]
     if (hMax != null && hMin != null) m.humidities.push((hMax + hMin) / 2)
-    const code = d.weather_code?.[i]
     if ((d.rain_sum?.[i] || 0) >= 0.10) m.rainDays++
     if ((d.snowfall_sum?.[i] || 0) >= 0.1) m.snowDays++
-    if (code != null && [45, 48].includes(code as number)) m.fogDays++
-    if (code != null && [95, 96, 99].includes(code as number)) m.thunderDays++
+    const hourly = perDay.get(dateStr)
+    if (hourly?.fog) m.fogDays++
+    if (hourly?.thunder) m.thunderDays++
     const key = `${mIdx}_${year}`
     monthYearPrecip[key] = (monthYearPrecip[key] || 0) + ((d.precipitation_sum?.[i] as number) || 0)
   })
@@ -98,30 +127,92 @@ async function fetchWeatherFromOpenMeteo(location: string, onStatus: (s: string)
   return { location: geo.displayName || location, data_period: '2015–2025 (11-year average)', sources: ['Open-Meteo ERA5 Historical Archive'], months }
 }
 
+// Classify a month into GO / MARGINAL / NO-FLY day counts.
+//
+// The math: each hazard contributes a per-day probability of falling into a
+// bucket. We combine hazards as INDEPENDENT events using the probability
+// union — P(any bad) = 1 - Π(1 - Pᵢ) — so a day with thunder + high wind +
+// fog doesn't get counted three times (the old summing approach did).
+// Then we subtract the no-fly overlap from marginal so the two buckets are
+// disjoint and can never sum to more than the days in the month.
+//
+// The gust ladder maps a monthly-average daily-max gust to the fraction of
+// days that exceed 35 mph (no-fly) or fall in 25–35 mph (marginal). The
+// values are calibrated against the legend's stated cutoffs.
 function classifyMonth(m: MonthData): FlyData {
   const daysInMonth = [31,28,31,30,31,30,31,31,30,31,30,31]
   const idx = WX_MONTHS.indexOf(m.month?.slice(0, 3)) ?? 0
   const totalDays = daysInMonth[idx] || 30
-  const thunderNofly = m.avg_thunderstorm_days * 0.40
-  const lightRainDays = Math.max(m.avg_rain_days - m.avg_thunderstorm_days, 0)
-  const heavyRainNofly = lightRainDays * 0.20
-  const snowNofly = m.avg_snow_days * 0.80
-  const windNoflyPct = m.avg_wind_speed_mph > 25 ? 0.40 : m.avg_wind_speed_mph > 22 ? 0.20 : m.avg_wind_speed_mph > 18 ? 0.08 : m.avg_wind_speed_mph > 14 ? 0.02 : m.avg_wind_speed_mph > 10 ? 0.005 : 0.001
-  const windNofly = totalDays * windNoflyPct
-  const fogNofly = m.avg_fog_days * 0.80
-  const coldNofly = m.avg_low_f < 14 ? 6 : m.avg_low_f < 20 ? 3 : 0
-  const heatNofly = m.avg_high_f > 113 ? 3 : m.avg_high_f > 104 ? 1 : 0
-  const noflyDays = Math.min(Math.round(thunderNofly + heavyRainNofly + snowNofly + windNofly + fogNofly + coldNofly + heatNofly), totalDays)
-  const thunderMarginal = m.avg_thunderstorm_days * 0.25
-  const lightRainMarginal = lightRainDays * 0.15
-  const windMarginalPct = m.avg_wind_speed_mph > 22 ? 0.20 : m.avg_wind_speed_mph > 18 ? 0.10 : m.avg_wind_speed_mph > 14 ? 0.04 : m.avg_wind_speed_mph > 10 ? 0.01 : 0.003
-  const windMarginal = totalDays * windMarginalPct
-  const coldMarginal = m.avg_low_f >= 14 && m.avg_low_f < 32 ? Math.min(3, Math.round(m.avg_snow_days * 0.5) + 1) : 0
-  const fogMarginal = m.avg_fog_days * 0.20
-  const marginalDays = Math.min(Math.round(thunderMarginal + lightRainMarginal + windMarginal + coldMarginal + fogMarginal), totalDays - noflyDays)
-  const flyable = Math.max(totalDays - noflyDays - marginalDays, 0)
+
+  // Rain days that aren't already counted as thunder days.
+  const rainOnly = Math.max(m.avg_rain_days - m.avg_thunderstorm_days, 0)
+
+  // ── Per-day NO-FLY probabilities ─────────────────────────────────────────
+  // Thunder anywhere in the day = automatic no-fly (lightning + drones).
+  const pThunder     = clamp01(m.avg_thunderstorm_days / totalDays)
+  const pSnow        = clamp01(m.avg_snow_days       / totalDays * 0.85)
+  const pFogNofly    = clamp01(m.avg_fog_days        / totalDays * 0.70)
+  const pRainNofly   = clamp01(rainOnly              / totalDays * 0.15)
+
+  // Gusts vs the legend's 25 / 35 mph thresholds. m.avg_wind_gust_mph is
+  // the daily-max gust averaged across the month, so this ladder is the
+  // rough exceedance frequency of the daily-max at each threshold.
+  const g = m.avg_wind_gust_mph
+  const pGustNofly =           // gust > 35 mph
+    g > 40 ? 0.60 :
+    g > 35 ? 0.45 :
+    g > 30 ? 0.25 :
+    g > 25 ? 0.12 :
+    g > 20 ? 0.04 :
+    g > 15 ? 0.01 : 0.002
+
+  //   avg_low  < 14°F  → cold no-fly
+  //   avg_high > 113°F → heat no-fly
+  const pColdNofly =
+    m.avg_low_f  < 14  ? 0.50 :
+    m.avg_low_f  < 20  ? 0.20 : 0
+  const pHeatNofly =
+    m.avg_high_f > 113 ? 0.30 :
+    m.avg_high_f > 108 ? 0.10 : 0
+
+  // ── Per-day MARGINAL probabilities ───────────────────────────────────────
+  const pFogMarginal  = clamp01(m.avg_fog_days  / totalDays * 0.25)
+  const pRainMarginal = clamp01(rainOnly        / totalDays * 0.30)
+
+  const pGustMarginal =        // gust 25–35 mph
+    g > 40 ? 0.20 :
+    g > 35 ? 0.30 :
+    g > 30 ? 0.35 :
+    g > 25 ? 0.30 :
+    g > 20 ? 0.18 :
+    g > 15 ? 0.08 :
+    g > 10 ? 0.03 : 0.008
+
+  //   avg_low  14–32°F   → cold marginal
+  //   avg_high 104–113°F → heat marginal
+  const pColdMarginal =
+    m.avg_low_f  < 32 && m.avg_low_f >= 14 ? 0.35 :
+    m.avg_low_f  < 40                       ? 0.10 : 0
+  const pHeatMarginal =
+    m.avg_high_f > 104 ? 0.30 :
+    m.avg_high_f > 100 ? 0.12 : 0
+
+  // ── Union of independent events, no double counting ──────────────────────
+  const noflyProbs    = [pThunder, pSnow, pFogNofly, pRainNofly, pGustNofly, pColdNofly, pHeatNofly]
+  const marginalProbs = [pFogMarginal, pRainMarginal, pGustMarginal, pColdMarginal, pHeatMarginal]
+  const pAnyNofly    = 1 - noflyProbs.reduce   ((acc, p) => acc * (1 - p), 1)
+  const pAnyMarginal = 1 - marginalProbs.reduce((acc, p) => acc * (1 - p), 1)
+
+  // NO-FLY beats MARGINAL: remove the overlap so buckets never over-sum.
+  const pMarginalOnly = Math.max(pAnyMarginal * (1 - pAnyNofly), 0)
+
+  const noflyDays    = Math.round(totalDays * pAnyNofly)
+  const marginalDays = Math.round(totalDays * pMarginalOnly)
+  const flyable      = Math.max(totalDays - noflyDays - marginalDays, 0)
   return { flyable, marginal: marginalDays, nofly: noflyDays }
 }
+
+function clamp01(x: number): number { return x < 0 ? 0 : x > 1 ? 1 : x }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -260,8 +351,12 @@ export default function WeatherIntel({ project, onCacheUpdate }: Props) {
         totalPrecip: parseFloat(sum(ms.map(m => m.avg_precip_inches)).toFixed(1)),
         totalRainDays: Math.round(sum(ms.map(m => m.avg_rain_days))), totalSnowDays: Math.round(sum(ms.map(m => m.avg_snow_days))),
         totalFogDays: Math.round(sum(ms.map(m => m.avg_fog_days))), totalThunderDays: Math.round(sum(ms.map(m => m.avg_thunderstorm_days))),
-        avgGust: parseFloat(avg(ms.map(m => m.avg_wind_speed_mph)).toFixed(1)),
-        peakGust: Math.max(...ms.map(m => m.avg_wind_speed_mph)),
+        // Actual gusts now, not wind speed. The old code averaged the daily-max
+        // sustained wind and labeled it "gust" — misleading, especially since
+        // the classifier now uses gusts.
+        avgWind: parseFloat(avg(ms.map(m => m.avg_wind_speed_mph)).toFixed(1)),
+        avgGust: parseFloat(avg(ms.map(m => m.avg_wind_gust_mph)).toFixed(1)),
+        peakGust: parseFloat(Math.max(...ms.map(m => m.avg_wind_gust_mph)).toFixed(1)),
         avgHumidity: Math.round(avg(ms.map(m => m.avg_humidity_pct))),
         flyableDays: totalFlyable, flyablePct: totalDays > 0 ? (totalFlyable / totalDays * 100) : 0,
         marginalPct: totalDays > 0 ? (totalMarginal / totalDays * 100) : 0, noflyPct: totalDays > 0 ? (totalNofly / totalDays * 100) : 0,
@@ -301,7 +396,7 @@ export default function WeatherIntel({ project, onCacheUpdate }: Props) {
         </button>
       </div>
       <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: 'rgba(255,255,255,0.25)', marginBottom: 32, paddingLeft: 4 }}>
-        Open-Meteo ERA5 · 10-year historical averages · Flyability based on wind, temp, precip &amp; weather patterns
+        Open-Meteo ERA5 · 11-year historical averages · Flyability based on gusts, temp, precip &amp; hourly weather codes
       </div>
 
       {/* Loading */}
@@ -333,7 +428,7 @@ export default function WeatherIntel({ project, onCacheUpdate }: Props) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 24 }}>
             {[
               { label: 'Flyable Days/Yr', value: annualStats.flyableDays, unit: 'days', sub: annualStats.flyablePct.toFixed(0) + '% of year', color: '#2ecc71' },
-              { label: 'Avg Wind Speed', value: annualStats.avgGust, unit: 'mph', sub: 'Peak month avg: ' + annualStats.peakGust + ' mph', color: '#3498db' },
+              { label: 'Avg Peak Gust', value: annualStats.avgGust, unit: 'mph', sub: 'Windiest month: ' + annualStats.peakGust + ' mph', color: '#3498db' },
               { label: 'Annual Precip', value: annualStats.totalPrecip, unit: 'in', sub: annualStats.totalRainDays + ' rain days', color: '#9b59b6' },
               { label: 'Avg Temp', value: annualStats.avgTemp, unit: '°F', sub: 'H: ' + annualStats.avgHigh + '° / L: ' + annualStats.avgLow + '°', color: '#e67e22' },
               { label: 'Thunderstorm Days', value: annualStats.totalThunderDays, unit: '/yr', sub: 'Lightning = auto ground', color: '#e74c3c' },
@@ -373,7 +468,7 @@ export default function WeatherIntel({ project, onCacheUpdate }: Props) {
             <WxTempRangeChart data={weatherData.months} />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-            <WxBarChart data={weatherData.months} dataKey="avg_wind_speed_mph" label="Avg Wind Speed (mph)" unit="mph" color="#3498db" />
+            <WxBarChart data={weatherData.months} dataKey="avg_wind_gust_mph" label="Avg Peak Gust (mph)" unit="mph" color="#3498db" />
             <WxBarChart data={weatherData.months} dataKey="avg_precip_inches" label="Precipitation (in)" unit="inches" color="#9b59b6" />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
@@ -392,7 +487,7 @@ export default function WeatherIntel({ project, onCacheUpdate }: Props) {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'IBM Plex Mono', monospace", fontSize: 11 }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                    {['Month','High °F','Low °F','Wind mph','Rain Days','Snow','Thunder','Fog','Precip in','Humidity','Daylight','GO','MARG','NO-FLY'].map(h => (
+                    {['Month','High °F','Low °F','Gust mph','Rain Days','Snow','Thunder','Fog','Precip in','Humidity','Daylight','GO','MARG','NO-FLY'].map(h => (
                       <th key={h} style={{ padding: '10px 6px', textAlign: 'right', color: 'rgba(255,255,255,0.35)', fontWeight: 500, fontSize: 10, whiteSpace: 'nowrap' }}>{h}</th>
                     ))}
                   </tr>
@@ -403,7 +498,7 @@ export default function WeatherIntel({ project, onCacheUpdate }: Props) {
                       <td style={{ padding: '8px 6px', color: '#f1f1f1', fontWeight: 600, textAlign: 'left' }}>{WX_MONTHS[i]}</td>
                       <td style={{ padding: '8px 6px', textAlign: 'right', color: m.avg_high_f > 104 ? '#e74c3c' : 'rgba(255,255,255,0.6)' }}>{Math.round(m.avg_high_f)}</td>
                       <td style={{ padding: '8px 6px', textAlign: 'right', color: m.avg_low_f < 32 ? '#3498db' : 'rgba(255,255,255,0.6)' }}>{Math.round(m.avg_low_f)}</td>
-                      <td style={{ padding: '8px 6px', textAlign: 'right', color: m.avg_wind_speed_mph > 25 ? '#e67e22' : 'rgba(255,255,255,0.6)' }}>{Math.round(m.avg_wind_speed_mph)}</td>
+                      <td style={{ padding: '8px 6px', textAlign: 'right', color: m.avg_wind_gust_mph > 35 ? '#e74c3c' : m.avg_wind_gust_mph > 25 ? '#e67e22' : 'rgba(255,255,255,0.6)' }}>{Math.round(m.avg_wind_gust_mph)}</td>
                       <td style={{ padding: '8px 6px', textAlign: 'right', color: 'rgba(255,255,255,0.6)' }}>{m.avg_rain_days}</td>
                       <td style={{ padding: '8px 6px', textAlign: 'right', color: m.avg_snow_days > 0 ? '#3498db' : 'rgba(255,255,255,0.3)' }}>{m.avg_snow_days}</td>
                       <td style={{ padding: '8px 6px', textAlign: 'right', color: m.avg_thunderstorm_days > 2 ? '#e74c3c' : 'rgba(255,255,255,0.6)' }}>{m.avg_thunderstorm_days}</td>
@@ -425,9 +520,9 @@ export default function WeatherIntel({ project, onCacheUpdate }: Props) {
           <div style={{ background: 'rgba(30,30,34,0.5)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: 8, padding: '16px 18px' }}>
             <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 12 }}>Flyability Classification Criteria</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, fontFamily: "'IBM Plex Mono', monospace", fontSize: 11 }}>
-              <div><div style={{ color: '#2ecc71', fontWeight: 600, marginBottom: 6 }}>GO — FLYABLE</div><div style={{ color: 'rgba(255,255,255,0.35)', lineHeight: 1.6 }}>Gusts &lt; 25 mph<br />Temp 32–104°F<br />No fog/storms</div></div>
-              <div><div style={{ color: '#f39c12', fontWeight: 600, marginBottom: 6 }}>MARGINAL</div><div style={{ color: 'rgba(255,255,255,0.35)', lineHeight: 1.6 }}>Gusts 25–35 mph<br />Temp 14–32°F or 104°F+<br />Fog / low vis</div></div>
-              <div><div style={{ color: '#e74c3c', fontWeight: 600, marginBottom: 6 }}>NO-FLY</div><div style={{ color: 'rgba(255,255,255,0.35)', lineHeight: 1.6 }}>Gusts &gt; 35 mph<br />Temp &lt; 14°F or &gt; 113°F<br />Thunderstorms</div></div>
+              <div><div style={{ color: '#2ecc71', fontWeight: 600, marginBottom: 6 }}>GO — FLYABLE</div><div style={{ color: 'rgba(255,255,255,0.35)', lineHeight: 1.6 }}>Gusts &lt; 25 mph<br />Temp 32–104°F<br />No thunder / snow / fog</div></div>
+              <div><div style={{ color: '#f39c12', fontWeight: 600, marginBottom: 6 }}>MARGINAL</div><div style={{ color: 'rgba(255,255,255,0.35)', lineHeight: 1.6 }}>Gusts 25–35 mph<br />Temp 14–32°F or 104–113°F<br />Light rain or fog</div></div>
+              <div><div style={{ color: '#e74c3c', fontWeight: 600, marginBottom: 6 }}>NO-FLY</div><div style={{ color: 'rgba(255,255,255,0.35)', lineHeight: 1.6 }}>Gusts &gt; 35 mph<br />Temp &lt; 14°F or &gt; 113°F<br />Thunder / snow</div></div>
             </div>
           </div>
         </div>
