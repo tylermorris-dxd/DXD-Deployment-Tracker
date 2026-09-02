@@ -13,8 +13,9 @@ import DroneTeviApp from '@/components/DroneTeviApp'
 import EventPricingApp from '@/components/EventPricingApp'
 import JobEstimator from '@/components/JobEstimator'
 import CommandPalette from '@/components/CommandPalette'
+import FleetMap from '@/components/FleetMap'
 
-export type MainTab = 'dashboard' | 'deals' | 'admin' | 'equipment' | 'cost' | 'product' | 'events' | 'job-est'
+export type MainTab = 'dashboard' | 'deals' | 'fleet' | 'admin' | 'equipment' | 'cost' | 'product' | 'events' | 'job-est'
 
 interface MenuItem {
   id: MainTab
@@ -40,6 +41,15 @@ const MENU_ITEMS: MenuItem[] = [
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
         <rect x="2" y="5" width="12" height="9" rx="1" stroke="currentColor" strokeWidth="1.4" />
         <path d="M6 5V3.5a1 1 0 011-1h2a1 1 0 011 1V5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
+    id: 'fleet', label: 'Fleet Map',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M8 1.5C5.24 1.5 3 3.74 3 6.5c0 3.9 5 8 5 8s5-4.1 5-8c0-2.76-2.24-5-5-5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+        <circle cx="8" cy="6.5" r="1.8" stroke="currentColor" strokeWidth="1.4" />
       </svg>
     ),
   },
@@ -286,6 +296,11 @@ export default function Home() {
         <main style={{ flex: 1, minWidth: 0, width: isMobile ? '100%' : undefined }}>
           {tab === 'dashboard'    && <Dashboard onOpenDeal={openDeal} onSwitchTab={setTab} />}
           {tab === 'deals'        && <ProjectList onSelectProject={openDeal} />}
+          {tab === 'fleet'        && (
+            <div style={{ padding: isMobile ? 12 : 20 }}>
+              <FleetMap onOpenDeal={openDeal} />
+            </div>
+          )}
           {tab === 'admin'        && <AdminPanel />}
           {tab === 'equipment'    && <EquipmentTracker />}
           {tab === 'cost'         && <CostEstimator />}
