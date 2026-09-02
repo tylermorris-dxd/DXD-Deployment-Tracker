@@ -4,6 +4,7 @@ import React from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import type { MainTab } from '@/app/page'
+import FleetMap from './FleetMap'
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const C = {
@@ -12,7 +13,7 @@ const C = {
   surface2:'#181c23',
   border:  '#252b38',
   red:     '#D2232A',
-  green:   '#22c55e',
+  green:   '#3FB95A',
   amber:   '#f59e0b',
   blue:    '#3b82f6',
   purple:  '#a855f7',
@@ -58,36 +59,90 @@ export default function Dashboard({ onOpenDeal, onSwitchTab }: Props) {
   const dealMap = new Map(activeData.map(a => [a.projectId, a.deal]))
   const now = Date.now()
 
-  // ── Stat computations (nothing task-derived — only steady-state flag +
-  //    HubSpot deal amounts) ───────────────────────────────────────────────
-  const activeCount    = projects.filter(p => !p.steadyState).length
-  const steadyCount    = projects.filter(p => p.steadyState).length
-  const pipelineValue  = activeData
+  // Bucket counts + pipeline value — no task derivations.
+  const activeCount   = projects.filter(p => !p.steadyState).length
+  const steadyCount   = projects.filter(p => p.steadyState).length
+  const faaCount      = projects.filter(p => p.faaAuthorizationRequired).length
+  const pipelineValue = activeData
     .filter(a => a.deal.properties.dealstage !== 'closedlost')
     .reduce((s, a) => s + (parseFloat(a.deal.properties.amount || '0') || 0), 0)
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+
   return (
     <div style={{ maxWidth: 1400, margin: '0 auto', padding: '28px 28px 60px' }}>
 
-      {/* Page header */}
-      <div style={{ marginBottom: 28 }}>
-        <h1 style={{ fontFamily: "'Chakra Petch', sans-serif", fontWeight: 800, fontSize: 22, color: C.text, letterSpacing: -0.5, marginBottom: 5 }}>
-          Operations Dashboard
-        </h1>
-        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: C.muted }}>
-          {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+      {/* ─── HERO ─────────────────────────────────────────────────────────── */}
+      <div style={{
+        position: 'relative', overflow: 'hidden',
+        background: 'linear-gradient(135deg, rgba(210,35,42,0.10), rgba(17,19,24,0.6) 60%)',
+        border: `1px solid ${C.border}`, borderRadius: 14, padding: '28px 32px', marginBottom: 22,
+      }}>
+        {/* Faint scanline flourish so the hero doesn't read empty */}
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: `repeating-linear-gradient(0deg, transparent 0, transparent 3px, rgba(255,255,255,0.02) 3px, rgba(255,255,255,0.02) 4px)`,
+          pointerEvents: 'none',
+        }} />
+        <div style={{ position: 'relative' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 4 }}>
+            <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontWeight: 800, fontSize: 13, letterSpacing: 2.5, color: C.red, textTransform: 'uppercase' }}>
+              DXD Operations
+            </span>
+            <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: C.muted }}>{today}</span>
+          </div>
+
+          {/* Hero row */}
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 40, flexWrap: 'wrap', marginTop: 14 }}>
+            <div>
+              <div style={{
+                fontFamily: "'Chakra Petch', sans-serif", fontWeight: 800,
+                fontSize: 96, lineHeight: 0.9, color: C.text, letterSpacing: -4,
+                textShadow: '0 0 40px rgba(210,35,42,0.15)',
+              }}>
+                {projects.length}
+              </div>
+              <div style={{
+                fontFamily: "'Chakra Petch', sans-serif", fontWeight: 700,
+                fontSize: 13, letterSpacing: 3, color: C.text2, marginTop: 6, textTransform: 'uppercase',
+              }}>
+                Deployments Tracked
+              </div>
+            </div>
+
+            {/* Sub-metrics stacked as three chips */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, flex: 1, minWidth: 260 }}>
+              <SubMetric label="Active"        value={String(activeCount)}   color={C.red}   />
+              <SubMetric label="Steady State"  value={String(steadyCount)}   color={C.green} />
+              <SubMetric label="Pipeline"      value={fmtMoney(pipelineValue)} color={C.green} tint />
+              <SubMetric label="FAA Pending"   value={String(faaCount)}      color={C.blue}  />
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Stat row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 28 }}>
-        <StatCard label="Active Deals"   value={String(activeCount)}    sub={`${projects.length} total tracked`} color={C.blue}  />
-        <StatCard label="Steady State"   value={String(steadyCount)}    sub="in ongoing operations"              color={C.green} />
-        <StatCard label="Pipeline Value" value={fmtMoney(pipelineValue)} sub="open deals"                         color={C.green} />
+      {/* ─── LIVE FLEET MAP ──────────────────────────────────────────────── */}
+      <div style={{ marginBottom: 22 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: C.red, boxShadow: `0 0 8px ${C.red}88` }} />
+            <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontWeight: 700, fontSize: 12, letterSpacing: 2.4, color: C.text }}>
+              LIVE FLEET
+            </span>
+          </div>
+          <button
+            onClick={() => onSwitchTab('fleet')}
+            style={{ padding: '5px 10px', background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 6, color: C.text2, fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 0.6, cursor: 'pointer' }}
+            onMouseEnter={e => (e.currentTarget.style.borderColor = C.text2)}
+            onMouseLeave={e => (e.currentTarget.style.borderColor = C.border)}
+          >
+            Open full map →
+          </button>
+        </div>
+        <FleetMap onOpenDeal={onOpenDeal} height={420} />
       </div>
 
-      {/* Widgets grid */}
+      {/* ─── Supporting widgets ──────────────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
 
         {/* Regulatory Tracker */}
@@ -151,14 +206,19 @@ export default function Dashboard({ onOpenDeal, onSwitchTab }: Props) {
 
 // ── Shared sub-components ─────────────────────────────────────────────────────
 
-function StatCard({ label, value, sub, color }: { label: string; value: string; sub: string; color: string }) {
+function SubMetric({ label, value, color, tint }: { label: string; value: string; color: string; tint?: boolean }) {
   return (
-    <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: '18px 18px 0', position: 'relative', overflow: 'hidden' }}>
-      <div style={{ position: 'absolute', top: 0, right: 0, width: 90, height: 90, background: `radial-gradient(circle at top right, ${color}18, transparent 70%)`, pointerEvents: 'none' }} />
-      <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, letterSpacing: 1.5, color: C.muted, textTransform: 'uppercase', marginBottom: 10 }}>{label}</div>
-      <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 26, fontWeight: 800, color: C.text, letterSpacing: -1, lineHeight: 1, marginBottom: 6 }}>{value}</div>
-      <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: C.text2, marginBottom: 16 }}>{sub}</div>
-      <div style={{ height: 2, background: color, marginLeft: -18, marginRight: -18 }} />
+    <div style={{
+      background: tint ? `${color}10` : 'rgba(24,28,35,0.6)',
+      border: `1px solid ${tint ? `${color}35` : C.border}`,
+      borderRadius: 10, padding: '14px 16px',
+    }}>
+      <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, letterSpacing: 1.5, color: C.muted, textTransform: 'uppercase' }}>
+        {label}
+      </div>
+      <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 22, fontWeight: 800, color, letterSpacing: -0.5, lineHeight: 1.1, marginTop: 4 }}>
+        {value}
+      </div>
     </div>
   )
 }
