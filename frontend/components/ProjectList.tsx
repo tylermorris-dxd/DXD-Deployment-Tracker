@@ -8,6 +8,8 @@ import { Icons } from '@/lib/icons'
 import type { ProjectSummary, HubSpotActiveDeal } from '@/lib/types'
 import { showUndoableToast, showToast } from '@/lib/toast'
 import { logActivity } from '@/lib/activity'
+import { pickLoadingPhrase } from '@/lib/loadingPhrases'
+import { useSettings } from '@/lib/settings'
 
 type SortMode = 'newest' | 'oldest' | 'value' | 'name'
 type FilterMode = 'all' | 'hubspot' | 'faa'
@@ -160,8 +162,8 @@ export default function ProjectList({ onSelectProject }: { onSelectProject: (id:
 
       {/* Content */}
       {isLoading ? (
-        <div style={{ color: 'rgba(255,255,255,0.3)', fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, padding: 40, textAlign: 'center' }}>
-          Loading projects...
+        <div style={{ color: 'rgba(255,255,255,0.55)', fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, padding: 40, textAlign: 'center', letterSpacing: 2 }}>
+          {pickLoadingPhrase()}<span style={{ marginLeft: 6 }}>…</span>
         </div>
       ) : projects.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 20px' }}>
@@ -410,6 +412,11 @@ function ProjectCard({ proj, index, activeDeal, accent, compact, onOpen, onDelet
   const accentColor = accent ?? '#E53935'
   const hsStage = activeDeal?.deal.properties.dealstage
   const amountN  = dealAmount(activeDeal)
+  const { physics } = useSettings()
+  // Spring easing on card hover when physics is on; plain linear otherwise.
+  const cardTransition = physics
+    ? 'transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s'
+    : 'all 0.2s'
 
   // Derive small at-a-glance chips
   const chips: Array<{ label: string; color: string }> = []
@@ -432,13 +439,13 @@ function ProjectCard({ proj, index, activeDeal, accent, compact, onOpen, onDelet
         borderRadius: 10,
         padding: compact ? '12px 16px' : '18px 20px',
         cursor: 'pointer',
-        transition: 'all 0.2s',
+        transition: cardTransition,
         backdropFilter: 'blur(16px)',
         boxShadow: '0 2px 16px rgba(0,0,0,0.35)',
         animationDelay: `${index * 0.06}s`,
         animation: 'fadeSlideIn 0.4s ease both',
       }}
-      onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLDivElement).style.boxShadow = `0 6px 24px rgba(0,0,0,0.5), 0 0 0 1px ${accentColor}33` }}
+      onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.transform = physics ? 'translateY(-3px) scale(1.008)' : 'translateY(-2px)'; (e.currentTarget as HTMLDivElement).style.boxShadow = `0 6px 24px rgba(0,0,0,0.5), 0 0 0 1px ${accentColor}33` }}
       onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.transform = ''; (e.currentTarget as HTMLDivElement).style.boxShadow = '0 2px 16px rgba(0,0,0,0.35)' }}
     >
       {/* Top row: HS badge + HubSpot stage + delete */}

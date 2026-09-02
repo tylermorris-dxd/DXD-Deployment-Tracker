@@ -386,7 +386,7 @@ export default function CommandPalette({ open, onClose, onOpenDeal, onSwitchTab 
           <span style={{ color: '#9aa3b8' }}>mark ✱ steady</span>
           <span style={{ color: '#9aa3b8' }}>mark ✱ faa</span>
           <span style={{ color: '#9aa3b8' }}>delete ✱</span>
-          <span style={{ marginLeft: 'auto' }}><kbd style={kbdSt}>⌘K</kbd></span>
+          <span style={{ marginLeft: 'auto' }}><kbd style={kbdSt}>?</kbd> shortcuts</span>
         </div>
       </div>
     </div>

@@ -17,6 +17,7 @@ import FleetMap from '@/components/FleetMap'
 import Toaster from '@/components/Toaster'
 import BootSequence from '@/components/BootSequence'
 import SettingsPopover from '@/components/SettingsPopover'
+import ShortcutHelp from '@/components/ShortcutHelp'
 import { sfx } from '@/lib/sfx'
 import { useIsMobile } from '@/lib/useIsMobile'
 
@@ -138,6 +139,7 @@ export default function Home() {
   const [newDealOpen, setNewDealOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
+  const [helpOpen, setHelpOpen] = useState(false)
   const isMobile = useIsMobile()
 
   const openDeal = (id: string) => setPanelId(id)
@@ -150,12 +152,23 @@ export default function Home() {
   useEffect(() => { if (!isMobile) setMobileMenuOpen(false) }, [isMobile])
 
   // Cmd/Ctrl+K opens the command palette from anywhere in the app.
+  // "?" opens the shortcut cheatsheet — but only when the user isn't
+  // typing into an input, textarea, or contenteditable element.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault()
         setPaletteOpen(v => !v)
         sfx.ping()
+        return
+      }
+      if (e.key === '?' && !e.metaKey && !e.ctrlKey) {
+        const t = e.target as HTMLElement | null
+        const typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)
+        if (typing) return
+        e.preventDefault()
+        setHelpOpen(v => !v)
+        sfx.click()
       }
     }
     window.addEventListener('keydown', onKey)
@@ -316,6 +329,9 @@ export default function Home() {
           <ProjectView projectId={panelId} onBack={closeDeal} />
         </div>
       )}
+
+      {/* ── ? shortcut cheatsheet ─────────────────────────────────────────── */}
+      <ShortcutHelp open={helpOpen} onClose={() => setHelpOpen(false)} />
 
       {/* ── Cmd/Ctrl+K command palette ──────────────────────────────────────── */}
       <CommandPalette
