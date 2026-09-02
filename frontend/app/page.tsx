@@ -17,6 +17,7 @@ import FleetMap from '@/components/FleetMap'
 import Toaster from '@/components/Toaster'
 import BootSequence from '@/components/BootSequence'
 import SettingsPopover from '@/components/SettingsPopover'
+import AlertBell from '@/components/AlertBell'
 import ShortcutHelp from '@/components/ShortcutHelp'
 import FleetCopilot from '@/components/FleetCopilot'
 import CommandBridge from '@/components/CommandBridge'
@@ -314,6 +315,7 @@ export default function Home() {
               <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: C.muted, background: '#0d1017', border: `1px solid ${C.border}`, borderRadius: 3, padding: '1px 5px', marginLeft: 2 }}>⌘J</span>
             </button>
           )}
+          <AlertBell />
           <SettingsPopover />
           <button onClick={() => { setNewDealOpen(true); sfx.ack() }} style={{ padding: '7px 18px', background: C.red, border: 'none', borderRadius: 7, color: '#fff', fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 11, letterSpacing: 0.5, cursor: 'pointer' }}>
             New Deal
