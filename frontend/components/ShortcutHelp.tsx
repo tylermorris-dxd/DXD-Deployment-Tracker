@@ -12,6 +12,8 @@ const GROUPS: Array<{ title: string; rows: Array<{ keys: string[]; desc: string 
     title: 'Global',
     rows: [
       { keys: ['⌘', 'K'],        desc: 'Open command palette (search deals, run commands)' },
+      { keys: ['⌘', 'J'],        desc: 'Open Fleet Copilot (natural-language fleet Q&A)' },
+      { keys: ['F'],             desc: 'Toggle Command Bridge (fullscreen tactical HUD)' },
       { keys: ['?'],             desc: 'Toggle this shortcut sheet' },
       { keys: ['Esc'],           desc: 'Close any open overlay (palette, modal, this sheet)' },
     ],

@@ -19,6 +19,7 @@ import BootSequence from '@/components/BootSequence'
 import SettingsPopover from '@/components/SettingsPopover'
 import ShortcutHelp from '@/components/ShortcutHelp'
 import FleetCopilot from '@/components/FleetCopilot'
+import CommandBridge from '@/components/CommandBridge'
 import { sfx } from '@/lib/sfx'
 import { useIsMobile } from '@/lib/useIsMobile'
 
@@ -142,6 +143,7 @@ export default function Home() {
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
   const [copilotOpen, setCopilotOpen] = useState(false)
+  const [bridgeOpen, setBridgeOpen] = useState(false)
   const isMobile = useIsMobile()
 
   const openDeal = (id: string) => setPanelId(id)
@@ -177,6 +179,16 @@ export default function Home() {
         e.preventDefault()
         setHelpOpen(v => !v)
         sfx.click()
+        return
+      }
+      // F toggles Command Bridge (fullscreen tactical HUD).
+      if ((e.key === 'f' || e.key === 'F') && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const t = e.target as HTMLElement | null
+        const typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)
+        if (typing) return
+        e.preventDefault()
+        setBridgeOpen(v => !v)
+        sfx.ping()
       }
     }
     window.addEventListener('keydown', onKey)
@@ -367,6 +379,13 @@ export default function Home() {
       <FleetCopilot
         open={copilotOpen}
         onClose={() => setCopilotOpen(false)}
+        onOpenDeal={id => openDeal(id)}
+      />
+
+      {/* ── Command Bridge (fullscreen tactical HUD) ─────────────────────── */}
+      <CommandBridge
+        open={bridgeOpen}
+        onClose={() => setBridgeOpen(false)}
         onOpenDeal={id => openDeal(id)}
       />
 
