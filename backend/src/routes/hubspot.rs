@@ -67,7 +67,7 @@ async fn list_deals(State(state): State<AppState>) -> Result<Json<Value>, AppErr
 
     let base = "https://api.hubapi.com/crm/v3/objects/deals\
                 ?limit=100\
-                &properties=dealname,dealstage,amount,closedate,pipeline,hs_lastmodifieddate,hubspot_owner_id\
+                &properties=dealname,dealstage,amount,closedate,pipeline,hs_lastmodifieddate,hubspot_owner_id,service_locations\
                 &associations=companies";
 
     let mut all_deals: Vec<Value> = Vec::new();
@@ -162,7 +162,7 @@ async fn get_active(State(state): State<AppState>) -> Result<Json<Value>, AppErr
         .header("Authorization", format!("Bearer {}", token))
         .json(&json!({
             "inputs": inputs,
-            "properties": ["dealname", "dealstage", "amount", "closedate", "pipeline", "hs_lastmodifieddate", "hubspot_owner_id"]
+            "properties": ["dealname", "dealstage", "amount", "closedate", "pipeline", "hs_lastmodifieddate", "hubspot_owner_id", "service_locations"]
         }))
         .send()
         .await
@@ -174,6 +174,27 @@ async fn get_active(State(state): State<AppState>) -> Result<Json<Value>, AppErr
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
     let results = batch["results"].as_array().cloned().unwrap_or_default();
+
+    // Backfill projects.site from the HubSpot `service_locations` property
+    // when the tool's site is still empty. That way already-pinned deals pick
+    // up the address the first time the dashboard refreshes, but a site the
+    // operator manually filled in the tool is left alone. If they want to
+    // resync, updating service_locations in HubSpot and clearing site in the
+    // tool will re-pull.
+    for deal in &results {
+        let deal_id = match deal["id"].as_str() { Some(s) => s, None => continue };
+        let svc = match deal["properties"]["service_locations"].as_str() {
+            Some(s) if !s.trim().is_empty() => s.to_string(),
+            _ => continue,
+        };
+        let _ = sqlx::query!(
+            "UPDATE projects SET site = $1 \
+             WHERE hubspot_deal_id = $2 AND (site IS NULL OR site = '')",
+            svc, deal_id
+        )
+        .execute(&state.pool)
+        .await;
+    }
 
     let active: Vec<Value> = results
         .into_iter()
@@ -202,7 +223,7 @@ async fn get_deal(
 
     let url = format!(
         "https://api.hubapi.com/crm/v3/objects/deals/{}\
-         ?properties=dealname,dealstage,amount,closedate,pipeline,description,hs_lastmodifieddate\
+         ?properties=dealname,dealstage,amount,closedate,pipeline,description,hs_lastmodifieddate,service_locations\
          &associations=companies,contacts",
         deal_id
     );
@@ -313,10 +334,13 @@ async fn pin_deal(
         .await
         .ok_or_else(|| AppError::BadRequest("HubSpot not connected".into()))?;
 
-    // Fetch deal to seed project name
+    // Fetch deal to seed project name and site. service_locations is a
+    // free-text address field in HubSpot ("These are the locations where the
+    // customer who is signing the quote will receive services"), so it maps
+    // cleanly onto the tool's `site` column.
     let url = format!(
         "https://api.hubapi.com/crm/v3/objects/deals/{}\
-         ?properties=dealname,dealstage&associations=companies",
+         ?properties=dealname,dealstage,service_locations&associations=companies",
         deal_id
     );
     let deal: Value = state
@@ -334,6 +358,10 @@ async fn pin_deal(
         .as_str()
         .unwrap_or("HubSpot Deal")
         .to_string();
+    let site = deal["properties"]["service_locations"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
 
     let project_id = format!("proj-{}", &Uuid::new_v4().to_string().replace('-', "")[..16]);
     let created_at = chrono::Utc::now().to_rfc3339();
@@ -344,7 +372,7 @@ async fn pin_deal(
         project_id,
         name,
         "",
-        "",
+        site,
         created_at,
         deal_id
     )

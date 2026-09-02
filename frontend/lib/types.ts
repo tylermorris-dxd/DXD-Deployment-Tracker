@@ -45,6 +45,7 @@ export interface HubSpotDealProperties {
   description?: string
   hs_lastmodifieddate?: string
   hubspot_owner_id?: string
+  service_locations?: string
 }
 
 export interface HubSpotContact {
