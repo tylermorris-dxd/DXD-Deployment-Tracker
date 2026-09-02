@@ -10,6 +10,8 @@ export interface ProjectSummary {
   currentStage?: number | null
   faaAuthorizationRequired: boolean
   faaAuthStartedAt: string | null
+  steadyState: boolean
+  steadyStateAt: string | null
 }
 
 export interface ProjectFull {
@@ -28,6 +30,8 @@ export interface ProjectFull {
   hubspotDealId?: string
   faaAuthorizationRequired: boolean
   faaAuthStartedAt: string | null
+  steadyState: boolean
+  steadyStateAt: string | null
 }
 
 // ── HubSpot ───────────────────────────────────────────────────────────────────
@@ -199,6 +203,7 @@ export interface UpdateProject {
   weatherCache?: string | null
   pricingCache?: string | null
   faaAuthorizationRequired?: boolean
+  steadyState?: boolean
 }
 
 export interface UpdatePhase {

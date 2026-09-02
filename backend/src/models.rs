@@ -22,6 +22,7 @@ pub struct UpdateProject {
     pub weather_cache: Option<serde_json::Value>,
     pub pricing_cache: Option<serde_json::Value>,
     pub faa_authorization_required: Option<bool>,
+    pub steady_state: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -168,6 +169,8 @@ pub struct ProjectSummary {
     pub current_stage: Option<i32>,
     pub faa_authorization_required: bool,
     pub faa_auth_started_at: Option<String>,
+    pub steady_state: bool,
+    pub steady_state_at: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -188,6 +191,8 @@ pub struct ProjectFull {
     pub hubspot_deal_id: Option<String>,
     pub faa_authorization_required: bool,
     pub faa_auth_started_at: Option<String>,
+    pub steady_state: bool,
+    pub steady_state_at: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
