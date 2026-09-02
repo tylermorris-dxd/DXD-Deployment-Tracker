@@ -60,12 +60,67 @@ export interface HubSpotContact {
   }
 }
 
+export interface HubSpotCompanyDetail {
+  id: string
+  properties: {
+    name?: string
+    domain?: string
+    industry?: string
+    numberofemployees?: string
+    annualrevenue?: string
+    city?: string
+    state?: string
+    country?: string
+    description?: string
+  }
+}
+
+export interface HubSpotNoteDetail {
+  id: string
+  properties: {
+    hs_note_body?: string
+    hs_timestamp?: string
+    hs_created_by?: string
+    hubspot_owner_id?: string
+  }
+}
+
+export interface HubSpotCallDetail {
+  id: string
+  properties: {
+    hs_call_title?: string
+    hs_call_body?: string
+    hs_call_direction?: 'INBOUND' | 'OUTBOUND' | string
+    hs_call_duration?: string  // ms as string
+    hs_call_disposition?: string
+    hs_call_status?: string
+    hs_timestamp?: string
+    hubspot_owner_id?: string
+  }
+}
+
+export interface HubSpotLineItemDetail {
+  id: string
+  properties: {
+    name?: string
+    quantity?: string
+    price?: string
+    amount?: string
+    hs_product_id?: string
+    description?: string
+    hs_sku?: string
+  }
+}
+
 export interface HubSpotDeal {
   id: string
   properties: HubSpotDealProperties
   pinned?: boolean
-  companyDetails?: Array<{ id: string; properties: { name?: string; domain?: string } }>
+  companyDetails?: HubSpotCompanyDetail[]
   contactDetails?: HubSpotContact[]
+  noteDetails?: HubSpotNoteDetail[]
+  callDetails?: HubSpotCallDetail[]
+  lineItemDetails?: HubSpotLineItemDetail[]
 }
 
 export interface HubSpotActiveDeal {

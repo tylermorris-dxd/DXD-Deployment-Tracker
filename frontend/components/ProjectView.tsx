@@ -16,6 +16,7 @@ import OpsPlanner from './OpsPlanner'
 import PricingView from './PricingView'
 import SummaryView from './SummaryView'
 import CustomerSignoff from './CustomerSignoff'
+import HubSpotEnrichment from './HubSpotEnrichment'
 import { useIsMobile } from '@/lib/useIsMobile'
 import { showUndoableToast, showToast } from '@/lib/toast'
 import { logActivity } from '@/lib/activity'
@@ -96,7 +97,6 @@ export default function ProjectView({ projectId, onBack }: Props) {
   const isMobile = useIsMobile()
   const [viewMode, setViewMode]             = useState<ViewMode>('airspace')
   const [opsMaximized, setOpsMaximized]     = useState(false)
-  const [hsOpen, setHsOpen]                 = useState(true)
 
   const { data: project, isLoading, error } = useQuery({
     queryKey: ['project', projectId],
@@ -299,9 +299,9 @@ export default function ProjectView({ projectId, onBack }: Props) {
 
       </div>
 
-      {/* ── HubSpot deal panel ──────────────────────────────────────────── */}
+      {/* ── HubSpot enrichment — owner, company, timeline, line items ─── */}
       {hsDeal && !opsMaximized && (
-        <HubSpotDealPanel deal={hsDeal} open={hsOpen} onToggle={() => setHsOpen(v => !v)} />
+        <HubSpotEnrichment deal={hsDeal} />
       )}
 
       {/* ── OPS PLANNER — always mounted so iframe state survives tab switches ── */}
@@ -357,75 +357,6 @@ export default function ProjectView({ projectId, onBack }: Props) {
 
       </div>
 
-    </div>
-  )
-}
-
-function HubSpotDealPanel({ deal, open, onToggle }: { deal: HubSpotDeal; open: boolean; onToggle: () => void }) {
-  const p = deal.properties
-  const amount   = p.amount   ? `$${Number(p.amount).toLocaleString()}` : null
-  const close    = p.closedate ? new Date(p.closedate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null
-  const modified = p.hs_lastmodifieddate ? new Date(p.hs_lastmodifieddate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null
-  const company  = deal.companyDetails?.[0]?.properties?.name
-
-  return (
-    <div style={{ borderBottom: '1px solid rgba(255,152,0,0.2)', background: 'rgba(255,152,0,0.04)' }}>
-      {/* Toggle bar */}
-      <button
-        onClick={onToggle}
-        style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '8px 24px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
-        <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#FF9800', boxShadow: '0 0 6px #FF980088', display: 'inline-block', flexShrink: 0 }} />
-        <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: '#FF9800' }}>HUBSPOT</span>
-        {p.dealname && (
-          <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: 'rgba(255,255,255,0.5)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {p.dealname}
-          </span>
-        )}
-        <span style={{ marginLeft: 'auto', fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: 'rgba(255,255,255,0.3)', flexShrink: 0 }}>
-          {open ? '▲' : '▼'}
-        </span>
-      </button>
-
-      {/* Expanded content */}
-      {open && (
-        <div style={{ display: 'flex', gap: 32, padding: '0 24px 14px 24px', flexWrap: 'wrap' }}>
-          {p.dealstage && (
-            <Stat label="STAGE" value={p.dealstage} accent="#FF9800" />
-          )}
-          {p.pipeline && (
-            <Stat label="PIPELINE" value={p.pipeline} />
-          )}
-          {amount && (
-            <Stat label="AMOUNT" value={amount} accent="#4CAF50" />
-          )}
-          {close && (
-            <Stat label="CLOSE DATE" value={close} />
-          )}
-          {company && (
-            <Stat label="COMPANY" value={company} />
-          )}
-          {modified && (
-            <Stat label="LAST MODIFIED" value={modified} />
-          )}
-          <a
-            href={`https://app.hubspot.com/contacts/deals/${deal.id}`}
-            target="_blank"
-            rel="noreferrer"
-            style={{ alignSelf: 'flex-end', marginLeft: 'auto', fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: 'rgba(255,152,0,0.7)', textDecoration: 'none', letterSpacing: 0.5, flexShrink: 0 }}
-            onClick={e => e.stopPropagation()}>
-            Open in HubSpot ↗
-          </a>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function Stat({ label, value, accent }: { label: string; value: string; accent?: string }) {
-  return (
-    <div>
-      <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 8, letterSpacing: 1.5, color: 'rgba(255,255,255,0.3)', marginBottom: 3 }}>{label}</div>
-      <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: accent ?? 'rgba(255,255,255,0.7)', fontWeight: accent ? 700 : 400 }}>{value}</div>
     </div>
   )
 }

@@ -162,7 +162,10 @@ async fn get_active(State(state): State<AppState>) -> Result<Json<Value>, AppErr
         .header("Authorization", format!("Bearer {}", token))
         .json(&json!({
             "inputs": inputs,
-            "properties": ["dealname", "dealstage", "amount", "closedate", "pipeline", "hs_lastmodifieddate", "hubspot_owner_id", "service_locations"]
+            "properties": [
+                "dealname","dealstage","amount","closedate","pipeline","hs_lastmodifieddate",
+                "hubspot_owner_id","service_locations","description"
+            ]
         }))
         .send()
         .await
@@ -221,10 +224,14 @@ async fn get_deal(
         .await
         .ok_or_else(|| AppError::BadRequest("HubSpot not connected".into()))?;
 
+    // Ask HubSpot for everything the deal panel could reasonably want in one
+    // shot — the core deal properties, plus every association type we might
+    // enrich below. `hubspot_owner_id` on the deal itself resolves to a
+    // name via the cached /owners call the frontend already makes.
     let url = format!(
         "https://api.hubapi.com/crm/v3/objects/deals/{}\
-         ?properties=dealname,dealstage,amount,closedate,pipeline,description,hs_lastmodifieddate,service_locations\
-         &associations=companies,contacts",
+         ?properties=dealname,dealstage,amount,closedate,pipeline,description,hs_lastmodifieddate,service_locations,hubspot_owner_id\
+         &associations=companies,contacts,notes,calls,line_items",
         deal_id
     );
 
@@ -254,7 +261,10 @@ async fn get_deal(
         if let Ok(resp) = state.http
             .post("https://api.hubapi.com/crm/v3/objects/companies/batch/read")
             .header("Authorization", format!("Bearer {}", token))
-            .json(&json!({ "inputs": inputs, "properties": ["name", "domain"] }))
+            .json(&json!({
+                "inputs": inputs,
+                "properties": ["name","domain","industry","numberofemployees","annualrevenue","city","state","country","description"]
+            }))
             .send().await
         {
             if let Ok(data) = resp.json::<Value>().await {
@@ -282,6 +292,73 @@ async fn get_deal(
         {
             if let Ok(data) = resp.json::<Value>().await {
                 result["contactDetails"] = data["results"].clone();
+            }
+        }
+    }
+
+    // ── Notes ──────────────────────────────────────────────────────────
+    let note_ids: Vec<String> = deal["associations"]["notes"]["results"]
+        .as_array()
+        .map(|arr| arr.iter().filter_map(|c| c["id"].as_str().map(String::from)).collect())
+        .unwrap_or_default();
+    if !note_ids.is_empty() {
+        let inputs: Vec<Value> = note_ids.iter().map(|id| json!({ "id": id })).collect();
+        if let Ok(resp) = state.http
+            .post("https://api.hubapi.com/crm/v3/objects/notes/batch/read")
+            .header("Authorization", format!("Bearer {}", token))
+            .json(&json!({
+                "inputs": inputs,
+                "properties": ["hs_note_body", "hs_timestamp", "hs_created_by", "hubspot_owner_id"]
+            }))
+            .send().await
+        {
+            if let Ok(data) = resp.json::<Value>().await {
+                result["noteDetails"] = data["results"].clone();
+            }
+        }
+    }
+
+    // ── Calls ──────────────────────────────────────────────────────────
+    let call_ids: Vec<String> = deal["associations"]["calls"]["results"]
+        .as_array()
+        .map(|arr| arr.iter().filter_map(|c| c["id"].as_str().map(String::from)).collect())
+        .unwrap_or_default();
+    if !call_ids.is_empty() {
+        let inputs: Vec<Value> = call_ids.iter().map(|id| json!({ "id": id })).collect();
+        if let Ok(resp) = state.http
+            .post("https://api.hubapi.com/crm/v3/objects/calls/batch/read")
+            .header("Authorization", format!("Bearer {}", token))
+            .json(&json!({
+                "inputs": inputs,
+                "properties": ["hs_call_title", "hs_call_body", "hs_call_direction", "hs_call_duration",
+                               "hs_call_disposition", "hs_call_status", "hs_timestamp", "hubspot_owner_id"]
+            }))
+            .send().await
+        {
+            if let Ok(data) = resp.json::<Value>().await {
+                result["callDetails"] = data["results"].clone();
+            }
+        }
+    }
+
+    // ── Line items ─────────────────────────────────────────────────────
+    let li_ids: Vec<String> = deal["associations"]["line_items"]["results"]
+        .as_array()
+        .map(|arr| arr.iter().filter_map(|c| c["id"].as_str().map(String::from)).collect())
+        .unwrap_or_default();
+    if !li_ids.is_empty() {
+        let inputs: Vec<Value> = li_ids.iter().map(|id| json!({ "id": id })).collect();
+        if let Ok(resp) = state.http
+            .post("https://api.hubapi.com/crm/v3/objects/line_items/batch/read")
+            .header("Authorization", format!("Bearer {}", token))
+            .json(&json!({
+                "inputs": inputs,
+                "properties": ["name","quantity","price","amount","hs_product_id","description","hs_sku"]
+            }))
+            .send().await
+        {
+            if let Ok(data) = resp.json::<Value>().await {
+                result["lineItemDetails"] = data["results"].clone();
             }
         }
     }
