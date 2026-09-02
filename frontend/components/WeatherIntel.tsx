@@ -102,23 +102,24 @@ function classifyMonth(m: MonthData): FlyData {
   const daysInMonth = [31,28,31,30,31,30,31,31,30,31,30,31]
   const idx = WX_MONTHS.indexOf(m.month?.slice(0, 3)) ?? 0
   const totalDays = daysInMonth[idx] || 30
-  const thunderNofly = m.avg_thunderstorm_days * 0.40
-  const lightRainDays = Math.max(m.avg_rain_days - m.avg_thunderstorm_days, 0)
-  const heavyRainNofly = lightRainDays * 0.20
+  // Thunderstorm days are excluded from the classifier — Open-Meteo's daily
+  // weather_code frequently reports 0 thunder days for lightning-heavy
+  // regions, so leaving thunder in the equation just pulled the numbers
+  // the wrong direction. Rain days are now used as-is (no thunder subtraction).
+  const heavyRainNofly = m.avg_rain_days * 0.20
   const snowNofly = m.avg_snow_days * 0.80
   const windNoflyPct = m.avg_wind_speed_mph > 25 ? 0.40 : m.avg_wind_speed_mph > 22 ? 0.20 : m.avg_wind_speed_mph > 18 ? 0.08 : m.avg_wind_speed_mph > 14 ? 0.02 : m.avg_wind_speed_mph > 10 ? 0.005 : 0.001
   const windNofly = totalDays * windNoflyPct
   const fogNofly = m.avg_fog_days * 0.80
   const coldNofly = m.avg_low_f < 14 ? 6 : m.avg_low_f < 20 ? 3 : 0
   const heatNofly = m.avg_high_f > 113 ? 3 : m.avg_high_f > 104 ? 1 : 0
-  const noflyDays = Math.min(Math.round(thunderNofly + heavyRainNofly + snowNofly + windNofly + fogNofly + coldNofly + heatNofly), totalDays)
-  const thunderMarginal = m.avg_thunderstorm_days * 0.25
-  const lightRainMarginal = lightRainDays * 0.15
+  const noflyDays = Math.min(Math.round(heavyRainNofly + snowNofly + windNofly + fogNofly + coldNofly + heatNofly), totalDays)
+  const lightRainMarginal = m.avg_rain_days * 0.15
   const windMarginalPct = m.avg_wind_speed_mph > 22 ? 0.20 : m.avg_wind_speed_mph > 18 ? 0.10 : m.avg_wind_speed_mph > 14 ? 0.04 : m.avg_wind_speed_mph > 10 ? 0.01 : 0.003
   const windMarginal = totalDays * windMarginalPct
   const coldMarginal = m.avg_low_f >= 14 && m.avg_low_f < 32 ? Math.min(3, Math.round(m.avg_snow_days * 0.5) + 1) : 0
   const fogMarginal = m.avg_fog_days * 0.20
-  const marginalDays = Math.min(Math.round(thunderMarginal + lightRainMarginal + windMarginal + coldMarginal + fogMarginal), totalDays - noflyDays)
+  const marginalDays = Math.min(Math.round(lightRainMarginal + windMarginal + coldMarginal + fogMarginal), totalDays - noflyDays)
   const flyable = Math.max(totalDays - noflyDays - marginalDays, 0)
   return { flyable, marginal: marginalDays, nofly: noflyDays }
 }
@@ -427,7 +428,7 @@ export default function WeatherIntel({ project, onCacheUpdate }: Props) {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, fontFamily: "'IBM Plex Mono', monospace", fontSize: 11 }}>
               <div><div style={{ color: '#2ecc71', fontWeight: 600, marginBottom: 6 }}>GO — FLYABLE</div><div style={{ color: 'rgba(255,255,255,0.35)', lineHeight: 1.6 }}>Gusts &lt; 25 mph<br />Temp 32–104°F<br />No fog/storms</div></div>
               <div><div style={{ color: '#f39c12', fontWeight: 600, marginBottom: 6 }}>MARGINAL</div><div style={{ color: 'rgba(255,255,255,0.35)', lineHeight: 1.6 }}>Gusts 25–35 mph<br />Temp 14–32°F or 104°F+<br />Fog / low vis</div></div>
-              <div><div style={{ color: '#e74c3c', fontWeight: 600, marginBottom: 6 }}>NO-FLY</div><div style={{ color: 'rgba(255,255,255,0.35)', lineHeight: 1.6 }}>Gusts &gt; 35 mph<br />Temp &lt; 14°F or &gt; 113°F<br />Thunderstorms</div></div>
+              <div><div style={{ color: '#e74c3c', fontWeight: 600, marginBottom: 6 }}>NO-FLY</div><div style={{ color: 'rgba(255,255,255,0.35)', lineHeight: 1.6 }}>Gusts &gt; 35 mph<br />Temp &lt; 14°F or &gt; 113°F<br />Heavy snow / fog</div></div>
             </div>
           </div>
         </div>
