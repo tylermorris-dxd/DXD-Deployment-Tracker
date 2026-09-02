@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import type { MainTab } from '@/app/page'
 import FleetMap from './FleetMap'
+import LiveWeatherStrip from './LiveWeatherStrip'
 import { useIsMobile } from '@/lib/useIsMobile'
 import { useRecentActivity, activityLabel, activityColor, timeAgo } from '@/lib/activity'
 
@@ -81,6 +82,16 @@ export default function Dashboard({ onOpenDeal, onSwitchTab }: Props) {
   const pipelineValue = activeData
     .filter(a => a.deal.properties.dealstage !== 'closedlost')
     .reduce((s, a) => s + (parseFloat(a.deal.properties.amount || '0') || 0), 0)
+  // Steady-state MRR — sum of HubSpot amounts across steady-state projects,
+  // treated as annual contract value and divided by 12. Conservative
+  // assumption; when a deal isn't linked to HubSpot we skip it.
+  const steadyAnnual  = projects
+    .filter(p => p.steadyState)
+    .reduce((s, p) => {
+      const deal = activeData.find(a => a.projectId === p.id)?.deal
+      return s + (parseFloat(deal?.properties.amount || '0') || 0)
+    }, 0)
+  const steadyMrr = steadyAnnual / 12
 
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
   const nowStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
@@ -147,12 +158,16 @@ export default function Dashboard({ onOpenDeal, onSwitchTab }: Props) {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, flex: 1, minWidth: 260 }}>
               <SubMetric label="Active"        value={String(activeCount)}   color={C.red}   />
               <SubMetric label="Steady State"  value={String(steadyCount)}   color={C.green} />
+              <SubMetric label="Steady MRR"    value={fmtMoney(steadyMrr)}   color={C.green} tint sub="ARR ÷ 12" />
               <SubMetric label="Pipeline"      value={fmtMoney(pipelineValue)} color={C.green} tint />
               <SubMetric label="FAA Pending"   value={String(faaCount)}      color={C.blue}  />
             </div>
           </div>
         </div>
       </div>
+
+      {/* ─── LIVE WEATHER STRIP ──────────────────────────────────────────── */}
+      <LiveWeatherStrip />
 
       {/* ─── LIVE FLEET MAP ──────────────────────────────────────────────── */}
       <div style={{ marginBottom: 22 }}>
@@ -270,7 +285,7 @@ export default function Dashboard({ onOpenDeal, onSwitchTab }: Props) {
 
 // ── Shared sub-components ─────────────────────────────────────────────────────
 
-function SubMetric({ label, value, color, tint }: { label: string; value: string; color: string; tint?: boolean }) {
+function SubMetric({ label, value, color, tint, sub }: { label: string; value: string; color: string; tint?: boolean; sub?: string }) {
   return (
     <div style={{
       background: tint ? `${color}10` : 'rgba(24,28,35,0.6)',
@@ -283,6 +298,11 @@ function SubMetric({ label, value, color, tint }: { label: string; value: string
       <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 22, fontWeight: 800, color, letterSpacing: -0.5, lineHeight: 1.1, marginTop: 4 }}>
         {value}
       </div>
+      {sub && (
+        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, letterSpacing: 0.5, color: C.muted, marginTop: 4 }}>
+          {sub}
+        </div>
+      )}
     </div>
   )
 }
