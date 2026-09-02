@@ -66,8 +66,8 @@ export default function Dashboard({ onOpenDeal, onSwitchTab }: Props) {
   const now = Date.now()
 
   // ── Stat computations ──────────────────────────────────────────────────────
-  const activeProjects     = projects.filter(p => p.currentStage != null)
-  const steadyStateCount   = projects.filter(p => p.totalTasks > 0 && p.doneTasks === p.totalTasks).length
+  const activeProjects     = projects.filter(p => p.currentStage != null && !p.steadyState)
+  const steadyStateCount   = projects.filter(p => p.steadyState).length
   const pipelineValue      = activeData
     .filter(a => a.deal.properties.dealstage !== 'closedlost')
     .reduce((s, a) => s + (parseFloat(a.deal.properties.amount || '0') || 0), 0)

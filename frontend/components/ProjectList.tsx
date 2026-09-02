@@ -99,39 +99,101 @@ export default function ProjectList({ onSelectProject }: { onSelectProject: (id:
         </div>
       )}
 
-      {/* Project Grid (single section — no more Active/Steady State partition
-          since we removed the task tracker) */}
-      {isLoading ? (
-        <div style={{ color: 'rgba(255,255,255,0.3)', fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, padding: 40, textAlign: 'center' }}>
-          Loading projects...
-        </div>
-      ) : projects.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-          <img src="/images/logo.png" alt="DXD" style={{ width: 64, height: 64, objectFit: 'contain', opacity: 0.2, marginBottom: 16 }} />
-          <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 14, color: 'rgba(255,255,255,0.4)', letterSpacing: 1.5, marginBottom: 8 }}>NO ACTIVE DEPLOYMENTS</div>
-          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>Create your first project to begin tracking a drone deployment.</div>
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))', gap: 14 }}>
-          {projects.map((p, i) => (
-            <ProjectCard key={p.id} proj={p} index={i} activeDeal={dealMap.get(p.id)}
-              onOpen={() => onSelectProject(p.id)}
-              onDelete={() => { if (window.confirm(`Delete "${p.name}"? This cannot be undone.`)) deleteMutation.mutate(p.id) }} />
-          ))}
-        </div>
-      )}
+      {/* Deals are partitioned by the steady_state flag. Active on top,
+          steady-state below with a green accent so operators can tell at
+          a glance which deals are still being executed vs. running in
+          ongoing ops. */}
+      {(() => {
+        const activeProjects = projects.filter(p => !p.steadyState)
+        const steadyProjects = projects.filter(p => p.steadyState)
+
+        if (isLoading) {
+          return (
+            <div style={{ color: 'rgba(255,255,255,0.3)', fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, padding: 40, textAlign: 'center' }}>
+              Loading projects...
+            </div>
+          )
+        }
+        if (projects.length === 0) {
+          return (
+            <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+              <img src="/images/logo.png" alt="DXD" style={{ width: 64, height: 64, objectFit: 'contain', opacity: 0.2, marginBottom: 16 }} />
+              <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 14, color: 'rgba(255,255,255,0.4)', letterSpacing: 1.5, marginBottom: 8 }}>NO ACTIVE DEPLOYMENTS</div>
+              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>Create your first project to begin tracking a drone deployment.</div>
+            </div>
+          )
+        }
+        return (
+          <>
+            {activeProjects.length > 0 && (
+              <SectionHeader
+                title="ACTIVE DEPLOYMENTS"
+                count={activeProjects.length}
+                accent="#E53935"
+              />
+            )}
+            {activeProjects.length > 0 && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))', gap: 14 }}>
+                {activeProjects.map((p, i) => (
+                  <ProjectCard key={p.id} proj={p} index={i} activeDeal={dealMap.get(p.id)}
+                    onOpen={() => onSelectProject(p.id)}
+                    onDelete={() => { if (window.confirm(`Delete "${p.name}"? This cannot be undone.`)) deleteMutation.mutate(p.id) }} />
+                ))}
+              </div>
+            )}
+            {steadyProjects.length > 0 && (
+              <>
+                <SectionHeader
+                  title="STEADY STATE"
+                  count={steadyProjects.length}
+                  accent="#3FB95A"
+                  spacingTop={activeProjects.length > 0 ? 32 : 0}
+                />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))', gap: 14 }}>
+                  {steadyProjects.map((p, i) => (
+                    <ProjectCard key={p.id} proj={p} index={i} activeDeal={dealMap.get(p.id)} accent="#3FB95A"
+                      onOpen={() => onSelectProject(p.id)}
+                      onDelete={() => { if (window.confirm(`Delete "${p.name}"? This cannot be undone.`)) deleteMutation.mutate(p.id) }} />
+                  ))}
+                </div>
+              </>
+            )}
+          </>
+        )
+      })()}
     </div>
   )
 }
 
-function ProjectCard({ proj, index, activeDeal, onOpen, onDelete }: {
+function SectionHeader({ title, count, accent, spacingTop = 0 }: {
+  title: string
+  count: number
+  accent: string
+  spacingTop?: number
+}) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: spacingTop, marginBottom: 14 }}>
+      <span style={{ width: 8, height: 8, borderRadius: '50%', background: accent, boxShadow: `0 0 8px ${accent}88`, flexShrink: 0 }} />
+      <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 12, fontWeight: 700, letterSpacing: 2.4, color: accent }}>
+        {title}
+      </span>
+      <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: `${accent}aa`, background: `${accent}18`, border: `1px solid ${accent}35`, borderRadius: 10, padding: '1px 8px' }}>
+        {count}
+      </span>
+      <div style={{ flex: 1, height: 1, background: `linear-gradient(90deg, ${accent}55, transparent)` }} />
+    </div>
+  )
+}
+
+function ProjectCard({ proj, index, activeDeal, accent, onOpen, onDelete }: {
   proj: ProjectSummary
   index: number
   activeDeal?: HubSpotActiveDeal
+  accent?: string
   onOpen: () => void
   onDelete: () => void
 }) {
-  const accentColor = '#E53935' // brand red — no more progress-based color
+  const accentColor = accent ?? '#E53935' // brand red — no more progress-based color
   const hsStage = activeDeal?.deal.properties.dealstage
 
   return (
