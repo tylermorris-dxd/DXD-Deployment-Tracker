@@ -20,10 +20,11 @@ import SettingsPopover from '@/components/SettingsPopover'
 import ShortcutHelp from '@/components/ShortcutHelp'
 import FleetCopilot from '@/components/FleetCopilot'
 import CommandBridge from '@/components/CommandBridge'
+import ConstellationView from '@/components/ConstellationView'
 import { sfx } from '@/lib/sfx'
 import { useIsMobile } from '@/lib/useIsMobile'
 
-export type MainTab = 'dashboard' | 'deals' | 'fleet' | 'admin' | 'equipment' | 'cost' | 'product' | 'events' | 'job-est'
+export type MainTab = 'dashboard' | 'deals' | 'fleet' | 'constellation' | 'admin' | 'equipment' | 'cost' | 'product' | 'events' | 'job-est'
 
 interface MenuItem {
   id: MainTab
@@ -58,6 +59,22 @@ const MENU_ITEMS: MenuItem[] = [
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
         <path d="M8 1.5C5.24 1.5 3 3.74 3 6.5c0 3.9 5 8 5 8s5-4.1 5-8c0-2.76-2.24-5-5-5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
         <circle cx="8" cy="6.5" r="1.8" stroke="currentColor" strokeWidth="1.4" />
+      </svg>
+    ),
+  },
+  {
+    id: 'constellation', label: 'Constellation',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <circle cx="8" cy="8" r="1.8" fill="currentColor" />
+        <circle cx="2.5" cy="4" r="1.2" stroke="currentColor" strokeWidth="1.2" />
+        <circle cx="13" cy="3" r="1.2" stroke="currentColor" strokeWidth="1.2" />
+        <circle cx="3" cy="13" r="1.2" stroke="currentColor" strokeWidth="1.2" />
+        <circle cx="13.5" cy="12" r="1.2" stroke="currentColor" strokeWidth="1.2" />
+        <line x1="8" y1="8" x2="2.5" y2="4" stroke="currentColor" strokeWidth="0.9" opacity="0.6" />
+        <line x1="8" y1="8" x2="13" y2="3" stroke="currentColor" strokeWidth="0.9" opacity="0.6" />
+        <line x1="8" y1="8" x2="3" y2="13" stroke="currentColor" strokeWidth="0.9" opacity="0.6" />
+        <line x1="8" y1="8" x2="13.5" y2="12" stroke="currentColor" strokeWidth="0.9" opacity="0.6" />
       </svg>
     ),
   },
@@ -349,6 +366,11 @@ export default function Home() {
           {tab === 'fleet'        && (
             <div style={{ padding: isMobile ? 12 : 20 }}>
               <FleetMap onOpenDeal={openDeal} />
+            </div>
+          )}
+          {tab === 'constellation' && (
+            <div style={{ padding: isMobile ? 12 : 20 }}>
+              <ConstellationView onOpenDeal={openDeal} />
             </div>
           )}
           {tab === 'admin'        && <AdminPanel />}
