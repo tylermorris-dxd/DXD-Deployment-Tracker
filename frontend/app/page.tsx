@@ -18,6 +18,7 @@ import Toaster from '@/components/Toaster'
 import BootSequence from '@/components/BootSequence'
 import SettingsPopover from '@/components/SettingsPopover'
 import ShortcutHelp from '@/components/ShortcutHelp'
+import FleetCopilot from '@/components/FleetCopilot'
 import { sfx } from '@/lib/sfx'
 import { useIsMobile } from '@/lib/useIsMobile'
 
@@ -140,6 +141,7 @@ export default function Home() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
+  const [copilotOpen, setCopilotOpen] = useState(false)
   const isMobile = useIsMobile()
 
   const openDeal = (id: string) => setPanelId(id)
@@ -159,6 +161,12 @@ export default function Home() {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault()
         setPaletteOpen(v => !v)
+        sfx.ping()
+        return
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'j') {
+        e.preventDefault()
+        setCopilotOpen(v => !v)
         sfx.ping()
         return
       }
@@ -243,6 +251,28 @@ export default function Home() {
               </svg>
               Search
               <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: C.muted, background: '#0d1017', border: `1px solid ${C.border}`, borderRadius: 3, padding: '1px 5px', marginLeft: 4 }}>⌘K</span>
+            </button>
+          )}
+          {!isMobile && (
+            <button
+              onClick={() => { setCopilotOpen(v => !v); sfx.ping() }}
+              title="Ask Fleet Copilot (⌘J)"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px 6px 8px',
+                background: copilotOpen ? 'rgba(210,35,42,0.15)' : 'linear-gradient(135deg, rgba(210,35,42,0.10), rgba(210,35,42,0.02))',
+                border: `1px solid ${copilotOpen ? 'rgba(210,35,42,0.5)' : 'rgba(210,35,42,0.28)'}`,
+                borderRadius: 7, color: '#e8eaf0', cursor: 'pointer',
+                fontFamily: 'Syne, sans-serif', fontSize: 11, fontWeight: 700, letterSpacing: 0.4,
+              }}
+            >
+              <span style={{
+                width: 16, height: 16, borderRadius: 4,
+                background: 'linear-gradient(135deg, #D2232A, #7a1c22)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 8, fontWeight: 800,
+              }}>AI</span>
+              Copilot
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: C.muted, background: '#0d1017', border: `1px solid ${C.border}`, borderRadius: 3, padding: '1px 5px', marginLeft: 2 }}>⌘J</span>
             </button>
           )}
           <SettingsPopover />
@@ -332,6 +362,13 @@ export default function Home() {
 
       {/* ── ? shortcut cheatsheet ─────────────────────────────────────────── */}
       <ShortcutHelp open={helpOpen} onClose={() => setHelpOpen(false)} />
+
+      {/* ── AI Fleet Copilot ──────────────────────────────────────────────── */}
+      <FleetCopilot
+        open={copilotOpen}
+        onClose={() => setCopilotOpen(false)}
+        onOpenDeal={id => openDeal(id)}
+      />
 
       {/* ── Cmd/Ctrl+K command palette ──────────────────────────────────────── */}
       <CommandPalette
