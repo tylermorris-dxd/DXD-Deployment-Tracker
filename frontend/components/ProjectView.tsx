@@ -17,6 +17,8 @@ import PricingView from './PricingView'
 import SummaryView from './SummaryView'
 import CustomerSignoff from './CustomerSignoff'
 import { useIsMobile } from '@/lib/useIsMobile'
+import { showUndoableToast, showToast } from '@/lib/toast'
+import { logActivity } from '@/lib/activity'
 
 interface Props {
   projectId: string
@@ -117,12 +119,20 @@ export default function ProjectView({ projectId, onBack }: Props) {
 
   const toggleFaa = useMutation({
     mutationFn: (val: boolean) => api.projects.update(projectId, { faaAuthorizationRequired: val }),
-    onSuccess: () => { invalidate(); qc.invalidateQueries({ queryKey: ['projects'] }) },
+    onSuccess: (_data, val) => {
+      invalidate(); qc.invalidateQueries({ queryKey: ['projects'] })
+      logActivity({ kind: val ? 'faa-on' : 'faa-off', subject: project?.name || 'deal', projectId })
+      showToast({ title: val ? 'FAA tracking on' : 'FAA tracking off', detail: project?.name, tone: val ? 'info' : 'success', durationMs: 2500 })
+    },
   })
 
   const toggleSteady = useMutation({
     mutationFn: (val: boolean) => api.projects.update(projectId, { steadyState: val }),
-    onSuccess: () => { invalidate(); qc.invalidateQueries({ queryKey: ['projects'] }) },
+    onSuccess: (_data, val) => {
+      invalidate(); qc.invalidateQueries({ queryKey: ['projects'] })
+      logActivity({ kind: val ? 'steady-on' : 'steady-off', subject: project?.name || 'deal', projectId })
+      showToast({ title: val ? 'Marked steady state' : 'Returned to active deployment', detail: project?.name, tone: 'success', durationMs: 2500 })
+    },
   })
 
   // ── Cache update helpers — write JSON string to DB then re-fetch ──────────
@@ -235,7 +245,29 @@ export default function ProjectView({ projectId, onBack }: Props) {
             steadyOn={project.steadyState}
             onToggleFaa={() => toggleFaa.mutate(!project.faaAuthorizationRequired)}
             onToggleSteady={() => toggleSteady.mutate(!project.steadyState)}
-            onDelete={() => { if (window.confirm(`Delete "${project.name}"? This cannot be undone.`)) deleteMutation.mutate() }}
+            onDelete={() => {
+              // No confirm dialog — a 7s undo toast is safer AND smoother.
+              // The deal disappears immediately from the UI (we bounce back
+              // to the list), and if the user hits Undo we don't fire the
+              // DELETE. If they don't, the DELETE runs when the toast expires.
+              const name = project.name
+              onBack()
+              showUndoableToast({
+                title: `Deleted "${name}"`,
+                detail: 'Deal removed. Click Undo to keep it.',
+                undoLabel: 'Undo',
+                durationMs: 7000,
+                onCommit: () => {
+                  deleteMutation.mutate(undefined, {
+                    onSuccess: () => logActivity({ kind: 'deal-deleted', subject: name }),
+                  })
+                },
+                onCancel: () => {
+                  // Bring the user back to the deal they thought they deleted.
+                  showToast({ title: 'Deletion cancelled', detail: name, tone: 'info', durationMs: 2000 })
+                },
+              })
+            }}
           />
         </div>
 

@@ -6,6 +6,8 @@ import { api } from '@/lib/api'
 import { s } from '@/lib/styles'
 import { Icons } from '@/lib/icons'
 import type { ProjectSummary, HubSpotActiveDeal } from '@/lib/types'
+import { showUndoableToast, showToast } from '@/lib/toast'
+import { logActivity } from '@/lib/activity'
 
 type SortMode = 'newest' | 'oldest' | 'value' | 'name'
 type FilterMode = 'all' | 'hubspot' | 'faa'
@@ -180,7 +182,7 @@ export default function ProjectList({ onSelectProject }: { onSelectProject: (id:
                 {activeProjects.map((p, i) => (
                   <ProjectCard key={p.id} proj={p} index={i} activeDeal={dealMap.get(p.id)}
                     onOpen={() => onSelectProject(p.id)}
-                    onDelete={() => { if (window.confirm(`Delete "${p.name}"? This cannot be undone.`)) deleteMutation.mutate(p.id) }} />
+                    onDelete={() => deleteWithUndo(p, deleteMutation.mutate)} />
                 ))}
               </div>
             </>
@@ -201,7 +203,7 @@ export default function ProjectList({ onSelectProject }: { onSelectProject: (id:
                   {steadyProjects.map((p, i) => (
                     <ProjectCard key={p.id} proj={p} index={i} activeDeal={dealMap.get(p.id)} accent="#3FB95A" compact
                       onOpen={() => onSelectProject(p.id)}
-                      onDelete={() => { if (window.confirm(`Delete "${p.name}"? This cannot be undone.`)) deleteMutation.mutate(p.id) }} />
+                      onDelete={() => deleteWithUndo(p, deleteMutation.mutate)} />
                   ))}
                 </div>
               )}
@@ -326,6 +328,25 @@ function Chip({ label, color }: { label: string; color: string }) {
 }
 
 // ── Project card ─────────────────────────────────────────────────────────────
+
+// Delete with an undo toast instead of a confirm dialog. The mutation
+// only actually fires when the toast expires (7s window). If the user
+// hits Undo, the deal stays.
+function deleteWithUndo(p: ProjectSummary, mutate: (id: string) => void) {
+  showUndoableToast({
+    title: `Deleted "${p.name}"`,
+    detail: 'Deal removed. Click Undo to keep it.',
+    undoLabel: 'Undo',
+    durationMs: 7000,
+    onCommit: () => {
+      mutate(p.id)
+      logActivity({ kind: 'deal-deleted', subject: p.name })
+    },
+    onCancel: () => {
+      showToast({ title: 'Deletion cancelled', detail: p.name, tone: 'info', durationMs: 2000 })
+    },
+  })
+}
 
 function ProjectCard({ proj, index, activeDeal, accent, compact, onOpen, onDelete }: {
   proj: ProjectSummary

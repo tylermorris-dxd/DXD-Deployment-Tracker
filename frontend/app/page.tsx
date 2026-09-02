@@ -14,6 +14,8 @@ import EventPricingApp from '@/components/EventPricingApp'
 import JobEstimator from '@/components/JobEstimator'
 import CommandPalette from '@/components/CommandPalette'
 import FleetMap from '@/components/FleetMap'
+import Toaster from '@/components/Toaster'
+import BootSequence from '@/components/BootSequence'
 import { useIsMobile } from '@/lib/useIsMobile'
 
 export type MainTab = 'dashboard' | 'deals' | 'fleet' | 'admin' | 'equipment' | 'cost' | 'product' | 'events' | 'job-est'
@@ -161,6 +163,10 @@ export default function Home() {
 
   return (
     <div style={{ background: C.bg, minHeight: '100vh' }}>
+
+      <BootSequence />
+      <Toaster />
+
 
       {/* ── Topbar ──────────────────────────────────────────────────────────── */}
       <div style={{
