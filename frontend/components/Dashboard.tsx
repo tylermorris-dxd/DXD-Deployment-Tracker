@@ -6,6 +6,7 @@ import { api } from '@/lib/api'
 import type { MainTab } from '@/app/page'
 import FleetMap from './FleetMap'
 import { useIsMobile } from '@/lib/useIsMobile'
+import { useRecentActivity, activityLabel, activityColor, timeAgo } from '@/lib/activity'
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const C = {
@@ -36,8 +37,20 @@ interface Props {
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
+// Time-of-day greeting. Reads a little different at 3am vs 3pm on purpose —
+// the operator opening the tool late feels seen without it being cheesy.
+function timeOfDayHeader(): { line1: string; line2: string; accent: string } {
+  const h = new Date().getHours()
+  if (h < 5)  return { line1: 'OPERATIONS · EYES OPEN', line2: 'Late shift · everything quiet', accent: '#3b82f6' }
+  if (h < 12) return { line1: 'GOOD MORNING, OPERATOR',  line2: "Today's fleet, in one glance",    accent: '#D2232A' }
+  if (h < 17) return { line1: 'DXD OPERATIONS',           line2: 'Afternoon situation report',      accent: '#D2232A' }
+  if (h < 21) return { line1: 'GOOD EVENING, OPERATOR',   line2: 'End-of-day fleet snapshot',       accent: '#f59e0b' }
+  return       { line1: 'OPERATIONS · NIGHT WATCH',       line2: 'Overnight fleet status',          accent: '#a855f7' }
+}
+
 export default function Dashboard({ onOpenDeal, onSwitchTab }: Props) {
   const isMobile = useIsMobile()
+  const activity = useRecentActivity(10)
   const { data: projects = [] } = useQuery({
     queryKey: ['projects'],
     queryFn:  () => api.projects.list(),
@@ -70,6 +83,8 @@ export default function Dashboard({ onOpenDeal, onSwitchTab }: Props) {
     .reduce((s, a) => s + (parseFloat(a.deal.properties.amount || '0') || 0), 0)
 
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+  const nowStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+  const tod = timeOfDayHeader()
 
   return (
     <div style={{ maxWidth: 1400, margin: '0 auto', padding: isMobile ? '16px 14px 40px' : '28px 28px 60px' }}>
@@ -86,12 +101,28 @@ export default function Dashboard({ onOpenDeal, onSwitchTab }: Props) {
           background: `repeating-linear-gradient(0deg, transparent 0, transparent 3px, rgba(255,255,255,0.02) 3px, rgba(255,255,255,0.02) 4px)`,
           pointerEvents: 'none',
         }} />
+        {/* Radar sweep — slow-rotating conic gradient anchored to the top-right
+            corner. Nods to the tactical aesthetic without being noisy. */}
+        <div style={{
+          position: 'absolute',
+          top: '-40%', right: '-15%',
+          width: 460, height: 460,
+          borderRadius: '50%',
+          background: `conic-gradient(from 0deg, transparent 0%, rgba(210,35,42,0.14) 8%, transparent 16%, transparent 100%)`,
+          animation: 'dxd-sweep 10s linear infinite',
+          pointerEvents: 'none',
+          maskImage: 'radial-gradient(circle at center, black 0%, black 55%, transparent 68%)',
+          WebkitMaskImage: 'radial-gradient(circle at center, black 0%, black 55%, transparent 68%)',
+        }} />
+        <style>{`@keyframes dxd-sweep { to { transform: rotate(360deg) } }`}</style>
         <div style={{ position: 'relative' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 4 }}>
-            <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontWeight: 800, fontSize: 13, letterSpacing: 2.5, color: C.red, textTransform: 'uppercase' }}>
-              DXD Operations
+            <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontWeight: 800, fontSize: 13, letterSpacing: 2.5, color: tod.accent, textTransform: 'uppercase' }}>
+              {tod.line1}
             </span>
-            <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: C.muted }}>{today}</span>
+            <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: C.muted }}>
+              {tod.line2} · {today} · {nowStr}Z
+            </span>
           </div>
 
           {/* Hero row */}
@@ -182,23 +213,54 @@ export default function Dashboard({ onOpenDeal, onSwitchTab }: Props) {
           })()}
         </Widget>
 
-        {/* HubSpot Sync */}
+        {/* Activity Feed */}
         <Widget>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: hsStatus?.connected ? C.green : C.muted, boxShadow: hsStatus?.connected ? `0 0 6px ${C.green}` : 'none', flexShrink: 0 }} />
-            <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontWeight: 700, fontSize: 14, color: C.text }}>HubSpot Sync</span>
+          <WHeader title="Recent Activity" sub={`${activity.length}`} />
+          {activity.length === 0 ? (
+            <Empty>
+              No activity yet. Toggle FAA or steady state on a deal to start the log.
+            </Empty>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 260, overflowY: 'auto' }}>
+              {activity.map(e => {
+                const color = activityColor(e.kind)
+                return (
+                  <div
+                    key={e.id}
+                    onClick={() => e.projectId && onOpenDeal(e.projectId)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '6px 4px', cursor: e.projectId ? 'pointer' : 'default',
+                      borderRadius: 6, transition: 'background 0.1s',
+                    }}
+                    onMouseEnter={ev => { if (e.projectId) ev.currentTarget.style.background = 'rgba(255,255,255,0.03)' }}
+                    onMouseLeave={ev => { ev.currentTarget.style.background = 'transparent' }}
+                  >
+                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: color, boxShadow: `0 0 6px ${color}66`, flexShrink: 0 }} />
+                    <span style={{ flex: 1, minWidth: 0, fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {activityLabel(e)}
+                    </span>
+                    <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, color: C.muted, flexShrink: 0 }}>
+                      {timeAgo(e.ts)}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+          {/* HubSpot connection line — inline instead of full widget */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, paddingTop: 10, borderTop: `1px solid rgba(255,255,255,0.05)` }}>
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: hsStatus?.connected ? C.green : C.muted, boxShadow: hsStatus?.connected ? `0 0 6px ${C.green}` : 'none', flexShrink: 0 }} />
+            <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: C.muted, flex: 1 }}>
+              HubSpot {hsStatus?.connected ? 'connected' : 'disconnected'}
+            </span>
+            <button
+              onClick={() => onSwitchTab('admin')}
+              style={{ padding: '3px 8px', background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 4, color: C.text2, fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, cursor: 'pointer', letterSpacing: 0.5 }}
+            >
+              Configure
+            </button>
           </div>
-          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: C.muted, marginBottom: 14 }}>
-            {hsStatus?.connected ? 'Connected and syncing' : 'Not connected — configure to sync deals'}
-          </div>
-          <button
-            onClick={() => onSwitchTab('admin')}
-            style={{ width: '100%', padding: '9px 0', background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 7, color: C.text2, fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, cursor: 'pointer', letterSpacing: 0.5, transition: 'border-color 0.15s' }}
-            onMouseEnter={e => (e.currentTarget.style.borderColor = C.text2)}
-            onMouseLeave={e => (e.currentTarget.style.borderColor = C.border)}
-          >
-            Configure HubSpot →
-          </button>
         </Widget>
 
       </div>

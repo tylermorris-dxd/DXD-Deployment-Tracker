@@ -311,6 +311,56 @@ function SectionHeader({ title, count, accent, spacingTop = 0, collapsible, open
   )
 }
 
+// ── Activity spark ──────────────────────────────────────────────────────────
+// 30-tick sparkline showing the last 30 days. Ticks are dimmed by default and
+// lit at the deal's created-day and the HubSpot last-modified day, colored by
+// how fresh the last activity is. Small, information-dense visual pulse-check
+// that fits inside a card footer without owning it.
+
+function ActivitySpark({ proj, activeDeal }: { proj: ProjectSummary; activeDeal?: HubSpotActiveDeal }) {
+  const now = Date.now()
+  const created = new Date(proj.createdAt).getTime()
+  const modified = activeDeal?.deal.properties.hs_lastmodifieddate
+    ? new Date(activeDeal.deal.properties.hs_lastmodifieddate).getTime()
+    : null
+  const daysAgoCreated  = Math.max(0, Math.round((now - created)  / 86_400_000))
+  const daysAgoModified = modified != null ? Math.max(0, Math.round((now - modified) / 86_400_000)) : null
+
+  const ticks: Array<{ h: number; c: string }> = []
+  const freshness = daysAgoModified == null ? 30 : daysAgoModified
+  const stalenessColor = freshness < 3 ? '#3FB95A' : freshness < 14 ? '#3b82f6' : freshness < 30 ? '#f59e0b' : '#D2232A'
+  for (let i = 29; i >= 0; i--) {
+    // i = days ago (29 → 0 = 30 days ago → today)
+    let h = 2
+    let c = 'rgba(255,255,255,0.10)'
+    if (daysAgoCreated === i)                       { h = 8; c = '#9aa3b8' }
+    if (daysAgoModified != null && daysAgoModified === i) { h = 10; c = stalenessColor }
+    // Highlight the "today" bar slightly whether or not there was activity
+    if (i === 0)                                     { h = Math.max(h, 5); c = c === 'rgba(255,255,255,0.10)' ? 'rgba(255,255,255,0.25)' : c }
+    ticks.push({ h, c })
+  }
+
+  const label = daysAgoModified == null
+    ? 'no HubSpot activity'
+    : daysAgoModified === 0 ? 'active today'
+    : daysAgoModified < 7   ? `active ${daysAgoModified}d ago`
+    : daysAgoModified < 30  ? `${daysAgoModified}d idle`
+    :                         `${daysAgoModified}d idle`
+
+  return (
+    <div title={label} style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 1.5, height: 12, flexShrink: 0 }}>
+        {ticks.map((t, i) => (
+          <span key={i} style={{ width: 2, height: t.h, background: t.c, borderRadius: 1 }} />
+        ))}
+      </div>
+      <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, color: stalenessColor, letterSpacing: 0.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {label}
+      </span>
+    </div>
+  )
+}
+
 // ── Chip ────────────────────────────────────────────────────────────────────
 
 function Chip({ label, color }: { label: string; color: string }) {
@@ -449,9 +499,10 @@ function ProjectCard({ proj, index, activeDeal, accent, compact, onOpen, onDelet
         </div>
       )}
 
-      {/* Footer: created date */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: compact ? 8 : 14, paddingTop: compact ? 8 : 12, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-        <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', fontFamily: "'IBM Plex Mono', monospace" }}>
+      {/* Footer: sparkline + created date */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: compact ? 8 : 14, paddingTop: compact ? 8 : 12, borderTop: '1px solid rgba(255,255,255,0.05)', gap: 12 }}>
+        <ActivitySpark proj={proj} activeDeal={activeDeal} />
+        <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', fontFamily: "'IBM Plex Mono', monospace", flexShrink: 0 }}>
           {new Date(proj.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
         </span>
       </div>
