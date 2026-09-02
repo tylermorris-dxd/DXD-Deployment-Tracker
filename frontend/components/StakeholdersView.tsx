@@ -1,9 +1,11 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import type { ProjectFull, HubSpotDeal, HubSpotContact } from '@/lib/types'
 import Avatar from './Avatar'
+import MentionField, { MentionText } from './MentionField'
+import { requestOpenDeal } from '@/lib/nav'
 
 interface Stakeholder {
   id: string
@@ -63,6 +65,19 @@ export default function StakeholdersView({ project, onUpdate, hubspotDeal }: Pro
   const [editId, setEditId] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
 
+  // Free-form notes with @-mention support. Persisted per-project in
+  // localStorage until we add a backend column for it.
+  const notesKey = `dxd-notes-${project.id}`
+  const [notes, setNotes] = useState<string>(() => {
+    if (typeof window === 'undefined') return ''
+    try { return localStorage.getItem(notesKey) || '' } catch { return '' }
+  })
+  const [editingNotes, setEditingNotes] = useState(false)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try { localStorage.setItem(notesKey, notes) } catch { /* quota */ }
+  }, [notes, notesKey])
+
   const save = () => {
     if (!form.name.trim()) return
     if (editId) {
@@ -82,6 +97,37 @@ export default function StakeholdersView({ project, onUpdate, hubspotDeal }: Pro
 
   return (
     <div style={{ padding: '24px 0', maxWidth: 760 }}>
+      {/* ─── Deal notes with @-mentions ─────────────────────────────────── */}
+      <div style={{ background: 'rgba(17,19,24,0.75)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: '14px 18px', marginBottom: 22 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#D2232A', boxShadow: '0 0 6px #D2232A88' }} />
+          <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontWeight: 700, fontSize: 11, letterSpacing: 2, color: '#e8eaf0' }}>DEAL NOTES</span>
+          <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, color: '#5a6380' }}>· type @ to mention another deal</span>
+          <button
+            onClick={() => setEditingNotes(v => !v)}
+            style={{ marginLeft: 'auto', padding: '3px 10px', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 5, color: 'rgba(255,255,255,0.5)', fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, cursor: 'pointer', letterSpacing: 0.5 }}
+          >
+            {editingNotes ? 'DONE' : 'EDIT'}
+          </button>
+        </div>
+        {editingNotes ? (
+          <MentionField
+            value={notes}
+            onChange={setNotes}
+            placeholder="Notes about this deal, the customer, follow-ups… type @ to link another deal."
+            minRows={4}
+          />
+        ) : notes.trim() ? (
+          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, lineHeight: 1.6, color: '#e8eaf0', whiteSpace: 'pre-wrap' as const, wordBreak: 'break-word' as const }}>
+            <MentionText text={notes} onOpenDeal={requestOpenDeal} />
+          </div>
+        ) : (
+          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#5a6380' }}>
+            No notes yet. Click EDIT to add running notes. Reference other deals with @.
+          </div>
+        )}
+      </div>
+
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
         <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: 2, color: '#C41E3A', textTransform: 'uppercase' }}>
           Stakeholder Contacts

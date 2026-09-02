@@ -22,6 +22,7 @@ import FleetCopilot from '@/components/FleetCopilot'
 import CommandBridge from '@/components/CommandBridge'
 import ConstellationView from '@/components/ConstellationView'
 import { withViewTransition, markZoomOrigin } from '@/lib/transitions'
+import { onOpenDealRequest } from '@/lib/nav'
 import { sfx } from '@/lib/sfx'
 import { useIsMobile } from '@/lib/useIsMobile'
 
@@ -163,6 +164,11 @@ export default function Home() {
   const [copilotOpen, setCopilotOpen] = useState(false)
   const [bridgeOpen, setBridgeOpen] = useState(false)
   const isMobile = useIsMobile()
+
+  // Any component can call requestOpenDeal(id) to open a deal without
+  // having to thread callbacks down. Used by @mention chips, activity
+  // rows in embedded widgets, etc.
+  useEffect(() => onOpenDealRequest(id => openDeal(id)))
 
   // openDeal is wrapped in a view transition so the fullscreen panel
   // grows from wherever the operator just clicked (whether that was a
