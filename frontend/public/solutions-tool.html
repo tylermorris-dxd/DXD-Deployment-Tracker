@@ -1,0 +1,2072 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DXD Solutions Tool 3.0</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tomorrow:wght@400;500;600;700&family=Inter:wght@400;500;600&family=Caveat:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0E0E0F; --panel:#161618; --panel2:#1C1C1F; --raised:#26262A;
+  --line:#2C2C31; --line2:#3A3A40;
+  --t1:#ECECEC; --t2:#9A9A9E; --t3:#606066;
+  --red:#C0392B; --red2:#E2483F; --redDim:#5a2520;
+  --green:#3FB95A; --amber:#E0A23B; --blue:#5AA2FF;
+  --disp:'Tomorrow',system-ui,sans-serif; --body:'Inter',system-ui,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--t1);font-family:var(--body);font-size:13px;line-height:1.45;padding:20px;min-height:100vh}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+.wrap{max-width:1180px;margin:0 auto}
+
+/* ---------- header ---------- */
+.top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;margin-bottom:18px}
+.brand{display:flex;align-items:center;gap:13px}
+.mark{width:34px;height:34px;border:2px solid var(--red);border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:var(--disp);font-weight:700;color:var(--red);font-size:18px;letter-spacing:-1px}
+.logo{display:flex;align-items:center;flex:none}
+.logo svg,.logo img{display:block;height:42px;width:auto}
+.brand h1{font-family:var(--disp);font-weight:700;font-size:20px;letter-spacing:.5px;line-height:1;display:flex;align-items:baseline;flex-wrap:wrap;gap:0 4px}
+.credit{font-family:'Caveat',cursive;font-weight:600;font-size:21px;line-height:1;color:#fff;letter-spacing:.3px;margin-left:9px;transform:rotate(-3.5deg);transform-origin:left bottom;display:inline-block;text-shadow:0 1px 6px rgba(226,72,63,.35);white-space:nowrap;opacity:.92}
+.brand .sub{font-size:10.5px;color:var(--t2);letter-spacing:2.5px;text-transform:uppercase;margin-top:3px}
+.faces{display:flex;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:4px;gap:3px}
+.toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.printbtn{font-family:var(--disp);font-weight:600;font-size:12px;letter-spacing:.4px;padding:8px 14px;border-radius:8px;color:var(--t1);cursor:pointer;border:1px solid var(--line2);background:var(--panel);transition:.15s;white-space:nowrap}
+.printbtn:hover{border-color:var(--red);color:#fff}
+/* package comparison (Capture) */
+.pcmp{width:100%;border-collapse:collapse;font-size:11.5px}
+.pcmp th,.pcmp td{padding:7px 9px;border-bottom:1px solid var(--line)}
+.pcmp th{font-family:var(--disp);font-weight:600;font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:var(--t2);text-align:center}
+.pcmp th:first-child{text-align:left}
+.pcmp td{font-family:var(--disp);font-weight:500;color:var(--t1);text-align:center}
+.pcmp td.pl{color:var(--t2);text-align:left}
+.pcmp .sel{background:rgba(192,57,43,.12)}
+.pcmp th.sel{color:#fff;box-shadow:inset 0 -2px 0 var(--red)}
+.cfm{color:var(--amber);font-style:italic;font-weight:600}
+#printSheet{display:none}
+.face{font-family:var(--disp);font-weight:600;font-size:12px;letter-spacing:.4px;padding:7px 15px;border-radius:6px;color:var(--t2);cursor:pointer;border:0;background:transparent;transition:.15s;white-space:nowrap}
+.face:hover{color:var(--t1)}
+.face.on{background:var(--red);color:#fff}
+.face .fd{display:block;font-family:var(--body);font-weight:400;font-size:9px;letter-spacing:.2px;color:rgba(255,255,255,.65);margin-top:1px}
+.face:not(.on) .fd{color:var(--t3)}
+
+/* ---------- layout ---------- */
+.grid{display:grid;grid-template-columns:minmax(0,360px) minmax(0,1fr);gap:18px;align-items:start}
+@media(max-width:880px){.grid{grid-template-columns:1fr}}
+@media print{
+  @page{margin:14mm}
+  html,body{background:#0E0E0F !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;padding:0 !important;min-height:0 !important}
+  .wrap{display:none !important}
+  #printSheet{display:block !important}
+  .ps{color:#ECECEC;font-family:'Inter',system-ui,sans-serif}
+  .ps-head{display:flex;align-items:center;gap:14px;border-bottom:2px solid #C0392B;padding-bottom:12px;margin-bottom:15px}
+  .ps-logo{height:48px;width:auto}
+  .ps-title{font-family:'Tomorrow',sans-serif;font-weight:700;font-size:21px;letter-spacing:.5px;color:#fff}
+  .ps-sub{font-family:'Tomorrow',sans-serif;font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:#9A9A9E;margin-top:3px}
+  .ps-config{font-family:'Tomorrow',sans-serif;font-weight:600;font-size:12px;color:#E2483F;background:rgba(192,57,43,.10);border:1px solid #5a2520;border-radius:8px;padding:10px 13px;margin-bottom:18px;letter-spacing:.3px;line-height:1.5}
+  .ps-sec{margin-bottom:17px;break-inside:avoid}
+  .ps-sec h3{font-family:'Tomorrow',sans-serif;font-weight:600;font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:#9A9A9E;margin:0 0 6px;border-bottom:1px solid #26262A;padding-bottom:5px}
+  .ps-tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+  .ps-tbl td{padding:6px 4px;border-bottom:1px solid #1C1C1F;font-family:'Tomorrow',sans-serif;font-weight:500;color:#ECECEC}
+  .ps-tbl td:first-child{color:#9A9A9E}
+  .ps-tbl td.amt{text-align:right;font-weight:700;color:#ECECEC}
+  .ps-tbl tr.ps-total td{border-top:2px solid #C0392B;border-bottom:none;font-size:15px;padding-top:10px;color:#fff}
+  .ps-tbl tr.ps-total td.amt{color:#3FB95A}
+  .ps-fine{font-size:9.5px;color:#606066;margin-top:6px;font-style:italic}
+  .ps-foot{margin-top:28px;padding-top:12px;border-top:1px solid #26262A;text-align:center}
+  .ps-creed{font-family:'Tomorrow',sans-serif;font-weight:700;letter-spacing:2.5px;color:#E2483F;font-size:12px}
+  .ps-sig{font-family:'Tomorrow',sans-serif;font-size:9px;letter-spacing:1.2px;color:#606066;margin-top:3px}
+}
+.col{display:flex;flex-direction:column;gap:14px}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.card-h{display:flex;align-items:center;justify-content:space-between;padding:11px 15px;border-bottom:1px solid var(--line)}
+.card-h .ct{font-family:var(--disp);font-weight:600;font-size:11.5px;letter-spacing:1.6px;text-transform:uppercase;color:var(--t1)}
+.card-h .cn{font-size:10px;color:var(--t3)}
+.card-b{padding:15px}
+
+/* segmented */
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg.two>*{flex:1}
+.seg.col-seg{flex-direction:column}
+.opt{flex:1;min-width:0;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:9px 11px;cursor:pointer;transition:.13s;text-align:left}
+.opt:hover{border-color:var(--line2)}
+.opt.on{border-color:var(--red);background:rgba(192,57,43,.12)}
+.opt .ol{font-family:var(--disp);font-weight:600;font-size:13px;color:var(--t1)}
+.opt.on .ol{color:var(--red2)}
+.opt .od{font-size:10.5px;color:var(--t2);margin-top:2px;line-height:1.35}
+
+.lbl{font-family:var(--disp);font-weight:500;font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--t2);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+.lbl .hint{font-family:var(--body);font-weight:400;letter-spacing:0;text-transform:none;color:var(--t3);font-size:10px}
+.fieldset{margin-bottom:16px}
+.fieldset:last-child{margin-bottom:0}
+
+/* pills */
+.pills{display:flex;gap:6px;flex-wrap:wrap}
+.pill{background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:7px 0;flex:1;text-align:center;cursor:pointer;font-family:var(--disp);font-weight:600;font-size:13px;color:var(--t2);transition:.13s;min-width:42px}
+.pill:hover{color:var(--t1);border-color:var(--line2)}
+.pill.on{border-color:var(--red);background:rgba(192,57,43,.14);color:var(--red2)}
+.pill.sm{font-size:12px;padding:6px 0}
+
+/* slider */
+.slider-row{display:flex;align-items:center;gap:12px}
+input[type=range]{-webkit-appearance:none;appearance:none;height:5px;background:var(--line2);border-radius:4px;flex:1;outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:17px;height:17px;border-radius:50%;background:var(--red2);cursor:pointer;border:2px solid #fff2}
+input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;background:var(--red2);cursor:pointer;border:2px solid #fff2}
+.sval{font-family:var(--disp);font-weight:700;font-size:15px;color:var(--red2);min-width:46px;text-align:right}
+
+/* toggle */
+.tg{display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none}
+.tg .sw{width:38px;height:21px;border-radius:12px;background:var(--line2);position:relative;transition:.18s;flex-shrink:0}
+.tg .sw::after{content:'';position:absolute;width:15px;height:15px;border-radius:50%;background:#fff;top:3px;left:3px;transition:.18s}
+.tg.on .sw{background:var(--amber)}
+.tg.on .sw::after{left:20px}
+
+/* checkbox add-ons */
+.chk{display:flex;align-items:flex-start;gap:11px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;cursor:pointer;transition:.13s;margin-bottom:7px}
+.chk:hover{border-color:var(--line2)}
+.chk.on{border-color:var(--red);background:rgba(192,57,43,.10)}
+.chk.dis{opacity:.5;cursor:not-allowed}
+.chk .box{width:17px;height:17px;border-radius:5px;border:1.5px solid var(--line2);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;transition:.13s}
+.chk.on .box{background:var(--red);border-color:var(--red)}
+.chk.on .box::after{content:'✓';color:#fff;font-size:11px;font-weight:700}
+.chk .cmeta{flex:1;min-width:0}
+.chk .cn{font-family:var(--disp);font-weight:600;font-size:12.5px;display:flex;justify-content:space-between;gap:8px}
+.chk .cpr{color:var(--green);font-weight:600}
+.chk .cd{font-size:10.5px;color:var(--t2);margin-top:2px}
+.tag{font-family:var(--disp);font-size:8.5px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;padding:1px 6px;border-radius:4px;border:1px solid var(--line2);color:var(--t2);white-space:nowrap}
+.tag.cap{border-color:#3a5a8a;color:var(--blue)}
+.tag.inf{border-color:#3a6a4a;color:var(--green)}
+.tag.plan{border-color:var(--amber);color:var(--amber)}
+
+/* the four numbers */
+.bignum{font-family:var(--disp);font-weight:700}
+.fournum .nr{display:flex;align-items:center;justify-content:space-between;padding:11px 4px;border-bottom:1px solid var(--line)}
+.fournum .nr:last-child{border-bottom:0}
+.nr .nl{display:flex;flex-direction:column}
+.nr .nl b{font-family:var(--disp);font-weight:600;font-size:13.5px}
+.nr .nl span{font-size:10.5px;color:var(--t2);margin-top:1px}
+.nr .nv{font-family:var(--disp);font-weight:600;font-size:16px;text-align:right}
+.nr .nv small{display:block;font-family:var(--body);font-size:9.5px;color:var(--t3);font-weight:400}
+.nv .povbox{display:inline-flex;align-items:center;gap:1px;background:rgba(0,0,0,.22);border:1px solid var(--line2);border-radius:7px;padding:2px 8px}
+.nv .povbox:focus-within{border-color:var(--red)}
+.nv .povbox.ovr{border-color:var(--amber);background:rgba(217,164,65,.08)}
+.nv .povbox .fpfx{font-family:var(--disp);font-size:12px;color:var(--t2);font-weight:500}
+.nv .povbox .fsfx{font-family:var(--disp);font-size:10px;color:var(--t3)}
+.nv input.povinp{background:transparent;border:0;outline:none;color:#fff;font-family:var(--disp);font-weight:700;font-size:16px;line-height:1;width:auto;max-width:84px;text-align:right;padding:1px 0}
+.nv .povbox.ovr input.povinp{color:var(--amber)}
+.nv input.povinp::-webkit-outer-spin-button,.nv input.povinp::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+
+.total{margin-top:6px;padding:15px;border-radius:11px;background:linear-gradient(160deg,#201416,#161618);border:1px solid var(--redDim);display:flex;justify-content:space-between;align-items:flex-end}
+.total .tl{font-family:var(--disp);font-weight:500;font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--t2)}
+.total .tl small{display:block;color:var(--t3);font-size:9.5px;letter-spacing:.3px;text-transform:none;margin-top:2px}
+.total .tv{font-family:var(--disp);font-weight:700;font-size:34px;line-height:.95;color:#fff}
+.total .tv span{font-size:15px;color:var(--t2);font-weight:500}
+
+/* margin gauge */
+.mbar{height:9px;border-radius:6px;background:var(--line);overflow:hidden;position:relative;margin-top:7px}
+.mbar .fill{height:100%;border-radius:6px;transition:.3s}
+.mbar .floor{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--t1);opacity:.85}
+.mrow{display:flex;justify-content:space-between;align-items:baseline}
+.mpct{font-family:var(--disp);font-weight:700;font-size:22px}
+
+/* effective ratio panel */
+.effbox{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:13px}
+.effrow{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.eff-chip{font-family:var(--disp);font-weight:700;text-align:center;padding:8px 4px;border-radius:8px;flex:1;border:1px solid var(--line)}
+.eff-chip .k{font-size:9px;font-weight:500;letter-spacing:.8px;text-transform:uppercase;color:var(--t2);display:block;margin-bottom:3px}
+.eff-chip .v{font-size:19px}
+.eff-op{color:var(--t1)}
+.eff-reg.pend{border-color:var(--amber);color:var(--amber)}
+.eff-reg.off{color:var(--t3)}
+.eff-eq{color:var(--t3);font-size:16px}
+.eff-final{color:var(--red2);border-color:var(--redDim);background:rgba(192,57,43,.08)}
+.eff-final.capped{color:var(--amber);border-color:var(--amber)}
+
+/* pending projection */
+.proj{margin-top:11px;border:1px dashed var(--amber);border-radius:9px;padding:11px 13px;background:repeating-linear-gradient(135deg,rgba(224,162,59,.05),rgba(224,162,59,.05) 8px,transparent 8px,transparent 16px)}
+.proj .ph{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.proj .pt{font-family:var(--disp);font-weight:600;font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--amber)}
+.proj .pg{display:flex;gap:14px;flex-wrap:wrap}
+.proj .pg div{font-size:10.5px;color:var(--t2)}
+.proj .pg b{font-family:var(--disp);font-size:16px;color:var(--t1);display:block;font-weight:700}
+
+/* capital */
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.kpi{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:11px}
+.kpi .kl{font-size:9.5px;letter-spacing:.6px;text-transform:uppercase;color:var(--t2);margin-bottom:4px;font-family:var(--disp);font-weight:500}
+.kpi .kv{font-family:var(--disp);font-weight:700;font-size:19px}
+.kpi .kv.neg{color:var(--red2)}
+.kpi .ks{font-size:9.5px;color:var(--t3);margin-top:2px}
+.spark{margin-top:12px}
+.note{font-size:10.5px;color:var(--t3);line-height:1.5;margin-top:10px}
+.note b{color:var(--t2);font-weight:600}
+
+.passcap{display:flex;gap:12px;align-items:center;background:rgba(63,185,90,.07);border:1px solid #2a4a32;border-radius:10px;padding:13px}
+.passcap .pi{width:30px;height:30px;border-radius:50%;border:2px solid var(--green);color:var(--green);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.passcap b{color:var(--green);font-family:var(--disp);font-size:13px}
+.passcap p{font-size:10.5px;color:var(--t2);margin-top:2px}
+
+/* advanced */
+.adv-toggle{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--panel2);border:1px dashed var(--line2);border-radius:9px;padding:9px;cursor:pointer;color:var(--t2);font-family:var(--disp);font-weight:600;font-size:11px;letter-spacing:1px;text-transform:uppercase;transition:.13s}
+.adv-toggle:hover{color:var(--t1);border-color:var(--red)}
+.adv-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.inp{display:flex;flex-direction:column;gap:4px}
+.inp label{font-size:10px;color:var(--t2);letter-spacing:.3px}
+.inp .ib{display:flex;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:0 9px}
+.inp .ib:focus-within{border-color:var(--red)}
+.inp .ib .pfx{color:var(--t3);font-size:11px}
+.inp input{background:transparent;border:0;color:var(--t1);font-family:var(--disp);font-size:13px;padding:7px 4px;width:100%;outline:none;text-align:right}
+.inp input::-webkit-outer-spin-button,.inp input::-webkit-inner-spin-button{-webkit-appearance:none}
+
+/* ---------- add-on quantity rows ---------- */
+.aon{display:flex;align-items:center;gap:11px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;transition:.13s;margin-bottom:7px}
+.aon.on{border-color:var(--red);background:rgba(192,57,43,.10)}
+.aon.dis{opacity:.55}
+.aon .cmeta{flex:1;min-width:0}
+.aon .cn{font-family:var(--disp);font-weight:600;font-size:12.5px;display:flex;justify-content:space-between;gap:8px}
+.aon .cpr{color:var(--green);font-weight:600}
+.aon .cd{font-size:10.5px;color:var(--t2);margin-top:2px}
+
+/* ---------- steppers (shared) ---------- */
+.step{display:flex;align-items:center;border:1px solid var(--line);border-radius:6px;overflow:hidden;flex-shrink:0;background:var(--panel)}
+.step button{width:26px;height:28px;border:0;background:transparent;color:var(--t2);font-family:var(--disp);font-weight:700;font-size:15px;cursor:pointer;line-height:1;transition:.12s}
+.step button:hover{background:var(--raised);color:var(--t1)}
+.step input{width:34px;height:28px;border:0;border-left:1px solid var(--line);border-right:1px solid var(--line);background:transparent;color:var(--t1);font-family:var(--disp);font-weight:700;font-size:12.5px;text-align:center;outline:none}
+.step.sm button{width:22px;height:24px;font-size:13px}
+.step.sm input{width:28px;height:24px;font-size:11.5px}
+.step input::-webkit-outer-spin-button,.step input::-webkit-inner-spin-button{-webkit-appearance:none}
+.aon.on .step{border-color:var(--red)} .aon.on .step input{color:var(--red2)}
+.uedit{display:flex;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:0 6px}
+.uedit:focus-within{border-color:var(--red)}
+.uedit .pfx{color:var(--t3);font-size:10px}
+.uedit input{background:transparent;border:0;color:var(--t1);font-family:var(--disp);font-size:11.5px;font-weight:600;padding:5px 2px;width:100%;outline:none;text-align:right}
+.uedit input::-webkit-outer-spin-button,.uedit input::-webkit-inner-spin-button{-webkit-appearance:none}
+.uedit .sfx{color:var(--t3);font-size:9px;margin-left:1px}
+.xbtn{width:26px;height:26px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--t3);cursor:pointer;font-size:13px;transition:.12s}
+.xbtn:hover{border-color:var(--red);color:var(--red2)}
+
+/* ---------- packages BOM section ---------- */
+.bom-wrap{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:18px;align-items:start;margin-top:4px}
+@media(max-width:880px){.bom-wrap{grid-template-columns:1fr}}
+.bom-sub{font-family:var(--disp);font-weight:600;font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--t2);margin-bottom:8px}
+.bom-sub .muted{font-weight:400;letter-spacing:0;text-transform:none;font-size:10px}
+.bomt{width:100%;border-collapse:collapse;font-size:11.5px}
+.bomt th,.bomt td{padding:5px 8px;text-align:right;border-bottom:1px solid var(--line)}
+.bomt th{font-family:var(--disp);font-weight:600;font-size:9px;letter-spacing:.5px;text-transform:uppercase;color:var(--t2);background:var(--panel2)}
+.bomt th:first-child,.bomt td.nm{text-align:left}
+.bomt td.ce,.bomt td.am{font-family:var(--disp);font-weight:600;color:var(--t1);white-space:nowrap}
+.bomt td.am{color:var(--red2)}
+.bomt tr.tot td{font-family:var(--disp);font-weight:700;color:var(--t1);border-top:1.5px solid var(--line2);border-bottom:0;padding-top:8px}
+.bomt tr.tot td.am{color:var(--red2)}
+/* editable cells */
+.bomt.edit td{padding:4px 6px}
+.bomt.edit td.nm input{width:100%;background:transparent;border:1px solid transparent;border-radius:5px;color:var(--t1);font-family:var(--body);font-size:11.5px;padding:5px 6px;outline:none}
+.bomt.edit td.nm input:hover{border-color:var(--line)}
+.bomt.edit td.nm input:focus{border-color:var(--red);background:var(--panel2)}
+.bomt.edit td.q{padding:3px 4px}
+.bomt.edit td.q .step{display:inline-flex}
+.bomt.edit td.u{width:108px}
+.bomt.edit td.u .uedit{width:100px;margin-left:auto}
+.bomt.edit td.x{width:34px;padding:3px}
+.addrow{margin-top:8px;width:100%;border:1px dashed var(--line2);border-radius:7px;background:transparent;color:var(--t2);font-family:var(--disp);font-weight:600;font-size:10px;letter-spacing:.6px;text-transform:uppercase;padding:8px;cursor:pointer;transition:.12s}
+.addrow:hover{border-color:var(--red);color:var(--t1)}
+.bom-recon{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.bom-recon .rc{display:flex;flex-direction:column}
+.bom-recon .rl{font-size:9px;letter-spacing:.6px;text-transform:uppercase;color:var(--t3);font-family:var(--disp);font-weight:500}
+.bom-recon .rv{font-family:var(--disp);font-weight:700;font-size:16px;color:var(--t1)}
+.plus-reset{margin-left:auto;font-family:var(--body);font-size:10px;color:var(--t3);cursor:pointer;border:0;background:transparent;text-decoration:underline;text-underline-offset:2px}
+.plus-reset:hover{color:var(--red2)}
+.plus-reset:disabled{opacity:.4;cursor:default;text-decoration:none}
+.bom-side{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:13px}
+.bomname{background:transparent;border:1px solid transparent;border-radius:5px;color:var(--t1);font-family:var(--disp);font-weight:600;font-size:11.5px;letter-spacing:1.6px;text-transform:uppercase;padding:2px 6px;outline:none;min-width:180px;width:auto}
+.bomname:hover{border-color:var(--line2)}
+.bomname:focus{border-color:var(--red);background:var(--panel2);text-transform:none;letter-spacing:.3px}
+.addon-bom{margin-bottom:13px}
+.addon-bom:last-child{margin-bottom:0}
+.addon-bom .ab-h{font-family:var(--disp);font-weight:600;font-size:11.5px;color:var(--t1);margin-bottom:5px}
+.addon-bom .ab-h .muted{font-weight:400;font-size:10px}
+
+/* editable monthly fee (Solutions) + OT install fee */
+.total.ovr{border-color:var(--amber);background:linear-gradient(160deg,#221a0c,#161618)}
+.feebox{display:flex;align-items:center;gap:2px;background:rgba(0,0,0,.25);border:1px solid var(--line2);border-radius:9px;padding:4px 10px}
+.feebox:focus-within{border-color:var(--red)}
+.feebox .fpfx{font-family:var(--disp);font-weight:500;font-size:16px;color:var(--t2)}
+.feebox .fsfx{font-family:var(--disp);font-size:12px;color:var(--t2);margin-left:2px}
+.feebox input.feeinp{background:transparent;border:0;outline:none;color:#fff;font-family:var(--disp);font-weight:700;font-size:30px;line-height:1;width:auto;max-width:150px;text-align:right;padding:2px 0}
+.total.ovr .feebox input.feeinp{color:var(--amber)}
+.feebox input.feeinp::-webkit-outer-spin-button,.feebox input.feeinp::-webkit-inner-spin-button{-webkit-appearance:none}
+.feebox.sm input.feeinp{font-size:18px;max-width:110px}
+.feebox.sm{padding:3px 9px}
+.otline{margin-top:8px;padding:11px 13px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);display:flex;justify-content:space-between;align-items:center;gap:10px}
+.otline .otl{font-family:var(--disp);font-weight:600;font-size:12.5px;color:var(--t1)}
+.otline .otsub{display:block;font-family:var(--body);font-weight:400;font-size:9.5px;color:var(--t3);margin-top:1px}
+.otline.buy{border-color:var(--redDim);background:rgba(192,57,43,.07)}
+.otline .otv{font-family:var(--disp);font-weight:700;font-size:18px;color:var(--t1);white-space:nowrap}
+.feereset{text-align:right;margin-top:5px}
+.feereset button{font-family:var(--body);font-size:10px;color:var(--t3);cursor:pointer;border:0;background:transparent;text-decoration:underline;text-underline-offset:2px}
+.feereset button:hover{color:var(--red2)}
+
+/* matrix table */
+.mtx{width:100%;border-collapse:collapse;font-size:11px;margin-top:4px}
+.mtx th,.mtx td{padding:6px 8px;text-align:right;border-bottom:1px solid var(--line)}
+.mtx th{font-family:var(--disp);font-weight:600;font-size:9.5px;letter-spacing:.5px;text-transform:uppercase;color:var(--t2);background:var(--panel2)}
+.mtx th:first-child,.mtx td:first-child{text-align:left;font-family:var(--disp);font-weight:600}
+.mtx td.num{font-family:var(--disp)}
+.mtx tr.hl td{background:rgba(192,57,43,.10);color:var(--red2)}
+.mtx tr.cap td{color:var(--amber)}
+
+/* fleet */
+.fleet{width:100%;border-collapse:collapse;font-size:12px}
+.fleet th,.fleet td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line)}
+.fleet th{font-family:var(--disp);font-weight:600;font-size:10px;letter-spacing:.6px;text-transform:uppercase;color:var(--t2)}
+.fleet th:first-child,.fleet td:first-child{text-align:left}
+.fleet td{font-family:var(--disp);font-weight:500}
+.fleet .gm{color:var(--green)}
+
+/* leadership overhaul */
+.scen{display:flex;flex-wrap:wrap;gap:6px}
+.scen .chip{font-family:var(--disp);font-weight:600;font-size:10.5px;letter-spacing:.4px;color:var(--t1);background:var(--panel2);border:1px solid var(--line2);border-radius:6px;padding:4px 9px}
+.twostat{display:flex;align-items:stretch;gap:10px}
+.twostat .ts{flex:1;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:11px 13px}
+.twostat .ts.wv{border-color:var(--amber);background:rgba(217,164,65,.07)}
+.twostat .tsl{font-family:var(--disp);font-weight:600;font-size:9.5px;letter-spacing:.6px;text-transform:uppercase;color:var(--t2)}
+.twostat .ts.wv .tsl{color:var(--amber)}
+.twostat .tsv{font-family:var(--disp);font-weight:700;font-size:26px;line-height:1.1;color:var(--green);margin-top:3px}
+.twostat .ts.wv .tsv{color:var(--amber)}
+.twostat .tss{font-family:var(--disp);font-size:11px;color:var(--t2);margin-top:1px}
+.twostat .tsarrow{align-self:center;font-family:var(--disp);font-size:20px;color:var(--t3)}
+.lsch{width:100%;border-collapse:collapse;font-size:11.5px}
+.lsch th,.lsch td{padding:7px 9px;text-align:right;border-bottom:1px solid var(--line)}
+.lsch th{font-family:var(--disp);font-weight:600;font-size:9.5px;letter-spacing:.5px;text-transform:uppercase;color:var(--t2)}
+.lsch th:first-child,.lsch td:first-child{text-align:left}
+.lsch td{font-family:var(--disp);font-weight:500;color:var(--t1)}
+.lsch td.gm{color:var(--green)}
+.lsch td.neg{color:var(--red2)}
+.lsch td.mk{color:var(--t3);font-size:9.5px;text-align:left;white-space:nowrap}
+.lsch tr.today td{background:rgba(192,57,43,.10)}
+.lsch tr.today td:first-child{box-shadow:inset 2px 0 0 var(--red);font-weight:700}
+.lsch tr.wv td{background:rgba(217,164,65,.10)}
+.lsch tr.wv td.mk{color:var(--amber);font-weight:600}
+
+.banner{display:flex;gap:11px;align-items:flex-start;border-radius:10px;padding:11px 13px;font-size:11.5px;line-height:1.5}
+.banner.info{background:rgba(90,162,255,.07);border:1px solid #2a3f5a;color:var(--t2)}
+.banner.warn{background:rgba(224,162,59,.07);border:1px solid #5a4a2a;color:var(--t2)}
+.banner b{color:var(--t1);font-weight:600}
+.flag{font-family:var(--disp);font-size:8.5px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--amber);border:1px solid var(--amber);border-radius:4px;padding:1px 6px;margin-left:6px;vertical-align:middle}
+
+.foot{text-align:center;color:var(--t3);font-size:10px;margin-top:22px;letter-spacing:.3px}
+.hidden{display:none!important}
+.muted{color:var(--t3)}
+.eng-desc{font-size:11px;color:var(--t2);line-height:1.5;margin-top:10px;padding-top:11px;border-top:1px solid var(--line)}
+.eng-desc b{color:var(--t1)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand">
+      <div class="logo" title="Deus X Defense">
+        <!-- DXD logo (embedded base64). To replace later, swap the src below. -->
+        <img src="data:image/png;base64,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" alt="Deus X Defense">
+      </div>
+      <div>
+        <h1>SOLUTIONS TOOL <span style="color:var(--red2)">3.0</span><span class="credit">Brought to you by Christine&nbsp;K, T$ &amp; Winnie&nbsp;Gams</span></h1>
+        <div class="sub">Pricing &amp; Scoping</div>
+      </div>
+    </div>
+    <div class="toolbar">
+      <div class="faces" id="faces"></div>
+      <button class="printbtn" id="printBtn" title="Print or save as PDF">&#9113; PDF</button>
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- LEFT: the front door -->
+    <div class="col" id="leftcol"></div>
+    <!-- RIGHT: results -->
+    <div class="col" id="rightcol"></div>
+  </div>
+
+  <!-- BOTTOM: Packages BOM (Solutions) -->
+  <div id="bottomcol"></div>
+
+  <div class="foot" id="foot"></div>
+</div>
+
+<!-- One-page PDF summary (generated on print) -->
+<div id="printSheet"></div>
+
+<script>
+"use strict";
+/* ============================================================
+   DXD SOLUTIONS TOOL 3.0  —  engine + UI
+   Built from the Solutions Pricing Framework.
+   In-memory state only (no browser storage).
+   ============================================================ */
+
+/* ---------- PRICE BOOK (the maintained backbone) ----------
+   Settled items are locked here. The LIVE item (piloting) and the
+   margin target are exposed to the Solutions face via Advanced. */
+const PB = {
+  qcCap: 16,
+  piloting: { rate: 45.50, days: 31 },   // LIVE — Solutions-owned. rate × coverageHrs × days = full monthly pilot cost
+  margin: { floor: 0.30, target: 0.30 },
+  dji: {
+    // Each package is now its real bill of materials. Totals (CapEx, amort, SW)
+    // are DERIVED from these lines, so the Packages view always ties out by
+    // construction. unit = DXD COST. hw lines amortize /36; sw lines are monthly.
+    packages: {
+      standard: { label:"Standard", desc:"Bare minimum to run the system correctly. One of everything.",
+        hw:[
+          {name:"DJI Dock 3",              qty:1, unit:11684.00},
+          {name:"Matrice 4TD",             qty:1, unit:8469.75},
+          {name:"AVSS Parachute",          qty:1, unit:2352.00},
+          {name:"DJI Batteries",           qty:3, unit:346.92},
+          {name:"Battery Hub",             qty:1, unit:127.60},
+          {name:"Battery Adapter",         qty:1, unit:179.80},
+          {name:"DJI Maintenance",         qty:1, unit:5300.00},
+          {name:"Drone Tag Scout",         qty:1, unit:5473.08},
+          {name:"Axis Camera",             qty:1, unit:415.00},
+          {name:"Non-Penetrating Mount",   qty:1, unit:185.00},
+          {name:"Axis Camera Pole Mount",  qty:1, unit:80.00},
+        ],
+        sw:[
+          {name:"DroneSense License",      qty:1, unit:666.67},
+          {name:"Drone Tag License",       qty:1, unit:30.00},
+        ] },
+      enhanced: { label:"Enhanced", desc:"Redundancy, longer range, more uptime. Roughly double the iron.",
+        hw:[
+          {name:"DJI Dock 3",              qty:2, unit:11684.00},
+          {name:"Matrice 4TD",             qty:2, unit:8469.75},
+          {name:"AVSS Parachute",          qty:2, unit:2352.00},
+          {name:"DJI Batteries",           qty:6, unit:346.92},
+          {name:"Battery Hub",             qty:1, unit:127.60},
+          {name:"Battery Adapter",         qty:1, unit:179.80},
+          {name:"DJI Maintenance",         qty:2, unit:5300.00},
+          {name:"Drone Tag Scout",         qty:1, unit:5473.08},
+          {name:"Axis Camera",             qty:2, unit:415.00},
+          {name:"Non-Penetrating Mount",   qty:1, unit:185.00},
+          {name:"Axis Camera Pole Mount",  qty:2, unit:80.00},
+        ],
+        sw:[
+          {name:"DroneSense License",      qty:2, unit:666.67},
+          {name:"Drone Tag License",       qty:1, unit:30.00},
+        ] },
+    },
+    financedFactor: 0.50,   // financing roughly halves the upfront hole
+    financedMonthlyAdd: 599, // approx monthly HW payment added per client when financed
+    defaultInstallMultiple: 1 // one-time Install & Onboarding defaults to 1x monthly, unless overridden
+  },
+  // Skydio X10 Dock — sourced from Axon Quote Q-828294-46101KL (net of tax, one
+  // system). Same convention as DJI: totals derive from these lines, hw
+  // amortizes /36, sw is monthly — no separate markup/margin split, everything
+  // pools into the same two buckets and runs through the same margin formula.
+  // Axon's own "SAFE / Thermal Refresh" line is billed $2,968/yr across all 5
+  // Axon years (not once), so it lives in sw as recurring, not hw as one-time.
+  skydio: {
+    packages: {
+      x10: { label:"X10 Dock", desc:"NDAA-compliant dock-in-a-box. Thermal/IR, white-glove Skydio support.",
+        // perSite:true = doesn't repeat per additional dock (mirrors DJI's own Enhanced
+        // package, which also holds Drone Tag Scout / Non-Penetrating Mount flat at
+        // qty 1 while doubling the airframe-linked lines). training:true = can be
+        // excluded via the Skydio "Include Training" toggle; also implies perSite
+        // (one training engagement covers the whole site, not one per dock).
+        hw:[
+          {name:"Skydio X10 Dock + Drone (Thermal/IR)",  qty:1, unit:59700.00},
+          {name:"NightSense (Visible Light)",             qty:1, unit:2800.00},
+          {name:"Spotlight for X10",                      qty:1, unit:265.00},
+          {name:"Speaker for X10",                        qty:1, unit:320.00},
+          {name:"Dock Commissioning & Training",          qty:1, unit:23995.00, perSite:true, training:true},
+          {name:"Dock Instructor Training",               qty:1, unit:5000.00,  perSite:true, training:true},
+          {name:"Professional Implementation",            qty:1, unit:2500.00,  perSite:true},
+          {name:"Drone Tag Scout",                        qty:1, unit:5473.08,  perSite:true},
+          {name:"Axis Camera",                            qty:1, unit:415.00},
+          {name:"Non-Penetrating Mount",                  qty:1, unit:185.00,   perSite:true},
+          {name:"Axis Camera Pole Mount",                 qty:1, unit:80.00},
+        ],
+        sw:[
+          {name:"Skydio Remote Ops Suite w/ Data",        qty:1, unit:1831.67},
+          {name:"Premium Dock Services",                  qty:1, unit:1337.50},
+          {name:"Parachute Plan",                         qty:1, unit:130.00},
+          {name:"Thermal SAFE / Refresh Assurance",       qty:1, unit:247.33},
+          {name:"Drone Tag License",                      qty:1, unit:30.00},
+        ] },
+    },
+    financedFactor: 0.50,     // reused DJI convention — no Skydio-specific financing partner rate yet
+    financedMonthlyAdd: 1709, // ESTIMATE, scaled off DJI's $599 by relative hw CapEx ($100,733 vs $35,307). Confirm with financing partner.
+    defaultInstallMultiple: 0 // Axon's Commissioning & Training + Instructor Training + Professional Implementation
+                              // are already priced into the hardware — no confirmed reason to also charge a full
+                              // month on top by default. Starts at $0; still fully overridable per deal.
+  },
+  // SFL Beehive — Stage 1 (SFL piloting). Capital-light pass-through.
+  sfl: {
+    baseLease: 3422.78,           // 36-mo lease of the Beehive package, per system
+    volumeDiscount: [             // off baseLease, by # systems (SFL preferred pricing)
+      {max:2, d:0.051}, {max:5, d:0.093}, {max:10, d:0.139}, {max:19, d:0.139}, {max:Infinity, d:0.161}
+    ],
+    clientPrice: {8:7500, 12:9000, 24:12000},   // adjustable
+    piloting:    {8:700,  12:1000, 24:1700},    // SFL contracted passthrough
+    sw: 30, qcOps: 1000,
+    deployCapex: 9273.08, installCharge: 3000   // net at deploy = capex − install
+  },
+  // Hybrid — one DJI system + SFL Beehive coverage at the same site. The
+  // client pays for DJI equipment (HW/SW/Add-ons) monthly like normal, but
+  // pilots don't fly DJI the full shift — DJI only launches when the client
+  // calls for it. Those on-demand launches are billed at an hourly surge rate.
+  hybrid: { surgeRate: 125, surgeHoursEst: 8 },
+  // Add-ons are pre-priced menu items (margin embedded → added at list, qty-capable).
+  // Each is its own little bundle: hw lines amortize /36, sw lines are monthly.
+  // unit cost derives from those lines (Standard Net = 707/36 + 55 = $74.64, etc.).
+  addOns: [
+    {id:"net_std", name:"Standard Network", type:"inf", price:200,  note:"Starlink + 50G sub + Nema box setup",
+      hw:[{name:"Starlink Setup",qty:1,unit:407},{name:"Nema Setup",qty:1,unit:300}],
+      sw:[{name:"Starlink Sub (50G)",qty:1,unit:55}] },
+    {id:"net_enh", name:"Enhanced Network", type:"inf", price:300,  note:"Starlink + 500G sub + Nema box setup",
+      hw:[{name:"Starlink Setup",qty:1,unit:407},{name:"Nema Setup",qty:1,unit:300}],
+      sw:[{name:"Starlink Sub (500G)",qty:1,unit:155}] },
+    {id:"casia",   name:"Casia G",          type:"cap", price:2500, note:"400\u2032 AGL BVLOS flight under the DXD waiver",
+      sw:[{name:"Casia G subscription (uAvionix)",qty:1,unit:1666.67}] },
+    {id:"train",   name:"Training",         type:"plan",price:null, note:"Pricing not yet set \u2014 catalog slot reserved"}
+  ]
+};
+
+/* ---------- STATE ---------- */
+const S = {
+  face:"capture",
+  engine:"dji",
+  cadence:"recurring",   // recurring | onetime
+  deployment:"deployed", // deployed | mobile
+  // DJI
+  pkg:"standard",
+  coverage:8,
+  opRatio:4,
+  regOn:false,           // model the pending Regulatory 1:Many provision
+  regMult:4,             // ×2 / ×3 / ×4
+  financed:false,
+  hwMode:"amortized",    // amortized (DXD-owned, in the monthly) | purchased (client buys outright)
+  addOns:{net_std:1, net_enh:0, casia:0, train:0},   // QUANTITIES (0 = off; clients can take several)
+  // Skydio-only knobs (DJI's "packages" cover its equivalent of quantity via Standard/Enhanced)
+  skydioSystems:1,      // additional docks on site — scales per-dock hw/sw lines only
+  skydioTraining:true,  // Axon Commissioning & Instructor Training — togglable, doesn't scale with systems
+  skydioTerm:"36",      // amortization months — "36" (DXD convention) or "60" (matches Axon's actual contract)
+  // working per-deal copy of the selected package BOM (Solutions Packages view)
+  bom:null, bomPkg:null, bomEngine:null, bomName:null,
+  // Solutions creative overrides (null = use the solver's recommendation)
+  priceOverride:{hw:null, sw:null, pilot:null, add:null},  // per-bucket final price, default = recommended
+  otFeeOverride:null,    // one-time install & onboarding fee (default 1× monthly)
+  installCost:0,         // optional cost behind the OT fee (margin visibility)
+  // SFL
+  systems:1,
+  sflFlyer:"sfl",        // "sfl" (vendor-piloted, current model) | "dxd" (DXD flies at the DJI/Skydio rate, no QC needed)
+  sflPriceOverride:null, // hold a specific per-system client price instead of the recommendation (null = use recommended)
+  // Hybrid (DJI + SFL Beehive, one site — surge model)
+  surgeRate:PB.hybrid.surgeRate,       // $/hour when DJI is called into action
+  surgeHoursEst:PB.hybrid.surgeHoursEst,// est. surge hours per month for scoping
+  // pricing (live, Solutions-owned)
+  pilotRate:PB.piloting.rate,
+  pilotDays:PB.piloting.days,
+  marginTarget:PB.margin.target,
+  marginFloor:PB.margin.floor,   // adjustable across the board (was hard 30%)
+  growth:"med",                  // leadership ramp tier: low | med | high
+  advOpen:false
+};
+
+/* ---------- helpers ---------- */
+const $ = (id)=>document.getElementById(id);
+const money=(n,dec=0)=>n==null?"—":"$"+Number(n).toLocaleString("en-US",{minimumFractionDigits:dec,maximumFractionDigits:dec});
+const pct=(n)=>(n*100).toFixed(1)+"%";
+const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
+function leversAvailable(){ return (S.engine==="dji"||S.engine==="hybrid"||S.engine==="skydio"||(S.engine==="sfl"&&S.sflFlyer==="dxd")) && S.cadence==="recurring" && S.deployment==="deployed"; }
+function cornerLabel(){
+  const c=S.cadence==="recurring"?"Recurring":"One-time";
+  const d=S.deployment==="deployed"?"deployed on-site":"mobilized";
+  return c+" · "+d;
+}
+
+/* ---------- package / add-on derivation ---------- */
+function pkgEngineKey(){ return S.engine==="skydio" ? "skydio" : "dji"; }  // hybrid's package selector is the DJI half
+function sumLines(lines){ let s=0; (lines||[]).forEach(l=>s+=(+l.qty||0)*(+l.unit||0)); return s; }
+function bomTotals(bom, opts){
+  // opts: {qty, includeTraining, amortMonths} — all optional. Lines flagged perSite:true
+  // don't multiply by qty (site-level, not per-dock); lines flagged training:true drop
+  // out entirely when includeTraining is false. Omitting opts reproduces the original
+  // qty-1/training-included/36-month behavior exactly, so DJI and every other caller
+  // that doesn't pass opts is unaffected by this generalization.
+  const qty = (opts && opts.qty) || 1;
+  const inclTraining = !opts || opts.includeTraining !== false;
+  const amortMonths = (opts && opts.amortMonths) || 36;
+  let hwCapex=0, sw=0;
+  (bom.hw||[]).forEach(l=>{ if(l.training && !inclTraining) return; hwCapex += (+l.qty||0)*(+l.unit||0)*(l.perSite?1:qty); });
+  (bom.sw||[]).forEach(l=>{ if(l.training && !inclTraining) return; sw += (+l.qty||0)*(+l.unit||0)*(l.perSite?1:qty); });
+  return {hwCapex, hwAmort:hwCapex/amortMonths, sw};
+}
+function skydioOpts(){
+  return {
+    qty: Math.max(1, Math.round(+S.skydioSystems||1)),
+    includeTraining: S.skydioTraining!==false,
+    amortMonths: Math.max(1, Math.round(+S.skydioTerm||36)),
+  };
+}
+function bomOptsFor(ek){ return ek==="skydio" ? skydioOpts() : undefined; }
+function computeSkydioAtTerm(term){
+  // Same BOM, same everything else — just asks "what would this look like on
+  // the other term" without touching the term the user actually has selected.
+  const saved=S.skydioTerm;
+  S.skydioTerm=String(term);
+  const result=computeDockEngine("skydio");
+  S.skydioTerm=saved;
+  return result;
+}
+function pkgBaseTotals(key, ek){ ek=ek||pkgEngineKey(); const pkgs=PB[ek].packages; return bomTotals(pkgs[key]||pkgs[Object.keys(pkgs)[0]], bomOptsFor(ek)); }
+function ensureBOM(){
+  // per-deal working copy of the selected package BOM; reloads when the package OR engine changes
+  const ek=pkgEngineKey();
+  if(!S.bom || S.bomPkg!==S.pkg || S.bomEngine!==ek){
+    let p=PB[ek].packages[S.pkg];
+    if(!p){ S.pkg=Object.keys(PB[ek].packages)[0]; p=PB[ek].packages[S.pkg]; }  // self-correct rather than crash if engine/pkg ever fall out of sync
+    S.bom={ hw:p.hw.map(x=>({...x})), sw:p.sw.map(x=>({...x})) };
+    S.bomPkg=S.pkg; S.bomEngine=ek; S.bomName=null;
+  }
+  return S.bom;
+}
+function addOnUnit(a){
+  const hwCapex=sumLines(a.hw), sw=sumLines(a.sw);
+  return {price:a.price, hwCapex, sw, hwAmort:hwCapex/36, cost:hwCapex/36+sw};
+}
+
+/* ---------- ENGINE ---------- */
+function computeDockEngine(key){
+  const pb=PB[key];
+  const pkg=pb.packages[S.pkg];
+  const bom=ensureBOM();                       // per-deal working BOM (verified in Packages view)
+  const bomOpts=bomOptsFor(key);
+  const pkgT=bomTotals(bom, bomOpts);          // derived package totals — always tie out to the lines
+  const amortMonths=(bomOpts && bomOpts.amortMonths) || 36;
+  const av=leversAvailable();
+  const op = av ? S.opRatio : 1;             // operational ratio (LIVE today)
+  const m = S.marginTarget;
+  const pilotFull = S.pilotRate * S.coverage * S.pilotDays;   // full monthly pilot cost (1 pilot)
+
+  // hardware ownership: DXD-owned (amortized into the monthly) vs client buys outright
+  const clientOwns = S.hwMode==="purchased";
+
+  // monthly cost / client — QUOTE is built on the operational ratio (what's defensible today)
+  const hwCost = clientOwns ? 0 : pkgT.hwAmort + (S.financed? pb.financedMonthlyAdd:0);
+  const swCost = pkgT.sw;
+  const opPilotCost = pilotFull/op;
+
+  // four numbers — core buckets marked up to clear target margin (held)
+  const hwPrice = hwCost/(1-m);
+  const swPrice = swCost/(1-m);
+  const pilotPrice = opPilotCost/(1-m);
+
+  // one-time hardware sale (client-purchased path): package iron sold outright, marked to margin
+  const hwBuyCost  = clientOwns ? pkgT.hwCapex : 0;
+  const hwBuyPrice = clientOwns ? hwBuyCost/(1-m) : 0;
+  const hwBuyMargin = hwBuyPrice>0 ? (hwBuyPrice-hwBuyCost)/hwBuyPrice : 0;
+
+  // add-ons (priced menu — margin embedded). Quantity-capable; each is a HW+SW bundle.
+  // Add-on HW capitalizes into the upfront; its monthly cost = HW amort + SW.
+  let addPrice=0, addCost=0, addHwCapex=0; const adds=[];
+  PB.addOns.forEach(a=>{
+    const q=S.addOns[a.id]||0;
+    if(q>0 && a.price!=null){
+      const u=addOnUnit(a);
+      addPrice+=q*u.price; addCost+=q*u.cost; addHwCapex+=q*u.hwCapex;
+      adds.push({id:a.id,name:a.name,type:a.type,qty:q,unit:u});
+    }
+  });
+
+  // recommended (solver) bucket prices
+  const recoBuckets = {hw:hwPrice, sw:swPrice, pilot:pilotPrice, add:addPrice};
+  const recoMonthly = hwPrice+swPrice+pilotPrice+addPrice;     // solver's recommended price
+  const opCost = hwCost+swCost+opPilotCost+addCost;
+
+  // Solutions can override the FINAL price of each of the four buckets (default = recommended).
+  // The monthly fee is the sum of the (overridden-or-recommended) bucket prices.
+  const ov=S.priceOverride;
+  const bP = {
+    hw:    ov.hw   !=null ? ov.hw    : hwPrice,
+    sw:    ov.sw   !=null ? ov.sw    : swPrice,
+    pilot: ov.pilot!=null ? ov.pilot : pilotPrice,
+    add:   ov.add  !=null ? ov.add   : addPrice,
+  };
+  const overridden = (ov.hw!=null||ov.sw!=null||ov.pilot!=null||ov.add!=null);
+  const clientFee = bP.hw+bP.sw+bP.pilot+bP.add;
+  const margin = clientFee>0 ? (clientFee-opCost)/clientFee : 0;  // realized at the fee actually charged
+  const recoMargin = recoMonthly>0 ? (recoMonthly-opCost)/recoMonthly : 0; // at the solver price (capture rails)
+  const monthlyNet = clientFee-opCost;
+  const totalPrice = clientFee;                                  // downstream uses the fee charged
+
+  // one-time Install & Onboarding fee — defaults to a per-engine multiple of the
+  // monthly fee (1x for DJI; $0 for Skydio, since Axon's own Commissioning &
+  // Training already covers onboarding), Solutions-adjustable either way.
+  // Carries install/travel; optional installCost surfaces its margin without v10's travel sprawl.
+  const installMultiple = pb.defaultInstallMultiple!=null ? pb.defaultInstallMultiple : 1;
+  const defaultOtFee = clientFee*installMultiple;
+  const otFee = (S.otFeeOverride!=null) ? S.otFeeOverride : defaultOtFee;
+  const installCost = +S.installCost||0;
+  const otMargin = otFee>0 ? (otFee-installCost)/otFee : 0;
+
+  // capital (per client) — DXD's hardware outlay. When the client buys the package iron
+  // outright, that CapEx is client-funded (no DXD hole); only add-on iron remains DXD's.
+  const hwCapexTotal = pkgT.hwCapex + addHwCapex;
+  const djdCapex = clientOwns ? addHwCapex : hwCapexTotal;
+  const upfront = S.financed && !clientOwns ? djdCapex*pb.financedFactor : djdCapex;
+  const payback = monthlyNet>0 ? upfront/monthlyNet : Infinity;
+
+  // REGULATORY PROVISION — hold the price (the fee charged), drop the cost (pilot spread over effective ratio).
+  let proj=null;
+  if(av){
+    const reg=S.regMult;
+    const effRaw=op*reg, capped=effRaw>PB.qcCap, eff=Math.min(effRaw,PB.qcCap);
+    const realPilot=pilotFull/eff;
+    const realCost=hwCost+swCost+realPilot+addCost;
+    const realNet=clientFee-realCost;           // per client, price held at the fee charged
+    const realMargin=clientFee>0?realNet/clientFee:0;
+    const routeNet=eff*realNet;                 // one pilot now carries `eff` clients
+    proj={reg,eff,capped,realMargin,realNet,routeNet,
+          gain:realNet-monthlyNet, addRoute:routeNet-(op*monthlyNet)};
+  }
+
+  return {engineKey:key,pkg,pkgT,bom,addHwCapex,hwCapexTotal,djdCapex,adds,av,op,pilotFull,
+    nonPilotCost:hwCost+swCost+addCost,
+    clientOwns,hwBuyCost,hwBuyPrice,hwBuyMargin,
+    recoMonthly,clientFee,overridden,recoMargin,otFee,defaultOtFee,installCost,otMargin,
+    rows:[
+      {key:"hw", b:"Hardware", s:clientOwns?("Client-owned \u2014 one-time "+money(hwBuyPrice,0)):((S.financed?amortMonths+"-mo financed":amortMonths+"-mo amortized")+" \u00B7 "+bom.hw.length+" line"+(bom.hw.length!==1?"s":"")), v:bP.hw, reco:recoBuckets.hw, ov:ov.hw!=null, c:hwCost},
+      {key:"sw", b:"Software", s:"Monthly licenses \u00B7 "+bom.sw.length+" line"+(bom.sw.length!==1?"s":""), v:bP.sw, reco:recoBuckets.sw, ov:ov.sw!=null, c:swCost},
+      {key:"pilot", b:"Piloting", s:"Pilot \u00F7 operational 1:"+op+" @ "+S.coverage+"hr", v:bP.pilot, reco:recoBuckets.pilot, ov:ov.pilot!=null, c:opPilotCost},
+      {key:"add", b:"Add-Ons", s:adds.length?adds.map(a=>a.name+(a.qty>1?" \u00D7"+a.qty:"")).join(", "):"None selected", v:bP.add, reco:recoBuckets.add, ov:ov.add!=null, c:addCost, menu:true},
+    ],
+    totalPrice,totalCost:opCost,margin,monthlyNet,upfront,payback,proj};
+}
+function computeDJI(){ return computeDockEngine("dji"); }
+function computeSkydio(){ return computeDockEngine("skydio"); }
+
+function sflInterpolate(table,cov){
+  if(cov<=8)  return table[8]*cov/8;
+  if(cov<=12) return table[8]+(table[12]-table[8])*(cov-8)/4;
+  return table[12]+(table[24]-table[12])*(cov-12)/12;
+}
+
+function computeSFL(){
+  const cov=S.coverage;
+  const sys=S.systems;
+  let disc=0.161; for(const t of PB.sfl.volumeDiscount){ if(sys<=t.max){disc=t.d;break;} }
+  const leasePer=PB.sfl.baseLease*(1-disc);
+  const swPer=PB.sfl.sw;
+  const selfFly = S.sflFlyer==="dxd";
+  const av = leversAvailable();
+  const op = (selfFly && av) ? S.opRatio : 1;
+
+  // Piloting: SFL's flat contracted number (pass-through, vendor-flown) OR the
+  // same rate × coverage × days formula already established for DJI & Skydio —
+  // including the same 1:many operational-ratio leverage — when DXD flies
+  // instead. Self-flown drops SFL's QC line entirely — there's no third-party
+  // piloting left to audit.
+  const pilotFull = S.pilotRate * cov * S.pilotDays;
+  const pilotCostPer = selfFly ? (pilotFull/op) : sflInterpolate(PB.sfl.piloting,cov);
+  const pilotPer = selfFly ? pilotCostPer/(1-S.marginTarget) : pilotCostPer;
+  const qcPer = selfFly ? 0 : PB.sfl.qcOps;
+
+  // Recommended client price: SFL-flown keeps the existing flat package price
+  // (table lookup, unchanged). Self-flown rebuilds bottom-up since the cost
+  // structure genuinely changed (margined piloting in, QC out) — lease and
+  // software stay pass-through either way.
+  const recoPricePer = selfFly ? (leasePer + swPer + pilotPer) : sflInterpolate(PB.sfl.clientPrice,cov);
+  const costPer=leasePer+pilotCostPer+swPer+qcPer;
+
+  // Solutions can hold a specific per-system price instead of the recommendation
+  // — same idea as DJI/Skydio's bucket overrides, but as one number, since SFL
+  // doesn't price four independent buckets the way the dock engines do.
+  const overridden = S.sflPriceOverride!=null;
+  const pricePer = overridden ? S.sflPriceOverride : recoPricePer;
+  const netPer=pricePer-costPer;
+  const marginPer=pricePer>0?netPer/pricePer:0;
+
+  const totalPrice=pricePer*sys, totalCost=costPer*sys, net=netPer*sys;
+  const netAtDeploy=(PB.sfl.deployCapex-PB.sfl.installCharge)*sys;
+
+  const rows=[
+    {key:"hw", b:"Hardware", s:"Beehive lease (pass-through, 36-mo)", v:leasePer*sys, c:leasePer*sys, passthrough:true},
+    {key:"sw", b:"Software", s:"Dronetag license", v:swPer*sys, c:swPer*sys, passthrough:true},
+    {key:"pilot", b:"Piloting", s: selfFly ? ("DXD-piloted \u00B7 1:"+op+" \u00B7 "+money(S.pilotRate)+"/hr \u00D7 "+cov+"hr \u00D7 "+S.pilotDays+"d, margined to "+pct(S.marginTarget)) : "SFL contracted (1:many baked in)", v:pilotPer*sys, c:pilotCostPer*sys},
+  ];
+  if(!selfFly) rows.push({key:"qc", b:"QC Ops", s:"DXD oversight of SFL quality", v:qcPer*sys, c:qcPer*sys});
+
+  // Upfront/payback — same shape as DJI/Skydio, just tiny here since the lease
+  // (not a hardware purchase) is what's due at deploy, net of the install charge.
+  const upfront = netAtDeploy;
+  const payback = net>0 ? upfront/net : Infinity;
+
+  // REGULATORY PROVISION — identical shape to computeDockEngine's proj, so the
+  // same 1:Many Leverage card and Op×Reg matrix render for SFL self-fly with
+  // no separate code path. Hold the price (pricePer), drop the cost (pilot
+  // spread over the effective ratio) — computed per system, same as the rest
+  // of this engine's per-unit figures.
+  let proj=null;
+  if(selfFly && av){
+    const reg=S.regMult;
+    const effRaw=op*reg, capped=effRaw>PB.qcCap, eff=Math.min(effRaw,PB.qcCap);
+    const realPilotPer=pilotFull/eff;
+    const realCostPer=leasePer+swPer+realPilotPer;   // no QC — self-flown
+    const realNetPer=pricePer-realCostPer;
+    const realMarginPer=pricePer>0?realNetPer/pricePer:0;
+    const routeNetPer=eff*realNetPer;
+    proj={reg,eff,capped,realMargin:realMarginPer,realNet:realNetPer,routeNet:routeNetPer,
+          gain:realNetPer-netPer, addRoute:routeNetPer-(op*netPer)};
+  }
+
+  return {sys,disc,leasePer,pricePer,recoPricePer,overridden,selfFly,av,op,pilotFull,
+    rows,
+    totalPrice,totalCost,margin:(totalPrice-totalCost)/totalPrice,net,netAtDeploy,upfront,payback,proj,perSys:{pricePer,costPer,netPer,marginPer}};
+}
+
+/* Hybrid — one DJI system + SFL Beehive at the same site, plus a customizable
+   surge premium. Reuses computeDJI()/computeSFL() unmodified so the math is
+   guaranteed identical to the pure-DJI and pure-SFL paths — this just sums them. */
+function computeHybrid(){
+  const dji=computeDJI();
+  const sfl=computeSFL();
+
+  // In Hybrid, DJI piloting is NOT full-shift like in pure DJI mode. SFL runs
+  // the constant patrol; DJI only launches when the client calls for it. So
+  // we strip the pilot bucket out of DJI's monthly and treat piloting as a
+  // per-hour cost that only incurs during actual surge use.
+  const djiPilotRow = dji.rows.find(r=>r.key==='pilot');
+  const djiPilotFee = djiPilotRow ? djiPilotRow.v : 0;
+  const djiPilotCost = djiPilotRow ? djiPilotRow.c : 0;
+
+  // Fixed monthly = DJI HW/SW/Add-ons + SFL (guaranteed regardless of surge use)
+  const djiFixedFee  = dji.clientFee - djiPilotFee;
+  const djiFixedCost = dji.totalCost - djiPilotCost;
+  const fixedMonthly = djiFixedFee + sfl.totalPrice;
+  const fixedCost    = djiFixedCost + sfl.totalCost;
+
+  // Variable surge economics — $/hr charged when client calls DJI into action.
+  // Cost is the pilot rate for those hours (the pilot flies DJI during surge).
+  const surgeRate    = +S.surgeRate || 0;
+  const surgeHoursEst= +S.surgeHoursEst || 0;
+  const surgeRev     = surgeRate * surgeHoursEst;
+  const surgeCost    = S.pilotRate * surgeHoursEst;
+  const surgeNet     = surgeRev - surgeCost;
+  const surgeMargin  = surgeRev>0 ? surgeNet/surgeRev : 0;
+
+  // Estimated combined totals (fixed + est. surge)
+  const totalPrice   = fixedMonthly + surgeRev;
+  const totalCost    = fixedCost + surgeCost;
+  const monthlyNet   = totalPrice - totalCost;
+  const margin       = totalPrice>0 ? monthlyNet/totalPrice : 0;
+  const fixedMargin  = fixedMonthly>0 ? (fixedMonthly-fixedCost)/fixedMonthly : 0;
+
+  // Rows: DJI without the pilot bucket + SFL + surge line
+  const rows=[
+    ...dji.rows.filter(r=>r.key!=='pilot').map(x=>({...x,b:"DJI \u2014 "+x.b})),
+    ...sfl.rows.map(x=>({...x,b:"SFL \u2014 "+x.b})),
+    {key:"surge", b:"Surge (est.)",
+     s:"$"+surgeRate+"/hr when client needs DJI \u00B7 est. "+surgeHoursEst+" hr/mo",
+     v:surgeRev, reco:surgeRev, ov:false, c:surgeCost, menu:true},
+  ];
+
+  return {dji, sfl,
+    surgeRate, surgeHoursEst, surgeRev, surgeCost, surgeNet, surgeMargin,
+    djiFixedFee, djiFixedCost, fixedMonthly, fixedCost, fixedMargin,
+    totalPrice, totalCost, monthlyNet, margin, rows};
+}
+
+/* J-curve ramp for leadership view */
+function jcurve(upfront, monthlyNet, perMonth, months, cap){
+  let active=0, cum=0, trough=0, be=null; const series=[];
+  for(let m=1;m<=months;m++){
+    let add=perMonth; if(cap!=null && active+add>cap) add=Math.max(0,cap-active);
+    active+=add;
+    cum += active*monthlyNet - add*upfront;
+    trough=Math.min(trough,cum);
+    if(cum>0 && be===null) be=m;
+    series.push(cum);
+  }
+  return {series,peak:-trough,be,active,end:cum};
+}
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+const FACES=[
+  {id:"capture", n:"Capture", d:"Quick quote"},
+  {id:"solutions", n:"Solutions", d:"Full control"},
+  {id:"leadership", n:"Leadership", d:"Capital & scale"}
+];
+
+function render(){
+  // faces
+  $("faces").innerHTML=FACES.map(f=>
+    `<button class="face ${S.face===f.id?'on':''}" data-face="${f.id}">${f.n}<span class="fd">${f.d}</span></button>`).join("");
+
+  renderLeft();
+  renderRight();
+  renderBottom();
+
+  $("foot").textContent="Engine on the Combined Drone Price Book · piloting & SFL figures are adjustable Solutions inputs · in-memory only";
+  bind();
+}
+
+/* ---------------- LEFT (front door) ---------------- */
+function renderLeft(){
+  const L=[];
+
+  // engine selector
+  L.push(card("Platform Engine","which one we're firing", `
+    <div class="seg">
+      ${opt("engine","dji","DJI","Scale play — margin giant, capital-heavy")}
+      ${opt("engine","skydio","Skydio","NDAA play — white-glove dock, premium margin")}
+      ${opt("engine","sfl","SFL Beehive","Land play — capital-light, NDAA")}
+      ${opt("engine","hybrid","Hybrid","Both — DJI + SFL Beehive, one site")}
+    </div>
+    <div class="eng-desc">${S.engine==="dji"
+      ? `<b>Scale.</b> We own the iron (~${money(pkgBaseTotals(S.pkg).hwCapex)}/client) and capture the 1:Many leverage under the DXD waiver. This is the margin engine.`
+      : S.engine==="skydio"
+      ? `<b>NDAA.</b> Skydio's X10 dock carries a heavier bill of materials (~${money(pkgBaseTotals(S.pkg,'skydio').hwCapex)}/client, commissioning &amp; training included) but wins NDAA-restricted clients DJI can't touch \u2014 same 1:Many piloting leverage underneath, same margin formula.`
+      : S.engine==="sfl"
+      ? `<b>Land.</b> Beehives sub-lease straight to the client — no capital hole. Gets drones airborne now; SFL's 1:Many is already vendor-baked.`
+      : `<b>Both.</b> SFL Beehive runs the constant patrol; DJI equipment (HW/SW/add-ons) sits on-site for on-demand launches. The client pays for the DJI gear monthly like normal, but pilots don't fly DJI the full shift \u2014 <b>surge pricing</b> ($${S.surgeRate}/hr default) kicks in only when the client calls DJI into action.`}</div>
+  `));
+
+  // engagement attributes
+  L.push(card("The Client","how we read the deal", `
+    <div class="fieldset">
+      <div class="lbl">How does the client pay?</div>
+      <div class="seg two">
+        ${opt("cadence","recurring","Monthly","Recurring (MRR)")}
+        ${opt("cadence","onetime","One-time","Single engagement")}
+      </div>
+    </div>
+    <div class="fieldset">
+      <div class="lbl">Where does the gear live?</div>
+      <div class="seg two">
+        ${opt("deployment","deployed","On-site","Deployed & amortized")}
+        ${opt("deployment","mobile","Mobile","Travels to the job")}
+      </div>
+    </div>
+    <div class="banner ${leversAvailable()?'info':'warn'}">
+      <div><b>${cornerLabel()}.</b> ${leversAvailable()
+        ? "1:Many levers available — one pilot can carry multiple sites."
+        : (S.engine==="sfl" ? "SFL runs under its own waiver; ratio is vendor-baked." : "Mobilized / one-time work is inherently 1:1 — levers off.")}</div>
+    </div>
+  `));
+
+  // config — dock engines (dji, skydio, or hybrid's DJI half)
+  if(S.engine==="dji" || S.engine==="hybrid" || S.engine==="skydio"){
+    const cfgEk=pkgEngineKey();
+    const cfgTitle = S.engine==="hybrid"?"Configuration \u2014 DJI" : S.engine==="skydio"?"Configuration \u2014 Skydio" : "Configuration";
+    const pkgOptsHTML = Object.entries(PB[cfgEk].packages).map(([k,p])=>optWide("pkg",k,p.label,p.desc)).join("");
+    L.push(card(cfgTitle,"package & coverage", `
+      <div class="fieldset">
+        <div class="lbl">Package</div>
+        <div class="seg col-seg">
+          ${pkgOptsHTML}
+        </div>
+      </div>
+      <div class="fieldset">
+        <div class="lbl">Coverage hours / day${S.engine==="hybrid"?' <span class="hint">shared with SFL below</span>':''}</div>
+        <div class="slider-row">
+          <input type="range" min="1" max="24" value="${S.coverage}" data-range="coverage">
+          <div class="sval">${S.coverage}hr</div>
+        </div>
+      </div>
+      <div class="fieldset" style="margin-bottom:0">
+        <div class="lbl">Hardware ownership <span class="hint">who carries the iron</span></div>
+        <div class="seg two">
+          ${opt("hwMode","amortized","DXD-owned","Amortized into the monthly")}
+          ${opt("hwMode","purchased","Client buys","Outright \u2014 MRR is SW + Piloting + Add-ons")}
+        </div>
+      </div>
+    `));
+
+    // leverage
+    if(leversAvailable()){
+      if(S.face==="capture"){
+        L.push(card("Operational Ratio","one pilot, sequenced coverage", `
+          <div class="fieldset" style="margin-bottom:0">
+            <div class="lbl">Sites per pilot <span class="hint">scoping presets</span></div>
+            <div class="pills">${[1,4,7].map(x=>`<div class="pill ${S.opRatio===x?'on':''}" data-set="opRatio" data-val="${x}">1:${x}</div>`).join("")}</div>
+            <div class="note">One pilot covers ${S.opRatio} site${S.opRatio>1?'s':''} across a shift \u2014 live and within the waiver today. Deeper ratios and the regulatory provision live in Solutions.</div>
+          </div>
+        `));
+      } else {
+        L.push(card("1:Many Leverage","inside the piloting bucket", `
+          <div class="fieldset">
+            <div class="lbl">Operational ratio <span class="hint">live today</span></div>
+            <div class="slider-row">
+              <input type="range" min="1" max="7" value="${S.opRatio}" data-range="opRatio">
+              <div class="sval">1:${S.opRatio}</div>
+            </div>
+            <div class="note">One pilot covers ${S.opRatio} site${S.opRatio>1?'s':''} across a shift — sequenced coverage, fully within the waiver.</div>
+          </div>
+          <div class="fieldset">
+            <div class="tg ${S.regOn?'on':''}" data-toggle="regOn">
+              <div class="sw"></div>
+              <div><div style="font-family:var(--disp);font-weight:600;font-size:12.5px">Model Regulatory 1:Many <span class="flag">Pending IP</span></div>
+              <div class="note" style="margin-top:2px">Simultaneous multi-flight per pilot — layers on top once the IP clears testing.</div></div>
+            </div>
+            ${S.regOn?`<div style="margin-top:11px"><div class="lbl">Regulatory multiplier</div>
+              <div class="pills">${[2,3,4].map(x=>`<div class="pill sm ${S.regMult===x?'on':''}" data-set="regMult" data-val="${x}">×${x}</div>`).join("")}</div></div>`:""}
+          </div>
+        `));
+      }
+    }
+  }
+
+  // Skydio-only: systems on site, amortization term, training toggle
+  if(S.engine==="skydio"){
+    const skyPkg=PB.skydio.packages[S.pkg]||PB.skydio.packages[Object.keys(PB.skydio.packages)[0]];
+    const trainingValue=sumLines((skyPkg.hw||[]).filter(l=>l.training));
+    L.push(card("Skydio Fleet & Terms","systems, contract term, training", `
+      <div class="fieldset">
+        <div class="lbl">Systems on site <span class="hint">additional docks</span></div>
+        <div class="slider-row">
+          <input type="range" min="1" max="20" value="${S.skydioSystems}" data-range="skydioSystems">
+          <div class="sval">${S.skydioSystems}</div>
+        </div>
+        <div class="note">Scales the airframe, sensors, camera, and recurring software per dock. Drone Tag Scout, the non-penetrating mount, Professional Implementation, and training are site-level and don't repeat per dock \u2014 the same convention DJI's own Enhanced package uses (it holds those lines flat too). Piloting/coverage hours are a separate setting and don't auto-scale with systems count.</div>
+      </div>
+      <div class="fieldset">
+        <div class="lbl">Amortization term <span class="hint">what DXD spreads hardware over</span></div>
+        <div class="seg two">
+          ${opt("skydioTerm","36","36 mo","DXD's standard convention")}
+          ${opt("skydioTerm","60","60 mo","Matches Axon's contract \u2014 zero tail risk")}
+        </div>
+        ${(()=>{
+          const r36=computeSkydioAtTerm(36), r60=computeSkydioAtTerm(60);
+          const row=(label,r,active)=>`<tr class="${active?'today':''}"><td>${label}</td><td>${money(r.clientFee,0)}</td><td class="gm">${money(r.monthlyNet,0)}</td><td>${isFinite(r.payback)?'Mo '+Math.ceil(r.payback):'\u2014'}</td></tr>`;
+          return `<table class="lsch" style="margin-top:10px">
+            <tr><th>Term</th><th>Monthly fee</th><th>Net/mo</th><th>Cash-positive</th></tr>
+            ${row('36 mo',r36,S.skydioTerm==="36")}
+            ${row('60 mo',r60,S.skydioTerm==="60")}
+          </table>
+          <div class="note" style="margin-top:8px">${S.hwMode==="purchased"
+            ? `Term doesn't move these numbers right now \u2014 the client owns the hardware outright, so nothing is being amortized either way.`
+            : `Same upfront (${money(r36.upfront,0)}) either term \u2014 only how fast you recoup it changes. 60mo prices ${money(r36.clientFee-r60.clientFee,0)}/mo cheaper to the client and still clears cash-positive well inside a typical 36-month contract, since it also matches Axon's own 60-month term \u2014 no tail risk. 36mo recovers faster and nets more per month once you're past breakeven, at a higher ask.`}</div>`;
+        })()}
+      </div>
+      <div class="fieldset" style="margin-bottom:0">
+        <div class="tg ${S.skydioTraining?'on':''}" data-toggle="skydioTraining">
+          <div class="sw"></div>
+          <div><div style="font-family:var(--disp);font-weight:600;font-size:12.5px">Include Axon Training &amp; Commissioning</div>
+          <div class="note" style="margin-top:2px">${S.skydioTraining?`Included \u2014 adds ${money(trainingValue,0)} to hardware CapEx (Commissioning &amp; Training + Instructor Training), amortized like the rest of the hardware.`:`Excluded \u2014 saves ${money(trainingValue,0)} in hardware CapEx. Switch on if the client needs Axon-led onboarding.`}</div></div>
+        </div>
+      </div>
+    `));
+  }
+
+  // config — SFL half (sfl or hybrid)
+  if(S.engine==="sfl" || S.engine==="hybrid"){
+    L.push(card(S.engine==="hybrid"?"Configuration \u2014 SFL Beehive":"Configuration","systems & coverage", `
+      <div class="fieldset">
+        <div class="lbl">Who flies? <span class="hint">changes the piloting line</span></div>
+        <div class="seg two">
+          ${opt("sflFlyer","sfl","SFL Flies","Vendor-piloted \u00B7 today's model, QC included")}
+          ${opt("sflFlyer","dxd","DXD Flies","Same rate as DJI &amp; Skydio \u00B7 QC not needed")}
+        </div>
+        <div class="note" style="margin-top:8px">${S.sflFlyer==="dxd"
+          ? `DXD provides the pilot at ${money(S.pilotRate)}/hr \u00D7 ${S.coverage}hr/day \u00D7 ${S.pilotDays} days, split 1:${S.opRatio} and margined to ${pct(S.marginTarget)} \u2014 the same formula and leverage as DJI and Skydio. SFL's QC Ops line drops out since there's no third-party flying left to audit. At 1:1 (no leverage) this pilot costs ${money(S.pilotRate*S.coverage*S.pilotDays,0)}/mo dedicated to just this client \u2014 pick a ratio that reflects how many sites this pilot actually covers.`
+          : `SFL contracts and flies its own pilots at a flat rate; DXD pays that rate and keeps a QC Ops line to oversee SFL's flying quality.`}</div>
+      </div>
+      <div class="fieldset">
+        <div class="lbl">Systems on site <span class="hint">drops the lease at volume</span></div>
+        <div class="slider-row">
+          <input type="range" min="1" max="24" value="${S.systems}" data-range="systems">
+          <div class="sval">${S.systems}</div>
+        </div>
+      </div>
+      ${S.engine==="sfl" ? `
+      <div class="fieldset">
+        <div class="lbl">Coverage hours / day</div>
+        <div class="slider-row">
+          <input type="range" min="1" max="24" value="${S.coverage}" data-range="coverage">
+          <div class="sval">${S.coverage}hr</div>
+        </div>
+      </div>` : `<div class="note">Coverage hours are shared with the DJI configuration above (currently ${S.coverage}hr/day).</div>`}
+      <div class="note">Thermal &amp; 36-mo term are Solutions-owned defaults. Volume discount auto-applies off systems.</div>
+    `));
+
+    // 1:Many leverage — only meaningful once DXD is actually flying (SFL's own
+    // contracted piloting already has leverage vendor-baked into its rate).
+    // Same card structure as DJI/Skydio: simple presets in Capture, full
+    // slider + regulatory provision in Solutions.
+    if(S.engine==="sfl" && S.sflFlyer==="dxd" && leversAvailable()){
+      if(S.face==="capture"){
+        L.push(card("Operational Ratio","one pilot, sequenced coverage", `
+          <div class="fieldset" style="margin-bottom:0">
+            <div class="lbl">Sites per pilot <span class="hint">scoping presets</span></div>
+            <div class="pills">${[1,4,7].map(x=>`<div class="pill ${S.opRatio===x?'on':''}" data-set="opRatio" data-val="${x}">1:${x}</div>`).join("")}</div>
+            <div class="note">One pilot covers ${S.opRatio} site${S.opRatio>1?'s':''} across a shift \u2014 same leverage model as DJI/Skydio. Deeper ratios and the regulatory provision live in Solutions.</div>
+          </div>
+        `));
+      } else {
+        L.push(card("1:Many Leverage","inside the piloting bucket", `
+          <div class="fieldset">
+            <div class="lbl">Operational ratio <span class="hint">live today</span></div>
+            <div class="slider-row">
+              <input type="range" min="1" max="7" value="${S.opRatio}" data-range="opRatio">
+              <div class="sval">1:${S.opRatio}</div>
+            </div>
+            <div class="note">One pilot covers ${S.opRatio} site${S.opRatio>1?'s':''} across a shift — sequenced coverage, fully within the waiver.</div>
+          </div>
+          <div class="fieldset">
+            <div class="tg ${S.regOn?'on':''}" data-toggle="regOn">
+              <div class="sw"></div>
+              <div><div style="font-family:var(--disp);font-weight:600;font-size:12.5px">Model Regulatory 1:Many <span class="flag">Pending IP</span></div>
+              <div class="note" style="margin-top:2px">Simultaneous multi-flight per pilot — layers on top once the IP clears testing.</div></div>
+            </div>
+            ${S.regOn?`<div style="margin-top:11px"><div class="lbl">Regulatory multiplier</div>
+              <div class="pills">${[2,3,4].map(x=>`<div class="pill sm ${S.regMult===x?'on':''}" data-set="regMult" data-val="${x}">×${x}</div>`).join("")}</div></div>`:""}
+          </div>
+        `));
+      }
+    }
+  }
+
+  // Hybrid surge model — hourly rate + estimated hours, appears in all three faces
+  if(S.engine==="hybrid"){
+    const rh=computeHybrid();
+    L.push(card("Surge Pricing","hourly \u00B7 charged only when DJI is called", `
+      <div class="fieldset">
+        <div class="lbl">Surge rate / hour <span class="hint">what the client pays when DJI launches</span></div>
+        <div class="feebox sm"><span class="fpfx">$</span><input type="number" class="feeinp" value="${Math.round(S.surgeRate)}" data-num="surgeRate"><span class="fsfx">/hr</span></div>
+      </div>
+      <div class="fieldset" style="margin-bottom:0">
+        <div class="lbl">Estimated surge hours / month <span class="hint">for scoping only</span></div>
+        <div class="slider-row">
+          <input type="range" min="0" max="80" value="${S.surgeHoursEst}" data-range="surgeHoursEst">
+          <div class="sval">${S.surgeHoursEst} hr</div>
+        </div>
+        <div class="note" style="margin-top:8px">At <b>${money(S.surgeRate,0)}/hr \u00D7 ${S.surgeHoursEst} hr/mo</b>, expected surge revenue is <b>${money(rh.surgeRev,0)}/mo</b> against ${money(rh.surgeCost,0)} pilot cost \u2014 <b style="color:var(--green)">${money(rh.surgeNet,0)} net</b> at <b>${pct(rh.surgeMargin)}</b> margin. Actual revenue varies with real client usage.</div>
+      </div>
+    `));
+  }
+
+  // add-ons (dock engines — SFL is a self-contained lease). Quantity-based: a client can take several.
+  if(S.engine==="dji" || S.engine==="hybrid" || S.engine==="skydio"){
+    L.push(card("Add-Ons","pre-priced menu \u00B7 set a quantity", PB.addOns.map(a=>{
+      const dis=a.price==null;
+      const q=S.addOns[a.id]||0; const on=q>0;
+      const tagcls=a.type==="cap"?"cap":a.type==="plan"?"plan":"inf";
+      const tagtxt=a.type==="cap"?"Capability":a.type==="plan"?"Planned":"Network";
+      const stepper = dis
+        ? `<span class="muted" style="font-family:var(--disp);font-size:11px">TBD</span>`
+        : `<div class="step">
+             <button data-aonstep="${a.id}" data-dir="-1" aria-label="decrease">\u2212</button>
+             <input type="number" min="0" value="${q}" data-aonqty="${a.id}">
+             <button data-aonstep="${a.id}" data-dir="1" aria-label="increase">+</button>
+           </div>`;
+      return `<div class="aon ${on?'on':''} ${dis?'dis':''}">
+        <div class="cmeta">
+          <div class="cn"><span>${a.name} <span class="tag ${tagcls}">${tagtxt}</span></span>
+            <span class="cpr">${dis?'':money(a.price)+'/mo'}</span></div>
+          <div class="cd">${a.note}</div>
+        </div>
+        ${stepper}</div>`;
+    }).join("")));
+  }
+
+  $("leftcol").innerHTML=L.join("");
+}
+
+/* ---------------- RIGHT (results) ---------------- */
+function renderRight(){
+  const R=[];
+
+  if(S.engine==="hybrid"){
+    renderRightHybrid(R);
+    $("rightcol").innerHTML=R.join("");
+    return;
+  }
+
+  const isDock = (S.engine==="dji" || S.engine==="skydio");  // DJI and Skydio share one engine shape
+  const r = isDock ? computeDockEngine(S.engine) : computeSFL();
+
+  // four numbers
+  if(isDock){
+    const sol = S.face!=="capture";
+    const buyLine = r.clientOwns
+      ? `<div class="otline buy">
+           <div class="otl">Hardware purchase <span class="otsub">one-time \u00B7 client owns the DJI iron \u00B7 ${pct(r.hwBuyMargin)} margin</span></div>
+           <div class="otv">${money(r.hwBuyPrice,0)}</div>
+         </div>` : "";
+    const totalBlock = sol
+      ? `<div class="total ${r.overridden?'ovr':''}">
+           <div class="tl">Monthly fee (MRR)<small>${r.overridden?`sum of the four \u00B7 solver recommends ${money(r.recoMonthly,0)}`:'sum of the four \u2014 edit any bucket above to re-solve margin'}</small></div>
+           <div class="tv">${money(r.clientFee,0)}<span>/mo</span></div>
+         </div>
+         ${r.overridden?`<div class="feereset"><button data-povreset="1">reset all four to recommended (${money(r.recoMonthly,0)})</button></div>`:''}
+         ${buyLine}
+         <div class="otline">
+           <div class="otl">Install &amp; Onboarding <span class="otsub">one-time \u00B7 ${r.engineKey==="skydio"?"defaults to $0 \u2014 Axon's commissioning is already priced in":"default 1\u00D7 monthly"}</span></div>
+           <div class="feebox sm"><span class="fpfx">$</span><input type="number" class="feeinp" value="${Math.round(r.otFee)}" data-otfee="1"><span class="fsfx">once</span></div>
+         </div>
+         ${(S.otFeeOverride!=null)?`<div class="feereset"><button data-otreset="1">reset to default (${money(r.defaultOtFee,0)})</button></div>`:''}`
+      : `<div class="total">
+           <div class="tl">Recommended monthly<small>${r.clientOwns?`hardware bought out \u2014 one-time ${money(r.hwBuyPrice,0)}${r.defaultOtFee>0?` + install ${money(r.defaultOtFee,0)}`:''}`:(r.defaultOtFee>0?`+ one-time install &amp; onboarding ${money(r.defaultOtFee,0)}`:'no separate one-time install fee by default')}</small></div>
+           <div class="tv">${money(r.recoMonthly,0)}<span>/mo</span></div>
+         </div>
+         ${r.clientOwns?`<div class="otline buy"><div class="otl">Hardware purchase <span class="otsub">one-time \u00B7 client owns the iron</span></div><div class="otv">${money(r.hwBuyPrice,0)}</div></div>`:''}`;
+    R.push(card("The Four Numbers", r.overridden?"prices set \u2014 margin re-solved":"cost-built \u00B7 marked to "+pct(S.marginTarget), `
+      <div class="fournum">
+        ${r.rows.map(row=> sol
+          ? `<div class="nr">
+               <div class="nl"><b>${row.b}</b><span>${row.s}</span></div>
+               <div class="nv">
+                 <div class="povbox ${row.ov?'ovr':''}"><span class="fpfx">$</span><input type="number" class="povinp" value="${Math.round(row.v)}" data-pov="${row.key}"><span class="fsfx">/mo</span></div>
+                 <small>cost ${money(row.c,0)}${row.ov?` \u00B7 reco ${money(row.reco,0)}`:''}</small>
+               </div>
+             </div>`
+          : `<div class="nr">
+               <div class="nl"><b>${row.b}</b><span>${row.s}</span></div>
+               <div class="nv">${money(row.reco,0)}</div>
+             </div>`).join("")}
+      </div>
+      ${totalBlock}
+      ${marginBlock(sol?r.margin:r.recoMargin)}
+      ${sol && r.installCost>0?`<div class="note" style="margin-top:8px">Install &amp; onboarding margin: <b style="color:var(--${r.otMargin>=0.3?'green':'amber'})">${pct(r.otMargin)}</b> at ${money(r.installCost,0)} cost. Adjust install cost in Advanced.</div>`:''}
+    `));
+  } else {
+    const sol = S.face!=="capture";
+    R.push(card("Cost Stack \u2192 Client Price","per system · "+S.systems+" on site", `
+      <div class="fournum">
+        ${r.rows.map(row=>`<div class="nr">
+          <div class="nl"><b>${row.b}</b><span>${row.s}</span></div>
+          <div class="nv">${money(row.c/ S.systems,0)}<small>/system</small></div>
+        </div>`).join("")}
+      </div>
+      ${sol ? `
+      <div class="total ${r.overridden?'ovr':''}">
+        <div class="tl">Client price<small>${r.overridden?`held \u00B7 recommended ${money(r.recoPricePer,0)}/sys`:`${money(r.perSys.costPer,0)} cost/sys`} \u00B7 ${S.systems} system${S.systems>1?'s':''}</small></div>
+        <div class="tv">${money(r.totalPrice,0)}<span>/mo</span></div>
+      </div>
+      <div class="otline" style="margin-top:8px">
+        <div class="otl">Per-system rate <span class="otsub">edit to hold a number \u00B7 applies across all ${S.systems} system${S.systems>1?'s':''}</span></div>
+        <div class="feebox sm"><span class="fpfx">$</span><input type="number" class="feeinp" value="${Math.round(r.perSys.pricePer)}" data-sflfee="1"><span class="fsfx">/sys</span></div>
+      </div>
+      ${r.overridden?`<div class="feereset"><button data-sflfeereset="1">reset to recommended (${money(r.recoPricePer,0)}/sys)</button></div>`:''}
+      ` : `
+      <div class="total">
+        <div class="tl">Client price<small>${money(r.perSys.costPer,0)} cost/sys \u00B7 ${money(r.perSys.pricePer,0)}/sys</small></div>
+        <div class="tv">${money(r.totalPrice,0)}<span>/mo</span></div>
+      </div>
+      `}
+      ${marginBlock(r.margin)}
+    `));
+  }
+
+  // effective ratio (dock engines + levers) — Solutions only
+  if(isDock && r.av && S.face==="solutions"){
+    R.push(leverageCard(r));
+  }
+  // same leverage card for SFL, only when DXD is actually flying it
+  if(!isDock && r.selfFly && r.av && S.face==="solutions"){
+    R.push(leverageCard(r));
+  }
+
+  // capital
+  if(isDock){
+    if(S.face==="leadership"){
+      R.push(leadershipDJI(r));
+    } else {
+      const engName = S.engine==="skydio" ? "Skydio" : "DJI";
+      R.push(card("Capital — per client","what it costs to say yes", `
+        <div class="kpis">
+          <div class="kpi"><div class="kl">Upfront</div><div class="kv neg">${money(r.upfront,0)}</div><div class="ks">${r.clientOwns?"add-on iron only":(S.financed?"financed":"hardware CapEx")}</div></div>
+          <div class="kpi"><div class="kl">Monthly net</div><div class="kv" style="color:var(--green)">${money(r.monthlyNet,0)}</div><div class="ks">per client</div></div>
+          <div class="kpi"><div class="kl">Payback</div><div class="kv">${isFinite(r.payback)?Math.ceil(r.payback)+" mo":"—"}</div><div class="ks">to clear CapEx</div></div>
+        </div>
+        <div class="note">${r.clientOwns
+          ? `<b style="color:var(--green)">Client buys the hardware.</b> DXD collects ${money(r.hwBuyPrice,0)} one-time on the iron (${pct(r.hwBuyMargin)} margin) and fronts only add-on hardware \u2014 the J-curve nearly vanishes for this client.`
+          : `<b>${engName} carries a CapEx hole.</b> The hardware is bought outright by DXD, so each new client is cash out before it's cash in.`}</div>
+      `));
+    }
+  } else {
+    R.push(card("Capital","the land-play advantage", `
+      <div class="kpis">
+        <div class="kpi"><div class="kl">Upfront</div><div class="kv neg">${money(r.upfront,0)}</div><div class="ks">${S.systems} system${S.systems>1?'s':''} \u00B7 lease net of install charge</div></div>
+        <div class="kpi"><div class="kl">Monthly net</div><div class="kv" style="color:var(--green)">${money(r.net,0)}</div><div class="ks">per client</div></div>
+        <div class="kpi"><div class="kl">Payback</div><div class="kv">${isFinite(r.payback)?Math.ceil(r.payback)+" mo":"—"}</div><div class="ks">to clear the lease hole</div></div>
+      </div>
+      <div class="note" style="margin-top:2px">Per system: ${money(r.perSys.netPer,0)}/mo net.</div>
+      <div class="passcap" style="margin-top:11px">
+        <div class="pi">✓</div>
+        <div><b>Pass-through lease — no capital hole.</b>
+        <p>The Beehive lease passes straight to the client, so SFL carries no J-curve on hardware${r.selfFly?' \u2014 the net above now includes DXD-flown piloting margin, not just the lease pass-through':''}.</p></div>
+      </div>
+      <div class="note"><b>Why we lead with it.</b> SFL gets systems airborne and revenue booked without balance-sheet pain${r.selfFly?', and with DXD flying, piloting margin lands here too':' \u2014 then DJI or Skydio scale the margin'}.</div>
+    `));
+  }
+
+  // Capture: plain-English package comparison, below Capital — per client
+  if(isDock && S.face==="capture"){
+    R.push(packageCompare());
+  }
+
+  // solutions: effective-ratio matrix + advanced
+  if(isDock && S.face==="solutions" && r.av){
+    R.push(card("Op × Reg Matrix","margin by combination", matrix(r)));
+  }
+  if(!isDock && r.selfFly && S.face==="solutions" && r.av){
+    R.push(card("Op × Reg Matrix","margin by combination", matrix(r)));
+  }
+  if(S.face==="solutions"){
+    R.push(advancedCard());
+  }
+
+  $("rightcol").innerHTML=R.join("");
+}
+
+/* ---------------- RIGHT (Hybrid engine) ----------------
+   Reuses computeDJI()/computeSFL() outputs untouched via computeHybrid().
+   New surge model: fixed monthly = DJI HW/SW/Add-ons + SFL. Piloting is
+   stripped out of DJI's monthly and treated as a per-hour surge cost that
+   only incurs when the client actually calls DJI into action. */
+function renderRightHybrid(R){
+  const rr=computeHybrid();
+  const sol=S.face==="solutions";
+
+  // DJI rows (WITHOUT the pilot bucket — piloting is now surge-based)
+  const djiEquipRows = rr.dji.rows.filter(r=>r.key!=='pilot');
+  const djiRowsHtml = djiEquipRows.map(row=> sol
+    ? `<div class="nr">
+         <div class="nl"><b>DJI \u2014 ${row.b}</b><span>${row.s}</span></div>
+         <div class="nv">
+           <div class="povbox ${row.ov?'ovr':''}"><span class="fpfx">$</span><input type="number" class="povinp" value="${Math.round(row.v)}" data-pov="${row.key}"><span class="fsfx">/mo</span></div>
+           <small>cost ${money(row.c,0)}${row.ov?` \u00B7 reco ${money(row.reco,0)}`:''}</small>
+         </div>
+       </div>`
+    : `<div class="nr"><div class="nl"><b>DJI \u2014 ${row.b}</b><span>${row.s}</span></div><div class="nv">${money(row.reco,0)}</div></div>`
+  ).join("");
+  const sflRowsHtml = rr.sfl.rows.map(row=>`<div class="nr"><div class="nl"><b>SFL \u2014 ${row.b}</b><span>${row.s}</span></div><div class="nv">${money(row.v,0)}</div></div>`).join("");
+
+  // Surge line — hourly rate charged only on demand. Note we display the rate
+  // clearly; the /mo number is an estimate based on the hours-est input.
+  const surgeHtml = `<div class="nr">
+    <div class="nl"><b>Surge Pricing</b><span>${money(rr.surgeRate,0)}/hr charged when DJI is called \u00B7 est. ${rr.surgeHoursEst} hr/mo</span></div>
+    <div class="nv">${money(rr.surgeRev,0)}<small>est. /mo</small></div>
+  </div>`;
+
+  R.push(card("The Four Numbers \u2014 Hybrid","fixed monthly + on-demand surge", `
+    <div class="fournum">${djiRowsHtml}${sflRowsHtml}${surgeHtml}</div>
+    <div class="total ${rr.dji.overridden?'ovr':''}">
+      <div class="tl">Estimated monthly<small>fixed ${money(rr.fixedMonthly,0)} + est. surge ${money(rr.surgeRev,0)} (${rr.surgeHoursEst} hr \u00D7 ${money(rr.surgeRate,0)}/hr)</small></div>
+      <div class="tv">${money(rr.totalPrice,0)}<span>/mo</span></div>
+    </div>
+    ${rr.dji.overridden?`<div class="feereset"><button data-povreset="1">reset DJI buckets to recommended (${money(rr.dji.recoMonthly,0)})</button></div>`:''}
+    <div class="otline">
+      <div class="otl">Fixed monthly (guaranteed) <span class="otsub">DJI equipment + SFL Beehive \u00B7 billed regardless of surge use</span></div>
+      <div class="otv">${money(rr.fixedMonthly,0)}<small style="display:block;font-family:var(--body);font-size:9.5px;color:var(--t3);font-weight:400;text-align:right">${pct(rr.fixedMargin)} margin</small></div>
+    </div>
+    ${sol?`<div class="otline">
+      <div class="otl">DJI Install &amp; Onboarding <span class="otsub">one-time \u00B7 default 1\u00D7 DJI monthly</span></div>
+      <div class="feebox sm"><span class="fpfx">$</span><input type="number" class="feeinp" value="${Math.round(rr.dji.otFee)}" data-otfee="1"><span class="fsfx">once</span></div>
+    </div>
+    ${(S.otFeeOverride!=null)?`<div class="feereset"><button data-otreset="1">reset to 1\u00D7 DJI monthly (${money(rr.dji.clientFee,0)})</button></div>`:''}`:''}
+    ${marginBlock(rr.margin)}
+    <div class="note" style="margin-top:8px"><b>How this bills.</b> Client pays <b>${money(rr.fixedMonthly,0)}/mo</b> for DJI equipment + SFL Beehive regardless of usage, plus <b>${money(rr.surgeRate,0)} per hour</b> whenever DJI is called into action within the shift window. The ${money(rr.surgeRev,0)}/mo above is a scoping estimate at ${rr.surgeHoursEst} hr/mo \u2014 real revenue tracks actual client demand.</div>
+  `));
+
+  // In Hybrid, DJI is not full-shift — 1:Many leverage on DJI doesn't apply
+  // the same way, since the pilot only touches DJI when the client calls a
+  // surge. We keep the Op\u00D7Reg matrix available in Solutions for scoping
+  // reference but skip the operational-leverage card here.
+
+  // capital — combine DJI CapEx hole with SFL's pass-through
+  if(S.face==="leadership"){
+    R.push(leadershipHybrid(rr));
+  } else {
+    R.push(card("Capital \u2014 Hybrid","DJI CapEx + SFL pass-through", `
+      <div class="kpis">
+        <div class="kpi"><div class="kl">DJI upfront</div><div class="kv neg">${money(rr.dji.upfront,0)}</div><div class="ks">${rr.dji.clientOwns?"add-on iron only":(S.financed?"financed":"hardware CapEx")}</div></div>
+        <div class="kpi"><div class="kl">SFL net at deploy</div><div class="kv" style="color:var(--green)">${money(rr.sfl.netAtDeploy,0)}</div><div class="ks">lease pass-through</div></div>
+        <div class="kpi"><div class="kl">Est. combined net</div><div class="kv" style="color:var(--green)">${money(rr.monthlyNet,0)}</div><div class="ks">per month @ ${rr.surgeHoursEst} hr surge</div></div>
+      </div>
+      <div class="note">SFL carries no capital hole (pass-through lease); DJI's ${money(rr.dji.upfront,0)} hardware outlay is the only real CapEx exposure. Surge revenue (<b>${money(rr.surgeRev,0)}/mo at ${rr.surgeHoursEst} hr</b>) runs at <b style="color:var(--green)">${pct(rr.surgeMargin)}</b> margin on pilot cost \u2014 it's variable revenue on top of the guaranteed ${money(rr.fixedMonthly,0)}/mo fixed base.</div>
+    `));
+  }
+
+  // Capture: plain-English package comparison for the DJI half
+  if(S.face==="capture"){ R.push(packageCompare()); }
+
+  // Solutions: DJI-side op×reg matrix
+  if(S.face==="solutions" && rr.dji.av){
+    R.push(card("Op × Reg Matrix \u2014 DJI side","margin by combination", matrix(rr.dji)));
+  }
+  if(S.face==="solutions"){ R.push(advancedCard()); }
+}
+
+/* ---------------- BOTTOM (Packages BOM — Solutions) ---------------- */
+function renderBottom(){
+  const host=$("bottomcol");
+  if(!((S.engine==="dji"||S.engine==="hybrid"||S.engine==="skydio") && S.face==="solutions")){ host.innerHTML=""; return; }
+  const ek=pkgEngineKey();
+  const bom=ensureBOM();
+  const pkg=PB[ek].packages[S.pkg];
+  const bomOpts=bomOptsFor(ek);
+  const t=bomTotals(bom, bomOpts);
+  const base=pkgBaseTotals(S.pkg, ek);
+  const drift = Math.abs(t.hwCapex-base.hwCapex)>0.005 || Math.abs(t.sw-base.sw)>0.005;
+
+  const hwRows=bom.hw.map((l,i)=>{
+    const capex=(+l.qty||0)*(+l.unit||0);
+    return `<tr>
+      <td class="nm"><input type="text" value="${String(l.name||'').replace(/"/g,'&quot;')}" data-bom="hw" data-i="${i}" data-f="name"></td>
+      <td class="q"><div class="step sm">
+        <button data-bomstep="hw" data-i="${i}" data-dir="-1" aria-label="decrease">\u2212</button>
+        <input type="number" min="0" value="${+l.qty||0}" data-bom="hw" data-i="${i}" data-f="qty">
+        <button data-bomstep="hw" data-i="${i}" data-dir="1" aria-label="increase">+</button></div></td>
+      <td class="u"><div class="uedit"><span class="pfx">$</span><input type="number" step="0.01" value="${l.unit}" data-bom="hw" data-i="${i}" data-f="unit"></div></td>
+      <td class="ce">${money(capex,2)}</td>
+      <td class="am">${money(capex/((bomOpts&&bomOpts.amortMonths)||36),2)}</td>
+      <td class="x"><button class="xbtn" data-bomdel="hw" data-i="${i}" aria-label="remove">\u00D7</button></td>
+    </tr>`;
+  }).join("");
+
+  const swRows=bom.sw.map((l,i)=>{
+    const mo=(+l.qty||0)*(+l.unit||0);
+    return `<tr>
+      <td class="nm"><input type="text" value="${String(l.name||'').replace(/"/g,'&quot;')}" data-bom="sw" data-i="${i}" data-f="name"></td>
+      <td class="q"><div class="step sm">
+        <button data-bomstep="sw" data-i="${i}" data-dir="-1" aria-label="decrease">\u2212</button>
+        <input type="number" min="0" value="${+l.qty||0}" data-bom="sw" data-i="${i}" data-f="qty">
+        <button data-bomstep="sw" data-i="${i}" data-dir="1" aria-label="increase">+</button></div></td>
+      <td class="u"><div class="uedit"><span class="pfx">$</span><input type="number" step="0.01" value="${l.unit}" data-bom="sw" data-i="${i}" data-f="unit"><span class="sfx">/mo</span></div></td>
+      <td class="ce">\u2014</td>
+      <td class="am">${money(mo,2)}</td>
+      <td class="x"><button class="xbtn" data-bomdel="sw" data-i="${i}" aria-label="remove">\u00D7</button></td>
+    </tr>`;
+  }).join("");
+
+  let addonBlock="";
+  const sel=PB.addOns.filter(a=>(S.addOns[a.id]||0)>0 && a.price!=null);
+  if(sel.length){
+    const blocks=sel.map(a=>{
+      const q=S.addOns[a.id]; const u=addOnUnit(a);
+      const hw=(a.hw||[]).map(l=>`<tr><td class="nm">${l.name}</td><td>${l.qty*q}</td><td class="u">${money(l.unit,2)}</td><td class="ce">${money(l.qty*l.unit*q,2)}</td><td class="am">${money(l.qty*l.unit*q/36,2)}</td></tr>`).join("");
+      const sw=(a.sw||[]).map(l=>`<tr><td class="nm">${l.name}</td><td>${l.qty*q}</td><td class="u">${money(l.unit,2)}/mo</td><td class="ce">\u2014</td><td class="am">${money(l.qty*l.unit*q,2)}</td></tr>`).join("");
+      return `<div class="addon-bom">
+        <div class="ab-h">${a.name}${q>1?' \u00D7'+q:''} <span class="muted">\u2014 ${money(u.cost*q,2)}/mo cost \u00B7 ${money(u.price*q,2)}/mo list</span></div>
+        <table class="bomt"><tr><th>Item</th><th>#</th><th>Unit</th><th>CapEx</th><th>/mo</th></tr>${hw}${sw}</table>
+      </div>`;
+    }).join("");
+    addonBlock=`<div class="bom-side"><div class="bom-sub">Selected add-on bundles <span class="muted">— verification, from the price book</span></div>${blocks}</div>`;
+  }
+
+  let html=`<div class="card" style="margin-top:18px"><div class="card-h">
+      <div class="ct">Packages \u2014 <input type="text" class="bomname" value="${String(S.bomName||(pkg.label+' build')).replace(/"/g,'&quot;')}" data-bomname="1" title="Name this build (bespoke clients get their own)"></div>
+      <div class="cn">${drift?'bespoke / edited':'catalog'} build \u00B7 edit or add lines${S.engine==="hybrid"?' \u00B7 DJI half of this hybrid bundle':''}</div>
+    </div>
+    <div class="card-b">
+      <div class="banner ${drift?'warn':'info'}">
+        <div>${drift
+          ? `<b>Bespoke build.</b> This deal differs from the catalog ${pkg.label} baseline \u2014 CapEx ${money(t.hwCapex,2)} vs ${money(base.hwCapex,2)}, SW ${money(t.sw,2)}/mo vs ${money(base.sw,2)}/mo. Name it above; the four numbers reflect what's listed here. Standard &amp; Enhanced stay codified \u2014 this customization rides on top for this client only.`
+          : `<b>Verified against the price book.</b> This is the catalog ${pkg.label} build, untouched, summing to ${money(t.hwCapex,2)} CapEx and ${money(t.sw,2)}/mo software. Edit a unit to wheel and deal, change a quantity, or add a line to build a bespoke package \u2014 everything upstream re-settles instantly.`}</div>
+      </div>
+      ${ek==="skydio" ? (()=>{
+          const trainingValue = sumLines((pkg.hw||[]).filter(l=>l.training));
+          return `<div class="banner info" style="margin-top:10px"><div><b>${bomOpts.qty} system${bomOpts.qty>1?'s':''}.</b> Rows below are stored per dock; totals and the reconciliation panel already apply \u00D7${bomOpts.qty} to the airframe, sensors, camera, and recurring software \u2014 Drone Tag Scout, the non-penetrating mount, Professional Implementation, and training don't repeat per dock (matches how DJI's own Enhanced package holds shared items flat). Training is ${bomOpts.includeTraining?`<b>included</b> (${money(trainingValue,0)})`:'<b>excluded</b>'}, set in the Skydio Fleet &amp; Terms card. Amortized over <b>${bomOpts.amortMonths} months</b>. Piloting is set separately in Advanced and doesn't auto-scale with systems count.</div></div>`;
+        })() : ''}
+      <div class="bom-wrap">
+        <div class="bom-main">
+          <div class="bom-sub">Hardware <span class="muted">\u2014 ${bomOpts?bomOpts.amortMonths:36}-month amortization</span></div>
+          <table class="bomt edit"><tr><th>Equipment</th><th>#</th><th>Unit Cost</th><th>CapEx</th><th>Amort/${bomOpts?bomOpts.amortMonths:36}</th><th></th></tr>
+            ${hwRows}
+            <tr class="tot"><td>Hardware total</td><td></td><td></td><td class="ce">${money(t.hwCapex,2)}</td><td class="am">${money(t.hwAmort,2)}</td><td></td></tr>
+          </table>
+          <button class="addrow" data-bomadd="hw">+ Add hardware line</button>
+
+          <div class="bom-sub" style="margin-top:16px">Software <span class="muted">\u2014 monthly recurring</span></div>
+          <table class="bomt edit"><tr><th>Item</th><th>#</th><th>Unit/mo</th><th></th><th>Monthly</th><th></th></tr>
+            ${swRows}
+            <tr class="tot"><td>Software total</td><td></td><td></td><td></td><td class="am">${money(t.sw,2)}</td><td></td></tr>
+          </table>
+          <button class="addrow" data-bomadd="sw">+ Add software line</button>
+
+          <div class="bom-recon">
+            <span class="rc"><span class="rl">HW CapEx</span><span class="rv">${money(t.hwCapex,0)}</span></span>
+            <span class="rc"><span class="rl">HW amort / mo</span><span class="rv">${money(t.hwAmort,0)}</span></span>
+            <span class="rc"><span class="rl">Software / mo</span><span class="rv">${money(t.sw,0)}</span></span>
+            <button class="plus-reset" ${drift?'':'disabled'} data-bomreset="1">reset to ${pkg.label} baseline</button>
+          </div>
+        </div>
+        ${addonBlock}
+      </div>
+      <div class="note" style="margin-top:14px">Piloting is costed separately as the live variable (Advanced) and isn't part of the package BOM. Add-on bundles are maintained in the price book \u2014 change their <b>quantity</b> in the Add-Ons panel; a client can take several.</div>
+    </div></div>`;
+
+  if(S.engine==="hybrid"){
+    const sfl=computeSFL();
+    const rh=computeHybrid();
+    html += card("SFL Beehive + Surge \u2014 Bundle Components","not part of the DJI BOM above", `
+      <div class="note">This hybrid bundle also includes <b>${S.systems} SFL Beehive system${S.systems>1?'s':''}</b> at ${money(sfl.perSys.pricePer,0)}/system/mo (${money(sfl.totalPrice,0)}/mo total, billed monthly), plus <b>${money(S.surgeRate,0)}/hr surge pricing</b> charged when the client calls DJI into action (estimated <b>${money(rh.surgeRev,0)}/mo at ${S.surgeHoursEst} hr</b>). Adjust systems and surge parameters in the Configuration panels on the left.</div>
+    `);
+  }
+
+  host.innerHTML=html;
+}
+
+/* ---------- sub-renderers ---------- */
+/* One-page PDF summary — condensed, client-safe (no cost/margin). Built from live state on print. */
+function buildPrintSheet(){
+  const eng=S.engine;
+  const r = eng==="dji"?computeDJI():eng==="skydio"?computeSkydio():eng==="sfl"?computeSFL():computeHybrid();
+  const dt=new Date().toLocaleDateString(undefined,{year:"numeric",month:"long",day:"numeric"});
+  const logo=document.querySelector(".logo img");
+  const logoSrc=logo?logo.getAttribute("src"):"";
+
+  let cfg, incl="", oneTime="";
+  if(eng==="dji"){
+    const casiaOn=!!(S.addOns && S.addOns.casia>0);
+    const alt=casiaOn?"400\u2032 AGL (Casia G active)":"200\u2032 AGL (400\u2032 with Casia G)";
+    const docks=(PB.dji.packages[S.pkg].hw.find(x=>/dock/i.test(x.name))||{qty:1}).qty;
+    cfg=[PB.dji.packages[S.pkg].label,
+         S.deployment==="deployed"?"On-site":"Mobile",
+         S.cadence==="recurring"?"Recurring":"One-time",
+         S.coverage+" hr/day",
+         (r.av?("1 pilot : "+r.op+(r.op>1?" sites":" site")):"1 pilot : 1 site"),
+         r.clientOwns?"Client-owned hardware":"DXD-owned hardware"].join("  \u00B7  ");
+    incl=`<div class="ps-sec"><h3>What's included</h3><table class="ps-tbl">
+        <tr><td>Docks / drones</td><td class="amt">${docks} dock${docks>1?"s":""} \u00B7 ${docks} drone${docks>1?"s":""}</td></tr>
+        <tr><td>Potential patrol radius</td><td class="amt">${(1.5*docks).toFixed(1).replace(/\.0$/,"")} mi</td></tr>
+        <tr><td>Flight endurance potential</td><td class="amt">${27*docks} min</td></tr>
+        <tr><td>Remote ID (Drone Tag)</td><td class="amt">Included</td></tr>
+        <tr><td>Max flight altitude</td><td class="amt">${alt}</td></tr>
+      </table><div class="ps-fine">Altitudes confirmed through FAA UAS facility map authorization.</div></div>`;
+    const oi=[];
+    if(r.clientOwns) oi.push(["Hardware purchase (one-time)", money(r.hwBuyPrice,0)]);
+    oi.push(["Install &amp; Onboarding (one-time)", money(r.otFee,0)]);
+    oneTime=`<div class="ps-sec"><h3>One-time</h3><table class="ps-tbl">${oi.map(([k,v])=>`<tr><td>${k}</td><td class="amt">${v}</td></tr>`).join("")}</table></div>`;
+  } else if(eng==="skydio"){
+    const casiaOn=!!(S.addOns && S.addOns.casia>0);
+    const alt=casiaOn?"400\u2032 AGL (Casia G active)":"200\u2032 AGL (400\u2032 with Casia G)";
+    const docks=Math.max(1, Math.round(+S.skydioSystems||1));
+    const skyPkgPS=PB.skydio.packages[S.pkg]||PB.skydio.packages[Object.keys(PB.skydio.packages)[0]];
+    cfg=[skyPkgPS.label,
+         docks>1?(docks+" systems"):"1 system",
+         S.deployment==="deployed"?"On-site":"Mobile",
+         S.cadence==="recurring"?"Recurring":"One-time",
+         S.coverage+" hr/day",
+         (r.av?("1 pilot : "+r.op+(r.op>1?" sites":" site")):"1 pilot : 1 site"),
+         r.clientOwns?"Client-owned hardware":"DXD-owned hardware"].join("  \u00B7  ");
+    incl=`<div class="ps-sec"><h3>What's included</h3><table class="ps-tbl">
+        <tr><td>Docks / drones</td><td class="amt">${docks} dock${docks>1?"s":""} \u00B7 ${docks} Skydio X10 drone${docks>1?"s":""}</td></tr>
+        <tr><td>Transmission range</td><td class="amt">7.5 mi (12 km) via Skydio Connect</td></tr>
+        <tr><td>Max flight time</td><td class="amt">Up to 40 min</td></tr>
+        <tr><td>Remote ID (Drone Tag)</td><td class="amt">Included</td></tr>
+        <tr><td>Max flight altitude</td><td class="amt">${alt}</td></tr>
+        <tr><td>Onboarding</td><td class="amt">${S.skydioTraining?"Axon Commissioning &amp; Training included":"Self-onboarded"}</td></tr>
+        <tr><td>NDAA compliance</td><td class="amt">Yes \u2014 US manufactured</td></tr>
+      </table><div class="ps-fine">Altitudes confirmed through FAA UAS facility map authorization. Flight specs per Skydio manufacturer data.</div></div>`;
+    const oi=[];
+    if(r.clientOwns) oi.push(["Hardware purchase (one-time)", money(r.hwBuyPrice,0)]);
+    oi.push(["Install &amp; Onboarding (one-time)", money(r.otFee,0)]);
+    oneTime=`<div class="ps-sec"><h3>One-time</h3><table class="ps-tbl">${oi.map(([k,v])=>`<tr><td>${k}</td><td class="amt">${v}</td></tr>`).join("")}</table></div>`;
+  } else if(eng==="sfl"){
+    cfg=["Sunflower BeeHive (SFL)", S.systems+" system"+(S.systems>1?"s":"")+" on site", S.coverage+" hr/day", r.selfFly?"DXD-piloted":"SFL-piloted", "Lease pass-through \u2014 no capital hole"].join("  \u00B7  ");
+  } else {
+    // hybrid
+    const docks=(PB.dji.packages[S.pkg].hw.find(x=>/dock/i.test(x.name))||{qty:1}).qty;
+    const casiaOn=!!(S.addOns && S.addOns.casia>0);
+    const alt=casiaOn?"400\u2032 AGL (Casia G active)":"200\u2032 AGL (400\u2032 with Casia G)";
+    cfg=[PB.dji.packages[S.pkg].label+" + SFL Beehive",
+         S.systems+" SFL system"+(S.systems>1?"s":""),
+         S.coverage+" hr/day patrol (SFL)",
+         "DJI on-demand \u2014 pilot flies only when called",
+         money(S.surgeRate,0)+"/hr surge rate"].join("  \u00B7  ");
+    incl=`<div class="ps-sec"><h3>What's included</h3><table class="ps-tbl">
+        <tr><td>DJI docks / drones</td><td class="amt">${docks} dock${docks>1?"s":""} \u00B7 ${docks} drone${docks>1?"s":""}</td></tr>
+        <tr><td>SFL Beehive systems</td><td class="amt">${S.systems}</td></tr>
+        <tr><td>Remote ID (Drone Tag)</td><td class="amt">Included</td></tr>
+        <tr><td>Max flight altitude (DJI)</td><td class="amt">${alt}</td></tr>
+        <tr><td>Surge rate</td><td class="amt">${money(S.surgeRate,0)} per hour</td></tr>
+      </table><div class="ps-fine">Client pays for DJI equipment monthly regardless of usage; surge is billed hourly only when DJI is called into action.</div></div>`;
+    const oi=[];
+    if(r.dji.clientOwns) oi.push(["DJI hardware purchase (one-time)", money(r.dji.hwBuyPrice,0)]);
+    oi.push(["DJI Install &amp; Onboarding (one-time)", money(r.dji.otFee,0)]);
+    oneTime=`<div class="ps-sec"><h3>One-time</h3><table class="ps-tbl">${oi.map(([k,v])=>`<tr><td>${k}</td><td class="amt">${v}</td></tr>`).join("")}</table></div>`;
+  }
+
+  const total = eng==="dji"?r.clientFee:r.totalPrice;
+  const lineRows=r.rows.map(x=>`<tr><td>${x.b}</td><td class="amt">${money(x.v,0)}${x.key==='surge'&&eng==='hybrid'?' est.':''}/mo</td></tr>`).join("");
+  const totalLabel = eng==='hybrid' ? 'Estimated monthly' : 'Total monthly';
+  const totalNote  = eng==='hybrid' ? `<div class="ps-fine">Fixed monthly (DJI equipment + SFL) is ${money(r.fixedMonthly,0)}. Surge is estimated at ${S.surgeHoursEst} hr/mo &times; ${money(S.surgeRate,0)}/hr; actual surge revenue tracks real client demand.</div>` : '';
+
+  return `<div class="ps">
+    <div class="ps-head">
+      ${logoSrc?`<img class="ps-logo" src="${logoSrc}" alt="Deus X Defense">`:""}
+      <div><div class="ps-title">Coverage &amp; Pricing Summary</div>
+      <div class="ps-sub">Prepared ${dt}</div></div>
+    </div>
+    <div class="ps-config">${cfg}</div>
+    ${incl}
+    <div class="ps-sec"><h3>Monthly investment</h3><table class="ps-tbl">
+      ${lineRows}
+      <tr class="ps-total"><td>${totalLabel}</td><td class="amt">${money(total,0)}/mo</td></tr>
+    </table>${totalNote}</div>
+    ${oneTime}
+    <div class="ps-foot">
+      <div class="ps-creed">WE'RE HERE. WE KNOW. WE'RE READY.</div>
+      <div class="ps-sig">DXD // SOLUTIONS &nbsp;\u00B7&nbsp; ${dt}</div>
+    </div>
+  </div>`;
+}
+
+/* Capture: plain-English "what's in the box" — Standard vs Enhanced.
+   Values marked <confirm> are pending Winston's numbers (amber in UI). */
+function packageCompare(){
+  if(S.engine==="skydio") return skydioSpecCard();
+  const sel=S.pkg;                       // 'standard' | 'enhanced'
+  const C="\u2014 confirm \u2014";
+  const casiaOn=!!(S.addOns && S.addOns.casia>0);
+  const alt = casiaOn ? "400\u2032 AGL (200\u2032 base)" : "200\u2032 AGL (400\u2032 w/ Casia G)";
+  const docks=pk=>(PB.dji.packages[pk].hw.find(x=>/dock/i.test(x.name))||{qty:1}).qty;
+  const dStd=docks("standard"), dEnh=docks("enhanced");
+  const miles=d=>(1.5*d).toFixed(1).replace(/\.0$/,"")+" mi radius";
+  const endur=d=>(27*d)+" min";
+  const rows=[
+    ["Docks / drones",           dStd+" dock \u00B7 "+dStd+" drone", dEnh+" docks \u00B7 "+dEnh+" drones"],
+    ["Potential Patrol Radius",  miles(dStd),                        miles(dEnh)],
+    ["Flight Endurance Potential", endur(dStd),                      endur(dEnh)],
+    ["Remote ID (Drone Tag)",    "Yes",                              "Yes"],
+    ["Max flight altitude",      alt,                                alt],
+    ["Best for",                 "Single-point coverage",            "Redundancy \u00B7 range \u00B7 uptime"],
+  ];
+  const cell=v=> v===C ? `<span class="cfm">${v}</span>` : v;
+  const cl=k=> sel===k ? " sel" : "";
+  return card("What's in the Box","Standard vs Enhanced \u2014 plain-English", `
+    <table class="pcmp">
+      <tr><th></th><th class="${cl('standard')}">Standard</th><th class="${cl('enhanced')}">Enhanced</th></tr>
+      ${rows.map(([lab,s,e])=>`<tr><td class="pl">${lab}</td><td class="${cl('standard')}">${cell(s)}</td><td class="${cl('enhanced')}">${cell(e)}</td></tr>`).join("")}
+    </table>
+    <div class="note">Max altitude <b>200\u2032 AGL</b>, or <b>400\u2032 AGL</b> with the <b>Casia&nbsp;G</b> add-on${casiaOn?" (active)":""} \u2014 altitudes confirmed through FAA UAS facility map authorization. Selected package (<b>${PB.dji.packages[sel].label}</b>) highlighted.</div>
+  `);
+}
+
+/* Skydio has one priced tier today, so this is a spec sheet rather than a
+   two-column comparison. Flight specs are Skydio manufacturer data, not the
+   per-dock heuristic DJI's card uses. */
+function skydioSpecCard(){
+  const casiaOn=!!(S.addOns && S.addOns.casia>0);
+  const alt = casiaOn ? "400\u2032 AGL (200\u2032 base)" : "200\u2032 AGL (400\u2032 w/ Casia G)";
+  const pkg=PB.skydio.packages[S.pkg]||PB.skydio.packages[Object.keys(PB.skydio.packages)[0]];
+  const qty=Math.max(1, Math.round(+S.skydioSystems||1));
+  const rows=[
+    ["Dock / drone",            `${qty} dock${qty>1?'s':''} \u00B7 ${qty} Skydio X10 drone${qty>1?'s':''}`],
+    ["Thermal / IR",            "Included \u2014 Dock Ops Thermal"],
+    ["NightSense (low-light)",  "Included"],
+    ["Transmission range",      "7.5 mi (12 km) via Skydio Connect"],
+    ["Max flight time",         "Up to 40 min"],
+    ["Remote ID (Drone Tag)",   "Included"],
+    ["Max flight altitude",     alt],
+    ["Onboarding",              S.skydioTraining?"Axon Commissioning & Instructor Training included":"Self-onboarded \u2014 no Axon training purchased"],
+    ["Amortization",            `${Math.max(1,Math.round(+S.skydioTerm||36))} months`],
+    ["NDAA compliance",         "Yes \u2014 Skydio X10, US manufactured"],
+    ["Best for",                "NDAA-restricted clients \u00B7 white-glove Skydio support"],
+  ];
+  return card("What's in the Box","Skydio X10 \u2014 plain-English", `
+    <table class="pcmp"><tr><th></th><th class="sel">${pkg.label}</th></tr>
+      ${rows.map(([lab,v])=>`<tr><td class="pl">${lab}</td><td class="sel">${v}</td></tr>`).join("")}
+    </table>
+    <div class="note">Dock ships 5G/LTE-ready; cellular data plan is bring-your-own. Altitude confirmed through FAA UAS facility map authorization, same convention as the DJI fleet. Flight specs per Skydio manufacturer data \u2014 only one tier is priced today, so this is a spec sheet rather than a side-by-side.</div>
+  `);
+}
+
+function marginBlock(margin){
+  const floorPos=clamp(S.marginFloor/0.85,0,1)*100;
+  const fillPos=clamp(margin/0.85,0,1)*100;
+  const ok=margin>=S.marginFloor-0.0001;
+  const col=ok?"var(--green)":"var(--red2)";
+  return `<div style="margin-top:13px">
+    <div class="mrow"><span class="lbl" style="margin:0">Blended margin</span>
+      <span class="mpct" style="color:${col}">${pct(margin)}</span></div>
+    <div class="mbar"><div class="fill" style="width:${fillPos}%;background:${col}"></div><div class="floor" style="left:${floorPos}%"></div></div>
+    <div class="note">${ok?`Clears the ${pct(S.marginFloor)} floor (marker).`:`<b style="color:var(--red2)">Below the ${pct(S.marginFloor)} floor.</b> Raise price, ratio, or coverage.`}</div>
+  </div>`;
+}
+
+function sparkline(series){
+  const w=300,h=64,pad=4;
+  const min=Math.min(0,...series), max=Math.max(0,...series), rng=(max-min)||1;
+  const x=i=>pad+i*(w-2*pad)/(series.length-1);
+  const y=v=>h-pad-((v-min)/rng)*(h-2*pad);
+  const zero=y(0);
+  const path=series.map((v,i)=>(i?"L":"M")+x(i).toFixed(1)+" "+y(v).toFixed(1)).join(" ");
+  const area=path+` L ${x(series.length-1).toFixed(1)} ${zero.toFixed(1)} L ${x(0).toFixed(1)} ${zero.toFixed(1)} Z`;
+  return `<div class="spark"><svg viewBox="0 0 ${w} ${h}" width="100%" height="64" preserveAspectRatio="none">
+    <defs><linearGradient id="jg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3FB95A" stop-opacity=".35"/><stop offset="100%" stop-color="#3FB95A" stop-opacity="0"/></linearGradient></defs>
+    <line x1="${pad}" y1="${zero.toFixed(1)}" x2="${w-pad}" y2="${zero.toFixed(1)}" stroke="#3A3A40" stroke-dasharray="3 3"/>
+    <path d="${area}" fill="url(#jg)"/>
+    <path d="${path}" fill="none" stroke="#3FB95A" stroke-width="2"/>
+  </svg></div>`;
+}
+
+/* ===== LEADERSHIP — workbook-style scaling analysis for the current scenario ===== */
+function leadershipDJI(r){
+  const price=r.clientFee, fixed=r.pilotFull, perCli=r.nonPilotCost, cap=PB.qcCap, op=r.op;
+  const net=n=>price*n-(fixed+n*perCli);
+  const marg=n=>{const rev=price*n;return rev>0?net(n)/rev:0;};
+  const waiverN = r.av ? Math.min(op*S.regMult, cap) : op;
+  const marginalNet=price-perCli;
+  const engName = r.engineKey==="skydio" ? "Skydio" : "DJI";
+  const skyChips = r.engineKey==="skydio" ? [
+    (Math.max(1,Math.round(+S.skydioSystems||1)))+" system"+(S.skydioSystems>1?"s":""),
+    (Math.max(1,Math.round(+S.skydioTerm||36)))+"-mo term",
+    S.skydioTraining?"Training incl.":"No training",
+  ] : [];
+
+  // scenario readout
+  const cfg=[engName,S.cadence==="recurring"?"Recurring":"One-time",S.deployment==="deployed"?"On-Site":"Mobile",
+    PB[r.engineKey].packages[S.pkg].label,...skyChips,S.coverage+"hr",r.clientOwns?"Client-owned":"DXD-owned","1:"+op];
+  let out = card("Scenario Under Analysis","exact Solutions build", `
+    <div class="scen">${cfg.map(c=>`<span class="chip">${c}</span>`).join("")}</div>
+    <div class="kpis" style="margin-top:12px">
+      <div class="kpi"><div class="kl">Price / client</div><div class="kv">${money(price,0)}</div><div class="ks">/mo held</div></div>
+      <div class="kpi"><div class="kl">Margin today</div><div class="kv" style="color:var(--green)">${pct(r.margin)}</div><div class="ks">at 1:${op}</div></div>
+      <div class="kpi"><div class="kl">Net / client</div><div class="kv" style="color:var(--green)">${money(r.monthlyNet,0)}</div><div class="ks">per month</div></div>
+    </div>`);
+
+  if(r.av){
+    // operating leverage — hold price, add clients to one route
+    const rows=[];
+    for(let n=1;n<=cap;n++){
+      const cls=n===op?'today':(n===waiverN?'wv':'');
+      const mk=n===op?'\u25C0 today':(n===waiverN?'\u25C0 waiver full':'');
+      rows.push(`<tr class="${cls}"><td>1:${n}</td><td class="gm">${money(net(n),0)}</td><td>${pct(marg(n))}</td><td class="mk">${mk}</td></tr>`);
+    }
+    const expandPts=(marg(waiverN)-marg(op))*100;
+    out += card("Operating Leverage","one pilot route \u00B7 hold price, add clients", `
+      <div class="twostat">
+        <div class="ts"><div class="tsl">TODAY \u2014 1:${op}</div><div class="tsv">${pct(marg(op))}</div><div class="tss">${money(net(op),0)}/mo net</div></div>
+        <div class="tsarrow">\u2192</div>
+        <div class="ts wv"><div class="tsl">WAIVER FULL \u2014 1:${waiverN}</div><div class="tsv">${pct(marg(waiverN))}</div><div class="tss">${money(net(waiverN),0)}/mo net</div></div>
+      </div>
+      <div class="note" style="margin:10px 0">Same price, same pilot. Each added client costs only <b>${money(perCli,0)}</b> but bills <b>${money(price,0)}</b> \u2014 marginal net <b style="color:var(--green)">+${money(marginalNet,0)}/client</b>. Margin expands <b style="color:var(--amber)">+${expandPts.toFixed(0)} pts</b> from today to the waiver target.</div>
+      <table class="lsch"><tr><th>Ratio</th><th>Route net/mo</th><th>Margin</th><th></th></tr>${rows.join("")}</table>
+      <div class="note">QC ceiling 1:${cap}. The regulatory 1:Many provision is pending IP \u2014 the waiver row is the theoretical target, not yet operational.</div>`);
+
+    // ratio pricing schedule — every option, priced to target
+    const sched=[];
+    for(let R=1;R<=7;R++){
+      const costR=perCli+fixed/R, priceR=costR/(1-S.marginTarget);
+      const netCap=priceR*R-(fixed+R*perCli);
+      const capexFill=R*r.hwCapexTotal;
+      const beBasis=r.clientOwns?R*r.addHwCapex:capexFill;
+      const beMo=netCap>0?Math.ceil(beBasis/netCap)+' mo':'\u2014';
+      sched.push(`<tr class="${R===op?'today':''}"><td>1:${R}</td><td>${money(priceR,0)}</td><td class="gm">${money(netCap,0)}</td><td>${money(capexFill,0)}</td><td>${beMo}</td></tr>`);
+    }
+    out += card("Ratio Pricing Schedule","every option, priced to "+pct(S.marginTarget), `
+      <table class="lsch"><tr><th>Ratio</th><th>Price/client</th><th>Route net@cap</th><th>CapEx to fill</th><th>Breakeven</th></tr>${sched.join("")}</table>
+      <div class="note">Deeper ratios drop the per-client price but lift route net \u2014 the fixed pilot spreads further. ${r.clientOwns?'Client-owned: CapEx-to-fill is client-funded; breakeven reflects add-on iron only.':'CapEx-to-fill is DXD\u2019s hardware outlay to fill that route.'}</div>`);
+
+    // fleet scale
+    const netWF=net(waiverN);
+    out += card("Fleet Scale","each pilot runs to 1:"+waiverN+" (theoretical)", `
+      <table class="fleet"><tr><th>Pilots</th><th>Clients</th><th>Monthly net</th><th>Annual net</th></tr>
+      ${[1,2,3,5,10].map(p=>`<tr><td>${p}</td><td>${p*waiverN}</td><td class="gm">${money(p*netWF,0)}</td><td class="gm">${money(p*netWF*12,0)}</td></tr>`).join("")}</table>
+      <div class="note">Same price, same service \u2014 the waiver multiplies clients per pilot. Today at 1:${op}, one pilot nets ${money(net(op),0)}/mo; at the waiver target it reaches ${money(netWF,0)}/mo.</div>`);
+  }
+
+  // capital J-curve + growth tiers
+  const ramps={low:1,med:2,high:3};
+  const tierRows=Object.entries(ramps).map(([k,pm])=>{
+    const jc=jcurve(r.upfront,r.monthlyNet,pm,36,null);
+    return `<tr class="${S.growth===k?'today':''}"><td>${k[0].toUpperCase()+k.slice(1)} (+${pm}/mo)</td><td class="neg">${money(-jc.peak,0)}</td><td>${jc.be?'Mo '+jc.be:'\u2014'}</td><td class="gm">${money(jc.end,0)}</td><td>${jc.active}</td></tr>`;
+  }).join("");
+  const jcSel=jcurve(r.upfront,r.monthlyNet,ramps[S.growth],36,null);
+  out += card("Capital \u2014 J-Curve & Growth Tiers","CapEx hole \u00B7 drawdown \u00B7 breakeven", `
+    <div class="pills" style="margin-bottom:10px">${Object.keys(ramps).map(k=>`<div class="pill sm ${S.growth===k?'on':''}" data-opt="growth" data-val="${k}">${k[0].toUpperCase()+k.slice(1)}</div>`).join("")}</div>
+    ${sparkline(jcSel.series)}
+    <table class="lsch" style="margin-top:10px"><tr><th>Tier</th><th>Peak funding</th><th>Breakeven</th><th>Cum @ Mo 36</th><th>Clients</th></tr>${tierRows}</table>
+    <div class="note">${r.clientOwns?`<b style="color:var(--green)">Client-funded hardware nearly closes the hole</b> \u2014 DXD fronts only ${money(r.upfront)}/client of add-on iron.`:`Each client needs ${money(r.upfront)} of hardware upfront. ${S.financed?'Financing is applied here.':'Toggle financing or client-purchase in Solutions to shrink the trough.'}`}</div>`);
+
+  return out;
+}
+
+/* Hybrid leadership — the DJI leverage/J-curve analysis exactly as above, plus
+   a short summary of what the SFL + surge half adds to the bundle. */
+function leadershipHybrid(rr){
+  // In Hybrid the DJI half is NOT full-shift piloting — so the DJI operating-
+  // leverage analysis (fleet scale, ratio pricing schedule, etc.) doesn't map
+  // cleanly. We surface a scenario summary + surge sensitivity instead.
+
+  const cfg=["Hybrid \u2014 DJI + SFL",
+             S.cadence==="recurring"?"Recurring":"One-time",
+             S.deployment==="deployed"?"On-Site":"Mobile",
+             PB.dji.packages[S.pkg].label,
+             S.systems+" SFL sys",
+             money(rr.surgeRate,0)+"/hr surge",
+             rr.dji.clientOwns?"Client-owned DJI":"DXD-owned DJI"];
+
+  let out = card("Scenario Under Analysis","hybrid bundle build", `
+    <div class="scen">${cfg.map(c=>`<span class="chip">${c}</span>`).join("")}</div>
+    <div class="kpis" style="margin-top:12px">
+      <div class="kpi"><div class="kl">Fixed monthly</div><div class="kv">${money(rr.fixedMonthly,0)}</div><div class="ks">guaranteed / client</div></div>
+      <div class="kpi"><div class="kl">Fixed margin</div><div class="kv" style="color:var(--green)">${pct(rr.fixedMargin)}</div><div class="ks">on DJI equipment + SFL</div></div>
+      <div class="kpi"><div class="kl">Est. total / mo</div><div class="kv" style="color:var(--green)">${money(rr.totalPrice,0)}</div><div class="ks">@ ${rr.surgeHoursEst} hr surge</div></div>
+    </div>`);
+
+  // Surge sensitivity table — how net moves with actual hours of client demand
+  const scenarios=[0,4,8,16,32,64];
+  const rows=scenarios.map(h=>{
+    const rev=rr.surgeRate*h, cost=S.pilotRate*h, net=rev-cost;
+    const total=rr.fixedMonthly+rev;
+    const totalCost=rr.fixedCost+cost;
+    const totalNet=total-totalCost;
+    const totalMargin=total>0?totalNet/total:0;
+    const cls=h===rr.surgeHoursEst?'today':'';
+    const mk=h===rr.surgeHoursEst?'\u25C0 est.':'';
+    return `<tr class="${cls}"><td>${h} hr</td><td>${money(rev,0)}</td><td class="gm">${money(net,0)}</td><td>${money(total,0)}</td><td class="gm">${money(totalNet,0)}</td><td>${pct(totalMargin)}</td><td class="mk">${mk}</td></tr>`;
+  }).join("");
+  out += card("Surge Sensitivity","how net moves with actual client demand", `
+    <table class="lsch"><tr><th>Surge hr/mo</th><th>Surge rev</th><th>Surge net</th><th>Total /mo</th><th>Total net</th><th>Margin</th><th></th></tr>${rows}</table>
+    <div class="note">Fixed monthly (<b>${money(rr.fixedMonthly,0)}</b>) and its <b>${pct(rr.fixedMargin)}</b> margin are guaranteed \u2014 they don't move with surge use. Every surge hour adds <b>${money(rr.surgeRate-S.pilotRate,0)}</b> in net (${money(rr.surgeRate,0)} charged \u2212 ${money(S.pilotRate,0)} pilot cost) at <b style="color:var(--green)">${pct((rr.surgeRate-S.pilotRate)/rr.surgeRate)}</b> marginal margin. Real revenue tracks actual client demand within the shift window.</div>
+  `);
+
+  // Capital view — mirror the pure-DJI J-curve for the DJI equipment side, but
+  // use the FIXED margin (not the surge-blended one) since fixed is guaranteed
+  const ramps={low:1,med:2,high:3};
+  const tierRows=Object.entries(ramps).map(([k,pm])=>{
+    const jc=jcurve(rr.dji.upfront, rr.monthlyNet, pm, 36, null);
+    return `<tr class="${S.growth===k?'today':''}"><td>${k[0].toUpperCase()+k.slice(1)} (+${pm}/mo)</td><td class="neg">${money(-jc.peak,0)}</td><td>${jc.be?'Mo '+jc.be:'\u2014'}</td><td class="gm">${money(jc.end,0)}</td><td>${jc.active}</td></tr>`;
+  }).join("");
+  const jcSel=jcurve(rr.dji.upfront, rr.monthlyNet, ramps[S.growth], 36, null);
+  out += card("Capital \u2014 J-Curve & Growth Tiers","DJI CapEx \u00B7 SFL pass-through \u00B7 est. net includes surge", `
+    <div class="pills" style="margin-bottom:10px">${Object.keys(ramps).map(k=>`<div class="pill sm ${S.growth===k?'on':''}" data-opt="growth" data-val="${k}">${k[0].toUpperCase()+k.slice(1)}</div>`).join("")}</div>
+    ${sparkline(jcSel.series)}
+    <table class="lsch" style="margin-top:10px"><tr><th>Tier</th><th>Peak funding</th><th>Breakeven</th><th>Cum @ Mo 36</th><th>Clients</th></tr>${tierRows}</table>
+    <div class="note">${rr.dji.clientOwns?`<b style="color:var(--green)">Client-funded DJI hardware nearly closes the hole</b> \u2014 DXD fronts only ${money(rr.dji.upfront)}/client of add-on iron. SFL adds no CapEx.`:`Each hybrid client needs ${money(rr.dji.upfront)} of DJI hardware upfront; SFL adds no CapEx. Net-per-client uses the estimated ${rr.surgeHoursEst} hr/mo of surge \u2014 real payback tracks actual client demand.`}</div>`);
+
+  return out;
+}
+
+function leverageCard(r){
+  const p=r.proj;
+  return card("1:Many Leverage","operational today · regulatory pending", `
+    <div class="effrow">
+      <div class="eff-chip eff-op"><span class="k">Operational</span><span class="v">1:${r.op}</span></div>
+      <div class="eff-eq">${S.regOn?'\u00D7':''}</div>
+      <div class="eff-chip eff-reg ${S.regOn?'pend':'off'}"><span class="k">Regulatory</span><span class="v">${S.regOn?'\u00D7'+p.reg:'\u2014'}</span></div>
+      <div class="eff-eq">${S.regOn?'=':''}</div>
+      <div class="eff-chip eff-final ${p.capped&&S.regOn?'capped':''}"><span class="k">Effective</span><span class="v">1:${S.regOn?p.eff:r.op}</span></div>
+    </div>
+    <div class="note">Today, one pilot carries <b>${r.op}</b> client${r.op>1?'s':''} per shift at <b>1:${r.op}</b> — live and within the waiver.</div>
+    <div class="proj" style="${S.regOn?'':'opacity:.62'}">
+      <div class="ph"><div class="pt">${S.regOn?'Modeled':'Potential'} — regulatory 1:Many</div><span class="flag">Not yet operational</span></div>
+      <div class="pg">
+        <div>Effective<b>1:${p.eff}${p.capped?' \u26A0':''}</b></div>
+        <div>Realized margin<b style="color:var(--green)">${pct(p.realMargin)}</b></div>
+        <div>Added net / client<b style="color:var(--amber)">+${money(p.gain,0)}/mo</b></div>
+        <div>Net per pilot route<b>${money(p.routeNet,0)}/mo</b></div>
+      </div>
+      <div class="note" style="margin-top:7px">Hold the 1:${r.op} price, serve at 1:${p.eff} cost \u2014 the spread becomes margin. ${p.capped?'Capped at the 1:'+PB.qcCap+' QC limit. ':''}Scoping only; do not quote until the IP clears testing.</div>
+    </div>
+  `);
+}
+
+function matrix(r){
+  const t=S.marginTarget, pilotFull=r.pilotFull;
+  const findRow=k=>r.rows.find(x=>x.key===k);
+  const priceFor=row=>!row?0:(row.passthrough?row.c:row.c/(1-t));   // pass-through stays at cost; margined buckets re-solve at the current target
+  const hwR=findRow("hw"), swR=findRow("sw"), addR=findRow("add");
+  const hwCost=hwR?hwR.c:0, swCost=swR?swR.c:0;
+  const hwPriceF=priceFor(hwR), swPriceF=priceFor(swR);
+  const addCost=addR?addR.c:0, addPrice=addR?addR.v:0;
+  let rows="";
+  for(let op=1;op<=7;op++){
+    const opPilot=pilotFull/op;
+    const quote=hwPriceF+swPriceF+(opPilot/(1-t))+addPrice;             // held quote at this op
+    const effRaw=op*S.regMult, capped=effRaw>PB.qcCap, eff=Math.min(effRaw,PB.qcCap);
+    const realCost=hwCost+swCost+(pilotFull/eff)+addCost;
+    const realMargin=(quote-realCost)/quote;
+    rows+=`<tr class="${op===S.opRatio?'hl':''} ${capped?'cap':''}">
+      <td>1:${op}</td><td class="num">${money(quote,0)}</td><td class="num">1:${eff}${capped?' \u26A0':''}</td><td class="num">${pct(realMargin)}</td></tr>`;
+  }
+  return `<table class="mtx">
+    <tr><th>Op ratio</th><th>Quote/mo</th><th>Eff (\u00D7${S.regMult})</th><th>Realized margin</th></tr>
+    ${rows}</table>
+    <div class="note">Quote built at the operational ratio (today). Realized margin assumes the regulatory provision (\u00D7${S.regMult}) is operational with price held. Highlighted = current; capped at 1:${PB.qcCap}.</div>`;
+}
+
+function advancedCard(){
+  return `<div class="card"><div class="card-h"><div class="ct">Advanced — Solutions</div><div class="cn">live variables</div></div>
+    <div class="card-b">
+      <div class="banner warn" style="margin-bottom:13px">Piloting is the one <b>live</b> variable — set the canonical basis here. Currently the $45.50 recognized rate.</div>
+      <div class="adv-grid">
+        <div class="inp"><label>Pilot rate / hr</label><div class="ib"><span class="pfx">$</span><input type="number" step="0.5" value="${S.pilotRate}" data-num="pilotRate"></div></div>
+        <div class="inp"><label>Flying days / mo</label><div class="ib"><input type="number" value="${S.pilotDays}" data-num="pilotDays"></div></div>
+        <div class="inp"><label>Target margin</label><div class="ib"><input type="number" step="1" value="${Math.round(S.marginTarget*100)}" data-num="marginPct"><span class="pfx">%</span></div></div>
+        <div class="inp"><label>Margin floor</label><div class="ib"><input type="number" step="1" value="${Math.round(S.marginFloor*100)}" data-num="floorPct"><span class="pfx">%</span></div></div>
+        <div class="inp"><label>Full pilot cost / mo</label><div class="ib"><span class="pfx">$</span><input type="number" value="${Math.round(S.pilotRate*S.coverage*S.pilotDays)}" disabled></div></div>
+        <div class="inp"><label>Install &amp; onboarding cost</label><div class="ib"><span class="pfx">$</span><input type="number" value="${Math.round(+S.installCost||0)}" data-num="installCost"></div></div>
+      </div>
+      <div style="margin-top:13px" class="tg ${S.financed?'on':''}" data-toggle="financed">
+        <div class="sw"></div><div><div style="font-family:var(--disp);font-weight:600;font-size:12.5px">Finance the hardware</div>
+        <div class="note" style="margin-top:2px">Halves the upfront hole; adds ~${money(PB[pkgEngineKey()].financedMonthlyAdd)}/client/mo${pkgEngineKey()==="skydio"?' (est. \u2014 confirm with financing partner)':''}.</div></div>
+      </div>
+      <div class="note" style="margin-top:12px"><b>Open conventions:</b> canonical piloting source · package names · whether the floor sits on the package core or the all-in total (add-ons currently layered at list).</div>
+    </div></div>`;
+}
+
+/* ---------- small html builders ---------- */
+function card(title,note,bodyHTML){
+  return `<div class="card"><div class="card-h"><div class="ct">${title}</div><div class="cn">${note||""}</div></div><div class="card-b">${bodyHTML}</div></div>`;
+}
+function opt(key,val,label,desc){
+  return `<div class="opt ${S[key]===val?'on':''}" data-opt="${key}" data-val="${val}"><div class="ol">${label}</div><div class="od">${desc}</div></div>`;
+}
+function optWide(key,val,label,desc){ return opt(key,val,label,desc); }
+
+/* ---------- events ---------- */
+function bind(){
+  document.querySelectorAll("[data-face]").forEach(e=>e.onclick=()=>{S.face=e.dataset.face;render();});
+  document.querySelectorAll("[data-opt]").forEach(e=>e.onclick=()=>{
+    const k=e.dataset.opt, v=e.dataset.val;
+    S[k]=v;
+    if(k==="engine"){
+      // DJI's package keys (standard/enhanced) and Skydio's (x10) don't overlap —
+      // reset to a valid default for whichever engine we just switched to.
+      const ek=pkgEngineKey();
+      const keys=Object.keys(PB[ek].packages);
+      if(!keys.includes(S.pkg)) S.pkg=keys[0];
+    }
+    render();
+  });
+  document.querySelectorAll("[data-set]").forEach(e=>e.onclick=()=>{S[e.dataset.set]=+e.dataset.val;render();});
+  document.querySelectorAll("[data-toggle]").forEach(e=>e.onclick=()=>{S[e.dataset.toggle]=!S[e.dataset.toggle];render();});
+  /* add-on quantity steppers */
+  document.querySelectorAll("[data-aonstep]").forEach(e=>e.onclick=()=>{
+    const id=e.dataset.aonstep; S.addOns[id]=Math.max(0,(S.addOns[id]||0)+(+e.dataset.dir)); render();
+  });
+  document.querySelectorAll("[data-aonqty]").forEach(e=>e.onchange=()=>{
+    S.addOns[e.dataset.aonqty]=Math.max(0, Math.round(+e.value)||0); render();
+  });
+  /* packages BOM: steppers, inline edits, add/remove, reset */
+  document.querySelectorAll("[data-bomstep]").forEach(e=>e.onclick=()=>{
+    const b=ensureBOM(), row=b[e.dataset.bomstep][+e.dataset.i];
+    row.qty=Math.max(0,(+row.qty||0)+(+e.dataset.dir)); render();
+  });
+  document.querySelectorAll("[data-bom]").forEach(e=>e.onchange=()=>{
+    const b=ensureBOM(), row=b[e.dataset.bom][+e.dataset.i], f=e.dataset.f;
+    if(f==="name") row.name=e.value;
+    else if(f==="qty") row.qty=Math.max(0, Math.round(+e.value)||0);
+    else if(f==="unit") row.unit=Math.max(0, +e.value||0);
+    render();
+  });
+  document.querySelectorAll("[data-bomdel]").forEach(e=>e.onclick=()=>{
+    ensureBOM()[e.dataset.bomdel].splice(+e.dataset.i,1); render();
+  });
+  document.querySelectorAll("[data-bomadd]").forEach(e=>e.onclick=()=>{
+    ensureBOM()[e.dataset.bomadd].push({name:"",qty:1,unit:0}); render();
+  });
+  document.querySelectorAll("[data-bomreset]").forEach(e=>e.onclick=()=>{
+    S.bom=null; S.bomPkg=null; ensureBOM(); render();
+  });
+  /* Solutions per-bucket price overrides + one-time install fee */
+  document.querySelectorAll("[data-pov]").forEach(e=>e.onchange=()=>{
+    const k=e.dataset.pov, raw=String(e.value).trim();
+    S.priceOverride[k] = raw==="" ? null : Math.max(0, +raw||0);
+    render();
+  });
+  document.querySelectorAll("[data-povreset]").forEach(e=>e.onclick=()=>{
+    S.priceOverride={hw:null,sw:null,pilot:null,add:null}; render();
+  });
+  document.querySelectorAll("[data-otfee]").forEach(e=>e.onchange=()=>{
+    const v=+e.value; S.otFeeOverride=(isFinite(v)&&v>0)?v:null; render();
+  });
+  document.querySelectorAll("[data-otreset]").forEach(e=>e.onclick=()=>{ S.otFeeOverride=null; render(); });
+  document.querySelectorAll("[data-sflfee]").forEach(e=>e.onchange=()=>{
+    const v=+e.value; S.sflPriceOverride=(isFinite(v)&&v>0)?v:null; render();
+  });
+  document.querySelectorAll("[data-sflfeereset]").forEach(e=>e.onclick=()=>{ S.sflPriceOverride=null; render(); });
+  document.querySelectorAll("[data-bomname]").forEach(e=>e.onchange=()=>{ S.bomName=e.value; render(); });
+  document.querySelectorAll("[data-range]").forEach(e=>{
+    e.oninput=()=>{const k=e.dataset.range; S[k]=+e.value;
+      // live update the value label without full rerender for smoothness
+      const sval=e.parentElement.querySelector(".sval");
+      if(sval){
+        if(k==="opRatio") sval.textContent="1:"+e.value;
+        else if(k==="surgeHoursEst") sval.textContent=e.value+" hr";
+        else if(k==="coverage") sval.textContent=e.value+"hr";
+        else sval.textContent=e.value;
+      }};
+    e.onchange=()=>{S[e.dataset.range]=+e.value;render();};
+  });
+  document.querySelectorAll("[data-num]").forEach(e=>{
+    e.onchange=()=>{const k=e.dataset.num; const v=+e.value;
+      if(k==="marginPct") S.marginTarget=clamp(v/100,0,0.85);
+      else if(k==="floorPct") S.marginFloor=clamp(v/100,0,0.85);
+      else S[k]=v; render();};
+  });
+}
+
+render();
+
+/* Print / Save-as-PDF — renders the condensed one-pager, then prints */
+(function(){
+  const renderSheet=()=>{ const el=document.getElementById("printSheet"); if(el) el.innerHTML=buildPrintSheet(); };
+  const pb=document.getElementById("printBtn");
+  if(pb) pb.onclick=()=>{ renderSheet(); window.print(); };
+  if(window.addEventListener) window.addEventListener("beforeprint", renderSheet);
+})();
+
+/* ─── postMessage bridge — used when the tool is embedded in the DXD
+       Deployment Tracker inside an iframe.
+
+   ▸  solutions:ready         — posted on first paint. Parent replies with
+                                solutions:init { state } to rehydrate from
+                                the per-deal saved copy.
+   ▸  solutions:init { state } — merge saved fields into the live S object,
+                                then re-render.
+   ▸  solutions:state { state } — debounced, posted after every render() so
+                                the parent can persist to project.pricingCache.
+
+   Standalone use (opened directly from disk / no parent frame) skips the
+   whole bridge so nothing changes. */
+(function(){
+  if (window === window.parent) return;
+
+  const originalRender = render;
+  let saveTimer = null;
+  let suppressNextSave = false;
+
+  render = function(){
+    originalRender();
+    if (suppressNextSave) { suppressNextSave = false; return; }
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(function(){
+      try {
+        var snapshot = JSON.parse(JSON.stringify(S));
+        window.parent.postMessage({ type: 'solutions:state', payload: snapshot }, '*');
+      } catch (e) { /* non-serializable field — skip this tick */ }
+    }, 400);
+  };
+
+  window.addEventListener('message', function(evt){
+    var msg = evt.data;
+    if (!msg || typeof msg !== 'object') return;
+    if (msg.type !== 'solutions:init' || !msg.payload || typeof msg.payload !== 'object') return;
+    // Merge in only keys we already know about — never trust the parent to
+    // introduce new fields into S. bom/bomPkg get reset to null so the
+    // engine rebuilds them from PB against the loaded pkg.
+    Object.keys(msg.payload).forEach(function(k){
+      if (Object.prototype.hasOwnProperty.call(S, k)) S[k] = msg.payload[k];
+    });
+    S.bom = null; S.bomPkg = null; S.bomEngine = null; S.bomName = null;
+    suppressNextSave = true;
+    render();
+  });
+
+  window.parent.postMessage({ type: 'solutions:ready' }, '*');
+})();
+</script>
+</body>
+</html>

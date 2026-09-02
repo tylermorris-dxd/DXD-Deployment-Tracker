@@ -269,7 +269,7 @@ export default function ProjectView({ projectId, onBack }: Props) {
       </div>
 
       {/* ── Content area ──────────────────────────────────────────────────── */}
-      <div style={{ display: viewMode === 'ops' ? 'none' : 'block', padding: (viewMode === 'map' || viewMode === 'signoff') ? 0 : '24px 24px 0 24px' }}>
+      <div style={{ display: viewMode === 'ops' ? 'none' : 'block', padding: (viewMode === 'map' || viewMode === 'signoff' || viewMode === 'pricing') ? 0 : '24px 24px 0 24px' }}>
         {/* PRICING view */}
         {viewMode === 'pricing' && <PricingView project={project} onCacheUpdate={updatePricingCache} />}
 
