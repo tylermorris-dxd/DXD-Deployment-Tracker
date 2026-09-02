@@ -100,7 +100,11 @@ async fn receive_webhook(
         let Some(deal_id) = ev.object_id else { continue };
         let deal_id_str = deal_id.to_string();
 
-        // Store the event first so nothing gets lost.
+        // Store the event first so nothing gets lost. Dynamic sqlx::query
+        // (not the query! macro) so the compile-time DB check doesn't need
+        // the hubspot_events table to exist yet — migrations run at App
+        // Service startup, AFTER the Rust build. Same reason we can't use
+        // the macro for the hs_synced_at update below.
         let event_json = serde_json::to_string(&json!({
             "eventId": ev.event_id,
             "subscriptionType": ev.subscription_type,
@@ -112,38 +116,40 @@ async fn receive_webhook(
         }))
         .unwrap_or_else(|_| "{}".into());
         let now_iso = chrono::Utc::now().to_rfc3339();
-        let _ = sqlx::query!(
+        let _ = sqlx::query(
             "INSERT INTO hubspot_events (deal_id, subscription_type, property_name, property_value, occurred_at, received_at, raw)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)",
-            deal_id_str,
-            ev.subscription_type.clone().unwrap_or_default(),
-            ev.property_name.clone().unwrap_or_default(),
-            ev.property_value.clone().unwrap_or_default(),
-            ev.occurred_at.unwrap_or(0),
-            now_iso,
-            event_json,
+             VALUES ($1, $2, $3, $4, $5, $6, $7)"
         )
+        .bind(&deal_id_str)
+        .bind(ev.subscription_type.clone().unwrap_or_default())
+        .bind(ev.property_name.clone().unwrap_or_default())
+        .bind(ev.property_value.clone().unwrap_or_default())
+        .bind(ev.occurred_at.unwrap_or(0))
+        .bind(&now_iso)
+        .bind(&event_json)
         .execute(&state.pool)
         .await;
 
         // If we track this deal, sync the site field for
-        // service_locations changes and bump projects.hs_synced_at.
+        // service_locations changes.
         if ev.property_name.as_deref() == Some("service_locations") {
             if let Some(v) = &ev.property_value {
-                let _ = sqlx::query!(
-                    "UPDATE projects SET site = $1 WHERE hubspot_deal_id = $2 AND (site IS NULL OR site = '')",
-                    v.trim(),
-                    deal_id_str
+                let _ = sqlx::query(
+                    "UPDATE projects SET site = $1 WHERE hubspot_deal_id = $2 AND (site IS NULL OR site = '')"
                 )
+                .bind(v.trim())
+                .bind(&deal_id_str)
                 .execute(&state.pool)
                 .await;
             }
         }
-        let _ = sqlx::query!(
-            "UPDATE projects SET hs_synced_at = $1 WHERE hubspot_deal_id = $2",
-            now_iso,
-            deal_id_str
+        // Bump projects.hs_synced_at — dynamic query so we don't need the
+        // new column to exist at compile time.
+        let _ = sqlx::query(
+            "UPDATE projects SET hs_synced_at = $1 WHERE hubspot_deal_id = $2"
         )
+        .bind(&now_iso)
+        .bind(&deal_id_str)
         .execute(&state.pool)
         .await;
         processed += 1;
@@ -166,9 +172,10 @@ struct EventRow {
 }
 
 async fn list_events(State(state): State<AppState>) -> Result<Json<Vec<EventRow>>, AppError> {
-    let rows = sqlx::query!(
-        r#"SELECT e.id, e.deal_id, e.subscription_type, e.property_name, e.property_value, e.occurred_at, e.received_at,
-                  p.id AS "project_id?", p.name AS "project_name?"
+    use sqlx::Row;
+    let rows = sqlx::query(
+        r#"SELECT e.id, e.deal_id, e.subscription_type, e.property_name, e.property_value,
+                  e.occurred_at, e.received_at, p.id AS project_id, p.name AS project_name
              FROM hubspot_events e
              LEFT JOIN projects p ON p.hubspot_deal_id = e.deal_id
             ORDER BY e.received_at DESC
@@ -180,15 +187,15 @@ async fn list_events(State(state): State<AppState>) -> Result<Json<Vec<EventRow>
     let out = rows
         .into_iter()
         .map(|r| EventRow {
-            id: r.id,
-            deal_id: r.deal_id,
-            subscription_type: r.subscription_type,
-            property_name: r.property_name,
-            property_value: r.property_value,
-            occurred_at: r.occurred_at,
-            received_at: r.received_at,
-            project_id: r.project_id,
-            project_name: r.project_name,
+            id:                r.try_get("id").unwrap_or(0),
+            deal_id:           r.try_get("deal_id").unwrap_or_default(),
+            subscription_type: r.try_get("subscription_type").unwrap_or_default(),
+            property_name:     r.try_get("property_name").unwrap_or_default(),
+            property_value:    r.try_get("property_value").unwrap_or_default(),
+            occurred_at:       r.try_get("occurred_at").unwrap_or(0),
+            received_at:       r.try_get("received_at").unwrap_or_default(),
+            project_id:        r.try_get("project_id").ok(),
+            project_name:      r.try_get("project_name").ok(),
         })
         .collect();
     Ok(Json(out))
