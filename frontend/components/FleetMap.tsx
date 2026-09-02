@@ -6,6 +6,7 @@ import { api } from '@/lib/api'
 import type { ProjectSummary, HubSpotActiveDeal } from '@/lib/types'
 import { geocodeAddress } from '@/lib/geocode'
 import { useIsMobile } from '@/lib/useIsMobile'
+import { useSettings } from '@/lib/settings'
 
 // ── Leaflet loader (same CDN pin as SiteMapper) ─────────────────────────────
 const LEAFLET_CSS = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
@@ -27,9 +28,6 @@ function injectLeaflet(): Promise<void> {
 }
 
 // ── Geocode cache (localStorage) ─────────────────────────────────────────────
-// Fleet-scale geocoding hammers Census / ArcGIS / Nominatim, so we memoize
-// every result by address into localStorage. Results survive reloads and
-// only re-resolve when the address text changes.
 const CACHE_KEY = 'dxd-fleet-geocode-v1'
 type Cached = Record<string, { lat: number; lng: number } | null>
 
@@ -39,13 +37,23 @@ function loadCache(): Cached {
 }
 function saveCache(c: Cached) {
   if (typeof window === 'undefined') return
-  try { localStorage.setItem(CACHE_KEY, JSON.stringify(c)) } catch { /* quota — ignore */ }
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify(c)) } catch { /* quota */ }
 }
 
-// ── Markers ─────────────────────────────────────────────────────────────────
-// A pin state — how each project's dot is colored on the map. Order matters:
-// the first true wins. Steady state deals get their own color even when FAA
-// is on, so ongoing-ops sites don't blend into the "in progress" pool.
+// Custom SVG cursor — a red crosshair. Encoded as a data URI so no
+// external asset is needed. Renders at the actual browser cursor size.
+const CROSSHAIR_CURSOR = `url("data:image/svg+xml;utf8,${encodeURIComponent(
+  `<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'>
+     <circle cx='12' cy='12' r='9' stroke='%23D2232A' stroke-width='1.4' fill='none'/>
+     <circle cx='12' cy='12' r='1.6' fill='%23D2232A'/>
+     <line x1='12' y1='1' x2='12' y2='7' stroke='%23D2232A' stroke-width='1.4' stroke-linecap='round'/>
+     <line x1='12' y1='17' x2='12' y2='23' stroke='%23D2232A' stroke-width='1.4' stroke-linecap='round'/>
+     <line x1='1' y1='12' x2='7' y2='12' stroke='%23D2232A' stroke-width='1.4' stroke-linecap='round'/>
+     <line x1='17' y1='12' x2='23' y2='12' stroke='%23D2232A' stroke-width='1.4' stroke-linecap='round'/>
+   </svg>`,
+)}") 12 12, crosshair`
+
+// ── Pin state → color ────────────────────────────────────────────────────────
 function projectColor(p: ProjectSummary): { color: string; label: string } {
   if (p.steadyState)                  return { color: '#3FB95A', label: 'Steady state' }
   if (p.faaAuthorizationRequired)     return { color: '#f59e0b', label: 'FAA pending' }
@@ -59,6 +67,35 @@ interface Pin {
   color: string
   label: string
   dealName: string
+  createdAt: number  // epoch ms — used by the time scrubber
+}
+
+interface WeatherPoint { windMph: number; tempF: number }
+
+// ── Weather overlay: batched Open-Meteo call ────────────────────────────────
+// Open-Meteo lets us pass comma-separated coordinates in one request, so the
+// entire fleet's current wind + temp comes back in a single roundtrip.
+async function fetchFleetWeather(pins: Pin[]): Promise<Record<string, WeatherPoint>> {
+  if (pins.length === 0) return {}
+  const lats = pins.map(p => p.lat.toFixed(4)).join(',')
+  const lngs = pins.map(p => p.lng.toFixed(4)).join(',')
+  const url  = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lngs}` +
+               `&current=wind_speed_10m,temperature_2m&wind_speed_unit=mph&temperature_unit=fahrenheit&timezone=UTC`
+  const res  = await fetch(url)
+  if (!res.ok) throw new Error(`Open-Meteo ${res.status}`)
+  const data = await res.json()
+  const out: Record<string, WeatherPoint> = {}
+  // Single-coord requests return an object; multi-coord returns an array. Normalize.
+  const arr = Array.isArray(data) ? data : [data]
+  arr.forEach((entry, i) => {
+    const pin = pins[i]
+    if (!pin) return
+    const c = entry.current || {}
+    if (typeof c.wind_speed_10m === 'number' && typeof c.temperature_2m === 'number') {
+      out[pin.project.id] = { windMph: c.wind_speed_10m, tempF: c.temperature_2m }
+    }
+  })
+  return out
 }
 
 // ── Props ───────────────────────────────────────────────────────────────────
@@ -70,15 +107,29 @@ export interface FleetMapProps {
 
 export default function FleetMap({ onOpenDeal, height = 'calc(100vh - 120px)', compact = false }: FleetMapProps) {
   const isMobile = useIsMobile()
+  const settings = useSettings()
   const containerRef = useRef<HTMLDivElement>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapRef = useRef<any>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const layerRef = useRef<any>(null)
+  const pinLayerRef = useRef<any>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const airspaceLayerRef = useRef<any>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const weatherLayerRef = useRef<any>(null)
   const [ready, setReady] = useState(false)
   const [pins, setPins] = useState<Pin[]>([])
   const [pending, setPending] = useState(0)
   const [failed, setFailed] = useState(0)
+
+  // ── Overlay toggles ────────────────────────────────────────────────────
+  const [showAirspace, setShowAirspace] = useState(false)
+  const [showWeather,  setShowWeather]  = useState(false)
+  const [weather, setWeather] = useState<Record<string, WeatherPoint>>({})
+  const [weatherLoading, setWeatherLoading] = useState(false)
+
+  // ── Time scrubber ──────────────────────────────────────────────────────
+  const [scrubTs, setScrubTs] = useState<number | null>(null) // null = show all
 
   const { data: projects = [] } = useQuery({
     queryKey: ['projects'],
@@ -111,12 +162,13 @@ export default function FleetMap({ onOpenDeal, height = 'calc(100vh - 120px)', c
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
       subdomains: 'abcd', maxZoom: 19,
     }).addTo(map)
-    layerRef.current = L.layerGroup().addTo(map)
+    pinLayerRef.current      = L.layerGroup().addTo(map)
+    airspaceLayerRef.current = L.layerGroup().addTo(map)
+    weatherLayerRef.current  = L.layerGroup().addTo(map)
     mapRef.current = map
   }, [ready, compact])
 
-  // Geocode every project with a site — cached in localStorage so we don't
-  // re-hit the geocoders on every mount / navigation.
+  // Geocode every project with a site — cached in localStorage.
   useEffect(() => {
     if (!projects.length) { setPins([]); return }
     let cancelled = false
@@ -140,12 +192,13 @@ export default function FleetMap({ onOpenDeal, height = 'calc(100vh - 120px)', c
       if (!latLng) { failures++; setFailed(failures); return }
       const { color, label } = projectColor(p)
       const dealName = dealMap.get(p.id)?.deal.properties.dealname ?? p.name
-      built.push({ project: p, lat: latLng.lat, lng: latLng.lng, color, label, dealName })
+      built.push({
+        project: p, lat: latLng.lat, lng: latLng.lng, color, label, dealName,
+        createdAt: new Date(p.createdAt).getTime() || Date.now(),
+      })
       setPins(built.slice())
     }
 
-    // Run geocodes with a small concurrency window so we don't hammer
-    // the geocoders. 4 at a time is friendly to Census/ArcGIS/Nominatim.
     ;(async () => {
       const queue = withSite.slice()
       const workers = new Array(Math.min(4, queue.length)).fill(0).map(async () => {
@@ -162,19 +215,23 @@ export default function FleetMap({ onOpenDeal, height = 'calc(100vh - 120px)', c
     return () => { cancelled = true }
   }, [projects, dealMap])
 
-  // Re-render markers whenever the pin set changes.
+  // Pins filtered by time scrubber (if active).
+  const visiblePins = useMemo(() => {
+    if (scrubTs == null) return pins
+    return pins.filter(p => p.createdAt <= scrubTs)
+  }, [pins, scrubTs])
+
+  // Render pins whenever the visible set changes.
   useEffect(() => {
-    if (!mapRef.current || !layerRef.current) return
+    if (!mapRef.current || !pinLayerRef.current) return
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const L = (window as any).L
-    layerRef.current.clearLayers()
-    if (pins.length === 0) return
+    pinLayerRef.current.clearLayers()
+    if (visiblePins.length === 0) return
 
-    for (const pin of pins) {
+    for (const pin of visiblePins) {
       const iconHtml = `
-        <div style="
-          position:relative;width:22px;height:22px;
-        ">
+        <div style="position:relative;width:22px;height:22px">
           <div style="
             position:absolute;inset:2px;border-radius:50%;
             background:${pin.color};
@@ -183,46 +240,118 @@ export default function FleetMap({ onOpenDeal, height = 'calc(100vh - 120px)', c
           "></div>
           <div style="
             position:absolute;inset:-4px;border-radius:50%;
-            background:${pin.color}22; animation:pulse 2s ease-in-out infinite;
+            background:${pin.color}22; animation:dxd-pulse 2s ease-in-out infinite;
             pointer-events:none;
           "></div>
         </div>`
-      const icon = L.divIcon({
-        html: iconHtml,
-        className: 'dxd-fleet-marker',
-        iconSize: [22, 22], iconAnchor: [11, 11],
-      })
-      const m = L.marker([pin.lat, pin.lng], { icon }).addTo(layerRef.current)
-      const client = pin.project.client ? pin.project.client : ''
+      const icon = L.divIcon({ html: iconHtml, className: 'dxd-fleet-marker', iconSize: [22, 22], iconAnchor: [11, 11] })
+      const m = L.marker([pin.lat, pin.lng], { icon }).addTo(pinLayerRef.current)
+      const client = pin.project.client || ''
+      const w = weather[pin.project.id]
+      const wLine = showWeather && w
+        ? `<div style="font-family:'IBM Plex Mono',monospace;color:#3b82f6;font-size:9px;margin-top:3px">Wind ${w.windMph.toFixed(0)} mph · ${w.tempF.toFixed(0)}°F</div>`
+        : ''
       m.bindTooltip(
         `<div style="font-family:'Chakra Petch',sans-serif;font-weight:700;color:#fff;font-size:12px">${escapeHtml(pin.dealName)}</div>` +
         (client ? `<div style="font-family:'IBM Plex Mono',monospace;color:#9aa3b8;font-size:10px;margin-top:2px">${escapeHtml(client)}</div>` : '') +
-        `<div style="font-family:'IBM Plex Mono',monospace;color:${pin.color};font-size:9px;letter-spacing:1;margin-top:3px;text-transform:uppercase">${pin.label}</div>`,
+        `<div style="font-family:'IBM Plex Mono',monospace;color:${pin.color};font-size:9px;letter-spacing:1;margin-top:3px;text-transform:uppercase">${pin.label}</div>` +
+        wLine,
         { direction: 'top', offset: [0, -8], className: 'dxd-fleet-tip' },
       )
       m.on('click', () => onOpenDeal(pin.project.id))
     }
 
-    // Auto-fit bounds so all pins are visible with padding.
-    const bounds = pins.map(p => [p.lat, p.lng]) as [number, number][]
-    try { mapRef.current.fitBounds(bounds, { padding: [60, 60], maxZoom: 12 }) } catch { /* single-pin edge cases */ }
-  }, [pins, onOpenDeal])
+    // Only auto-fit when the scrubber isn't active (so panning during
+    // scrubbing doesn't jump around).
+    if (scrubTs == null && visiblePins.length > 0) {
+      const bounds = visiblePins.map(p => [p.lat, p.lng]) as [number, number][]
+      try { mapRef.current.fitBounds(bounds, { padding: [60, 60], maxZoom: 12 }) } catch { /* single-pin edge case */ }
+    }
+  }, [visiblePins, onOpenDeal, showWeather, weather, scrubTs])
+
+  // Render airspace ops-area rings.
+  useEffect(() => {
+    if (!mapRef.current || !airspaceLayerRef.current) return
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const L = (window as any).L
+    airspaceLayerRef.current.clearLayers()
+    if (!showAirspace) return
+    // 5-mile ops-area heuristic — real FAA airspace would need a proper
+    // feed. This gives a visual sense of scope per deployment.
+    const FIVE_MILES_M = 5 * 1609.344
+    for (const pin of visiblePins) {
+      L.circle([pin.lat, pin.lng], {
+        radius: FIVE_MILES_M,
+        color: pin.color, weight: 1, opacity: 0.35,
+        fillColor: pin.color, fillOpacity: 0.05,
+        interactive: false,
+      }).addTo(airspaceLayerRef.current)
+    }
+  }, [showAirspace, visiblePins])
+
+  // Weather overlay: fetch when toggled on, or when pins list changes.
+  useEffect(() => {
+    if (!showWeather) { setWeather({}); return }
+    if (visiblePins.length === 0) return
+    let cancelled = false
+    setWeatherLoading(true)
+    fetchFleetWeather(visiblePins)
+      .then(w => { if (!cancelled) setWeather(w) })
+      .catch(() => { /* silent — tooltip just won't show weather */ })
+      .finally(() => { if (!cancelled) setWeatherLoading(false) })
+    return () => { cancelled = true }
+    // Only refetch when the toggle flips or the set of pin ids changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showWeather, visiblePins.map(p => p.project.id).join(',')])
+
+  // Render weather rings — colored + sized by wind speed.
+  useEffect(() => {
+    if (!mapRef.current || !weatherLayerRef.current) return
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const L = (window as any).L
+    weatherLayerRef.current.clearLayers()
+    if (!showWeather) return
+    for (const pin of visiblePins) {
+      const w = weather[pin.project.id]
+      if (!w) continue
+      // Ring size scales with wind speed. 0mph → 200m, 40mph → 3km.
+      const radiusM = 200 + Math.min(40, w.windMph) * 70
+      const color = w.windMph > 30 ? '#D2232A' : w.windMph > 20 ? '#f59e0b' : w.windMph > 12 ? '#3b82f6' : '#3FB95A'
+      L.circle([pin.lat, pin.lng], {
+        radius: radiusM,
+        color, weight: 1.4, opacity: 0.6,
+        fillColor: color, fillOpacity: 0.08,
+        interactive: false,
+      }).addTo(weatherLayerRef.current)
+    }
+  }, [showWeather, weather, visiblePins])
 
   // Counts by bucket for the overlay legend.
   const counts = useMemo(() => {
     const c = { active: 0, faa: 0, steady: 0 }
-    for (const p of projects) {
-      if (p.steadyState) c.steady++
-      else if (p.faaAuthorizationRequired) c.faa++
+    for (const p of visiblePins) {
+      if (p.project.steadyState) c.steady++
+      else if (p.project.faaAuthorizationRequired) c.faa++
       else c.active++
     }
     return c
-  }, [projects])
+  }, [visiblePins])
+
+  // Scrubber range from earliest pin to today.
+  const scrubRange = useMemo(() => {
+    if (pins.length === 0) return null
+    const earliest = pins.reduce((m, p) => Math.min(m, p.createdAt), Date.now())
+    return { min: earliest, max: Date.now() }
+  }, [pins])
 
   return (
-    <div style={{ position: 'relative', height, background: '#0a0b0d', border: '1px solid #252b38', borderRadius: 10, overflow: 'hidden' }}>
+    <div style={{
+      position: 'relative', height, background: '#0a0b0d',
+      border: '1px solid #252b38', borderRadius: 10, overflow: 'hidden',
+      cursor: settings.crosshair ? CROSSHAIR_CURSOR : 'auto',
+    }}>
       <style>{`
-        @keyframes pulse {
+        @keyframes dxd-pulse {
           0%   { transform: scale(1);   opacity: 0.6 }
           50%  { transform: scale(1.6); opacity: 0   }
           100% { transform: scale(1);   opacity: 0.6 }
@@ -240,12 +369,30 @@ export default function FleetMap({ onOpenDeal, height = 'calc(100vh - 120px)', c
 
       <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />
 
-      {/* Legend — moved to bottom-left on mobile so it doesn't cover the
-          zoom controls or crowd the map on small screens. */}
+      {/* Overlay toggle bar — Weather + Airspace */}
+      {!compact && (
+        <div style={{
+          position: 'absolute', top: 14, right: 14, zIndex: 500,
+          display: 'flex', gap: 6, background: 'rgba(10,11,13,0.85)',
+          border: '1px solid #252b38', borderRadius: 8, padding: 4,
+          backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
+        }}>
+          <OverlayToggle
+            active={showWeather} onClick={() => setShowWeather(v => !v)}
+            label="Weather" loading={weatherLoading} color="#3b82f6"
+          />
+          <OverlayToggle
+            active={showAirspace} onClick={() => setShowAirspace(v => !v)}
+            label="Ops area" color="#f59e0b"
+          />
+        </div>
+      )}
+
+      {/* Legend */}
       {!compact && (
         <div style={{
           position: 'absolute',
-          top: isMobile ? 'auto' : 14, bottom: isMobile ? 14 : 'auto', left: 14,
+          top: isMobile ? 'auto' : 14, bottom: isMobile ? 76 : 'auto', left: 14,
           zIndex: 500,
           background: 'rgba(10,11,13,0.85)', border: '1px solid #252b38', borderRadius: 8,
           padding: isMobile ? '8px 12px' : '10px 14px', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
@@ -261,20 +408,40 @@ export default function FleetMap({ onOpenDeal, height = 'calc(100vh - 120px)', c
               {failed} site{failed === 1 ? '' : 's'} couldn't be geocoded
             </div>
           )}
+          {showWeather && (
+            <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid #252b38' }}>
+              <div style={{ fontSize: 8, color: '#5a6380', letterSpacing: 1, marginBottom: 4 }}>WIND</div>
+              <LegendRow color="#3FB95A" label="Calm (<12)" />
+              <LegendRow color="#3b82f6" label="Breezy (12-20)" />
+              <LegendRow color="#f59e0b" label="Windy (20-30)" />
+              <LegendRow color="#D2232A" label="Rough (>30)" />
+            </div>
+          )}
         </div>
       )}
 
-      {/* Status footer (loading indicator) */}
+      {/* Time scrubber */}
+      {!compact && scrubRange && pins.length > 1 && (
+        <TimeScrubber
+          min={scrubRange.min}
+          max={scrubRange.max}
+          value={scrubTs ?? scrubRange.max}
+          active={scrubTs != null}
+          onChange={setScrubTs}
+        />
+      )}
+
+      {/* Status footer */}
       {!compact && pending > 0 && (
         <div style={{
-          position: 'absolute', bottom: 14, right: 14, zIndex: 500,
+          position: 'absolute', bottom: 70, right: 14, zIndex: 500,
           background: 'rgba(10,11,13,0.85)', border: '1px solid #252b38', borderRadius: 8,
           padding: '8px 12px', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
           fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: '#e8eaf0',
           display: 'flex', alignItems: 'center', gap: 8,
         }}>
-          <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#3FB95A', animation: 'pulse 1s ease-in-out infinite' }} />
-          Geocoding {pending} site{pending === 1 ? '' : 's'}…
+          <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#3FB95A', animation: 'dxd-pulse 1s ease-in-out infinite' }} />
+          Acquiring {pending} target{pending === 1 ? '' : 's'}…
         </div>
       )}
 
@@ -292,11 +459,128 @@ export default function FleetMap({ onOpenDeal, height = 'calc(100vh - 120px)', c
   )
 }
 
+// ── Sub-components ─────────────────────────────────────────────────────────
+
 function LegendRow({ color, label }: { color: string; label: string }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
       <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, boxShadow: `0 0 8px ${color}88` }} />
       <span>{label}</span>
+    </div>
+  )
+}
+
+function OverlayToggle({ active, onClick, label, color, loading }: {
+  active: boolean; onClick: () => void; label: string; color: string; loading?: boolean
+}) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 6,
+        padding: '5px 10px', border: '1px solid',
+        borderColor: active ? color : 'transparent',
+        background: active ? `${color}22` : 'transparent',
+        color: active ? color : '#9aa3b8',
+        borderRadius: 5, cursor: 'pointer',
+        fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 0.6,
+        textTransform: 'uppercase' as const, whiteSpace: 'nowrap' as const,
+      }}
+    >
+      <span style={{
+        width: 6, height: 6, borderRadius: '50%',
+        background: active ? color : 'rgba(255,255,255,0.15)',
+        boxShadow: active ? `0 0 6px ${color}88` : 'none',
+        animation: loading ? 'dxd-pulse 1s ease-in-out infinite' : 'none',
+      }} />
+      {label}
+    </button>
+  )
+}
+
+function TimeScrubber({ min, max, value, active, onChange }: {
+  min: number; max: number; value: number; active: boolean; onChange: (v: number | null) => void
+}) {
+  const [playing, setPlaying] = useState(false)
+  const rafRef = useRef<number | null>(null)
+  // Track the current scrubber value in a ref so the animation loop can
+  // advance without a stale closure on `value`.
+  const valueRef = useRef(value)
+  valueRef.current = value
+
+  useEffect(() => {
+    if (!playing) { if (rafRef.current) cancelAnimationFrame(rafRef.current); return }
+    const step = () => {
+      const next = valueRef.current + (max - min) / 300 // ~5s full sweep at 60fps
+      if (next >= max) {
+        setPlaying(false)
+        onChange(null)
+        return
+      }
+      onChange(next)
+      rafRef.current = requestAnimationFrame(step)
+    }
+    rafRef.current = requestAnimationFrame(step)
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
+  }, [playing, min, max, onChange])
+
+  const date = new Date(value)
+  const pct = ((value - min) / (max - min)) * 100
+
+  return (
+    <div style={{
+      position: 'absolute', left: 14, right: 14, bottom: 14, zIndex: 500,
+      background: 'rgba(10,11,13,0.9)', border: '1px solid #252b38', borderRadius: 8,
+      padding: '10px 14px', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
+      display: 'flex', alignItems: 'center', gap: 12,
+    }}>
+      <button
+        onClick={() => {
+          if (!active) onChange(min)
+          setPlaying(v => !v)
+        }}
+        title={playing ? 'Pause' : 'Play timeline'}
+        style={{
+          width: 30, height: 30, borderRadius: 6, background: playing ? '#D2232A' : 'rgba(255,255,255,0.05)',
+          border: `1px solid ${playing ? '#D2232A' : '#252b38'}`,
+          color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
+        }}
+      >
+        {playing ? (
+          <svg width="10" height="10" viewBox="0 0 10 10"><rect x="2" y="1" width="2" height="8" fill="#fff"/><rect x="6" y="1" width="2" height="8" fill="#fff"/></svg>
+        ) : (
+          <svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 1v8l7-4z" fill="#fff"/></svg>
+        )}
+      </button>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, color: '#5a6380', marginBottom: 4 }}>
+          <span>{new Date(min).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
+          <span style={{ color: active ? '#D2232A' : '#9aa3b8', fontWeight: 700 }}>
+            {active ? date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'All time'}
+          </span>
+          <span>{new Date(max).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
+        </div>
+        <div style={{ position: 'relative', height: 6 }}>
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.06)', borderRadius: 3 }} />
+          <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${pct}%`, background: 'linear-gradient(90deg, #7a1c22, #D2232A)', borderRadius: 3 }} />
+          <input
+            type="range"
+            min={min} max={max}
+            value={value}
+            onChange={e => { setPlaying(false); onChange(Number(e.target.value)) }}
+            style={{ position: 'absolute', inset: 0, width: '100%', margin: 0, opacity: 0, cursor: 'ew-resize' }}
+          />
+        </div>
+      </div>
+      {active && (
+        <button
+          onClick={() => { setPlaying(false); onChange(null) }}
+          title="Show all time"
+          style={{ padding: '4px 8px', background: 'transparent', border: '1px solid #252b38', borderRadius: 5, color: '#9aa3b8', cursor: 'pointer', fontFamily: "'IBM Plex Mono', monospace", fontSize: 10 }}
+        >
+          Clear
+        </button>
+      )}
     </div>
   )
 }
