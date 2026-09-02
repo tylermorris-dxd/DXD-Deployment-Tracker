@@ -159,6 +159,7 @@ export const api = {
     site?: string
     filename: string
     pdf_base64: string
+    hubspot_deal_id?: string
   }) =>
     apiFetch<unknown>('/send-signoff-email', {
       method: 'POST',

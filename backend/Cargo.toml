@@ -25,6 +25,10 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 bytes = "1"
 urlencoding = "2"
+hmac = "0.12"
+sha2 = "0.10"
+base64 = "0.22"
+constant_time_eq = "0.3"
 
 [profile.release]
 opt-level = 3

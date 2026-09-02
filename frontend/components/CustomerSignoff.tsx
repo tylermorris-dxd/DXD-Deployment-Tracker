@@ -96,6 +96,11 @@ export default function CustomerSignoff({ project }: Props) {
             site: p.site || project.site || '',
             filename: p.filename || uploaded.name,
             pdf_base64: p.pdf_base64,
+            // When this deal is linked to HubSpot, the same endpoint will
+            // attach the PDF to the deal record in HubSpot (uploads to
+            // /files/v3/files, then creates a note with hs_attachment_ids
+            // and associates it with the deal).
+            hubspot_deal_id: project.hubspotDealId,
           })
 
           // 3. Refresh the list of attachments so the newly saved PDF

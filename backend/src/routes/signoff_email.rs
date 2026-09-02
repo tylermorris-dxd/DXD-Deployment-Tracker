@@ -46,6 +46,10 @@ struct SendReq {
     site: Option<String>,
     filename: String,
     pdf_base64: String,
+    // Optional — when the project has a HubSpot deal id, the frontend
+    // passes it through so the PDF gets attached to the deal's record.
+    #[serde(default)]
+    hubspot_deal_id: Option<String>,
 }
 
 async fn send(
@@ -156,7 +160,142 @@ async fn send(
         )));
     }
 
-    Ok(Json(response_body))
+    // Best-effort HubSpot attachment. Fires only when the caller provided
+    // hubspot_deal_id AND the tool has a HubSpot token stored. Failures are
+    // recorded on the response but don't fail the whole request — the
+    // email + local save already succeeded.
+    let mut hubspot_status: Value = json!({ "skipped": "no hubspot_deal_id" });
+    if let Some(deal_id) = body.hubspot_deal_id.as_deref() {
+        hubspot_status = attempt_hubspot_attach(&state, deal_id, &body.filename, &body.pdf_base64, project, client, site).await;
+    }
+
+    Ok(Json(json!({
+        "resend": response_body,
+        "hubspot": hubspot_status,
+    })))
+}
+
+async fn attempt_hubspot_attach(
+    state: &AppState,
+    deal_id: &str,
+    filename: &str,
+    pdf_base64: &str,
+    project: &str,
+    client: &str,
+    site: &str,
+) -> Value {
+    // Load HubSpot token — settings row 'hubspot_token'. Skip if not set.
+    let token = match sqlx::query_scalar!("SELECT value FROM settings WHERE key = 'hubspot_token'")
+        .fetch_optional(&state.pool)
+        .await
+        .ok()
+        .flatten()
+    {
+        Some(t) => t,
+        None => return json!({ "skipped": "HubSpot not connected on this workspace" }),
+    };
+
+    // Decode the base64 PDF back to raw bytes for the multipart upload.
+    use base64::{engine::general_purpose::STANDARD, Engine as _};
+    let pdf_bytes = match STANDARD.decode(pdf_base64) {
+        Ok(b) => b,
+        Err(e) => return json!({ "error": format!("base64 decode failed: {e}") }),
+    };
+
+    // 1. Upload the file to HubSpot Files.
+    let options = json!({
+        "access": "PRIVATE",
+        "overwrite": false,
+        "duplicateValidationStrategy": "NONE",
+        "duplicateValidationScope": "ENTIRE_PORTAL"
+    })
+    .to_string();
+    let part = match reqwest::multipart::Part::bytes(pdf_bytes)
+        .file_name(filename.to_string())
+        .mime_str("application/pdf") {
+        Ok(p) => p,
+        Err(e) => return json!({ "error": format!("multipart part failed: {e}") }),
+    };
+    let form = reqwest::multipart::Form::new()
+        .part("file", part)
+        .text("folderPath", "/DXD Signoffs")
+        .text("options", options);
+
+    let upload_res = state
+        .http
+        .post("https://api.hubapi.com/files/v3/files")
+        .bearer_auth(&token)
+        .multipart(form)
+        .send()
+        .await;
+    let upload_json: Value = match upload_res {
+        Ok(r) => {
+            if !r.status().is_success() {
+                let status = r.status();
+                let body = r.text().await.unwrap_or_default();
+                return json!({ "error": format!("HubSpot Files {}: {}", status.as_u16(), body) });
+            }
+            match r.json::<Value>().await {
+                Ok(j) => j,
+                Err(e) => return json!({ "error": format!("HubSpot Files JSON: {e}") }),
+            }
+        }
+        Err(e) => return json!({ "error": format!("HubSpot Files request failed: {e}") }),
+    };
+    let file_id = match upload_json.get("id").and_then(|v| v.as_str()) {
+        Some(s) => s.to_string(),
+        None => return json!({ "error": "HubSpot Files: response missing id", "raw": upload_json }),
+    };
+
+    // 2. Create a note referencing the file and associate it with the deal.
+    //    associationTypeId 214 = note_to_deal (HubSpot-defined).
+    let now_ms = chrono::Utc::now().timestamp_millis();
+    let note_body = format!(
+        "<p><strong>Customer signoff PDF attached from DXD Ops Tracker.</strong></p>\
+         <ul>\
+           <li><b>Project:</b> {}</li>\
+           <li><b>Client:</b> {}</li>\
+           <li><b>Site:</b> {}</li>\
+         </ul>",
+        html_escape(project), html_escape(client), html_escape(site)
+    );
+    let note_payload = json!({
+        "properties": {
+            "hs_note_body": note_body,
+            "hs_timestamp": now_ms,
+            "hs_attachment_ids": file_id,
+        },
+        "associations": [{
+            "to": { "id": deal_id },
+            "types": [{ "associationCategory": "HUBSPOT_DEFINED", "associationTypeId": 214 }]
+        }]
+    });
+
+    let note_res = state
+        .http
+        .post("https://api.hubapi.com/crm/v3/objects/notes")
+        .bearer_auth(&token)
+        .header("content-type", "application/json")
+        .json(&note_payload)
+        .send()
+        .await;
+    match note_res {
+        Ok(r) => {
+            if !r.status().is_success() {
+                let status = r.status();
+                let body = r.text().await.unwrap_or_default();
+                return json!({
+                    "fileId": file_id,
+                    "error": format!("HubSpot Note {}: {}", status.as_u16(), body)
+                });
+            }
+            match r.json::<Value>().await {
+                Ok(note) => json!({ "fileId": file_id, "note": note }),
+                Err(_) => json!({ "fileId": file_id, "note": null }),
+            }
+        }
+        Err(e) => json!({ "fileId": file_id, "error": format!("HubSpot Note request failed: {e}") }),
+    }
 }
 
 fn html_escape(s: &str) -> String {
