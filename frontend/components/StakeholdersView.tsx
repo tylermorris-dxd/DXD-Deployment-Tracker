@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import { api } from '@/lib/api'
 import type { ProjectFull, HubSpotDeal, HubSpotContact } from '@/lib/types'
+import Avatar from './Avatar'
 
 interface Stakeholder {
   id: string
@@ -152,7 +153,8 @@ export default function StakeholdersView({ project, onUpdate, hubspotDeal }: Pro
             {hsContacts.map((c: HubSpotContact) => {
               const name = [c.properties.firstname, c.properties.lastname].filter(Boolean).join(' ') || '—'
               return (
-                <div key={c.id} style={{ background: 'rgba(255,152,0,0.04)', border: '1px solid rgba(255,152,0,0.15)', borderRadius: 10, padding: '14px 20px', display: 'grid', gridTemplateColumns: '2fr 1.5fr 1.5fr 1fr', gap: 12, alignItems: 'center' }}>
+                <div key={c.id} style={{ background: 'rgba(255,152,0,0.04)', border: '1px solid rgba(255,152,0,0.15)', borderRadius: 10, padding: '14px 20px', display: 'grid', gridTemplateColumns: '44px 2fr 1.5fr 1.5fr 1fr', gap: 14, alignItems: 'center' }}>
+                  <Avatar name={name} email={c.properties.email} ring="rgba(255,152,0,0.4)" />
                   <div>
                     <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 13, fontWeight: 700, color: '#E8ECF4', letterSpacing: 0.3 }}>{name}</div>
                     {c.properties.company && <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>{c.properties.company}</div>}
@@ -177,8 +179,9 @@ export default function StakeholdersView({ project, onUpdate, hubspotDeal }: Pro
           {stakeholders.map(s => (
             <div
               key={s.id}
-              style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, padding: '16px 20px', display: 'grid', gridTemplateColumns: '2fr 1.5fr 1.5fr 1fr auto', gap: 12, alignItems: 'center' }}
+              style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, padding: '16px 20px', display: 'grid', gridTemplateColumns: '44px 2fr 1.5fr 1.5fr 1fr auto', gap: 14, alignItems: 'center' }}
             >
+              <Avatar name={s.name} email={s.email} />
               <div>
                 <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 13, fontWeight: 700, color: '#E8ECF4', letterSpacing: 0.3 }}>{s.name}</div>
                 {s.company && <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>{s.company}</div>}
