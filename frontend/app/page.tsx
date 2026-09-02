@@ -12,6 +12,7 @@ import CostEstimator from '@/components/CostEstimator'
 import DroneTeviApp from '@/components/DroneTeviApp'
 import EventPricingApp from '@/components/EventPricingApp'
 import JobEstimator from '@/components/JobEstimator'
+import CommandPalette from '@/components/CommandPalette'
 
 export type MainTab = 'dashboard' | 'deals' | 'admin' | 'equipment' | 'cost' | 'product' | 'events' | 'job-est'
 
@@ -137,6 +138,7 @@ export default function Home() {
   const [panelId, setPanelId] = useState<string | null>(null)
   const [newDealOpen, setNewDealOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [paletteOpen, setPaletteOpen] = useState(false)
   const isMobile = useIsMobile()
 
   const openDeal = (id: string) => setPanelId(id)
@@ -147,6 +149,18 @@ export default function Home() {
   // drawer covering the page). Also close it whenever we transition off
   // mobile (rotate the phone or resize the browser).
   useEffect(() => { if (!isMobile) setMobileMenuOpen(false) }, [isMobile])
+
+  // Cmd/Ctrl+K opens the command palette from anywhere in the app.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setPaletteOpen(v => !v)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   const activeLabel = MENU_ITEMS.find(m => m.id === tab)?.label ?? 'Menu'
 
@@ -195,6 +209,25 @@ export default function Home() {
 
         {/* Right actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 20px', borderLeft: `1px solid ${C.border}`, height: '100%', flexShrink: 0 }}>
+          {!isMobile && (
+            <button
+              onClick={() => setPaletteOpen(true)}
+              title="Quick search (⌘K)"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px 6px 12px',
+                background: 'rgba(255,255,255,0.04)', border: `1px solid ${C.border}`,
+                borderRadius: 7, color: C.text2, fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 11, cursor: 'pointer', letterSpacing: 0.3,
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ color: C.muted }}>
+                <circle cx="5" cy="5" r="3.5" stroke="currentColor" strokeWidth="1.3" />
+                <line x1="7.5" y1="7.5" x2="10" y2="10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+              </svg>
+              Search
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: C.muted, background: '#0d1017', border: `1px solid ${C.border}`, borderRadius: 3, padding: '1px 5px', marginLeft: 4 }}>⌘K</span>
+            </button>
+          )}
           <button onClick={() => setNewDealOpen(true)} style={{ padding: '7px 18px', background: C.red, border: 'none', borderRadius: 7, color: '#fff', fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 11, letterSpacing: 0.5, cursor: 'pointer' }}>
             New Deal
           </button>
@@ -273,6 +306,14 @@ export default function Home() {
           <ProjectView projectId={panelId} onBack={closeDeal} />
         </div>
       )}
+
+      {/* ── Cmd/Ctrl+K command palette ──────────────────────────────────────── */}
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        onOpenDeal={id => { setPaletteOpen(false); openDeal(id) }}
+        onSwitchTab={t => { setPaletteOpen(false); setTab(t); setPanelId(null) }}
+      />
 
       {/* ── New Deal modal ───────────────────────────────────────────────────── */}
       {newDealOpen && (
