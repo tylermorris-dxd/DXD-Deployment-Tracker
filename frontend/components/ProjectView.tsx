@@ -90,7 +90,7 @@ const TABS: Array<{ id: ViewMode; label: string; icon: React.ReactNode }> = [
 
 export default function ProjectView({ projectId, onBack }: Props) {
   const qc = useQueryClient()
-  const [viewMode, setViewMode]             = useState<ViewMode>('stakeholders')
+  const [viewMode, setViewMode]             = useState<ViewMode>('airspace')
   const [opsMaximized, setOpsMaximized]     = useState(false)
   const [hsOpen, setHsOpen]                 = useState(true)
 
@@ -177,11 +177,6 @@ export default function ProjectView({ projectId, onBack }: Props) {
     )
   }
 
-  // ── Derived stats ─────────────────────────────────────────────────────────
-  const totalTasks  = project.phases.reduce((a, ph) => a + ph.tasks.filter(t => t.stageNumber !== 11 && t.stageNumber !== 12).length, 0)
-  const doneTasks   = project.phases.reduce((a, ph) => a + ph.tasks.filter(t => t.completed && t.stageNumber !== 11 && t.stageNumber !== 12).length, 0)
-  const overallPct  = totalTasks ? Math.round((doneTasks / totalTasks) * 100) : 0
-
   return (
     <div style={{ maxWidth: opsMaximized ? '100%' : 1200, margin: '0 auto', padding: '0 0 40px 0' }}>
       {/* ── Top Bar ────────────────────────────────────────────────────────── */}
@@ -202,21 +197,6 @@ export default function ProjectView({ projectId, onBack }: Props) {
               {project.site && (
                 <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: 'rgba(255,255,255,0.28)' }}>📍 {project.site}</span>
               )}
-            </div>
-          </div>
-
-          {/* Overall progress ring */}
-          <div style={{ position: 'relative', width: 44, height: 44, flexShrink: 0 }}>
-            <svg width="44" height="44" viewBox="0 0 44 44">
-              <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="3.5" />
-              <circle cx="22" cy="22" r="18" fill="none" stroke="#E53935" strokeWidth="3.5" strokeLinecap="round"
-                strokeDasharray={`${(overallPct / 100) * 113.1} 113.1`}
-                transform="rotate(-90 22 22)"
-                style={{ transition: 'stroke-dasharray 0.6s ease' }}
-              />
-            </svg>
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, fontWeight: 700, color: '#E53935', lineHeight: 1 }}>{overallPct}%</span>
             </div>
           </div>
 
