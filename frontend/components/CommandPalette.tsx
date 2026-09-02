@@ -1,20 +1,25 @@
 'use client'
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import type { ProjectSummary, HubSpotActiveDeal } from '@/lib/types'
 import type { MainTab } from '@/app/page'
+import { showToast, showUndoableToast } from '@/lib/toast'
+import { logActivity } from '@/lib/activity'
+import { sfx } from '@/lib/sfx'
 
 // Cmd/Ctrl+K command palette.
 //
 // Two kinds of results:
-//   • Deals   — every pinned + local project. Enter opens the deal.
-//   • Views   — the top-level tabs. Enter switches to that tab.
+//   • Deals    — every pinned + local project. Enter opens the deal.
+//   • Views    — the top-level tabs. Enter switches to that tab.
+//   • Actions  — verb-prefixed queries generate contextual state-changing
+//                actions (mark <deal> steady, delete <deal>, etc.). Actions
+//                appear at the top of the list when a verb prefix is
+//                recognized so Enter fires the intended mutation.
 //
-// Fuzzy match is a simple subsequence check (each char of the query must
-// appear in the target in order). It's cheap, forgiving of typos, and
-// produces the "spotlight feel" without a search library.
+// Fuzzy match is a simple subsequence check for name lookups.
 
 interface Props {
   open: boolean
@@ -23,9 +28,11 @@ interface Props {
   onSwitchTab: (tab: MainTab) => void
 }
 
+type Kind = 'deal' | 'view' | 'action'
+
 interface Item {
   key: string
-  kind: 'deal' | 'view'
+  kind: Kind
   title: string
   subtitle?: string
   accent: string
@@ -44,6 +51,47 @@ const VIEW_ENTRIES: Array<{ tab: MainTab; title: string; subtitle: string }> = [
   { tab: 'product',   title: 'Products',        subtitle: 'Drone TEVI matrix' },
 ]
 
+// ── Verb parsing ────────────────────────────────────────────────────────────
+// A recognized verb rearranges the palette to show state-changing actions
+// against the best-matched deal. The verb table doubles as user-facing help.
+
+type Verb =
+  | 'mark-steady'
+  | 'unmark-steady'
+  | 'mark-faa'
+  | 'unmark-faa'
+  | 'delete'
+  | 'open'
+
+interface ParsedQuery {
+  verb: Verb | null
+  needle: string // remaining text after stripping the verb (used to match a deal)
+}
+
+// Case-insensitive prefix matcher. Longest match wins so "unmark" beats "mark".
+function parseVerb(q: string): ParsedQuery {
+  const raw = q.trim().toLowerCase()
+  if (!raw) return { verb: null, needle: '' }
+  // Ordered by specificity — longer prefixes first.
+  const table: Array<[RegExp, Verb]> = [
+    [/^unmark\s+(.+?)\s+steady\b/, 'unmark-steady'],
+    [/^unmark\s+(.+?)\s+faa\b/,    'unmark-faa'],
+    [/^remove\s+(.+?)\s+steady\b/, 'unmark-steady'],
+    [/^remove\s+(.+?)\s+faa\b/,    'unmark-faa'],
+    [/^mark\s+(.+?)\s+steady\b/,   'mark-steady'],
+    [/^mark\s+(.+?)\s+faa\b/,      'mark-faa'],
+    [/^delete\s+(.+)$/,            'delete'],
+    [/^open\s+(.+)$/,              'open'],
+  ]
+  for (const [re, verb] of table) {
+    const m = raw.match(re)
+    if (m) return { verb, needle: m[1].trim() }
+  }
+  return { verb: null, needle: raw }
+}
+
+// ── Fuzzy score ─────────────────────────────────────────────────────────────
+
 function subseqScore(query: string, target: string): number {
   if (!query) return 1
   const q = query.toLowerCase()
@@ -59,12 +107,29 @@ function subseqScore(query: string, target: string): number {
     }
   }
   if (qi < q.length) return 0
-  // Reward matches at word boundaries, contiguous matches, and shorter targets
   const startBonus = t.startsWith(q) ? 20 : 0
   return 10 + startBonus + contiguousBonus - t.length * 0.05
 }
 
+// Best-matching project for a needle, or null if nothing scores.
+function bestProject(needle: string, projects: ProjectSummary[]): ProjectSummary | null {
+  if (!needle) return null
+  let best: { p: ProjectSummary; score: number } | null = null
+  for (const p of projects) {
+    const s = Math.max(
+      subseqScore(needle, p.name),
+      subseqScore(needle, p.client) * 0.9,
+      subseqScore(needle, p.site)   * 0.8,
+    )
+    if (s > 0 && (!best || s > best.score)) best = { p, score: s }
+  }
+  return best?.p ?? null
+}
+
+// ── Component ───────────────────────────────────────────────────────────────
+
 export default function CommandPalette({ open, onClose, onOpenDeal, onSwitchTab }: Props) {
+  const qc = useQueryClient()
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -87,15 +152,92 @@ export default function CommandPalette({ open, onClose, onOpenDeal, onSwitchTab 
     [activeDeals],
   )
 
+  // Single mutation that all state-change actions funnel through. Handles
+  // invalidation, activity logging, and toasts.
+  const toggleMut = useMutation({
+    mutationFn: (args: { id: string; patch: { steadyState?: boolean; faaAuthorizationRequired?: boolean }; label: string; subject: string; kind: 'steady-on' | 'steady-off' | 'faa-on' | 'faa-off' }) =>
+      api.projects.update(args.id, args.patch),
+    onSuccess: (_data, args) => {
+      qc.invalidateQueries({ queryKey: ['projects'] })
+      qc.invalidateQueries({ queryKey: ['project', args.id] })
+      logActivity({ kind: args.kind, subject: args.subject, projectId: args.id })
+      showToast({ title: args.label, detail: args.subject, tone: 'success' })
+    },
+    onError: (e) => showToast({ title: 'Update failed', detail: (e as Error).message, tone: 'error' }),
+  })
+  const deleteMut = useMutation({
+    mutationFn: (id: string) => api.projects.delete(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['projects'] }),
+  })
+
+  const parsed = useMemo(() => parseVerb(query), [query])
+
   const items: Item[] = useMemo(() => {
+    // ── Action items ────────────────────────────────────────────────────
+    // Only surface actions when a verb is recognized. Ranked at the top.
+    const actionItems: Array<Item & { score: number }> = []
+    if (parsed.verb) {
+      const target = bestProject(parsed.needle, projects)
+      if (target) {
+        const dealName = dealMap.get(target.id)?.deal.properties.dealname ?? target.name
+        const shared = { kind: 'action' as const, score: 1000, subtitle: dealName }
+        switch (parsed.verb) {
+          case 'mark-steady':
+            actionItems.push({
+              ...shared, key: `act:steady-on:${target.id}`, title: `Mark ${dealName} steady state`,
+              accent: '#3FB95A',
+              onSelect: () => toggleMut.mutate({ id: target.id, patch: { steadyState: true },  label: 'Marked steady state', subject: dealName, kind: 'steady-on'  }),
+            }); break
+          case 'unmark-steady':
+            actionItems.push({
+              ...shared, key: `act:steady-off:${target.id}`, title: `Return ${dealName} to active deployment`,
+              accent: '#3FB95A',
+              onSelect: () => toggleMut.mutate({ id: target.id, patch: { steadyState: false }, label: 'Returned to active',    subject: dealName, kind: 'steady-off' }),
+            }); break
+          case 'mark-faa':
+            actionItems.push({
+              ...shared, key: `act:faa-on:${target.id}`, title: `Enable FAA tracking on ${dealName}`,
+              accent: '#3b82f6',
+              onSelect: () => toggleMut.mutate({ id: target.id, patch: { faaAuthorizationRequired: true },  label: 'FAA tracking on',  subject: dealName, kind: 'faa-on'  }),
+            }); break
+          case 'unmark-faa':
+            actionItems.push({
+              ...shared, key: `act:faa-off:${target.id}`, title: `Disable FAA tracking on ${dealName}`,
+              accent: '#3b82f6',
+              onSelect: () => toggleMut.mutate({ id: target.id, patch: { faaAuthorizationRequired: false }, label: 'FAA tracking off', subject: dealName, kind: 'faa-off' }),
+            }); break
+          case 'open':
+            actionItems.push({
+              ...shared, key: `act:open:${target.id}`, title: `Open ${dealName}`,
+              accent: '#e8eaf0',
+              onSelect: () => onOpenDeal(target.id),
+            }); break
+          case 'delete':
+            actionItems.push({
+              ...shared, key: `act:delete:${target.id}`, title: `Delete ${dealName}`,
+              accent: '#D2232A',
+              subtitle: 'Undoable for 7 seconds after confirming',
+              onSelect: () => showUndoableToast({
+                title: `Deleted "${dealName}"`,
+                detail: 'Deal removed. Click Undo to keep it.',
+                undoLabel: 'Undo', durationMs: 7000,
+                onCommit: () => { deleteMut.mutate(target.id); logActivity({ kind: 'deal-deleted', subject: dealName }) },
+                onCancel: () => showToast({ title: 'Deletion cancelled', detail: dealName, tone: 'info', durationMs: 2000 }),
+              }),
+            }); break
+        }
+      }
+    }
+
+    // ── Deal items ─────────────────────────────────────────────────────
+    const needleForScore = parsed.verb ? parsed.needle : query
     const dealItems: Array<Item & { score: number }> = projects.map((p: ProjectSummary) => {
       const hs = dealMap.get(p.id)
       const dealName = hs?.deal.properties.dealname ?? p.name
-      const hay = [dealName, p.client, p.site].filter(Boolean).join(' · ')
       const score = Math.max(
-        subseqScore(query, dealName),
-        subseqScore(query, p.client || '') * 0.9,
-        subseqScore(query, p.site || '') * 0.8,
+        subseqScore(needleForScore, dealName),
+        subseqScore(needleForScore, p.client || '') * 0.9,
+        subseqScore(needleForScore, p.site || '')   * 0.8,
       )
       return {
         key:      `deal:${p.id}`,
@@ -104,9 +246,11 @@ export default function CommandPalette({ open, onClose, onOpenDeal, onSwitchTab 
         subtitle: [p.client, p.site].filter(Boolean).join(' · ') || 'No client · No site',
         accent:   p.steadyState ? '#3FB95A' : '#E53935',
         onSelect: () => onOpenDeal(p.id),
-        score:    score + (query ? 0 : (hay.length > 0 ? 0.1 : 0)),
+        score,
       }
     })
+
+    // ── View items ─────────────────────────────────────────────────────
     const viewItems: Array<Item & { score: number }> = VIEW_ENTRIES.map(v => ({
       key:      `view:${v.tab}`,
       kind:     'view' as const,
@@ -116,19 +260,17 @@ export default function CommandPalette({ open, onClose, onOpenDeal, onSwitchTab 
       onSelect: () => onSwitchTab(v.tab),
       score:    Math.max(subseqScore(query, v.title), subseqScore(query, v.subtitle) * 0.7),
     }))
-    const combined = [...dealItems, ...viewItems]
+
+    const combined = [...actionItems, ...dealItems, ...viewItems]
     const filtered = query
       ? combined.filter(i => i.score > 0)
       : combined
     filtered.sort((a, b) => b.score - a.score)
-    return filtered.slice(0, 12)
-  }, [projects, dealMap, query, onOpenDeal, onSwitchTab])
+    return filtered.slice(0, 14)
+  }, [projects, dealMap, query, parsed, onOpenDeal, onSwitchTab, toggleMut, deleteMut])
 
-  // Reset selection whenever the visible list changes so the highlight
-  // doesn't fall off the end after typing.
   useEffect(() => { setSelected(0) }, [query, items.length])
 
-  // Focus the input on open and clear stale state when we close.
   useEffect(() => {
     if (open) {
       const id = setTimeout(() => inputRef.current?.focus(), 20)
@@ -146,7 +288,7 @@ export default function CommandPalette({ open, onClose, onOpenDeal, onSwitchTab 
     if (e.key === 'Enter') {
       e.preventDefault()
       const item = items[selected]
-      if (item) { item.onSelect(); onClose() }
+      if (item) { item.onSelect(); sfx.click(); onClose() }
     }
   }
 
@@ -183,7 +325,7 @@ export default function CommandPalette({ open, onClose, onOpenDeal, onSwitchTab 
             value={query}
             onChange={e => setQuery(e.target.value)}
             onKeyDown={onKeyDown}
-            placeholder="Search deals, jump to a view…"
+            placeholder="Search deals, run a command…  e.g. mark austin steady"
             style={{
               flex: 1, background: 'transparent', border: 'none', outline: 'none',
               color: '#e8eaf0', fontFamily: 'Syne, sans-serif', fontSize: 16, letterSpacing: 0.2,
@@ -204,7 +346,7 @@ export default function CommandPalette({ open, onClose, onOpenDeal, onSwitchTab 
               <button
                 key={item.key}
                 onMouseEnter={() => setSelected(idx)}
-                onClick={() => { item.onSelect(); onClose() }}
+                onClick={() => { item.onSelect(); sfx.click(); onClose() }}
                 style={{
                   width: '100%', display: 'flex', alignItems: 'center', gap: 12,
                   padding: '10px 18px', background: active ? 'rgba(210,35,42,0.10)' : 'transparent',
@@ -221,8 +363,15 @@ export default function CommandPalette({ open, onClose, onOpenDeal, onSwitchTab 
                     {item.subtitle}
                   </span>
                 </span>
-                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: '#5a6380', letterSpacing: 1, textTransform: 'uppercase', flexShrink: 0 }}>
-                  {item.kind === 'deal' ? 'Deal' : 'View'}
+                <span style={{
+                  fontFamily: "'JetBrains Mono', monospace", fontSize: 9,
+                  color: item.kind === 'action' ? '#f59e0b' : '#5a6380',
+                  letterSpacing: 1, textTransform: 'uppercase', flexShrink: 0,
+                  background: item.kind === 'action' ? 'rgba(245,158,11,0.10)' : 'transparent',
+                  border: item.kind === 'action' ? '1px solid rgba(245,158,11,0.30)' : 'none',
+                  borderRadius: 4, padding: item.kind === 'action' ? '1px 6px' : 0,
+                }}>
+                  {item.kind === 'deal' ? 'Deal' : item.kind === 'view' ? 'View' : 'Action'}
                 </span>
               </button>
             )
@@ -230,10 +379,14 @@ export default function CommandPalette({ open, onClose, onOpenDeal, onSwitchTab 
         </div>
 
         {/* Footer legend */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 18px', borderTop: '1px solid #1e2432', background: '#0d1017', fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: '#5a6380' }}>
-          <span><kbd style={kbdSt}>↑</kbd><kbd style={kbdSt}>↓</kbd> to navigate</span>
-          <span><kbd style={kbdSt}>↵</kbd> to select</span>
-          <span style={{ marginLeft: 'auto' }}><kbd style={kbdSt}>⌘K</kbd> to toggle</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 18px', borderTop: '1px solid #1e2432', background: '#0d1017', fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: '#5a6380', flexWrap: 'wrap' }}>
+          <span><kbd style={kbdSt}>↑</kbd><kbd style={kbdSt}>↓</kbd> navigate</span>
+          <span><kbd style={kbdSt}>↵</kbd> select</span>
+          <span style={{ opacity: 0.7 }}>try:</span>
+          <span style={{ color: '#9aa3b8' }}>mark ✱ steady</span>
+          <span style={{ color: '#9aa3b8' }}>mark ✱ faa</span>
+          <span style={{ color: '#9aa3b8' }}>delete ✱</span>
+          <span style={{ marginLeft: 'auto' }}><kbd style={kbdSt}>⌘K</kbd></span>
         </div>
       </div>
     </div>
