@@ -7,6 +7,9 @@ import { geocodeAddressOrThrow } from '@/lib/geocode'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+// TFR + clear-to-fly panel — sits at the top of the results.
+import TfrPanel from './TfrPanel'
+
 interface Props {
   project: ProjectFull
   onCacheUpdate: (data: unknown) => void
@@ -456,6 +459,9 @@ export default function AirspaceIntel({ project, onCacheUpdate }: Props) {
       <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: 'rgba(255,255,255,0.25)', marginBottom: 12, paddingLeft: 4 }}>
         FAA UAS Facility Map · LAANC grid data · accepts address, venue name, or lat/lng coordinates
       </div>
+
+      {/* TFR + clear-to-fly countdown */}
+      {coords && !loading && <TfrPanel lat={coords.lat} lng={coords.lng} />}
 
       {/* Resolved address — visible immediately so user can verify */}
       {coords && !loading && (

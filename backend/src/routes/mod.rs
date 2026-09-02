@@ -12,6 +12,7 @@ pub mod project_attachments;
 pub mod projects;
 pub mod signoff_email;
 pub mod tasks;
+pub mod tfr;
 pub mod team;
 pub mod tevi;
 
@@ -32,6 +33,7 @@ pub fn api_router(state: AppState) -> Router {
         .merge(oem_specs::router())
         .merge(project_attachments::router())
         .merge(signoff_email::router())
+        .merge(tfr::router())
         .merge(misc::router())
         .with_state(state)
 }
