@@ -72,29 +72,33 @@ interface Pin {
 
 interface WeatherPoint { windMph: number; tempF: number }
 
-// ── Weather overlay: batched Open-Meteo call ────────────────────────────────
-// Open-Meteo lets us pass comma-separated coordinates in one request, so the
-// entire fleet's current wind + temp comes back in a single roundtrip.
+// ── Weather overlay: parallel Open-Meteo calls, one per pin ────────────────
+// Open-Meteo supports batching via comma-separated coordinates, but the
+// response shape flips between object (single) and array (multi) and hits a
+// URL-length limit once you pass ~30 coordinates. Simpler + more reliable:
+// fire one small request per pin with a low concurrency window.
 async function fetchFleetWeather(pins: Pin[]): Promise<Record<string, WeatherPoint>> {
   if (pins.length === 0) return {}
-  const lats = pins.map(p => p.lat.toFixed(4)).join(',')
-  const lngs = pins.map(p => p.lng.toFixed(4)).join(',')
-  const url  = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lngs}` +
-               `&current=wind_speed_10m,temperature_2m&wind_speed_unit=mph&temperature_unit=fahrenheit&timezone=UTC`
-  const res  = await fetch(url)
-  if (!res.ok) throw new Error(`Open-Meteo ${res.status}`)
-  const data = await res.json()
   const out: Record<string, WeatherPoint> = {}
-  // Single-coord requests return an object; multi-coord returns an array. Normalize.
-  const arr = Array.isArray(data) ? data : [data]
-  arr.forEach((entry, i) => {
-    const pin = pins[i]
-    if (!pin) return
-    const c = entry.current || {}
-    if (typeof c.wind_speed_10m === 'number' && typeof c.temperature_2m === 'number') {
-      out[pin.project.id] = { windMph: c.wind_speed_10m, tempF: c.temperature_2m }
-    }
+  const queue = pins.slice()
+  const runOne = async (p: Pin) => {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${p.lat.toFixed(4)}&longitude=${p.lng.toFixed(4)}` +
+                `&current=wind_speed_10m,temperature_2m&wind_speed_unit=mph&temperature_unit=fahrenheit&timezone=UTC`
+    try {
+      const res = await fetch(url)
+      if (!res.ok) return
+      const data = await res.json()
+      const c = data?.current
+      if (typeof c?.wind_speed_10m === 'number' && typeof c?.temperature_2m === 'number') {
+        out[p.project.id] = { windMph: c.wind_speed_10m, tempF: c.temperature_2m }
+      }
+    } catch { /* swallow — a missing point just won't get a weather ring */ }
+  }
+  // 6 in-flight max — plenty fast for a fleet under 40 pins without hammering.
+  const workers = new Array(Math.min(6, queue.length)).fill(0).map(async () => {
+    while (queue.length) { const p = queue.shift()!; await runOne(p) }
   })
+  await Promise.all(workers)
   return out
 }
 
@@ -128,8 +132,6 @@ export default function FleetMap({ onOpenDeal, height = 'calc(100vh - 120px)', c
   const [weather, setWeather] = useState<Record<string, WeatherPoint>>({})
   const [weatherLoading, setWeatherLoading] = useState(false)
 
-  // ── Time scrubber ──────────────────────────────────────────────────────
-  const [scrubTs, setScrubTs] = useState<number | null>(null) // null = show all
 
   const { data: projects = [] } = useQuery({
     queryKey: ['projects'],
@@ -155,16 +157,28 @@ export default function FleetMap({ onOpenDeal, height = 'calc(100vh - 120px)', c
     const L = (window as any).L
     const map = L.map(containerRef.current, {
       center: [39.5, -98.35], zoom: 4,
-      preferCanvas: true,
+      // SVG renderer (Leaflet default without preferCanvas). Vector overlays
+      // like L.circle render more reliably here than on canvas at zoom
+      // extremes, and we're only drawing a few dozen shapes.
       zoomControl: !compact,
       attributionControl: false,
     })
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      subdomains: 'abcd', maxZoom: 19,
+    // OpenStreetMap tiles (no key, no rate-limit surprise) darkened via CSS
+    // filter on the tile pane. Carto's dark_all endpoint started returning
+    // "API key required" tiles when the free tier is exceeded — this dodges
+    // that entirely.
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
     }).addTo(map)
-    pinLayerRef.current      = L.layerGroup().addTo(map)
+    const tilePane = map.getPane('tilePane') as HTMLElement | null
+    if (tilePane) tilePane.style.filter = 'invert(0.94) hue-rotate(180deg) brightness(0.95) saturate(0.6)'
+    // Explicit SVG renderer for overlays so circles always paint.
+    const svgRenderer = L.svg()
     airspaceLayerRef.current = L.layerGroup().addTo(map)
     weatherLayerRef.current  = L.layerGroup().addTo(map)
+    pinLayerRef.current      = L.layerGroup().addTo(map)
+    // Attach renderer to the map so L.circle picks it up automatically.
+    svgRenderer.addTo(map)
     mapRef.current = map
   }, [ready, compact])
 
@@ -215,11 +229,8 @@ export default function FleetMap({ onOpenDeal, height = 'calc(100vh - 120px)', c
     return () => { cancelled = true }
   }, [projects, dealMap])
 
-  // Pins filtered by time scrubber (if active).
-  const visiblePins = useMemo(() => {
-    if (scrubTs == null) return pins
-    return pins.filter(p => p.createdAt <= scrubTs)
-  }, [pins, scrubTs])
+  // The scrubber was removed — always show every pin (current ops only).
+  const visiblePins = pins
 
   // Render pins whenever the visible set changes.
   useEffect(() => {
@@ -261,13 +272,11 @@ export default function FleetMap({ onOpenDeal, height = 'calc(100vh - 120px)', c
       m.on('click', () => onOpenDeal(pin.project.id))
     }
 
-    // Only auto-fit when the scrubber isn't active (so panning during
-    // scrubbing doesn't jump around).
-    if (scrubTs == null && visiblePins.length > 0) {
+    if (visiblePins.length > 0) {
       const bounds = visiblePins.map(p => [p.lat, p.lng]) as [number, number][]
       try { mapRef.current.fitBounds(bounds, { padding: [60, 60], maxZoom: 12 }) } catch { /* single-pin edge case */ }
     }
-  }, [visiblePins, onOpenDeal, showWeather, weather, scrubTs])
+  }, [visiblePins, onOpenDeal, showWeather, weather])
 
   // Render airspace ops-area rings.
   useEffect(() => {
@@ -337,13 +346,6 @@ export default function FleetMap({ onOpenDeal, height = 'calc(100vh - 120px)', c
     return c
   }, [visiblePins])
 
-  // Scrubber range from earliest pin to today.
-  const scrubRange = useMemo(() => {
-    if (pins.length === 0) return null
-    const earliest = pins.reduce((m, p) => Math.min(m, p.createdAt), Date.now())
-    return { min: earliest, max: Date.now() }
-  }, [pins])
-
   return (
     <div style={{
       position: 'relative', height, background: '#0a0b0d',
@@ -392,7 +394,7 @@ export default function FleetMap({ onOpenDeal, height = 'calc(100vh - 120px)', c
       {!compact && (
         <div style={{
           position: 'absolute',
-          top: isMobile ? 'auto' : 14, bottom: isMobile ? 76 : 'auto', left: 14,
+          top: isMobile ? 'auto' : 14, bottom: isMobile ? 14 : 'auto', left: 14,
           zIndex: 500,
           background: 'rgba(10,11,13,0.85)', border: '1px solid #252b38', borderRadius: 8,
           padding: isMobile ? '8px 12px' : '10px 14px', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
@@ -420,21 +422,10 @@ export default function FleetMap({ onOpenDeal, height = 'calc(100vh - 120px)', c
         </div>
       )}
 
-      {/* Time scrubber */}
-      {!compact && scrubRange && pins.length > 1 && (
-        <TimeScrubber
-          min={scrubRange.min}
-          max={scrubRange.max}
-          value={scrubTs ?? scrubRange.max}
-          active={scrubTs != null}
-          onChange={setScrubTs}
-        />
-      )}
-
       {/* Status footer */}
       {!compact && pending > 0 && (
         <div style={{
-          position: 'absolute', bottom: 70, right: 14, zIndex: 500,
+          position: 'absolute', bottom: 14, right: 14, zIndex: 500,
           background: 'rgba(10,11,13,0.85)', border: '1px solid #252b38', borderRadius: 8,
           padding: '8px 12px', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
           fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: '#e8eaf0',
@@ -495,93 +486,6 @@ function OverlayToggle({ active, onClick, label, color, loading }: {
       }} />
       {label}
     </button>
-  )
-}
-
-function TimeScrubber({ min, max, value, active, onChange }: {
-  min: number; max: number; value: number; active: boolean; onChange: (v: number | null) => void
-}) {
-  const [playing, setPlaying] = useState(false)
-  const rafRef = useRef<number | null>(null)
-  // Track the current scrubber value in a ref so the animation loop can
-  // advance without a stale closure on `value`.
-  const valueRef = useRef(value)
-  valueRef.current = value
-
-  useEffect(() => {
-    if (!playing) { if (rafRef.current) cancelAnimationFrame(rafRef.current); return }
-    const step = () => {
-      const next = valueRef.current + (max - min) / 300 // ~5s full sweep at 60fps
-      if (next >= max) {
-        setPlaying(false)
-        onChange(null)
-        return
-      }
-      onChange(next)
-      rafRef.current = requestAnimationFrame(step)
-    }
-    rafRef.current = requestAnimationFrame(step)
-    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
-  }, [playing, min, max, onChange])
-
-  const date = new Date(value)
-  const pct = ((value - min) / (max - min)) * 100
-
-  return (
-    <div style={{
-      position: 'absolute', left: 14, right: 14, bottom: 14, zIndex: 500,
-      background: 'rgba(10,11,13,0.9)', border: '1px solid #252b38', borderRadius: 8,
-      padding: '10px 14px', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
-      display: 'flex', alignItems: 'center', gap: 12,
-    }}>
-      <button
-        onClick={() => {
-          if (!active) onChange(min)
-          setPlaying(v => !v)
-        }}
-        title={playing ? 'Pause' : 'Play timeline'}
-        style={{
-          width: 30, height: 30, borderRadius: 6, background: playing ? '#D2232A' : 'rgba(255,255,255,0.05)',
-          border: `1px solid ${playing ? '#D2232A' : '#252b38'}`,
-          color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
-        }}
-      >
-        {playing ? (
-          <svg width="10" height="10" viewBox="0 0 10 10"><rect x="2" y="1" width="2" height="8" fill="#fff"/><rect x="6" y="1" width="2" height="8" fill="#fff"/></svg>
-        ) : (
-          <svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 1v8l7-4z" fill="#fff"/></svg>
-        )}
-      </button>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, color: '#5a6380', marginBottom: 4 }}>
-          <span>{new Date(min).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
-          <span style={{ color: active ? '#D2232A' : '#9aa3b8', fontWeight: 700 }}>
-            {active ? date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'All time'}
-          </span>
-          <span>{new Date(max).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
-        </div>
-        <div style={{ position: 'relative', height: 6 }}>
-          <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.06)', borderRadius: 3 }} />
-          <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${pct}%`, background: 'linear-gradient(90deg, #7a1c22, #D2232A)', borderRadius: 3 }} />
-          <input
-            type="range"
-            min={min} max={max}
-            value={value}
-            onChange={e => { setPlaying(false); onChange(Number(e.target.value)) }}
-            style={{ position: 'absolute', inset: 0, width: '100%', margin: 0, opacity: 0, cursor: 'ew-resize' }}
-          />
-        </div>
-      </div>
-      {active && (
-        <button
-          onClick={() => { setPlaying(false); onChange(null) }}
-          title="Show all time"
-          style={{ padding: '4px 8px', background: 'transparent', border: '1px solid #252b38', borderRadius: 5, color: '#9aa3b8', cursor: 'pointer', fontFamily: "'IBM Plex Mono', monospace", fontSize: 10 }}
-        >
-          Clear
-        </button>
-      )}
-    </div>
   )
 }
 
