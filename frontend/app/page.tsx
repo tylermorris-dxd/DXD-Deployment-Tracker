@@ -21,6 +21,7 @@ import ShortcutHelp from '@/components/ShortcutHelp'
 import FleetCopilot from '@/components/FleetCopilot'
 import CommandBridge from '@/components/CommandBridge'
 import ConstellationView from '@/components/ConstellationView'
+import { withViewTransition, markZoomOrigin } from '@/lib/transitions'
 import { sfx } from '@/lib/sfx'
 import { useIsMobile } from '@/lib/useIsMobile'
 
@@ -163,8 +164,11 @@ export default function Home() {
   const [bridgeOpen, setBridgeOpen] = useState(false)
   const isMobile = useIsMobile()
 
-  const openDeal = (id: string) => setPanelId(id)
-  const closeDeal = () => setPanelId(null)
+  // openDeal is wrapped in a view transition so the fullscreen panel
+  // grows from wherever the operator just clicked (whether that was a
+  // card, a palette result, a map pin, or the copilot). See lib/transitions.
+  const openDeal = (id: string) => withViewTransition(() => setPanelId(id))
+  const closeDeal = () => withViewTransition(() => setPanelId(null))
 
   // Close the drawer whenever we switch tabs so tapping a sidebar entry
   // takes the user straight to the content (rather than leaving the
@@ -352,7 +356,12 @@ export default function Home() {
             <SidebarCard
               key={item.id}
               active={tab === item.id}
-              onClick={() => { if (tab !== item.id) sfx.whoosh(); setTab(item.id); setMobileMenuOpen(false) }}
+              onClick={e => {
+                if (tab === item.id) { setMobileMenuOpen(false); return }
+                sfx.whoosh()
+                markZoomOrigin(e)
+                withViewTransition(() => { setTab(item.id); setMobileMenuOpen(false) })
+              }}
               icon={item.icon}
               label={item.label}
             />
@@ -388,8 +397,13 @@ export default function Home() {
           position: 'fixed', inset: 0,
           background: '#0a0b0d',
           zIndex: 300, overflowY: 'auto',
+          // viewTransitionName participates in the browser's view transition
+          // API so the panel grows out of / collapses back to the click point.
+          // Where View Transitions isn't supported, the fallback is a
+          // simple fade — no visual regression.
+          viewTransitionName: 'deal-panel',
           animation: 'fadeSlideIn 0.2s ease',
-        }}>
+        } as React.CSSProperties}>
           <ProjectView projectId={panelId} onBack={closeDeal} />
         </div>
       )}
@@ -434,7 +448,7 @@ export default function Home() {
 
 function SidebarCard({
   active, onClick, icon, label,
-}: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) {
+}: { active: boolean; onClick: (e: React.MouseEvent<HTMLButtonElement>) => void; icon: React.ReactNode; label: string }) {
   const [hover, setHover] = useState(false)
   const bg = active
     ? 'rgba(210,35,42,0.13)'

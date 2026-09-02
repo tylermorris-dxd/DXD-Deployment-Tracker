@@ -10,6 +10,7 @@ import { showUndoableToast, showToast } from '@/lib/toast'
 import { logActivity } from '@/lib/activity'
 import { pickLoadingPhrase } from '@/lib/loadingPhrases'
 import { useSettings } from '@/lib/settings'
+import { markZoomOrigin } from '@/lib/transitions'
 
 type SortMode = 'newest' | 'oldest' | 'value' | 'name'
 type FilterMode = 'all' | 'hubspot' | 'faa'
@@ -429,7 +430,7 @@ function ProjectCard({ proj, index, activeDeal, accent, compact, onOpen, onDelet
 
   return (
     <div
-      onClick={onOpen}
+      onClick={e => { markZoomOrigin(e); onOpen() }}
       style={{
         background: compact
           ? 'linear-gradient(160deg, rgba(28,28,32,0.85), rgba(20,20,24,0.9))'

@@ -247,6 +247,45 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           @keyframes slideInRight { from { transform:translateX(100%); opacity:0; } to { transform:translateX(0); opacity:1; } }
           @keyframes spin  { from { transform:rotate(0deg); }   to { transform:rotate(360deg); } }
           @keyframes pulse { 0%,100% { opacity:0.4; } 50% { opacity:1; } }
+
+          /* Cinematic view transitions — Chrome/Edge/Safari 18+. Falls back
+             to no animation elsewhere. --dxd-zoom-x/y are set by
+             lib/transitions.ts to the last click point so the panel grows
+             from wherever the operator interacted. */
+          @keyframes dxd-zoom-in {
+            from {
+              opacity: 0;
+              clip-path: circle(0px at var(--dxd-zoom-x, 50%) var(--dxd-zoom-y, 50%));
+              transform: scale(0.98);
+            }
+            to {
+              opacity: 1;
+              clip-path: circle(150% at var(--dxd-zoom-x, 50%) var(--dxd-zoom-y, 50%));
+              transform: scale(1);
+            }
+          }
+          @keyframes dxd-zoom-out {
+            from {
+              opacity: 1;
+              clip-path: circle(150% at var(--dxd-zoom-x, 50%) var(--dxd-zoom-y, 50%));
+            }
+            to {
+              opacity: 0;
+              clip-path: circle(0px at var(--dxd-zoom-x, 50%) var(--dxd-zoom-y, 50%));
+            }
+          }
+          @keyframes dxd-tab-in  { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+          @keyframes dxd-tab-out { from { opacity: 1; } to { opacity: 0; } }
+
+          ::view-transition-old(root) { animation: dxd-tab-out 0.18s ease forwards; }
+          ::view-transition-new(root) { animation: dxd-tab-in  0.28s cubic-bezier(0.32, 0.72, 0, 1) forwards; }
+          ::view-transition-old(root),
+          ::view-transition-new(root) { mix-blend-mode: normal; }
+
+          /* When the deal panel opens/closes it grows from / collapses to
+             the last click coordinates. */
+          ::view-transition-new(deal-panel) { animation: dxd-zoom-in  0.42s cubic-bezier(0.32, 0.72, 0, 1) forwards; }
+          ::view-transition-old(deal-panel) { animation: dxd-zoom-out 0.32s cubic-bezier(0.32, 0.72, 0, 1) forwards; }
           .leaflet-popup-content-wrapper { background:transparent!important; border:none!important; box-shadow:none!important; padding:0!important; }
           .leaflet-popup-tip-container { display:none!important; }
           .leaflet-popup-content { margin:0!important; }
