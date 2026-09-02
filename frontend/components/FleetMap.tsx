@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import type { ProjectSummary, HubSpotActiveDeal } from '@/lib/types'
 import { geocodeAddress } from '@/lib/geocode'
+import { useIsMobile } from '@/lib/useIsMobile'
 
 // ── Leaflet loader (same CDN pin as SiteMapper) ─────────────────────────────
 const LEAFLET_CSS = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
@@ -68,6 +69,7 @@ export interface FleetMapProps {
 }
 
 export default function FleetMap({ onOpenDeal, height = 'calc(100vh - 120px)', compact = false }: FleetMapProps) {
+  const isMobile = useIsMobile()
   const containerRef = useRef<HTMLDivElement>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapRef = useRef<any>(null)
@@ -238,13 +240,17 @@ export default function FleetMap({ onOpenDeal, height = 'calc(100vh - 120px)', c
 
       <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />
 
-      {/* Legend */}
+      {/* Legend — moved to bottom-left on mobile so it doesn't cover the
+          zoom controls or crowd the map on small screens. */}
       {!compact && (
         <div style={{
-          position: 'absolute', top: 14, left: 14, zIndex: 500,
+          position: 'absolute',
+          top: isMobile ? 'auto' : 14, bottom: isMobile ? 14 : 'auto', left: 14,
+          zIndex: 500,
           background: 'rgba(10,11,13,0.85)', border: '1px solid #252b38', borderRadius: 8,
-          padding: '10px 14px', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
+          padding: isMobile ? '8px 12px' : '10px 14px', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
           fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: '#9aa3b8',
+          maxWidth: isMobile ? 200 : 'none',
         }}>
           <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontWeight: 700, fontSize: 11, color: '#e8eaf0', letterSpacing: 1.5, marginBottom: 8 }}>FLEET STATUS</div>
           <LegendRow color="#D2232A" label={`Active (${counts.active})`} />

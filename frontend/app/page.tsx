@@ -14,6 +14,7 @@ import EventPricingApp from '@/components/EventPricingApp'
 import JobEstimator from '@/components/JobEstimator'
 import CommandPalette from '@/components/CommandPalette'
 import FleetMap from '@/components/FleetMap'
+import { useIsMobile } from '@/lib/useIsMobile'
 
 export type MainTab = 'dashboard' | 'deals' | 'fleet' | 'admin' | 'equipment' | 'cost' | 'product' | 'events' | 'job-est'
 
@@ -126,22 +127,6 @@ const C = { bg: 'rgba(10,11,13,0.6)', card: 'rgba(17,19,24,0.75)', sidebarBg: 'r
 
 const TOPBAR_HEIGHT = 52
 const SIDEBAR_WIDTH = 232
-const MOBILE_BREAKPOINT = 768
-
-function useIsMobile(): boolean {
-  const [isMobile, setIsMobile] = useState(false)
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth <= MOBILE_BREAKPOINT)
-    check()
-    window.addEventListener('resize', check)
-    window.addEventListener('orientationchange', check)
-    return () => {
-      window.removeEventListener('resize', check)
-      window.removeEventListener('orientationchange', check)
-    }
-  }, [])
-  return isMobile
-}
 
 export default function Home() {
   const [tab, setTab] = useState<MainTab>('dashboard')

@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import type { MainTab } from '@/app/page'
 import FleetMap from './FleetMap'
+import { useIsMobile } from '@/lib/useIsMobile'
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const C = {
@@ -36,6 +37,7 @@ interface Props {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function Dashboard({ onOpenDeal, onSwitchTab }: Props) {
+  const isMobile = useIsMobile()
   const { data: projects = [] } = useQuery({
     queryKey: ['projects'],
     queryFn:  () => api.projects.list(),
@@ -70,13 +72,13 @@ export default function Dashboard({ onOpenDeal, onSwitchTab }: Props) {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
 
   return (
-    <div style={{ maxWidth: 1400, margin: '0 auto', padding: '28px 28px 60px' }}>
+    <div style={{ maxWidth: 1400, margin: '0 auto', padding: isMobile ? '16px 14px 40px' : '28px 28px 60px' }}>
 
       {/* ─── HERO ─────────────────────────────────────────────────────────── */}
       <div style={{
         position: 'relative', overflow: 'hidden',
         background: 'linear-gradient(135deg, rgba(210,35,42,0.10), rgba(17,19,24,0.6) 60%)',
-        border: `1px solid ${C.border}`, borderRadius: 14, padding: '28px 32px', marginBottom: 22,
+        border: `1px solid ${C.border}`, borderRadius: 14, padding: isMobile ? '20px 18px' : '28px 32px', marginBottom: isMobile ? 16 : 22,
       }}>
         {/* Faint scanline flourish so the hero doesn't read empty */}
         <div style={{
@@ -97,7 +99,7 @@ export default function Dashboard({ onOpenDeal, onSwitchTab }: Props) {
             <div>
               <div style={{
                 fontFamily: "'Chakra Petch', sans-serif", fontWeight: 800,
-                fontSize: 96, lineHeight: 0.9, color: C.text, letterSpacing: -4,
+                fontSize: isMobile ? 64 : 96, lineHeight: 0.9, color: C.text, letterSpacing: isMobile ? -2 : -4,
                 textShadow: '0 0 40px rgba(210,35,42,0.15)',
               }}>
                 {projects.length}
@@ -139,11 +141,11 @@ export default function Dashboard({ onOpenDeal, onSwitchTab }: Props) {
             Open full map →
           </button>
         </div>
-        <FleetMap onOpenDeal={onOpenDeal} height={420} />
+        <FleetMap onOpenDeal={onOpenDeal} height={isMobile ? 300 : 420} />
       </div>
 
       {/* ─── Supporting widgets ──────────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 14 : 20 }}>
 
         {/* Regulatory Tracker */}
         <Widget>

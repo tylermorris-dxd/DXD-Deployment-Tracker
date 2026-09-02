@@ -16,6 +16,7 @@ import OpsPlanner from './OpsPlanner'
 import PricingView from './PricingView'
 import SummaryView from './SummaryView'
 import CustomerSignoff from './CustomerSignoff'
+import { useIsMobile } from '@/lib/useIsMobile'
 
 interface Props {
   projectId: string
@@ -90,6 +91,7 @@ const TABS: Array<{ id: ViewMode; label: string; icon: React.ReactNode }> = [
 
 export default function ProjectView({ projectId, onBack }: Props) {
   const qc = useQueryClient()
+  const isMobile = useIsMobile()
   const [viewMode, setViewMode]             = useState<ViewMode>('airspace')
   const [opsMaximized, setOpsMaximized]     = useState(false)
   const [hsOpen, setHsOpen]                 = useState(true)
@@ -188,11 +190,14 @@ export default function ProjectView({ projectId, onBack }: Props) {
       <div style={{ display: opsMaximized ? 'none' : 'block', borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(6,6,8,0.98)', position: 'sticky', top: 0, zIndex: 100 }}>
 
         {/* Row 1: back + project identity + ring + controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 24px' }}>
-          <button style={{ ...s.ghostBtn, flexShrink: 0 }} onClick={onBack}>{Icons.back}<span style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 11, letterSpacing: 1 }}>ALL PROJECTS</span></button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12, padding: isMobile ? '10px 14px' : '10px 24px' }}>
+          <button style={{ ...s.ghostBtn, flexShrink: 0, padding: isMobile ? '6px 10px' : undefined }} onClick={onBack}>
+            {Icons.back}
+            {!isMobile && <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 11, letterSpacing: 1 }}>ALL PROJECTS</span>}
+          </button>
 
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flexWrap: 'wrap' }}>
               <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 17, fontWeight: 700, color: '#E8ECF4', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {project.name}
               </div>
@@ -234,8 +239,17 @@ export default function ProjectView({ projectId, onBack }: Props) {
           />
         </div>
 
-        {/* Row 2: view mode tabs */}
-        <div style={{ display: 'flex', gap: 4, padding: '0 24px 10px 24px', flexWrap: 'wrap', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+        {/* Row 2: view mode tabs — horizontally scrollable on mobile so the
+            10-tab row doesn't wrap into three lines and eat all the header
+            real estate. */}
+        <div style={{
+          display: 'flex', gap: 4,
+          padding: isMobile ? '0 14px 8px 14px' : '0 24px 10px 24px',
+          flexWrap: isMobile ? 'nowrap' : 'wrap',
+          overflowX: isMobile ? 'auto' : 'visible',
+          WebkitOverflowScrolling: 'touch',
+          alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.04)',
+        }}>
           {TABS.map(tab => (
             <button key={tab.id} style={tabBtn(viewMode === tab.id)} onClick={() => setViewMode(tab.id)}>
               {tab.icon}<span>{tab.label}</span>
