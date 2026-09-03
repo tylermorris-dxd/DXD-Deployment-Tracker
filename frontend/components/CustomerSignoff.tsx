@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import type { ProjectFull } from '@/lib/types'
 import { api } from '@/lib/api'
 import { showToast } from '@/lib/toast'
+import LiveSignoffPanel from './LiveSignoffPanel'
 
 interface Props {
   project: ProjectFull
@@ -160,6 +161,9 @@ export default function CustomerSignoff({ project }: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(var(--dxd-vh, 100vh) - 56px)' }}>
+      <div style={{ padding: '18px 24px 0' }}>
+        <LiveSignoffPanel project={project} />
+      </div>
       <iframe
         ref={iframeRef}
         src="/customer-signoff.html"

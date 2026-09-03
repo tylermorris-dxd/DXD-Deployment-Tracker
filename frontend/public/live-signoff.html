@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>Deus X Defense — Customer Signoff</title>
+<style>
+  :root {
+    --bg:    #0e0f13;
+    --panel: #16181e;
+    --line:  #2a2f3a;
+    --text:  #eef1f5;
+    --text2: #9aa3b8;
+    --muted: #5a6380;
+    --red:   #D2232A;
+    --green: #3FB95A;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: -apple-system, system-ui, sans-serif; }
+  body { display: flex; flex-direction: column; overscroll-behavior: none; }
+  header {
+    display: flex; align-items: center; gap: 12px; padding: 14px 18px;
+    background: linear-gradient(180deg, rgba(210,35,42,0.10), transparent);
+    border-bottom: 1px solid var(--line);
+    padding-top: max(14px, env(safe-area-inset-top));
+  }
+  .mark {
+    width: 34px; height: 34px; border-radius: 7px;
+    background: linear-gradient(135deg, var(--red), #7a1c22);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; letter-spacing: -1px; font-size: 15px; color: #fff;
+  }
+  header .brand { flex: 1; }
+  header .brand .name  { font-size: 12px; font-weight: 700; letter-spacing: 2px; color: var(--red); text-transform: uppercase }
+  header .brand .sub   { font-size: 10px; letter-spacing: 1.5px; color: var(--muted); margin-top: 2px }
+
+  main { flex: 1; padding: 18px 18px 0; overflow-y: auto; }
+  h1 { font-size: 20px; font-weight: 800; letter-spacing: 0.5px; }
+  .meta { margin-top: 10px; font-size: 12px; color: var(--text2); line-height: 1.65 }
+  .meta .row { display: flex; gap: 10px; }
+  .meta .lbl { color: var(--muted); min-width: 60px; text-transform: uppercase; letter-spacing: 1px; font-size: 10px; padding-top: 2px }
+  .meta .val { color: var(--text); font-weight: 500 }
+
+  .accept-box {
+    margin-top: 22px; padding: 14px 16px; background: var(--panel);
+    border: 1px solid var(--line); border-radius: 10px;
+    font-size: 13px; line-height: 1.55; color: var(--text2);
+  }
+  .accept-box b { color: var(--text); }
+
+  .sign-block { margin-top: 16px; padding-bottom: 16px }
+  .sign-block .title { font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px }
+  .fields { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 12px }
+  input { padding: 12px 14px; background: rgba(255,255,255,0.04); border: 1px solid var(--line); border-radius: 8px; color: var(--text); font-size: 14px; font-family: inherit; outline: none }
+  input:focus { border-color: rgba(210,35,42,0.5) }
+
+  .pad-wrap {
+    position: relative; height: 220px; background: #fff; border: 1px solid var(--line);
+    border-radius: 10px; overflow: hidden; touch-action: none;
+  }
+  .pad { display: block; width: 100%; height: 100%; }
+  .pad-hint { position: absolute; left: 12px; top: 12px; font-size: 11px; color: #b5b8c0; letter-spacing: 1px; text-transform: uppercase; pointer-events: none }
+  .pad-x { position: absolute; left: 12px; bottom: 10px; right: 12px; height: 1px; background: repeating-linear-gradient(90deg, #dcdce0 0 6px, transparent 6px 12px); pointer-events: none; opacity: 0.5 }
+
+  .actions { margin-top: 14px; display: flex; gap: 10px }
+  button { flex: 1; padding: 14px 0; border-radius: 10px; border: none; font-size: 14px; font-weight: 700; letter-spacing: 0.5px; font-family: inherit; cursor: pointer }
+  .btn-clear { background: rgba(255,255,255,0.05); color: var(--text2); border: 1px solid var(--line) }
+  .btn-submit { background: linear-gradient(135deg, var(--red), #7a1c22); color: #fff }
+  .btn-submit:disabled { opacity: 0.4 }
+
+  footer {
+    padding: 14px 18px; padding-bottom: max(18px, env(safe-area-inset-bottom));
+    text-align: center; font-size: 10px; letter-spacing: 1.5px; color: var(--muted); text-transform: uppercase;
+    border-top: 1px solid var(--line);
+  }
+
+  #done, #expired { display: none; text-align: center; padding: 50px 24px; }
+  #done   .glyph { font-size: 56px; color: var(--green); margin-bottom: 12px }
+  #done   h2    { font-size: 20px; font-weight: 800; margin-bottom: 6px }
+  #done   p     { font-size: 13px; color: var(--text2); line-height: 1.6 }
+  #expired .glyph { font-size: 56px; color: var(--red); margin-bottom: 12px }
+  #expired h2    { font-size: 20px; font-weight: 800; margin-bottom: 6px }
+  #expired p     { font-size: 13px; color: var(--text2); line-height: 1.6 }
+
+  .live-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 1.4s ease-in-out infinite; box-shadow: 0 0 6px var(--green); vertical-align: 1px }
+  @keyframes pulse { 0%,100% { opacity: 0.35 } 50% { opacity: 1 } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="mark">DXD</div>
+  <div class="brand">
+    <div class="name">Deus X Defense</div>
+    <div class="sub">Customer Signoff</div>
+  </div>
+  <div style="font-size:10px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase"><span class="live-dot"></span> Live</div>
+</header>
+
+<main id="mainForm">
+  <h1 id="projectTitle">Loading…</h1>
+  <div class="meta">
+    <div class="row"><span class="lbl">Client</span><span class="val" id="clientName">—</span></div>
+    <div class="row"><span class="lbl">Site</span><span class="val" id="siteAddress">—</span></div>
+  </div>
+
+  <div class="accept-box">
+    By signing below, I confirm on behalf of the above client that the DXD drone-security deployment described above has been <b>installed, tested, and accepted</b>. This signature authorizes DXD to invoice per the agreed commercial terms.
+  </div>
+
+  <div class="sign-block">
+    <div class="title">Your Info</div>
+    <div class="fields">
+      <input id="custName"  type="text"  placeholder="Full name">
+      <input id="custEmail" type="email" placeholder="Email (optional)">
+    </div>
+
+    <div class="title">Signature</div>
+    <div class="pad-wrap">
+      <canvas class="pad" id="pad" width="1200" height="440"></canvas>
+      <div class="pad-hint">Sign here</div>
+      <div class="pad-x"></div>
+    </div>
+
+    <div class="actions">
+      <button class="btn-clear"  id="clearBtn">Clear</button>
+      <button class="btn-submit" id="submitBtn" disabled>Sign &amp; Complete</button>
+    </div>
+  </div>
+</main>
+
+<main id="done" style="flex:1;display:none">
+  <div class="glyph">✓</div>
+  <h2>Signoff complete</h2>
+  <p>Thank you — the DXD team has been notified and will follow up with next steps.</p>
+</main>
+
+<main id="expired" style="flex:1;display:none">
+  <div class="glyph">⚠</div>
+  <h2>Session already completed</h2>
+  <p>This signoff link has already been used. Reach out to your DXD contact if you need a new link.</p>
+</main>
+
+<footer>DEUS X DEFENSE · CUSTOMER SIGNOFF · ENCRYPTED</footer>
+
+<script>
+(function(){
+  // Token comes in via ?token=... query string. Next.js static export
+  // doesn't have dynamic /signoff/:token routes, so we route through the
+  // file directly and grab the token from the query.
+  var params = new URLSearchParams(location.search);
+  var token = params.get('token') || location.pathname.split('/').pop();
+
+  var elTitle  = document.getElementById('projectTitle');
+  var elClient = document.getElementById('clientName');
+  var elSite   = document.getElementById('siteAddress');
+  var elName   = document.getElementById('custName');
+  var elEmail  = document.getElementById('custEmail');
+  var mainForm = document.getElementById('mainForm');
+  var doneView = document.getElementById('done');
+  var expired  = document.getElementById('expired');
+
+  // Load session info
+  fetch('/api/public/signoff/' + token + '/info').then(function(r){
+    if (!r.ok) throw new Error('missing');
+    return r.json();
+  }).then(function(info){
+    if (info.accepted) { mainForm.style.display = 'none'; expired.style.display = 'block'; return; }
+    elTitle.textContent  = info.project_name || 'Customer Signoff';
+    elClient.textContent = info.client_name  || '—';
+    elSite.textContent   = info.site         || '—';
+  }).catch(function(){
+    mainForm.style.display = 'none';
+    expired.style.display = 'block';
+    document.querySelector('#expired h2').textContent = 'Link not found';
+    document.querySelector('#expired p').textContent  = 'This signoff link is invalid or has been deleted.';
+  });
+
+  // ── Signature pad ────────────────────────────────────────────────────────
+  var pad = document.getElementById('pad');
+  var ctx = pad.getContext('2d');
+  ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#0a0b0d';
+
+  // Fit canvas backing to CSS size for crisp lines.
+  function fit() {
+    var rect = pad.getBoundingClientRect();
+    var dpr  = window.devicePixelRatio || 1;
+    pad.width  = Math.round(rect.width  * dpr);
+    pad.height = Math.round(rect.height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#0a0b0d';
+    replay();
+  }
+
+  var strokes = []; // array of arrays of [x, y]
+  var current = null;
+
+  function replay() {
+    var rect = pad.getBoundingClientRect();
+    ctx.clearRect(0, 0, rect.width, rect.height);
+    for (var i = 0; i < strokes.length; i++) {
+      var s = strokes[i];
+      if (s.length < 2) continue;
+      ctx.beginPath();
+      ctx.moveTo(s[0][0], s[0][1]);
+      for (var j = 1; j < s.length; j++) ctx.lineTo(s[j][0], s[j][1]);
+      ctx.stroke();
+    }
+  }
+
+  var isDown = false;
+  function localCoord(e) {
+    var rect = pad.getBoundingClientRect();
+    var t = e.touches ? e.touches[0] : e;
+    return [t.clientX - rect.left, t.clientY - rect.top];
+  }
+  function startDraw(e) {
+    e.preventDefault();
+    isDown = true;
+    current = [localCoord(e)];
+    strokes.push(current);
+    ctx.beginPath();
+    ctx.moveTo(current[0][0], current[0][1]);
+    updateSubmit();
+  }
+  function moveDraw(e) {
+    if (!isDown) return;
+    e.preventDefault();
+    var p = localCoord(e);
+    current.push(p);
+    ctx.lineTo(p[0], p[1]); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(p[0], p[1]);
+    schedulePush();
+  }
+  function endDraw(e) {
+    if (!isDown) return;
+    if (e && e.preventDefault) e.preventDefault();
+    isDown = false;
+    current = null;
+    schedulePush(true);
+  }
+  pad.addEventListener('mousedown', startDraw);
+  pad.addEventListener('mousemove', moveDraw);
+  window.addEventListener('mouseup', endDraw);
+  pad.addEventListener('touchstart', startDraw, { passive: false });
+  pad.addEventListener('touchmove',  moveDraw,  { passive: false });
+  pad.addEventListener('touchend',   endDraw);
+
+  function updateSubmit() {
+    document.getElementById('submitBtn').disabled = strokes.length === 0;
+  }
+
+  document.getElementById('clearBtn').onclick = function(){
+    strokes = [];
+    replay();
+    updateSubmit();
+    schedulePush(true);
+  };
+
+  // Live push — throttled so we don't hammer the server.
+  var pushTimer = null;
+  function schedulePush(force) {
+    if (pushTimer) clearTimeout(pushTimer);
+    pushTimer = setTimeout(pushNow, force ? 40 : 350);
+  }
+  function pushNow() {
+    fetch('/api/public/signoff/' + token + '/strokes', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        strokes: strokes,
+        customer_name:  (elName.value  || '').trim() || null,
+        customer_email: (elEmail.value || '').trim() || null,
+      }),
+    }).catch(function(){ /* transient — retry on next stroke */ });
+  }
+  elName.addEventListener('input',  schedulePush);
+  elEmail.addEventListener('input', schedulePush);
+
+  document.getElementById('submitBtn').onclick = function(){
+    var btn = this;
+    btn.disabled = true; btn.textContent = 'Submitting…';
+    pushNow();
+    // Give the last stroke push a beat, then commit.
+    setTimeout(function(){
+      fetch('/api/public/signoff/' + token + '/complete', { method: 'POST' })
+        .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
+        .then(function(){
+          mainForm.style.display = 'none';
+          doneView.style.display = 'block';
+        })
+        .catch(function(){
+          btn.disabled = false;
+          btn.textContent = 'Sign & Complete';
+          alert('Could not submit. Please try again.');
+        });
+    }, 250);
+  };
+
+  window.addEventListener('resize', fit);
+  window.addEventListener('load',   fit);
+  fit();
+})();
+</script>
+
+</body>
+</html>

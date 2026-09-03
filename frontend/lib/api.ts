@@ -149,6 +149,27 @@ export const api = {
       apiFetch<void>(`/project-attachments/${attachmentId}`, { method: 'DELETE' }),
   },
 
+  // Live customer signoff sessions — the operator creates a session,
+  // gets back a token + URL, sends it to the customer. Customer signs
+  // in the browser and strokes are POSTed back to the same session so
+  // the operator can watch stroke-by-stroke via polling.
+  signoffSessions: {
+    create: (projectId: string, body: { project_name?: string; client_name?: string; site?: string }) =>
+      apiFetch<{ token: string; url: string }>(`/projects/${projectId}/signoff-sessions`, {
+        method: 'POST', body: JSON.stringify(body),
+      }),
+    status: (projectId: string, token: string) =>
+      apiFetch<{
+        token: string
+        created_at: string
+        completed_at: string | null
+        accepted: boolean
+        customer_name: string | null
+        customer_email: string | null
+        strokes: number[][][]  // stroke = array of [x, y] points
+      }>(`/projects/${projectId}/signoff-sessions/${token}/status`),
+  },
+
   // Email a Customer Signoff PDF via the server-side Resend proxy.
   // pdfBase64 is the raw PDF encoded as base64 (no data: prefix).
   sendSignoffEmail: (body: {
