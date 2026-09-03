@@ -5,9 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <title>Customer Acceptance & Signoff</title>
+<!-- Fonts loaded via <link> instead of an inline @import so html2canvas-pro
+     doesn't try to inline Google Fonts' response CSS. Google returns
+     modern CSS syntax the html2canvas-pro parser trips on with
+     "Error parsing CSS component value, unexpected EOF". <link> stylesheets
+     are already resolved by the browser by the time the rasterizer runs,
+     so the parser never sees them. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Aldrich&family=Tomorrow:wght@400;500;600;700&family=Anonymous+Pro:wght@400;700&display=swap">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Aldrich&family=Tomorrow:wght@400;500;600;700&family=Anonymous+Pro:wght@400;700&display=swap');
-
   :root {
     --paper: #ffffff;
     --ink: #000000;
@@ -719,6 +726,16 @@
         scale: 2,
         backgroundColor: '#ffffff',
         useCORS: true,
+        // allowTaint lets html2canvas render cross-origin images that aren't
+        // CORS-configured (Google Fonts SVG etc.). If a specific stylesheet
+        // fails to parse we still fall through to the next.
+        allowTaint: true,
+        // foreignObjectRendering=false uses the SVG image trick and skips
+        // trying to construct an SVG <foreignObject> that requires perfect
+        // CSS parsing of every stylesheet on the page. This is what avoids
+        // the "unexpected EOF" trap when Google Fonts responds with new
+        // CSS syntax our parser doesn't recognize.
+        foreignObjectRendering: false,
       });
       // Build a Letter-sized PDF and fit the snapshot into it.
       var jsPDF = window.jspdf.jsPDF;
