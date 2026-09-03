@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import type { ProjectFull } from '@/lib/types'
 import { api } from '@/lib/api'
+import { showToast } from '@/lib/toast'
 
 interface Props {
   project: ProjectFull
@@ -89,7 +90,9 @@ export default function CustomerSignoff({ project }: Props) {
 
           // 2. Fire the email. Backend picks the recipient from either
           //    the request body or the SIGNOFF_EMAIL_RECIPIENT env var.
-          await api.sendSignoffEmail({
+          //    Response now looks like { resend: {...}, hubspot: {...} }
+          //    so we can report both outcomes separately.
+          const emailResp = await api.sendSignoffEmail({
             subject: `Customer Signoff — ${p.project || project.name || 'Deployment'}`,
             project: p.project || project.name || '',
             client: p.client || project.client || '',
@@ -101,7 +104,31 @@ export default function CustomerSignoff({ project }: Props) {
             // /files/v3/files, then creates a note with hs_attachment_ids
             // and associates it with the deal).
             hubspot_deal_id: project.hubspotDealId,
-          })
+          }) as { resend?: unknown; hubspot?: Record<string, unknown> }
+
+          // Surface HubSpot attach status so the operator sees exactly what
+          // happened. "skipped" means we intentionally didn't try. "error"
+          // means the upload / note creation failed. "fileId" set means
+          // success. Silent success previously made "HubSpot attach never
+          // works" impossible to diagnose.
+          if (project.hubspotDealId && emailResp?.hubspot) {
+            const hs = emailResp.hubspot
+            if (typeof hs.fileId === 'string' && !('error' in hs)) {
+              showToast({ title: 'Signoff attached to HubSpot', tone: 'success', durationMs: 3000 })
+            } else if ('error' in hs) {
+              showToast({
+                title: 'HubSpot attach failed',
+                detail: String(hs.error).slice(0, 260),
+                tone: 'error', durationMs: 8000,
+              })
+            } else if ('skipped' in hs) {
+              showToast({
+                title: 'HubSpot attach skipped',
+                detail: String(hs.skipped),
+                tone: 'info', durationMs: 4000,
+              })
+            }
+          }
 
           // 3. Refresh the list of attachments so the newly saved PDF
           //    shows up in the "Prior signoffs" panel below the iframe.

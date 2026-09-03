@@ -202,9 +202,11 @@ async fn attempt_hubspot_attach(
         Err(e) => return json!({ "error": format!("base64 decode failed: {e}") }),
     };
 
-    // 1. Upload the file to HubSpot Files.
+    // 1. Upload the file to HubSpot Files. PUBLIC_NOT_INDEXABLE is the
+    // correct access level for files referenced from a CRM note — PRIVATE
+    // was hiding the file from the note's viewer even inside HubSpot.
     let options = json!({
-        "access": "PRIVATE",
+        "access": "PUBLIC_NOT_INDEXABLE",
         "overwrite": false,
         "duplicateValidationStrategy": "NONE",
         "duplicateValidationScope": "ENTIRE_PORTAL"
