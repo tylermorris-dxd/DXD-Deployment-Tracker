@@ -3,6 +3,8 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import type { ProjectFull } from '@/lib/types'
 import { geocodeAddress as sharedGeocode } from '@/lib/geocode'
+import ARSitePreview from './ARSitePreview'
+import { useIsMobile } from '@/lib/useIsMobile'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -258,6 +260,10 @@ export default function SiteMapper({ project, onCacheUpdate, fitToContentOnLoad 
   const trafficLayerRef   = useRef<any>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const buildingLayerRef  = useRef<any>(null)
+
+  // ── AR site preview (mobile only) ───────────────────────────────────
+  const isMobile = useIsMobile()
+  const [arOpen, setArOpen] = useState(false)
 
   // Stale closure refs
   const toolRef          = useRef(tool)
@@ -974,6 +980,23 @@ export default function SiteMapper({ project, onCacheUpdate, fitToContentOnLoad 
         >
           ✈ TRAFFIC {showTraffic && trafficCount > 0 ? `· ${trafficCount}` : ''}
         </button>
+        {isMobile && (
+          <button
+            onClick={() => setArOpen(true)}
+            title="Open AR camera view — point your phone toward the site"
+            style={{
+              padding: '4px 9px', borderRadius: 3, cursor: 'pointer', fontSize: 10, fontWeight: 700,
+              letterSpacing: '0.04em', fontFamily: "'Courier New', monospace", textTransform: 'uppercase',
+              transition: 'all 0.12s',
+              border: '1px solid rgba(63,185,90,0.55)',
+              background: 'rgba(63,185,90,0.12)',
+              color: '#3FB95A',
+              boxShadow: '0 0 6px rgba(63,185,90,0.35)',
+            }}
+          >
+            📷 AR PREVIEW
+          </button>
+        )}
         <button
           onClick={() => setShowBuildings(v => !v)}
           title="3D building extrusions from OpenStreetMap"
@@ -1008,6 +1031,16 @@ export default function SiteMapper({ project, onCacheUpdate, fitToContentOnLoad 
           <span>PROXIMITY ALERT · {trafficAlert.callsign} · {trafficAlert.distanceNm.toFixed(1)} nm · {Math.round(trafficAlert.altFt).toLocaleString()} ft AGL</span>
           <span style={{ marginLeft: 'auto', fontSize: 10, opacity: 0.9 }}>DO NOT LAUNCH</span>
         </div>
+      )}
+
+      {/* AR Site Preview — fullscreen mobile overlay */}
+      {arOpen && (
+        <ARSitePreview
+          siteLat={siteLatLng?.lat ?? null}
+          siteLng={siteLatLng?.lng ?? null}
+          siteAddress={project?.site || 'Deployment site'}
+          onClose={() => setArOpen(false)}
+        />
       )}
 
       {/* Locations bar */}
