@@ -249,13 +249,15 @@ export default function FleetCopilot({ open, onClose, onOpenDeal }: Props) {
       />
       {/* Panel — full-width on narrow screens so the copilot is usable
           without pinching, and pinned to the dvh so iOS Safari's chrome
-          doesn't hide the input box. */}
+          doesn't hide the input box. pointerEvents guards against the
+          off-screen aside intercepting taps when closed. */}
       <aside
         style={{
           position: 'fixed', top: 0, right: 0,
           height: 'var(--dxd-vh, 100vh)',
           width: isNarrow ? '100%' : width,
           maxWidth: '100vw',
+          pointerEvents: open ? 'auto' : 'none',
           background: 'linear-gradient(160deg, #12141a 0%, #0d1017 100%)',
           borderLeft: '1px solid #2a3040', zIndex: 560,
           transform: open ? 'translateX(0)' : 'translateX(105%)',
