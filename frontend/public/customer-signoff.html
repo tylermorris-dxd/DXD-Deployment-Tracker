@@ -726,16 +726,37 @@
         scale: 2,
         backgroundColor: '#ffffff',
         useCORS: true,
-        // allowTaint lets html2canvas render cross-origin images that aren't
-        // CORS-configured (Google Fonts SVG etc.). If a specific stylesheet
-        // fails to parse we still fall through to the next.
         allowTaint: true,
-        // foreignObjectRendering=false uses the SVG image trick and skips
-        // trying to construct an SVG <foreignObject> that requires perfect
-        // CSS parsing of every stylesheet on the page. This is what avoids
-        // the "unexpected EOF" trap when Google Fonts responds with new
-        // CSS syntax our parser doesn't recognize.
         foreignObjectRendering: false,
+        // Actively strip Google Fonts from the cloned DOM before the
+        // rasterizer walks stylesheets. Even a <link rel="stylesheet"> gets
+        // enumerated by html2canvas-pro, and Google's response CSS
+        // contains modern syntax (size-adjust, ascent-override, @supports,
+        // etc.) that trips the parser with "unexpected EOF".
+        //
+        // Fonts already resolved to their final glyphs on the visible page,
+        // so removing the source stylesheets from the CLONE has no visual
+        // effect on the rasterized output — html2canvas uses computed
+        // styles from the original document, not the clone's, for glyph
+        // metrics.
+        onclone: function (clonedDoc) {
+          try {
+            var links = clonedDoc.querySelectorAll('link[rel="stylesheet"]');
+            for (var i = 0; i < links.length; i++) {
+              var href = links[i].getAttribute('href') || '';
+              if (href.indexOf('fonts.googleapis') !== -1) {
+                links[i].parentNode && links[i].parentNode.removeChild(links[i]);
+              }
+            }
+            var styles = clonedDoc.querySelectorAll('style');
+            for (var j = 0; j < styles.length; j++) {
+              var txt = styles[j].textContent || '';
+              if (txt.indexOf('fonts.googleapis') !== -1) {
+                styles[j].textContent = txt.replace(/@import[^;]+;/g, '');
+              }
+            }
+          } catch (e) { /* onclone must not throw or html2canvas aborts */ }
+        },
       });
       // Build a Letter-sized PDF and fit the snapshot into it.
       var jsPDF = window.jspdf.jsPDF;
