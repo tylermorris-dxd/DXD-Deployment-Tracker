@@ -31,22 +31,30 @@ export default function BootSequence() {
     const timers = LINES.map((line, i) => setTimeout(() => setStep(i + 1), line.delay))
     const fadeT = setTimeout(() => setFading(true), 1200)
     const doneT = setTimeout(() => {
-      sessionStorage.setItem(STAGE_KEY, '1')
+      try { sessionStorage.setItem(STAGE_KEY, '1') } catch { /* private mode */ }
       setShow(false)
     }, 1550)
-    // Skip on click or any keypress
+    // Belt-and-suspenders: no matter what timers get throttled or dropped,
+    // the boot overlay is gone by 3s. Prevents the classic "iOS backgrounded
+    // the tab" bug where setTimeout(1550) stalls forever.
+    const safetyT = setTimeout(() => setShow(false), 3000)
     const skip = () => {
-      sessionStorage.setItem(STAGE_KEY, '1')
+      try { sessionStorage.setItem(STAGE_KEY, '1') } catch { /* private mode */ }
       setFading(true)
       setTimeout(() => setShow(false), 200)
     }
     window.addEventListener('keydown', skip)
     window.addEventListener('mousedown', skip)
+    // touchstart was missing — on iOS Safari tapping the boot sequence to
+    // skip did nothing, so if the auto-timer also missed (throttled tab,
+    // low-power mode) the overlay stayed up and blocked all interaction.
+    window.addEventListener('touchstart', skip, { passive: true })
     return () => {
       timers.forEach(clearTimeout)
-      clearTimeout(fadeT); clearTimeout(doneT)
+      clearTimeout(fadeT); clearTimeout(doneT); clearTimeout(safetyT)
       window.removeEventListener('keydown', skip)
       window.removeEventListener('mousedown', skip)
+      window.removeEventListener('touchstart', skip)
     }
   }, [show])
 
