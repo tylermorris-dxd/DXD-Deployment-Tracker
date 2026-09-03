@@ -248,6 +248,17 @@ export default function SiteMapper({ project, onCacheUpdate, fitToContentOnLoad 
   const [addSiteInput,    setAddSiteInput]    = useState('')
   const [addingSite,      setAddingSite]      = useState(false)
 
+  // ── Live overlays: ADS-B traffic + OSM 3D buildings ─────────────────
+  const [showTraffic,     setShowTraffic]     = useState(false)
+  const [showBuildings,   setShowBuildings]   = useState(false)
+  const [trafficAlert,    setTrafficAlert]    = useState<null | { callsign: string; distanceNm: number; altFt: number }>(null)
+  const [trafficCount,    setTrafficCount]    = useState(0)
+  const [buildingCount,   setBuildingCount]   = useState(0)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const trafficLayerRef   = useRef<any>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const buildingLayerRef  = useRef<any>(null)
+
   // Stale closure refs
   const toolRef          = useRef(tool)
   const dockCountRef     = useRef(dockCount)
@@ -486,6 +497,149 @@ export default function SiteMapper({ project, onCacheUpdate, fitToContentOnLoad 
     return () => { map.remove(); mapRef.current = null }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leafletReady])
+
+  // ── Live ADS-B traffic overlay via OpenSky Network ─────────────────────────
+  // Polls opensky-network.org for aircraft state within a bounding box around
+  // the current map center. Renders each aircraft as a rotated plane icon
+  // with a callsign + altitude tooltip. Raises trafficAlert whenever any
+  // aircraft is within 2 nm AND below 500 ft AGL — the FAA safety threshold
+  // that would ground a drone flight in progress.
+  useEffect(() => {
+    if (!showTraffic || !mapRef.current) {
+      if (trafficLayerRef.current) { trafficLayerRef.current.clearLayers(); }
+      setTrafficCount(0); setTrafficAlert(null)
+      return
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const L = (window as any).L
+    if (!trafficLayerRef.current) trafficLayerRef.current = L.layerGroup().addTo(mapRef.current)
+
+    let cancelled = false
+    const NM_PER_DEG_LAT = 60
+    const nmDistance = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+      const dLat = (lat2 - lat1) * NM_PER_DEG_LAT
+      const dLng = (lng2 - lng1) * NM_PER_DEG_LAT * Math.cos((lat1 * Math.PI) / 180)
+      return Math.sqrt(dLat * dLat + dLng * dLng)
+    }
+
+    const poll = async () => {
+      if (!mapRef.current) return
+      const bounds = mapRef.current.getBounds()
+      // Expand a bit so planes ticking in are already visible at draw time.
+      const pad = 0.15
+      const lamin = bounds.getSouth() - pad, lamax = bounds.getNorth() + pad
+      const lomin = bounds.getWest()  - pad, lomax = bounds.getEast()  + pad
+      const url = `https://opensky-network.org/api/states/all?lamin=${lamin}&lomin=${lomin}&lamax=${lamax}&lomax=${lomax}`
+      try {
+        const res = await fetch(url)
+        if (!res.ok || cancelled) return
+        const data = await res.json()
+        if (cancelled || !trafficLayerRef.current) return
+        trafficLayerRef.current.clearLayers()
+        const states = (data.states as unknown[][] | null) || []
+        let count = 0
+        let alert: null | { callsign: string; distanceNm: number; altFt: number } = null
+        const center = mapRef.current.getCenter()
+        for (const s of states) {
+          const callsign = ((s[1] as string) || '').trim() || 'UNKN'
+          const lng      = s[5] as number | null
+          const lat      = s[6] as number | null
+          const onGround = s[8] as boolean
+          const heading  = (s[10] as number) || 0
+          const altGeoM  = (s[13] as number) || (s[7] as number) || 0
+          if (lat == null || lng == null || onGround) continue
+          const altFt = altGeoM * 3.28084
+          const distNm = nmDistance(center.lat, center.lng, lat, lng)
+          count++
+          // Plane icon rotated to heading.
+          const color = altFt < 500 && distNm < 2 ? '#D2232A' : altFt < 1500 ? '#f59e0b' : '#e8eaf0'
+          const iconHtml = `<div style="transform: rotate(${heading}deg); font-size: 18px; text-shadow: 0 0 3px #000; color: ${color};">✈</div>`
+          const icon = L.divIcon({ html: iconHtml, className: 'dxd-adsb', iconSize: [22, 22], iconAnchor: [11, 11] })
+          const m = L.marker([lat, lng], { icon }).addTo(trafficLayerRef.current)
+          m.bindTooltip(
+            `<div style="font-family:'Courier New',monospace;font-size:11px;color:#fff;background:rgba(10,4,4,0.9);padding:4px 8px;border:1px solid ${color}66;border-radius:2px">
+               <div style="font-weight:700;color:${color}">✈ ${callsign}</div>
+               <div style="color:#9aa3b8;font-size:10px">${Math.round(altFt).toLocaleString()} ft · ${distNm.toFixed(1)} nm · hdg ${Math.round(heading)}°</div>
+             </div>`,
+            { className: 'tact-tooltip', direction: 'top', offset: [0, -8] },
+          )
+          if (altFt < 500 && distNm < 2 && (!alert || distNm < alert.distanceNm)) {
+            alert = { callsign, distanceNm: distNm, altFt }
+          }
+        }
+        setTrafficCount(count)
+        setTrafficAlert(alert)
+      } catch { /* silently ignore — the count / alert stays whatever it was */ }
+    }
+    poll()
+    const iv = setInterval(poll, 15_000)
+    return () => { cancelled = true; clearInterval(iv) }
+  }, [showTraffic])
+
+  // ── OSM Buildings overlay ───────────────────────────────────────────────────
+  // Pulls building footprints via Overpass API for the map's current bounds
+  // and renders each as a semi-3D SVG polygon. Height comes from OSM's
+  // `height` or `building:levels` tags; polygons are shaded so taller ones
+  // read visually as taller (darker fill, thicker outline). Not a true 3D
+  // engine but instantly reveals which buildings surround the dock.
+  useEffect(() => {
+    if (!showBuildings || !mapRef.current) {
+      if (buildingLayerRef.current) buildingLayerRef.current.clearLayers()
+      setBuildingCount(0)
+      return
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const L = (window as any).L
+    if (!buildingLayerRef.current) buildingLayerRef.current = L.layerGroup().addTo(mapRef.current)
+
+    let cancelled = false
+    const load = async () => {
+      const bounds = mapRef.current.getBounds()
+      const b = `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`
+      const q = `[out:json][timeout:15];(way["building"](${b});relation["building"](${b}););out geom;`
+      try {
+        const res = await fetch('https://overpass-api.de/api/interpreter', {
+          method: 'POST', body: 'data=' + encodeURIComponent(q),
+        })
+        if (!res.ok || cancelled) return
+        const data = await res.json()
+        if (cancelled || !buildingLayerRef.current) return
+        buildingLayerRef.current.clearLayers()
+        const els: Array<{ type: string; tags?: Record<string, string>; geometry?: Array<{ lat: number; lon: number }> }> = data.elements || []
+        let count = 0
+        for (const el of els) {
+          const g = el.geometry
+          if (!g || g.length < 3) continue
+          const tags = el.tags || {}
+          const levels = parseFloat(tags['building:levels'] || '') || 0
+          const heightM = parseFloat(tags['height'] || '') || levels * 3.0 || 4
+          // Color by height: taller = deeper red, saturating at ~40m.
+          const t = Math.min(1, heightM / 40)
+          const fill  = `rgba(${210 - Math.round(t * 60)}, ${35 + Math.round((1 - t) * 40)}, ${42}, ${0.32 + t * 0.28})`
+          const stroke = `rgba(${255 - Math.round(t * 20)}, ${80 - Math.round(t * 40)}, ${80 - Math.round(t * 40)}, ${0.75})`
+          const latlngs = g.map(p => [p.lat, p.lon]) as [number, number][]
+          const poly = L.polygon(latlngs, {
+            color: stroke, weight: 1.2, opacity: 0.9,
+            fillColor: fill, fillOpacity: 1,
+            interactive: true,
+          }).addTo(buildingLayerRef.current)
+          poly.bindTooltip(
+            `<div style="font-family:'Courier New',monospace;font-size:10px;color:#fff;background:rgba(10,4,4,0.9);padding:3px 7px;border-radius:2px">
+               ${tags.name || tags['addr:housenumber'] || 'Building'} · ${heightM.toFixed(0)} m ${levels ? '(' + levels + ' fl)' : ''}
+             </div>`,
+            { className: 'tact-tooltip', direction: 'top' },
+          )
+          count++
+        }
+        setBuildingCount(count)
+      } catch { /* silently ignore — Overpass sometimes rate limits */ }
+    }
+    load()
+    // Refresh whenever the map pans/zooms significantly.
+    const onMoveEnd = () => load()
+    mapRef.current.on('moveend', onMoveEnd)
+    return () => { cancelled = true; mapRef.current?.off('moveend', onMoveEnd) }
+  }, [showBuildings])
 
   // ── Cursor + dblclick per tool ──────────────────────────────────────────────
   useEffect(() => {
@@ -804,9 +958,57 @@ export default function SiteMapper({ project, onCacheUpdate, fitToContentOnLoad 
         ))}
 
         <div style={S.divider} />
+        {/* Live overlays: ADS-B nearby manned aircraft + OSM 3D buildings */}
+        <button
+          onClick={() => setShowTraffic(v => !v)}
+          title="Live nearby manned aircraft from OpenSky Network"
+          style={{
+            padding: '4px 9px', borderRadius: 3, cursor: 'pointer', fontSize: 10, fontWeight: 700,
+            letterSpacing: '0.04em', fontFamily: "'Courier New', monospace", textTransform: 'uppercase',
+            transition: 'all 0.12s',
+            border: showTraffic ? '1px solid #3b82f6' : '1px solid rgba(59,130,246,0.35)',
+            background: showTraffic ? 'rgba(59,130,246,0.18)' : 'transparent',
+            color: showTraffic ? '#3b82f6' : 'rgba(59,130,246,0.55)',
+            boxShadow: showTraffic ? '0 0 6px rgba(59,130,246,0.45)' : 'none',
+          }}
+        >
+          ✈ TRAFFIC {showTraffic && trafficCount > 0 ? `· ${trafficCount}` : ''}
+        </button>
+        <button
+          onClick={() => setShowBuildings(v => !v)}
+          title="3D building extrusions from OpenStreetMap"
+          style={{
+            padding: '4px 9px', borderRadius: 3, cursor: 'pointer', fontSize: 10, fontWeight: 700,
+            letterSpacing: '0.04em', fontFamily: "'Courier New', monospace", textTransform: 'uppercase',
+            transition: 'all 0.12s',
+            border: showBuildings ? '1px solid #f59e0b' : '1px solid rgba(245,158,11,0.35)',
+            background: showBuildings ? 'rgba(245,158,11,0.18)' : 'transparent',
+            color: showBuildings ? '#f59e0b' : 'rgba(245,158,11,0.55)',
+            boxShadow: showBuildings ? '0 0 6px rgba(245,158,11,0.45)' : 'none',
+          }}
+        >
+          🏢 3D BLDGS {showBuildings && buildingCount > 0 ? `· ${buildingCount}` : ''}
+        </button>
+        <div style={S.divider} />
         <button style={S.clearBtn}  onClick={clearAll}>CLEAR ALL</button>
         <button style={S.exportBtn} onClick={handleExport}>EXPORT / PRINT</button>
       </div>
+
+      {/* Traffic proximity alert — fires when any aircraft is within 2 nm
+          AND below 500 ft AGL. FAA safety threshold. */}
+      {trafficAlert && (
+        <div style={{
+          padding: '8px 16px', background: 'rgba(210,35,42,0.95)', color: '#fff',
+          borderBottom: '1px solid rgba(255,255,255,0.15)',
+          fontFamily: "'Courier New', monospace", fontSize: 11, letterSpacing: '0.06em', fontWeight: 700,
+          display: 'flex', alignItems: 'center', gap: 10, textTransform: 'uppercase' as const,
+          animation: 'pulse 1.2s ease-in-out infinite',
+        }}>
+          <span style={{ fontSize: 16 }}>⚠</span>
+          <span>PROXIMITY ALERT · {trafficAlert.callsign} · {trafficAlert.distanceNm.toFixed(1)} nm · {Math.round(trafficAlert.altFt).toLocaleString()} ft AGL</span>
+          <span style={{ marginLeft: 'auto', fontSize: 10, opacity: 0.9 }}>DO NOT LAUNCH</span>
+        </div>
+      )}
 
       {/* Locations bar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: 'rgba(6,3,3,0.98)', borderBottom: `1px solid ${TACT_RED}22`, flexWrap: 'wrap', minHeight: 36 }}>
