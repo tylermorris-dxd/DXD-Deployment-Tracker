@@ -1,6 +1,7 @@
 mod db;
 mod error;
 mod models;
+mod rf;
 mod routes;
 mod template;
 

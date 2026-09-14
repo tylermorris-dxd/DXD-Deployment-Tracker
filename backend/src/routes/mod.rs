@@ -10,6 +10,7 @@ pub mod oem_specs;
 pub mod pricing;
 pub mod project_attachments;
 pub mod projects;
+pub mod rf_survey;
 pub mod hubspot_webhook;
 pub mod signoff_email;
 pub mod signoff_sessions;
@@ -38,6 +39,7 @@ pub fn api_router(state: AppState) -> Router {
         .merge(signoff_sessions::router())
         .merge(hubspot_webhook::router())
         .merge(tfr::router())
+        .merge(rf_survey::router())
         .merge(misc::router())
         .with_state(state)
 }
