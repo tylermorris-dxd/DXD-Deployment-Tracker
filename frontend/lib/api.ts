@@ -128,12 +128,13 @@ export const api = {
     upload: async (
       projectId: string,
       file: File | Blob,
-      opts: { filename?: string; kind?: string } = {},
+      opts: { filename?: string; kind?: string; caption?: string } = {},
     ): Promise<ProjectAttachmentMeta> => {
       const form = new FormData()
       const name = opts.filename ?? (file as File).name ?? 'upload.bin'
       form.append('file', file, name)
       if (opts.kind) form.append('kind', opts.kind)
+      if (opts.caption) form.append('caption', opts.caption)
       const res = await fetch(`/api/projects/${projectId}/attachments`, {
         method: 'POST',
         body: form,
@@ -145,6 +146,10 @@ export const api = {
       return res.json()
     },
     downloadUrl: (attachmentId: string) => `/api/project-attachments/${attachmentId}`,
+    setCaption: (attachmentId: string, caption: string | null) =>
+      apiFetch<void>(`/project-attachments/${attachmentId}`, {
+        method: 'PATCH', body: JSON.stringify({ caption }),
+      }),
     delete: (attachmentId: string) =>
       apiFetch<void>(`/project-attachments/${attachmentId}`, { method: 'DELETE' }),
   },

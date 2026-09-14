@@ -16,6 +16,7 @@ import OpsPlanner from './OpsPlanner'
 import PricingView from './PricingView'
 import SummaryView from './SummaryView'
 import CustomerSignoff from './CustomerSignoff'
+import ProjectPhotos from './ProjectPhotos'
 import HubSpotEnrichment from './HubSpotEnrichment'
 import { useIsMobile } from '@/lib/useIsMobile'
 import { showUndoableToast, showToast } from '@/lib/toast'
@@ -26,7 +27,7 @@ interface Props {
   onBack: () => void
 }
 
-type ViewMode = 'pricing' | 'wx' | 'airspace' | 'map' | 'network' | 'summary' | 'signoff' | 'stakeholders' | 'settings' | 'ops'
+type ViewMode = 'pricing' | 'wx' | 'airspace' | 'map' | 'network' | 'summary' | 'signoff' | 'photos' | 'stakeholders' | 'settings' | 'ops'
 
 // ── Shared tab-button styles ───────────────────────────────────────────────────
 
@@ -75,6 +76,10 @@ const TABS: Array<{ id: ViewMode; label: string; icon: React.ReactNode }> = [
   {
     id: 'signoff', label: 'Signoff',
     icon: <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 3.5h6M2 6h6M2 8.5h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/><path d="M8.5 10l2 2 2.5-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/><rect x="1" y="1.5" width="10" height="11" rx="1.2" stroke="currentColor" strokeWidth="1.2"/></svg>,
+  },
+  {
+    id: 'photos', label: 'Photos',
+    icon: <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="3.5" width="12" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.2"/><path d="M4.5 3.5L5.5 1.5h3l1 2" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/><circle cx="7" cy="8" r="2.3" stroke="currentColor" strokeWidth="1.2"/></svg>,
   },
   {
     id: 'stakeholders', label: 'Contacts',
@@ -348,6 +353,9 @@ export default function ProjectView({ projectId, onBack }: Props) {
         {/* SIGNOFF view — customer acceptance form, PDF archived on the
             deal + emailed via Resend when the operator clicks Save. */}
         {viewMode === 'signoff' && <CustomerSignoff project={project} />}
+
+        {/* PHOTOS view — install photo record for this deal */}
+        {viewMode === 'photos' && <ProjectPhotos project={project} />}
 
         {/* STAKEHOLDERS view */}
         {viewMode === 'stakeholders' && <StakeholdersView project={project} onUpdate={invalidate} hubspotDeal={hsDeal} />}

@@ -95,6 +95,75 @@ function flightTimeToRadiusM(model: typeof DRONE_MODELS[string], totalSec: numbe
   return flySec * speedMs
 }
 
+// ── Wind-adjusted reach ───────────────────────────────────────────────────────
+//
+// A still-air circle overstates reach upwind and understates it downwind. With
+// any real wind the reachable envelope is an egg, offset downwind — which is
+// exactly the direction an operator needs to know about before promising a
+// response time. Wind is sampled at 80 m (~260 ft), the DFR cruise band,
+// rather than the 10 m surface reading.
+
+interface WindState {
+  speedMs: number
+  dirFromDeg: number   // meteorological — the direction wind blows FROM
+  gustMs: number | null
+  altLabel: string
+}
+
+// Ground speed achievable on a given course, given airspeed and wind.
+// Standard wind-triangle solution: the cross-wind component must be crabbed
+// out, and whatever airspeed is left projects onto the course.
+function groundSpeedMs(airspeedMs: number, windMs: number, windToDeg: number, courseDeg: number): number {
+  if (windMs <= 0) return airspeedMs
+  const delta = ((windToDeg - courseDeg) * Math.PI) / 180
+  const cross = windMs * Math.sin(delta)
+  // Wind stronger than airspeed across the course — that heading is unflyable.
+  if (Math.abs(cross) >= airspeedMs) return 0
+  return windMs * Math.cos(delta) + Math.sqrt(airspeedMs * airspeedMs - cross * cross)
+}
+
+function isochronePoints(
+  lat: number, lng: number,
+  model: typeof DRONE_MODELS[string],
+  totalSec: number,
+  wind: WindState,
+  steps = 72,
+): Array<[number, number]> {
+  const flySec     = Math.max(0, totalSec - model.launchDelaySec)
+  const airspeedMs = model.speedMph * M_PER_MILE / 3600
+  const windToDeg  = (wind.dirFromDeg + 180) % 360
+  const cosLat     = Math.max(0.15, Math.cos((lat * Math.PI) / 180))
+  const pts: Array<[number, number]> = []
+  for (let i = 0; i < steps; i++) {
+    const course = (i * 360) / steps
+    const distM  = groundSpeedMs(airspeedMs, wind.speedMs, windToDeg, course) * flySec
+    const rad    = (course * Math.PI) / 180
+    pts.push([
+      lat + (distM * Math.cos(rad)) / 111320,
+      lng + (distM * Math.sin(rad)) / (111320 * cosLat),
+    ])
+  }
+  return pts
+}
+
+// ── FAA Digital Obstacle File ─────────────────────────────────────────────────
+
+const FAA_DOF_URL = 'https://services6.arcgis.com/ssFJjBXIUyZDrSYZ/arcgis/rest/services/Digital_Obstacle_File/FeatureServer/0/query'
+
+const DOF_LIGHTING: Record<string, string> = {
+  R: 'Red', D: 'Med white strobe + red', H: 'High white strobe + red',
+  M: 'Med white strobe', S: 'Flashing', F: 'Flood',
+  C: 'Dual med catenary', W: 'Synchronized red', N: 'NOT LIT', U: 'Unknown',
+}
+
+// Banded by what the height means operationally, not by looks: anything at or
+// above 400 ft AGL pokes through the standard Part 107 ceiling.
+function obstacleColor(aglFt: number): string {
+  if (aglFt >= 400) return '#FF2020'
+  if (aglFt >= 200) return '#FF8C00'
+  return '#FFD700'
+}
+
 function polygonAreaM2(latLngs: Array<{ lat: number; lng: number }>): number {
   const n = latLngs.length
   if (n < 3) return 0
@@ -261,6 +330,19 @@ export default function SiteMapper({ project, onCacheUpdate, fitToContentOnLoad 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const buildingLayerRef  = useRef<any>(null)
 
+  // ── FAA obstacles + wind-adjusted reach ─────────────────────────────
+  const [showObstacles,   setShowObstacles]   = useState(false)
+  const [obstacleCount,   setObstacleCount]   = useState(0)
+  const [tallestObstacle, setTallestObstacle] = useState<number | null>(null)
+  const [windMode,        setWindMode]        = useState(false)
+  const [wind,            setWind]            = useState<WindState | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const obstacleLayerRef  = useRef<any>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const windLayerRef      = useRef<any>(null)
+  // Lets a dock drag trigger an isochrone redraw without re-creating placeDock.
+  const windRedrawRef     = useRef<() => void>(() => {})
+
   // ── AR site preview (mobile only) ───────────────────────────────────
   const isMobile = useIsMobile()
   const [arOpen, setArOpen] = useState(false)
@@ -348,7 +430,7 @@ export default function SiteMapper({ project, onCacheUpdate, fitToContentOnLoad 
       })
     }
     marker.on('drag', syncRings)
-    marker.on('dragend', () => saveToCache())
+    marker.on('dragend', () => { saveToCache(); windRedrawRef.current() })
   }, [saveToCache])
 
   // ── Measure points ──────────────────────────────────────────────────────────
@@ -646,6 +728,177 @@ export default function SiteMapper({ project, onCacheUpdate, fitToContentOnLoad 
     mapRef.current.on('moveend', onMoveEnd)
     return () => { cancelled = true; mapRef.current?.off('moveend', onMoveEnd) }
   }, [showBuildings])
+
+  // ── FAA obstacle overlay (Digital Obstacle File) ────────────────────────────
+  // Authoritative tower/antenna/stack data with surveyed AGL + AMSL heights,
+  // lighting and marking. This is the layer that answers "is there anything
+  // tall between the dock and the far end of the property" before someone
+  // finds out the expensive way.
+  useEffect(() => {
+    if (!showObstacles || !mapRef.current) {
+      if (obstacleLayerRef.current) obstacleLayerRef.current.clearLayers()
+      setObstacleCount(0); setTallestObstacle(null)
+      return
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const L = (window as any).L
+    if (!obstacleLayerRef.current) obstacleLayerRef.current = L.layerGroup().addTo(mapRef.current)
+
+    let cancelled = false
+    const load = async () => {
+      if (!mapRef.current) return
+      const b = mapRef.current.getBounds()
+      const params = new URLSearchParams({
+        where: '1=1',
+        geometry: `${b.getWest()},${b.getSouth()},${b.getEast()},${b.getNorth()}`,
+        geometryType: 'esriGeometryEnvelope',
+        inSR: '4326',
+        spatialRel: 'esriSpatialRelIntersects',
+        outFields: 'OAS_Number,Type_Code,AGL,AMSL,Lighting,Marking,Quantity,Verified',
+        returnGeometry: 'true',
+        outSR: '4326',
+        f: 'geojson',
+        resultRecordCount: '400',
+      })
+      try {
+        const res = await fetch(`${FAA_DOF_URL}?${params}`)
+        if (!res.ok || cancelled) return
+        const data = await res.json()
+        if (cancelled || !obstacleLayerRef.current) return
+        obstacleLayerRef.current.clearLayers()
+        const feats: Array<{ geometry?: { coordinates?: number[] }; properties?: Record<string, unknown> }> = data.features || []
+        let count = 0
+        let tallest = 0
+        for (const f of feats) {
+          const c = f.geometry?.coordinates
+          if (!c || c.length < 2) continue
+          const p = f.properties || {}
+          const agl = Number(p.AGL) || 0
+          const amsl = Number(p.AMSL) || 0
+          const type = String(p.Type_Code ?? '').trim() || 'OBSTACLE'
+          const qty = Number(p.Quantity) || 1
+          const color = obstacleColor(agl)
+          const lightCode = String(p.Lighting ?? '').trim().toUpperCase()
+          const lighting = DOF_LIGHTING[lightCode] || (lightCode ? lightCode : 'Unknown')
+          // Taller obstacles get a taller glyph so height reads at a glance.
+          const h = Math.max(10, Math.min(22, 10 + agl / 40))
+          const icon = L.divIcon({
+            html: `<div style="display:flex;flex-direction:column;align-items:center;transform:translateY(-${h / 2}px)">
+                     <div style="width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;border-bottom:${h}px solid ${color};filter:drop-shadow(0 0 3px ${color}aa)"></div>
+                     <div style="width:7px;height:2px;background:${color};margin-top:-1px"></div>
+                   </div>`,
+            className: '', iconSize: [10, h + 2], iconAnchor: [5, h + 2],
+          })
+          L.marker([c[1], c[0]], { icon }).addTo(obstacleLayerRef.current).bindPopup(
+            `<div style="font-family:'Courier New',monospace;font-size:12px;color:#eee;background:#0a0404;padding:7px 12px;border:1px solid ${color}66;border-radius:3px;min-width:190px">
+               <b style="color:${color}">${type}${qty > 1 ? ` ×${qty}` : ''}</b><br/>
+               <span style="color:rgba(255,255,255,0.75)">
+                 <b>${agl} ft AGL</b> · ${amsl} ft MSL<br/>
+                 Lighting: ${lighting}<br/>
+                 Marking: ${String(p.Marking ?? '').trim() || '—'}<br/>
+                 ${agl >= 400 ? '<span style="color:#FF6B6B">Above 400 ft — breaks the standard Part 107 ceiling</span><br/>' : ''}
+                 <span style="opacity:0.5;font-size:10px">OAS ${String(p.OAS_Number ?? '—').trim()}${String(p.Verified ?? '').trim() ? ' · verified' : ''}</span>
+               </span>
+             </div>`,
+            { className: 'tact-popup' },
+          )
+          count++
+          if (agl > tallest) tallest = agl
+        }
+        setObstacleCount(count)
+        setTallestObstacle(tallest || null)
+      } catch { /* FAA service hiccup — keep whatever is already drawn */ }
+    }
+    load()
+    const onMoveEnd = () => load()
+    mapRef.current.on('moveend', onMoveEnd)
+    return () => { cancelled = true; mapRef.current?.off('moveend', onMoveEnd) }
+  }, [showObstacles])
+
+  // ── Wind-adjusted response envelopes ────────────────────────────────────────
+  // Swaps each dock's still-air circles for the real reachable polygon under
+  // current wind. Refreshes every 5 minutes and on dock drag.
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const L = (window as any).L
+    const map = mapRef.current
+    if (!map || !L) return
+    if (!windLayerRef.current) windLayerRef.current = L.layerGroup().addTo(map)
+
+    if (!windMode) {
+      windLayerRef.current.clearLayers()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      layersRef.current.dockMarkers.forEach((d: any) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        d.rings.forEach((r: any) => { if (!map.hasLayer(r)) r.addTo(map) })
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        d.ringLabels.forEach((l: any) => { if (!map.hasLayer(l)) l.addTo(map) })
+      })
+      windRedrawRef.current = () => {}
+      setWind(null)
+      return
+    }
+
+    let cancelled = false
+
+    const draw = (w: WindState) => {
+      if (!windLayerRef.current || !mapRef.current) return
+      windLayerRef.current.clearLayers()
+      // Still-air circles and their distance labels would both be wrong now,
+      // so they come off while wind mode is active.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      layersRef.current.dockMarkers.forEach((d: any) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        d.rings.forEach((r: any) => { if (mapRef.current.hasLayer(r)) mapRef.current.removeLayer(r) })
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        d.ringLabels.forEach((l: any) => { if (mapRef.current.hasLayer(l)) mapRef.current.removeLayer(l) })
+      })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      layersRef.current.dockMarkers.forEach((d: any) => {
+        const model = DRONE_MODELS[d.droneKey] || DRONE_MODELS['dji-dock-3']
+        const ll = d.marker.getLatLng()
+        model.ringsSec.forEach((sec: number, i: number) => {
+          const pts = isochronePoints(ll.lat, ll.lng, model, sec, w)
+          L.polygon(pts, {
+            color: d.ringColor,
+            weight: i === 0 ? 2.8 : 2.0,
+            opacity: i === 0 ? 0.95 : 0.7,
+            fillColor: d.ringColor,
+            fillOpacity: 0.02,
+            interactive: false,
+          }).addTo(windLayerRef.current)
+        })
+      })
+    }
+
+    const run = async () => {
+      if (!mapRef.current) return
+      const c = mapRef.current.getCenter()
+      try {
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${c.lat.toFixed(4)}&longitude=${c.lng.toFixed(4)}` +
+          `&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m,wind_speed_80m,wind_direction_80m&wind_speed_unit=ms`
+        const res = await fetch(url)
+        if (!res.ok || cancelled) return
+        const d = await res.json()
+        const cur = d.current || {}
+        const has80 = typeof cur.wind_speed_80m === 'number'
+        const w: WindState = {
+          speedMs:    has80 ? cur.wind_speed_80m : (cur.wind_speed_10m ?? 0),
+          dirFromDeg: has80 ? (cur.wind_direction_80m ?? 0) : (cur.wind_direction_10m ?? 0),
+          gustMs:     typeof cur.wind_gusts_10m === 'number' ? cur.wind_gusts_10m : null,
+          altLabel:   has80 ? '80 m' : '10 m',
+        }
+        if (cancelled) return
+        setWind(w)
+        draw(w)
+        windRedrawRef.current = () => draw(w)
+      } catch { /* keep the still-air view rather than showing a wrong one */ }
+    }
+
+    run()
+    const iv = setInterval(run, 5 * 60_000)
+    return () => { cancelled = true; clearInterval(iv) }
+  }, [windMode, dockCount])
 
   // ── Cursor + dblclick per tool ──────────────────────────────────────────────
   useEffect(() => {
@@ -1012,6 +1265,36 @@ export default function SiteMapper({ project, onCacheUpdate, fitToContentOnLoad 
         >
           🏢 3D BLDGS {showBuildings && buildingCount > 0 ? `· ${buildingCount}` : ''}
         </button>
+        <button
+          onClick={() => setShowObstacles(v => !v)}
+          title="FAA Digital Obstacle File — surveyed towers, antennas and stacks with AGL heights"
+          style={{
+            padding: '4px 9px', borderRadius: 3, cursor: 'pointer', fontSize: 10, fontWeight: 700,
+            letterSpacing: '0.04em', fontFamily: "'Courier New', monospace", textTransform: 'uppercase',
+            transition: 'all 0.12s',
+            border: showObstacles ? '1px solid #FFD700' : '1px solid rgba(255,215,0,0.35)',
+            background: showObstacles ? 'rgba(255,215,0,0.18)' : 'transparent',
+            color: showObstacles ? '#FFD700' : 'rgba(255,215,0,0.55)',
+            boxShadow: showObstacles ? '0 0 6px rgba(255,215,0,0.45)' : 'none',
+          }}
+        >
+          ⚠ OBSTACLES {showObstacles && obstacleCount > 0 ? `· ${obstacleCount}` : ''}
+        </button>
+        <button
+          onClick={() => setWindMode(v => !v)}
+          title="Replace still-air rings with the real reachable envelope under current wind"
+          style={{
+            padding: '4px 9px', borderRadius: 3, cursor: 'pointer', fontSize: 10, fontWeight: 700,
+            letterSpacing: '0.04em', fontFamily: "'Courier New', monospace", textTransform: 'uppercase',
+            transition: 'all 0.12s',
+            border: windMode ? '1px solid #00E5FF' : '1px solid rgba(0,229,255,0.35)',
+            background: windMode ? 'rgba(0,229,255,0.18)' : 'transparent',
+            color: windMode ? '#00E5FF' : 'rgba(0,229,255,0.55)',
+            boxShadow: windMode ? '0 0 6px rgba(0,229,255,0.45)' : 'none',
+          }}
+        >
+          🌬 WIND REACH
+        </button>
         <div style={S.divider} />
         <button style={S.clearBtn}  onClick={clearAll}>CLEAR ALL</button>
         <button style={S.exportBtn} onClick={handleExport}>EXPORT / PRINT</button>
@@ -1030,6 +1313,57 @@ export default function SiteMapper({ project, onCacheUpdate, fitToContentOnLoad 
           <span style={{ fontSize: 16 }}>⚠</span>
           <span>PROXIMITY ALERT · {trafficAlert.callsign} · {trafficAlert.distanceNm.toFixed(1)} nm · {Math.round(trafficAlert.altFt).toLocaleString()} ft AGL</span>
           <span style={{ marginLeft: 'auto', fontSize: 10, opacity: 0.9 }}>DO NOT LAUNCH</span>
+        </div>
+      )}
+
+      {/* Wind reach status — what the envelopes are actually built from. */}
+      {windMode && (
+        <div style={{
+          padding: '7px 16px', background: 'rgba(0,229,255,0.10)', color: '#00E5FF',
+          borderBottom: '1px solid rgba(0,229,255,0.28)',
+          fontFamily: "'Courier New', monospace", fontSize: 11, letterSpacing: '0.05em',
+          display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' as const,
+        }}>
+          <span style={{ fontSize: 14 }}>🌬</span>
+          {wind ? (
+            <>
+              <span style={{ fontWeight: 700 }}>
+                WIND {Math.round(wind.dirFromDeg)}° @ {(wind.speedMs * 1.94384).toFixed(0)} KT
+                {wind.gustMs != null && wind.gustMs > wind.speedMs + 1 ? ` G${(wind.gustMs * 1.94384).toFixed(0)}` : ''}
+              </span>
+              <span style={{ opacity: 0.75 }}>SAMPLED AT {wind.altLabel}</span>
+              <span style={{ opacity: 0.6, textTransform: 'uppercase' as const }}>
+                Rings show true reachable ground, not still-air radius
+              </span>
+            </>
+          ) : (
+            <span style={{ opacity: 0.8 }}>FETCHING CURRENT WIND…</span>
+          )}
+        </div>
+      )}
+
+      {/* Obstacle summary — flags anything that breaks the 400 ft ceiling. */}
+      {showObstacles && obstacleCount > 0 && (
+        <div style={{
+          padding: '7px 16px',
+          background: (tallestObstacle ?? 0) >= 400 ? 'rgba(255,32,32,0.12)' : 'rgba(255,215,0,0.10)',
+          color: (tallestObstacle ?? 0) >= 400 ? '#FF6B6B' : '#FFD700',
+          borderBottom: `1px solid ${(tallestObstacle ?? 0) >= 400 ? 'rgba(255,32,32,0.3)' : 'rgba(255,215,0,0.28)'}`,
+          fontFamily: "'Courier New', monospace", fontSize: 11, letterSpacing: '0.05em',
+          display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' as const,
+        }}>
+          <span style={{ fontSize: 13 }}>⚠</span>
+          <span style={{ fontWeight: 700 }}>
+            {obstacleCount} FAA OBSTACLE{obstacleCount === 1 ? '' : 'S'} IN VIEW
+          </span>
+          {tallestObstacle != null && (
+            <span style={{ opacity: 0.85 }}>TALLEST {tallestObstacle} FT AGL</span>
+          )}
+          {(tallestObstacle ?? 0) >= 400 && (
+            <span style={{ opacity: 0.9, textTransform: 'uppercase' as const }}>
+              Breaks the standard 400 ft ceiling — plan around it
+            </span>
+          )}
         </div>
       )}
 

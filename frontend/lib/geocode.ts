@@ -145,3 +145,41 @@ export async function geocodeAddressOrThrow(input: string): Promise<GeocodeResul
   if (!r) throw new Error('Location not found — try a full street address with city + state, or paste coordinates as "lat, lng"')
   return r
 }
+
+// Reverse: coordinates → nearest street address. Used by the click-to-probe
+// on the airspace map so a dropped pin reads as a place instead of a pair of
+// decimals. Returns null rather than throwing — a pin with no address is
+// still a perfectly usable pin.
+export async function reverseGeocode(lat: number, lng: number): Promise<string | null> {
+  // ArcGIS first — CORS-enabled and the most reliable of the free options.
+  try {
+    const params = new URLSearchParams({
+      location: `${lng},${lat}`,
+      f: 'json',
+      outSR: '4326',
+      forStorage: 'false',
+    })
+    const r = await fetchWithTimeout(
+      `https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/reverseGeocode?${params}`,
+      {}, 6000,
+    )
+    const d = await r.json()
+    const a = d?.address
+    if (a?.LongLabel || a?.Match_addr) return (a.LongLabel || a.Match_addr) as string
+  } catch (_) { /* fall through */ }
+
+  try {
+    const qs = new URLSearchParams({
+      format: 'json', lat: String(lat), lon: String(lng), zoom: '18',
+      email: 'tyler.morris@deusxdefense.com',
+    })
+    const r = await fetchWithTimeout(
+      `https://nominatim.openstreetmap.org/reverse?${qs}`,
+      { headers: { 'Accept-Language': 'en' } }, 6000,
+    )
+    const d = await r.json()
+    if (d?.display_name) return d.display_name as string
+  } catch (_) { /* fall through */ }
+
+  return null
+}

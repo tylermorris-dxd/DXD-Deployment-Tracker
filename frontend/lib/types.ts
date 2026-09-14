@@ -222,6 +222,7 @@ export interface ProjectAttachmentMeta {
   size_bytes: number
   kind: string
   added_at: string
+  caption?: string | null
 }
 
 export interface TeamMember {

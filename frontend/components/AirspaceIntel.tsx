@@ -3,7 +3,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import type { ProjectFull } from '@/lib/types'
-import { geocodeAddressOrThrow } from '@/lib/geocode'
+import { geocodeAddressOrThrow, reverseGeocode } from '@/lib/geocode'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -31,6 +31,22 @@ interface GeoJSONFeature {
 interface GeoJSONData {
   type: string
   features: GeoJSONFeature[]
+}
+
+// Result of clicking a point on the map — the "what am I allowed to do
+// right here" answer, without having to type an address first.
+interface ProbeResult {
+  lat: number
+  lng: number
+  address: string | null
+  ceiling: number | null
+  airspaceRaw: string
+  aptName: string | null
+  aptId: string | null
+  laanc: boolean
+  offsetNm: number | null   // distance from the site pin
+  offsetBearing: number | null
+  resolved: boolean
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -61,6 +77,120 @@ const AIRSPACE_INFO: Record<string, { name: string; color: string; desc: string;
   D: { name: 'Class D', color: '#3498db', verdict: 'AUTHORIZATION REQUIRED', desc: 'Controlled airspace around towered airports. LAANC or DroneZone authorization required.' },
   C: { name: 'Class C', color: '#e67e22', verdict: 'AUTHORIZATION REQUIRED', desc: 'Controlled airspace around busy airports. LAANC or DroneZone authorization required.' },
   B: { name: 'Class B', color: '#e74c3c', verdict: 'HIGHLY RESTRICTED',     desc: 'Most restrictive controlled airspace (major airports). LAANC or DroneZone authorization required.' },
+}
+
+// ── Nearby airports / heliports (FAA ADHP) ────────────────────────────────────
+
+// Heliports matter as much as airports here: a hospital helipad two miles off
+// is the single most common conflict for a DFR program, and it never shows up
+// on a facility-map ceiling because it isn't a towered field.
+const FAA_ADHP_URL = 'https://services6.arcgis.com/ssFJjBXIUyZDrSYZ/arcgis/rest/services/ADHP/FeatureServer/0/query'
+
+interface NearbyAirport {
+  ident: string
+  name: string
+  icao: string
+  isHeliport: boolean
+  privateUse: boolean
+  elevFt: number | null
+  lat: number
+  lng: number
+  distNm: number
+  bearing: number
+}
+
+const EARTH_RADIUS_NM = 3440.065
+
+function haversineNm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const toRad = (d: number) => (d * Math.PI) / 180
+  const dLat = toRad(lat2 - lat1)
+  const dLng = toRad(lng2 - lng1)
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2
+  return 2 * EARTH_RADIUS_NM * Math.asin(Math.min(1, Math.sqrt(a)))
+}
+
+function bearingDeg(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const toRad = (d: number) => (d * Math.PI) / 180
+  const y = Math.sin(toRad(lng2 - lng1)) * Math.cos(toRad(lat2))
+  const x =
+    Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
+    Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(toRad(lng2 - lng1))
+  return (((Math.atan2(y, x) * 180) / Math.PI) + 360) % 360
+}
+
+const COMPASS_16 = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW']
+function compassPoint(deg: number): string {
+  return COMPASS_16[Math.round(deg / 22.5) % 16]
+}
+
+async function queryNearbyAirports(lat: number, lng: number, radiusNm = 12): Promise<NearbyAirport[]> {
+  const degLat = radiusNm / 60
+  const degLng = radiusNm / (60 * Math.max(0.15, Math.cos((lat * Math.PI) / 180)))
+  const bbox = `${lng - degLng},${lat - degLat},${lng + degLng},${lat + degLat}`
+  const params = new URLSearchParams({
+    where: '1=1',
+    geometry: bbox,
+    geometryType: 'esriGeometryEnvelope',
+    inSR: '4326',
+    spatialRel: 'esriSpatialRelIntersects',
+    outFields: 'IDENT_TXT,NAME_TXT,ICAO_TXT,TYPE_CODE,ELEV_VAL,PRIVATEUSE_CODE',
+    returnGeometry: 'true',
+    outSR: '4326',
+    f: 'geojson',
+    resultRecordCount: '300',
+  })
+  const res = await fetch(`${FAA_ADHP_URL}?${params}`)
+  if (!res.ok) throw new Error('FAA airport query failed')
+  const data = await res.json() as {
+    features?: Array<{ geometry?: { coordinates?: number[] }; properties?: Record<string, unknown> }>
+  }
+
+  const out: NearbyAirport[] = []
+  for (const f of data.features || []) {
+    const c = f.geometry?.coordinates
+    if (!c || c.length < 2) continue
+    const [alng, alat] = c
+    const dist = haversineNm(lat, lng, alat, alng)
+    if (dist > radiusNm) continue
+    const p = f.properties || {}
+    out.push({
+      ident: String(p.IDENT_TXT ?? '').trim() || '—',
+      name: String(p.NAME_TXT ?? '').trim() || 'Unnamed',
+      icao: String(p.ICAO_TXT ?? '').trim(),
+      isHeliport: String(p.TYPE_CODE ?? '').trim().toUpperCase() === 'HP',
+      privateUse: Number(p.PRIVATEUSE_CODE ?? 0) === 1,
+      elevFt: typeof p.ELEV_VAL === 'number' ? p.ELEV_VAL : null,
+      lat: alat,
+      lng: alng,
+      distNm: dist,
+      bearing: bearingDeg(lat, lng, alat, alng),
+    })
+  }
+  return out.sort((a, b) => a.distNm - b.distNm)
+}
+
+// Single-point facility-map probe — used when a dropped pin lands outside the
+// grid currently loaded for the site.
+async function queryPointCell(lat: number, lng: number): Promise<GeoJSONFeature | null> {
+  const off = 0.004
+  const params = new URLSearchParams({
+    where: '1=1',
+    geometry: `${lng - off},${lat - off},${lng + off},${lat + off}`,
+    geometryType: 'esriGeometryEnvelope',
+    inSR: '4326',
+    spatialRel: 'esriSpatialRelIntersects',
+    outFields: FAA_OUT_FIELDS,
+    returnGeometry: 'true',
+    outSR: '4326',
+    f: 'geojson',
+    resultRecordCount: '4',
+  })
+  const res = await fetch(`${FAA_UASFM_URL}?${params}`)
+  if (!res.ok) return null
+  const data = await res.json() as GeoJSONData
+  return data.features?.[0] ?? null
 }
 
 // ── Geocode wrapper — uses shared lib/geocode and adapts to local Coords shape ─
@@ -158,10 +288,16 @@ interface MapViewProps {
   markerPos: [number, number] | null
   markerLat: number
   markerLng: number
-  onGridDataForPoint: (geojson: GeoJSONData) => void
+  probePos: [number, number] | null
+  airports: NearbyAirport[]
+  showAirports: boolean
+  onMapClick: (lat: number, lng: number) => void
 }
 
-function MapViewInner({ center, zoom, flyTo, gridData, markerPos, markerLat, markerLng }: MapViewProps) {
+function MapViewInner({
+  center, zoom, flyTo, gridData, markerPos, markerLat, markerLng,
+  probePos, airports, showAirports, onMapClick,
+}: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapRef    = useRef<any>(null)
@@ -169,6 +305,13 @@ function MapViewInner({ center, zoom, flyTo, gridData, markerPos, markerLat, mar
   const gridRef   = useRef<any>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const markerRef = useRef<any>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const probeRef  = useRef<any>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const aptLayerRef = useRef<any>(null)
+  // Click handler lives in a ref so the map's listener never needs rebinding.
+  const clickRef  = useRef(onMapClick)
+  useEffect(() => { clickRef.current = onMapClick }, [onMapClick])
   // Snapshot center/zoom at first mount so re-renders don't reset the map
   const initCenterRef = useRef(center)
   const initZoomRef   = useRef(zoom)
@@ -204,6 +347,8 @@ function MapViewInner({ center, zoom, flyTo, gridData, markerPos, markerLat, mar
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
       maxZoom: 19, opacity: 0.65,
     }).addTo(map)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    map.on('click', (e: any) => clickRef.current(e.latlng.lat, e.latlng.lng))
     mapRef.current = map
     setMapReady(true)
     // Fix the classic "tiles missing / blank map" issue when container size
@@ -217,6 +362,8 @@ function MapViewInner({ center, zoom, flyTo, gridData, markerPos, markerLat, mar
       mapRef.current = null
       gridRef.current = null
       markerRef.current = null
+      probeRef.current = null
+      aptLayerRef.current = null
       setMapReady(false)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -294,7 +441,52 @@ function MapViewInner({ center, zoom, flyTo, gridData, markerPos, markerLat, mar
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [markerPos, mapReady])
 
-  return <div ref={containerRef} style={{ height: '100%', width: '100%' }} />
+  // Probe pin — wherever the operator last clicked.
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const L = (window as any).L
+    if (!mapRef.current || !mapReady || !L) return
+    if (probeRef.current) { mapRef.current.removeLayer(probeRef.current); probeRef.current = null }
+    if (!probePos) return
+    const icon = L.divIcon({
+      html: `<div style="position:relative;width:26px;height:26px">
+        <div style="position:absolute;inset:0;border:2px solid #FFD700;border-radius:50%;box-shadow:0 0 10px rgba(255,215,0,0.8)"></div>
+        <div style="position:absolute;left:12px;top:2px;width:2px;height:22px;background:#FFD700"></div>
+        <div style="position:absolute;top:12px;left:2px;height:2px;width:22px;background:#FFD700"></div>
+      </div>`,
+      className: '', iconSize: [26, 26], iconAnchor: [13, 13],
+    })
+    probeRef.current = L.marker(probePos, { icon, interactive: false }).addTo(mapRef.current)
+  }, [probePos, mapReady])
+
+  // Nearby airports + heliports.
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const L = (window as any).L
+    if (!mapRef.current || !mapReady || !L) return
+    if (!aptLayerRef.current) aptLayerRef.current = L.layerGroup().addTo(mapRef.current)
+    aptLayerRef.current.clearLayers()
+    if (!showAirports) return
+    for (const a of airports) {
+      const color = a.isHeliport ? '#e91e8c' : '#00BFFF'
+      const glyph = a.isHeliport ? 'H' : '✈'
+      const icon = L.divIcon({
+        html: `<div style="display:flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,0.75);border:1.5px solid ${color};color:${color};font:700 11px 'Courier New',monospace;text-shadow:0 0 4px ${color}">${glyph}</div>`,
+        className: '', iconSize: [20, 20], iconAnchor: [10, 10],
+      })
+      L.marker([a.lat, a.lng], { icon }).addTo(aptLayerRef.current).bindPopup(
+        `<div style="font-family:'IBM Plex Mono',monospace;font-size:12px;min-width:180px">
+           <div style="font-weight:700;color:${color};margin-bottom:4px">${glyph} ${a.name}</div>
+           <div><b>ID:</b> ${a.ident}${a.icao ? ` / ${a.icao}` : ''}</div>
+           <div><b>Type:</b> ${a.isHeliport ? 'Heliport' : 'Airport'}${a.privateUse ? ' (private use)' : ''}</div>
+           <div><b>Distance:</b> ${a.distNm.toFixed(1)} nm ${compassPoint(a.bearing)}</div>
+           ${a.elevFt != null ? `<div><b>Elevation:</b> ${Math.round(a.elevFt)} ft</div>` : ''}
+         </div>`,
+      )
+    }
+  }, [airports, showAirports, mapReady])
+
+  return <div ref={containerRef} style={{ height: '100%', width: '100%', cursor: 'crosshair' }} />
 }
 
 const MapView = dynamic(() => Promise.resolve({ default: MapViewInner }), { ssr: false })
@@ -326,6 +518,9 @@ export default function AirspaceIntel({ project, onCacheUpdate }: Props) {
   )
   const [mapZoom]                   = useState<number>(cachedData?.coords ? 12 : 5)
   const [flyTo, setFlyTo]           = useState<[number, number] | null>(null)
+  const [airports, setAirports]     = useState<NearbyAirport[]>(cachedData?.airports || [])
+  const [showAirports, setShowAirports] = useState(true)
+  const [probe, setProbe]           = useState<ProbeResult | null>(null)
 
   // findPointGrid using bounding box check (same logic as original, but without L in outer scope)
   function findPointGridSimple(geojson: GeoJSONData, lat: number, lng: number): GeoJSONFeature | null {
@@ -378,8 +573,15 @@ export default function AirspaceIntel({ project, onCacheUpdate }: Props) {
 
       const exact = findPointGridSimple(grids, geo.lat, geo.lng)
       setPointGrid(exact)
+      setProbe(null)
 
-      onCacheUpdate({ coords: geo, displayName: geo.display, gridData: grids, pointGrid: exact })
+      // Nearby fields are a separate, non-blocking concern — a failure here
+      // shouldn't take down the whole airspace scan.
+      let apts: NearbyAirport[] = []
+      try { apts = await queryNearbyAirports(geo.lat, geo.lng) } catch { /* non-fatal */ }
+      setAirports(apts)
+
+      onCacheUpdate({ coords: geo, displayName: geo.display, gridData: grids, pointGrid: exact, airports: apts })
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -387,6 +589,36 @@ export default function AirspaceIntel({ project, onCacheUpdate }: Props) {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, onCacheUpdate])
+
+  // Click anywhere on the map to probe that exact point. The already-loaded
+  // facility grid answers most clicks with no network call at all; only a
+  // click outside the loaded grid costs a round trip.
+  const handleMapClick = useCallback(async (lat: number, lng: number) => {
+    setProbe({
+      lat, lng, address: null, ceiling: null, airspaceRaw: '',
+      aptName: null, aptId: null, laanc: false,
+      offsetNm:      coords ? haversineNm(coords.lat, coords.lng, lat, lng) : null,
+      offsetBearing: coords ? bearingDeg(coords.lat, coords.lng, lat, lng) : null,
+      resolved: false,
+    })
+
+    let cell = gridData ? findPointGridSimple(gridData, lat, lng) : null
+    if (!cell) { try { cell = await queryPointCell(lat, lng) } catch { cell = null } }
+    const address = await reverseGeocode(lat, lng).catch(() => null)
+
+    const p = cell?.properties ?? {}
+    setProbe(prev => (prev && prev.lat === lat && prev.lng === lng ? {
+      ...prev,
+      address,
+      ceiling: typeof p.CEILING === 'number' ? p.CEILING : null,
+      airspaceRaw: String(p.AIRSPACE_1 ?? ''),
+      aptName: (p.APT1_NAME as string | undefined) ?? null,
+      aptId:   ((p.APT1_ICAO || p.APT1_FAAID) as string | undefined) ?? null,
+      laanc:   p.APT1_LAANC === 1,
+      resolved: true,
+    } : prev))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gridData, coords])
 
   useEffect(() => {
     if (!cachedData && defaultLocation) handleSearch(defaultLocation)
@@ -585,6 +817,77 @@ export default function AirspaceIntel({ project, onCacheUpdate }: Props) {
             </div>
           )}
 
+          {/* Nearby airports + heliports — the conflicts a ceiling value
+              alone never shows you. A hospital helipad two miles out is the
+              most common DFR conflict and it isn't a towered field. */}
+          {airports.length > 0 && (
+            <div style={{ background: 'rgba(30,30,34,0.7)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: '16px 18px', marginBottom: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
+                <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: 1.5, flex: 1 }}>
+                  Nearby Fields — within 12 nm
+                </div>
+                <button
+                  data-airspace-noprint="1"
+                  onClick={() => setShowAirports(v => !v)}
+                  style={{
+                    padding: '4px 10px', borderRadius: 4, cursor: 'pointer',
+                    fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, letterSpacing: 1, textTransform: 'uppercase',
+                    border: `1px solid ${showAirports ? 'rgba(0,191,255,0.6)' : 'rgba(255,255,255,0.15)'}`,
+                    background: showAirports ? 'rgba(0,191,255,0.15)' : 'transparent',
+                    color: showAirports ? '#00BFFF' : 'rgba(255,255,255,0.4)',
+                  }}
+                >
+                  {showAirports ? 'On map ✓' : 'Show on map'}
+                </button>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 8 }}>
+                {airports.slice(0, 8).map(a => {
+                  const color = a.isHeliport ? '#e91e8c' : '#00BFFF'
+                  const close = a.distNm < 5
+                  return (
+                    <div key={`${a.ident}-${a.lat}-${a.lng}`} style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      background: close ? `${color}12` : 'rgba(255,255,255,0.02)',
+                      border: `1px solid ${close ? `${color}44` : 'rgba(255,255,255,0.05)'}`,
+                      borderRadius: 6, padding: '9px 11px',
+                    }}>
+                      <div style={{
+                        width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+                        background: `${color}1e`, border: `1px solid ${color}66`, color,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, fontWeight: 700,
+                      }}>
+                        {a.isHeliport ? 'H' : '✈'}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 12, fontWeight: 600, color: '#f1f1f1', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {a.name}
+                        </div>
+                        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>
+                          {a.ident}{a.icao ? ` · ${a.icao}` : ''}{a.privateUse ? ' · private' : ''}
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 13, fontWeight: 700, color }}>
+                          {a.distNm.toFixed(1)}<span style={{ fontSize: 9, opacity: 0.6 }}> nm</span>
+                        </div>
+                        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, color: 'rgba(255,255,255,0.35)' }}>
+                          {compassPoint(a.bearing)} {Math.round(a.bearing)}°
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+              {airports.length > 8 && (
+                <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: 'rgba(255,255,255,0.25)', marginTop: 10 }}>
+                  + {airports.length - 8} more within 12 nm — all plotted on the map above.
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Airspace Class Description */}
           {!isClassG && airspaceInfo && (
             <div style={{
@@ -631,8 +934,24 @@ export default function AirspaceIntel({ project, onCacheUpdate }: Props) {
                 markerPos={[coords.lat, coords.lng]}
                 markerLat={coords.lat}
                 markerLng={coords.lng}
-                onGridDataForPoint={() => {}}
+                probePos={probe ? [probe.lat, probe.lng] : null}
+                airports={airports}
+                showAirports={showAirports}
+                onMapClick={handleMapClick}
               />
+            </div>
+
+            {/* Pin-drop probe readout — what the rules are at the exact
+                point the operator just clicked. */}
+            <div data-airspace-noprint="1" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '12px 18px' }}>
+              {!probe ? (
+                <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: 'rgba(255,255,255,0.3)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ color: '#FFD700', fontSize: 13 }}>✛</span>
+                  Click anywhere on the map to check the ceiling, class, and controlling field at that exact point.
+                </div>
+              ) : (
+                <ProbeReadout probe={probe} onClear={() => setProbe(null)} />
+              )}
             </div>
           </div>
 
@@ -672,6 +991,73 @@ export default function AirspaceIntel({ project, onCacheUpdate }: Props) {
       )}
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  )
+}
+
+// Readout for a clicked point. Deliberately compact — this is a glance
+// answer, not a report; the cards above stay authoritative for the site.
+function ProbeReadout({ probe, onClear }: { probe: ProbeResult; onClear: () => void }) {
+  const info = probe.ceiling != null ? CEILING_COLORS[probe.ceiling] : null
+  const color = probe.ceiling === null
+    ? '#2ecc71'
+    : (info?.fill || CEILING_DEFAULT_FILL)
+  const headline = !probe.resolved
+    ? 'CHECKING…'
+    : probe.ceiling === null
+      ? 'CLASS G — 400 FT'
+      : `${probe.ceiling} FT AGL`
+  const verdict = !probe.resolved
+    ? ''
+    : probe.ceiling === null
+      ? 'No authorization required'
+      : (info?.verdict || 'Check required')
+
+  const cell = (label: string, value: string) => (
+    <div style={{ minWidth: 0 }}>
+      <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, color: 'rgba(255,255,255,0.3)', letterSpacing: 1, textTransform: 'uppercase' }}>{label}</div>
+      <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: 'rgba(255,255,255,0.72)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value}</div>
+    </div>
+  )
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0,
+        background: `${color}14`, border: `1px solid ${color}55`, borderRadius: 6, padding: '7px 12px',
+      }}>
+        <span style={{ color: '#FFD700', fontSize: 14 }}>✛</span>
+        <div>
+          <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 14, fontWeight: 700, color, lineHeight: 1.15 }}>
+            {headline}
+          </div>
+          {verdict && (
+            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, color: 'rgba(255,255,255,0.45)', letterSpacing: 0.5 }}>
+              {verdict}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 12, flex: 1, minWidth: 200 }}>
+        {cell('Coordinates', `${probe.lat.toFixed(5)}, ${probe.lng.toFixed(5)}`)}
+        {probe.offsetNm != null && probe.offsetBearing != null &&
+          cell('From site', `${probe.offsetNm.toFixed(2)} nm ${compassPoint(probe.offsetBearing)}`)}
+        {probe.resolved && cell('Controlling', probe.aptName ? `${probe.aptName}${probe.laanc ? ' ✓LAANC' : ''}` : 'None (uncontrolled)')}
+        {cell('Address', probe.address || (probe.resolved ? '—' : 'resolving…'))}
+      </div>
+
+      <button
+        onClick={onClear}
+        style={{
+          flexShrink: 0, padding: '5px 11px', borderRadius: 4, cursor: 'pointer',
+          border: '1px solid rgba(255,255,255,0.15)', background: 'transparent',
+          color: 'rgba(255,255,255,0.45)',
+          fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, letterSpacing: 1, textTransform: 'uppercase',
+        }}
+      >
+        Clear pin
+      </button>
     </div>
   )
 }
