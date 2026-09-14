@@ -37,9 +37,9 @@ export default function ProjectList({ onSelectProject }: { onSelectProject: (id:
   const [search, setSearch] = useState('')
   const [sortMode, setSortMode] = useState<SortMode>('newest')
   const [filterMode, setFilterMode] = useState<FilterMode>('all')
-  // Steady state cards are background hum — start collapsed so the working
-  // deals dominate the view. Operator can expand with one click.
-  const [steadyOpen, setSteadyOpen] = useState(false)
+  // Active deployments stay expanded — they sit below the proposals, so
+  // showing them costs nothing above the fold and saves a click every visit.
+  const [steadyOpen, setSteadyOpen] = useState(true)
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ['projects'],

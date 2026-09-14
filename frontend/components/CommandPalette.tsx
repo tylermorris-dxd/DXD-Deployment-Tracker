@@ -46,8 +46,6 @@ const VIEW_ENTRIES: Array<{ tab: MainTab; title: string; subtitle: string }> = [
   { tab: 'admin',     title: 'Admin',           subtitle: 'Team, HubSpot, catalog' },
   { tab: 'equipment', title: 'Equipment',       subtitle: 'Serialized inventory' },
   { tab: 'guides',    title: 'Installation Guides', subtitle: 'DJI Dock 3, DroneTag, site assessment' },
-  { tab: 'job-est',   title: 'Job Estimator',   subtitle: 'Per-site quote' },
-  { tab: 'events',    title: 'Event Pricing',   subtitle: 'One-off event pricing' },
   { tab: 'product',   title: 'Products',        subtitle: 'Drone TEVI matrix' },
 ]
 

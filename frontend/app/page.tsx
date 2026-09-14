@@ -10,8 +10,6 @@ import AdminPanel from '@/components/AdminPanel'
 import EquipmentTracker from '@/components/EquipmentTracker'
 import InstallationGuides from '@/components/InstallationGuides'
 import DroneTeviApp from '@/components/DroneTeviApp'
-import EventPricingApp from '@/components/EventPricingApp'
-import JobEstimator from '@/components/JobEstimator'
 import CommandPalette from '@/components/CommandPalette'
 import FleetMap from '@/components/FleetMap'
 import Toaster from '@/components/Toaster'
@@ -26,7 +24,7 @@ import { onOpenDealRequest } from '@/lib/nav'
 import { sfx } from '@/lib/sfx'
 import { useIsMobile } from '@/lib/useIsMobile'
 
-export type MainTab = 'dashboard' | 'deals' | 'fleet' | 'admin' | 'equipment' | 'guides' | 'product' | 'events' | 'job-est'
+export type MainTab = 'dashboard' | 'deals' | 'fleet' | 'admin' | 'equipment' | 'guides' | 'product'
 
 interface MenuItem {
   id: MainTab
@@ -89,26 +87,6 @@ const MENU_ITEMS: MenuItem[] = [
         <path d="M3 2.5h7l3 3v8a1 1 0 01-1 1H3a1 1 0 01-1-1v-10a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
         <path d="M10 2.5v3h3" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
         <path d="M5 8.5h6M5 10.5h6M5 12.5h3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-      </svg>
-    ),
-  },
-  {
-    id: 'job-est', label: 'Job Estimator',
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-        <path d="M3 2.5h7l3 3v8a1 1 0 01-1 1H3a1 1 0 01-1-1v-10a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-        <path d="M10 2.5v3h3" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-        <line x1="5" y1="9" x2="11" y2="9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-        <line x1="5" y1="11.5" x2="9" y2="11.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-      </svg>
-    ),
-  },
-  {
-    id: 'events', label: 'Event Pricing',
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-        <path d="M3 5a1 1 0 011-1h8a1 1 0 011 1v1.5a1.5 1.5 0 100 3V11a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5a1.5 1.5 0 100-3V5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-        <line x1="7" y1="6.5" x2="7" y2="9.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeDasharray="1.4 1.4" />
       </svg>
     ),
   },
@@ -367,8 +345,6 @@ export default function Home() {
           {tab === 'equipment'    && <EquipmentTracker />}
           {tab === 'guides'       && <InstallationGuides />}
           {tab === 'product'      && <DroneTeviApp />}
-          {tab === 'job-est' && <JobEstimator />}
-          {tab === 'events'       && <EventPricingApp />}
         </main>
       </div>
 
