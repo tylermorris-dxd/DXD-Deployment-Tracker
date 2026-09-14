@@ -3,18 +3,16 @@
 import React, { useState } from 'react'
 
 // Installation Guides — three field-ready PDFs the operator opens on site
-// during install. Cards show what each guide covers; clicking one opens
-// the full PDF in a fullscreen viewer (browser's native PDF renderer).
-// Download button pulls the raw file if the operator needs it offline.
+// during install. Sub-tabs at the top switch between them; the selected
+// PDF is embedded directly in the page and scrolls with the normal
+// document scroll (no modal, no popup).
 
 interface Guide {
   id: string
   title: string
-  subtitle: string
+  short: string
   file: string
-  desc: string
   accent: string
-  icon: React.ReactNode
   meta: string
 }
 
@@ -22,210 +20,118 @@ const GUIDES: Guide[] = [
   {
     id: 'dji-dronesense',
     title: 'DJI Dock 3 DroneSense Installation',
-    subtitle: 'Field setup — twelve steps, crate to first flight',
+    short: 'DJI Dock 3',
     file: '/guides/dji-dock-3-dronesense-installation.pdf',
-    desc: 'Site prep, mounting, power + network hookup, DroneSense Remote registration, FAA drone registration, and the first watched test flight.',
     accent: '#D2232A',
     meta: 'Rev A · 07/2026 · 28 pages',
-    icon: (
-      <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
-        <path d="M13 3l9 5v10l-9 5-9-5V8l9-5z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-        <circle cx="13" cy="13" r="3" stroke="currentColor" strokeWidth="1.4" />
-      </svg>
-    ),
   },
   {
     id: 'dronetag-scout',
     title: 'DroneTag Scout Installation Guide',
-    subtitle: 'Remote ID receiver — bench test to live detection',
+    short: 'DroneTag Scout',
     file: '/guides/dronetag-scout-installation.pdf',
-    desc: 'Indoor bench test, management page login, Dronetag App registration, pole siting, mount + PoE cable seal, and the first live-detection proof-of-life.',
     accent: '#3b82f6',
     meta: 'Rev 01 · 14 pages',
-    icon: (
-      <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
-        <rect x="6" y="8" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="1.5" />
-        <line x1="9"  y1="4" x2="9"  y2="8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-        <line x1="17" y1="4" x2="17" y2="8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-        <line x1="13" y1="18" x2="13" y2="22" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-        <path d="M4 6c1.5 1.5 1.5 4 0 5.5M22 6c-1.5 1.5-1.5 4 0 5.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" fill="none" />
-      </svg>
-    ),
   },
   {
     id: 'site-assessment',
     title: 'Site Assessment Field Guide',
-    subtitle: 'Pre-install walk — desk work, siting, red flags',
+    short: 'Site Assessment',
     file: '/guides/site-assessment-guide.pdf',
-    desc: 'Desk assessment before rolling, dock siting clearances, power and network specs, mounting decisions, red flags that force a relocation, and the final go/no-go gate.',
     accent: '#3FB95A',
     meta: 'Field use — Sales / Ops · 10 pages',
-    icon: (
-      <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
-        <path d="M4 6c0-1 .8-2 2-2h9l5 5v11c0 1-1 2-2 2H6c-1.2 0-2-1-2-2V6z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
-        <path d="M15 4v5h5" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-        <path d="M8 14l3 3 6-7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
   },
 ]
 
 export default function InstallationGuides() {
-  const [open, setOpen] = useState<Guide | null>(null)
+  const [activeId, setActiveId] = useState<string>(GUIDES[0].id)
+  const active = GUIDES.find(g => g.id === activeId) ?? GUIDES[0]
 
   return (
-    <div style={{ maxWidth: 1200, margin: '0 auto', padding: '28px 24px 60px' }}>
+    <div style={{ maxWidth: 1200, margin: '0 auto', padding: '20px 20px 40px' }}>
       {/* Header */}
-      <div style={{ marginBottom: 24 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#D2232A', boxShadow: '0 0 8px #D2232A88' }} />
-          <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontWeight: 800, fontSize: 12, letterSpacing: 2.5, color: '#D2232A', textTransform: 'uppercase' }}>
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: active.accent, boxShadow: `0 0 8px ${active.accent}88`, transition: 'all 0.2s' }} />
+          <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontWeight: 800, fontSize: 12, letterSpacing: 2.5, color: active.accent, textTransform: 'uppercase', transition: 'color 0.2s' }}>
             Installation Guides
           </span>
         </div>
-        <h1 style={{ margin: 0, fontFamily: "'Chakra Petch', sans-serif", fontWeight: 800, fontSize: 26, color: '#e8eaf0', letterSpacing: -0.5 }}>
-          Field playbooks
+        <h1 style={{ margin: 0, fontFamily: "'Chakra Petch', sans-serif", fontWeight: 800, fontSize: 24, color: '#e8eaf0', letterSpacing: -0.5 }}>
+          {active.title}
         </h1>
-        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#9aa3b8', marginTop: 4, letterSpacing: 0.3 }}>
-          The three documents you take on-site. Open in the viewer or download the PDF for offline use.
+        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: '#5a6380', marginTop: 4, letterSpacing: 1, textTransform: 'uppercase' }}>
+          {active.meta}
         </div>
       </div>
 
-      {/* Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
-        {GUIDES.map(g => (
-          <div
-            key={g.id}
-            style={{
-              background: 'linear-gradient(160deg, rgba(24,26,32,0.92), rgba(15,17,22,0.98))',
-              border: '1px solid rgba(255,255,255,0.08)',
-              borderLeft: `3px solid ${g.accent}`,
-              borderRadius: 10,
-              padding: 20,
-              display: 'flex', flexDirection: 'column' as const,
-              transition: 'all 0.2s',
-            }}
-            onMouseEnter={e => {
-              (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)'
-              ;(e.currentTarget as HTMLDivElement).style.boxShadow = `0 6px 24px rgba(0,0,0,0.5), 0 0 0 1px ${g.accent}33`
-            }}
-            onMouseLeave={e => {
-              (e.currentTarget as HTMLDivElement).style.transform = ''
-              ;(e.currentTarget as HTMLDivElement).style.boxShadow = 'none'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 14 }}>
-              <div style={{
-                width: 44, height: 44, borderRadius: 8,
-                background: `${g.accent}18`, border: `1px solid ${g.accent}44`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: g.accent, flexShrink: 0,
-              }}>
-                {g.icon}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontWeight: 800, fontSize: 15, color: '#e8eaf0', lineHeight: 1.3, letterSpacing: 0.2 }}>
-                  {g.title}
-                </div>
-                <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: g.accent, marginTop: 3, letterSpacing: 1, textTransform: 'uppercase' as const }}>
-                  {g.subtitle}
-                </div>
-              </div>
-            </div>
-
-            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#9aa3b8', lineHeight: 1.6, marginBottom: 14, flex: 1 }}>
-              {g.desc}
-            </div>
-
-            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, color: '#5a6380', letterSpacing: 1, textTransform: 'uppercase' as const, marginBottom: 12 }}>
-              {g.meta}
-            </div>
-
-            <div style={{ display: 'flex', gap: 6 }}>
-              <button
-                onClick={() => setOpen(g)}
-                style={{
-                  flex: 1, padding: '9px 14px',
-                  background: `linear-gradient(135deg, ${g.accent}, ${g.accent}bb)`,
-                  border: 'none', borderRadius: 6, color: '#fff', cursor: 'pointer',
-                  fontFamily: "'Chakra Petch', sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: 1.5,
-                  textTransform: 'uppercase' as const,
-                }}
-              >
-                Open Guide
-              </button>
-              <a
-                href={g.file}
-                download
-                style={{
-                  padding: '9px 14px',
-                  background: 'transparent', border: `1px solid ${g.accent}55`, borderRadius: 6, color: g.accent,
-                  cursor: 'pointer', fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, fontWeight: 700, letterSpacing: 1,
-                  textTransform: 'uppercase' as const, textDecoration: 'none',
-                  display: 'flex', alignItems: 'center', gap: 5,
-                }}
-              >
-                ↓ PDF
-              </a>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Full-screen PDF viewer */}
-      {open && (
-        <div
+      {/* Sub-tabs */}
+      <div style={{
+        display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' as const,
+        borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: 12,
+      }}>
+        {GUIDES.map(g => {
+          const isActive = g.id === activeId
+          return (
+            <button
+              key={g.id}
+              onClick={() => setActiveId(g.id)}
+              style={{
+                padding: '9px 16px',
+                background: isActive ? `linear-gradient(135deg, ${g.accent}, ${g.accent}bb)` : 'rgba(255,255,255,0.03)',
+                border: `1px solid ${isActive ? g.accent : 'rgba(255,255,255,0.1)'}`,
+                borderRadius: 6,
+                color: isActive ? '#fff' : '#9aa3b8',
+                cursor: 'pointer',
+                fontFamily: "'Chakra Petch', sans-serif",
+                fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase' as const,
+                transition: 'all 0.15s',
+              }}
+            >
+              {g.short}
+            </button>
+          )
+        })}
+        <div style={{ flex: 1 }} />
+        <a
+          href={active.file} download
           style={{
-            position: 'fixed', inset: 0, zIndex: 800,
-            background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(4px)',
-            display: 'flex', flexDirection: 'column' as const,
+            padding: '9px 14px',
+            background: 'transparent', border: `1px solid ${active.accent}55`, borderRadius: 6, color: active.accent,
+            cursor: 'pointer', fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, fontWeight: 700, letterSpacing: 1,
+            textTransform: 'uppercase' as const, textDecoration: 'none',
+            display: 'flex', alignItems: 'center', gap: 5,
           }}
         >
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px',
-            background: '#12141a', borderBottom: `1px solid ${open.accent}44`,
-          }}>
-            <div style={{
-              width: 30, height: 30, borderRadius: 6,
-              background: `${open.accent}18`, border: `1px solid ${open.accent}55`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', color: open.accent, flexShrink: 0,
-            }}>
-              <span style={{ fontSize: 16, lineHeight: 1 }}>📄</span>
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontWeight: 700, fontSize: 13, color: '#e8eaf0', overflow: 'hidden' as const, textOverflow: 'ellipsis' as const, whiteSpace: 'nowrap' as const }}>
-                {open.title}
-              </div>
-              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, color: '#5a6380', letterSpacing: 1 }}>
-                {open.meta}
-              </div>
-            </div>
-            <a
-              href={open.file} download
-              style={{
-                padding: '6px 12px', background: 'transparent', border: `1px solid ${open.accent}55`, borderRadius: 5, color: open.accent,
-                fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, textDecoration: 'none', letterSpacing: 1, textTransform: 'uppercase' as const,
-              }}
-            >
-              ↓ Download
-            </a>
-            <button
-              onClick={() => setOpen(null)}
-              style={{
-                padding: '6px 14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 5, color: '#e8eaf0',
-                cursor: 'pointer', fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 1, textTransform: 'uppercase' as const,
-              }}
-            >
-              Close
-            </button>
-          </div>
-          <iframe
-            src={open.file}
-            title={open.title}
-            style={{ flex: 1, width: '100%', border: 'none', background: '#0a0b0d' }}
-          />
-        </div>
-      )}
+          ↓ Download PDF
+        </a>
+      </div>
+
+      {/* Embedded PDF viewer — scrolls with the page */}
+      <div style={{
+        border: `1px solid ${active.accent}33`,
+        borderRadius: 8,
+        overflow: 'hidden' as const,
+        background: '#0a0b0d',
+        boxShadow: `0 6px 30px rgba(0,0,0,0.4), 0 0 0 1px ${active.accent}18`,
+      }}>
+        <iframe
+          key={active.id}
+          src={active.file}
+          title={active.title}
+          style={{
+            width: '100%',
+            height: 'calc(100vh - 220px)',
+            minHeight: 600,
+            border: 'none',
+            display: 'block',
+          }}
+        />
+      </div>
+
+      <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: '#5a6380', textAlign: 'center' as const, marginTop: 10, letterSpacing: 0.5 }}>
+        Use the toolbar in the viewer to zoom, print, or jump to a page.
+      </div>
     </div>
   )
 }
