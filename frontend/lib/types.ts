@@ -1,3 +1,5 @@
+export type InstallStatus = 'unscheduled' | 'scheduled' | 'in_progress' | 'complete' | 'blocked'
+
 export interface ProjectSummary {
   id: string
   name: string
@@ -12,6 +14,11 @@ export interface ProjectSummary {
   faaAuthStartedAt: string | null
   steadyState: boolean
   steadyStateAt: string | null
+  installDate: string | null
+  installEndDate: string | null
+  installStatus: InstallStatus
+  assignedTech: string | null
+  scheduleNotes: string | null
 }
 
 export interface ProjectFull {
@@ -261,6 +268,11 @@ export interface UpdateProject {
   pricingCache?: string | null
   faaAuthorizationRequired?: boolean
   steadyState?: boolean
+  installDate?: string | null
+  installEndDate?: string | null
+  installStatus?: InstallStatus
+  assignedTech?: string | null
+  scheduleNotes?: string | null
 }
 
 export interface UpdatePhase {

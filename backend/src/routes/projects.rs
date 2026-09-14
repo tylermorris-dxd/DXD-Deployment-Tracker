@@ -5,6 +5,7 @@ use axum::{
     Json, Router,
 };
 use serde::Deserialize;
+use sqlx::{postgres::PgRow, Row};
 use uuid::Uuid;
 
 use crate::{
@@ -13,6 +14,50 @@ use crate::{
     routes::misc::AppState,
     template::get_template,
 };
+
+// Project summary projection, shared by the list and the post-update refetch.
+// Kept as a dynamic query rather than the query! macro because migrations run
+// at startup, not at build time — every new projects column would otherwise
+// risk a compile against a schema that doesn't have it yet.
+const PROJECT_SUMMARY_SELECT: &str = r#"
+    SELECT p.id, p.name, p.client, p.site, p.created_at, p.hubspot_deal_id,
+           p.faa_authorization_required, p.faa_auth_started_at,
+           p.steady_state, p.steady_state_at,
+           p.install_date, p.install_end_date, p.install_status,
+           p.assigned_tech, p.schedule_notes,
+           COUNT(t.id) FILTER (WHERE t.stage_number IS NULL OR t.stage_number NOT IN (11, 12)) as total_tasks,
+           SUM(CASE WHEN t.completed = TRUE THEN 1 ELSE 0 END) FILTER (WHERE t.stage_number IS NULL OR t.stage_number NOT IN (11, 12)) as done_tasks,
+           MIN(CASE WHEN t.completed = FALSE AND t.stage_number IS NOT NULL AND t.stage_number NOT IN (11, 12) THEN t.stage_number END) as current_stage
+    FROM projects p
+    LEFT JOIN phases ph ON ph.project_id = p.id
+    LEFT JOIN tasks t ON t.phase_id = ph.id
+"#;
+
+fn row_to_summary(r: &PgRow) -> ProjectSummary {
+    ProjectSummary {
+        id: r.get("id"),
+        name: r.get("name"),
+        client: r.get("client"),
+        site: r.get("site"),
+        created_at: r.get("created_at"),
+        total_tasks: r.try_get::<Option<i64>, _>("total_tasks").unwrap_or(None).unwrap_or(0),
+        done_tasks: r.try_get::<Option<i64>, _>("done_tasks").unwrap_or(None).unwrap_or(0),
+        hubspot_deal_id: r.try_get("hubspot_deal_id").unwrap_or(None),
+        current_stage: r.try_get("current_stage").unwrap_or(None),
+        faa_authorization_required: r.get("faa_authorization_required"),
+        faa_auth_started_at: r.try_get("faa_auth_started_at").unwrap_or(None),
+        steady_state: r.get("steady_state"),
+        steady_state_at: r.try_get("steady_state_at").unwrap_or(None),
+        install_date: r.try_get("install_date").unwrap_or(None),
+        install_end_date: r.try_get("install_end_date").unwrap_or(None),
+        install_status: r
+            .try_get::<Option<String>, _>("install_status")
+            .unwrap_or(None)
+            .unwrap_or_else(|| "unscheduled".to_string()),
+        assigned_tech: r.try_get("assigned_tech").unwrap_or(None),
+        schedule_notes: r.try_get("schedule_notes").unwrap_or(None),
+    }
+}
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -24,42 +69,9 @@ pub fn router() -> Router<AppState> {
 }
 
 async fn list_projects(State(state): State<AppState>) -> Result<Json<Vec<ProjectSummary>>, AppError> {
-    let rows = sqlx::query!(
-        r#"
-        SELECT p.id, p.name, p.client, p.site, p.created_at, p.hubspot_deal_id,
-               p.faa_authorization_required, p.faa_auth_started_at,
-               p.steady_state, p.steady_state_at,
-               COUNT(t.id) FILTER (WHERE t.stage_number IS NULL OR t.stage_number NOT IN (11, 12)) as total_tasks,
-               SUM(CASE WHEN t.completed = TRUE THEN 1 ELSE 0 END) FILTER (WHERE t.stage_number IS NULL OR t.stage_number NOT IN (11, 12)) as done_tasks,
-               MIN(CASE WHEN t.completed = FALSE AND t.stage_number IS NOT NULL AND t.stage_number NOT IN (11, 12) THEN t.stage_number END) as current_stage
-        FROM projects p
-        LEFT JOIN phases ph ON ph.project_id = p.id
-        LEFT JOIN tasks t ON t.phase_id = ph.id
-        GROUP BY p.id
-        ORDER BY p.created_at DESC
-        "#
-    )
-    .fetch_all(&state.pool)
-    .await?;
-
-    let summaries = rows
-        .into_iter()
-        .map(|r| ProjectSummary {
-            id: r.id,
-            name: r.name,
-            client: r.client,
-            site: r.site,
-            created_at: r.created_at,
-            total_tasks: r.total_tasks.unwrap_or(0),
-            done_tasks: r.done_tasks.unwrap_or(0),
-            hubspot_deal_id: r.hubspot_deal_id,
-            current_stage: r.current_stage,
-            faa_authorization_required: r.faa_authorization_required,
-            faa_auth_started_at: r.faa_auth_started_at,
-            steady_state: r.steady_state,
-            steady_state_at: r.steady_state_at,
-        })
-        .collect();
+    let sql = format!("{PROJECT_SUMMARY_SELECT} GROUP BY p.id ORDER BY p.created_at DESC");
+    let rows = sqlx::query(&sql).fetch_all(&state.pool).await?;
+    let summaries = rows.iter().map(row_to_summary).collect();
 
     Ok(Json(summaries))
 }
@@ -403,6 +415,37 @@ async fn update_project(
             .await?;
         }
     }
+    // Scheduling fields. Each accepts an explicit null to clear the value,
+    // which is how ops un-schedules a job without deleting the deal.
+    for (col, val) in [
+        ("install_date", &body.install_date),
+        ("install_end_date", &body.install_end_date),
+        ("assigned_tech", &body.assigned_tech),
+        ("schedule_notes", &body.schedule_notes),
+    ] {
+        if let Some(v) = val {
+            let s = v.as_str().map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
+            // Column name is from the fixed literal array above, never user input.
+            let sql = format!("UPDATE projects SET {col} = $1 WHERE id = $2");
+            sqlx::query(&sql)
+                .bind(s)
+                .bind(&project_id)
+                .execute(&state.pool)
+                .await?;
+        }
+    }
+    if let Some(status) = &body.install_status {
+        const ALLOWED: &[&str] = &["unscheduled", "scheduled", "in_progress", "complete", "blocked"];
+        if !ALLOWED.contains(&status.as_str()) {
+            return Err(AppError::BadRequest(format!("invalid install_status: {status}")));
+        }
+        sqlx::query("UPDATE projects SET install_status = $1 WHERE id = $2")
+            .bind(status)
+            .bind(&project_id)
+            .execute(&state.pool)
+            .await?;
+    }
+
     if let Some(steady) = body.steady_state {
         if steady {
             let now = chrono::Utc::now().to_rfc3339();
@@ -422,39 +465,14 @@ async fn update_project(
         }
     }
 
-    let row = sqlx::query!(
-        r#"SELECT p.id, p.name, p.client, p.site, p.created_at, p.hubspot_deal_id,
-                  p.faa_authorization_required, p.faa_auth_started_at,
-                  p.steady_state, p.steady_state_at,
-                  COUNT(t.id) FILTER (WHERE t.stage_number IS NULL OR t.stage_number NOT IN (11, 12)) as total_tasks,
-                  SUM(CASE WHEN t.completed = TRUE THEN 1 ELSE 0 END) FILTER (WHERE t.stage_number IS NULL OR t.stage_number NOT IN (11, 12)) as done_tasks,
-                  MIN(CASE WHEN t.completed = FALSE AND t.stage_number IS NOT NULL AND t.stage_number NOT IN (11, 12) THEN t.stage_number END) as current_stage
-           FROM projects p
-           LEFT JOIN phases ph ON ph.project_id = p.id
-           LEFT JOIN tasks t ON t.phase_id = ph.id
-           WHERE p.id = $1
-           GROUP BY p.id"#,
-        project_id
-    )
-    .fetch_optional(&state.pool)
-    .await?
-    .ok_or(AppError::NotFound)?;
+    let sql = format!("{PROJECT_SUMMARY_SELECT} WHERE p.id = $1 GROUP BY p.id");
+    let row = sqlx::query(&sql)
+        .bind(&project_id)
+        .fetch_optional(&state.pool)
+        .await?
+        .ok_or(AppError::NotFound)?;
 
-    Ok(Json(ProjectSummary {
-        id: row.id,
-        name: row.name,
-        client: row.client,
-        site: row.site,
-        created_at: row.created_at,
-        total_tasks: row.total_tasks.unwrap_or(0),
-        done_tasks: row.done_tasks.unwrap_or(0),
-        hubspot_deal_id: row.hubspot_deal_id,
-        current_stage: row.current_stage,
-        faa_authorization_required: row.faa_authorization_required,
-        faa_auth_started_at: row.faa_auth_started_at,
-        steady_state: row.steady_state,
-        steady_state_at: row.steady_state_at,
-    }))
+    Ok(Json(row_to_summary(&row)))
 }
 
 async fn delete_project(

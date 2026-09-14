@@ -23,6 +23,13 @@ pub struct UpdateProject {
     pub pricing_cache: Option<serde_json::Value>,
     pub faa_authorization_required: Option<bool>,
     pub steady_state: Option<bool>,
+    // Scheduling — Value rather than String so the client can explicitly
+    // send null to clear a date, the same way the cache fields work.
+    pub install_date: Option<serde_json::Value>,
+    pub install_end_date: Option<serde_json::Value>,
+    pub install_status: Option<String>,
+    pub assigned_tech: Option<serde_json::Value>,
+    pub schedule_notes: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -171,6 +178,11 @@ pub struct ProjectSummary {
     pub faa_auth_started_at: Option<String>,
     pub steady_state: bool,
     pub steady_state_at: Option<String>,
+    pub install_date: Option<String>,
+    pub install_end_date: Option<String>,
+    pub install_status: String,
+    pub assigned_tech: Option<String>,
+    pub schedule_notes: Option<String>,
 }
 
 #[derive(Debug, Serialize)]

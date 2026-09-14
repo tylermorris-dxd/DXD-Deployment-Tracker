@@ -42,6 +42,7 @@ interface Item {
 const VIEW_ENTRIES: Array<{ tab: MainTab; title: string; subtitle: string }> = [
   { tab: 'dashboard', title: 'Dashboard',       subtitle: 'Ops overview' },
   { tab: 'deals',     title: 'Deals',           subtitle: 'All pinned deals' },
+  { tab: 'timeline',  title: 'Install Timeline', subtitle: 'Schedule board + weather alerts' },
   { tab: 'fleet',     title: 'Fleet Map',       subtitle: 'Every deal on the map' },
   { tab: 'admin',     title: 'Admin',           subtitle: 'Team, HubSpot, catalog' },
   { tab: 'equipment', title: 'Equipment',       subtitle: 'Serialized inventory' },

@@ -10,6 +10,7 @@ import AdminPanel from '@/components/AdminPanel'
 import EquipmentTracker from '@/components/EquipmentTracker'
 import InstallationGuides from '@/components/InstallationGuides'
 import DroneTeviApp from '@/components/DroneTeviApp'
+import MasterTimeline from '@/components/MasterTimeline'
 import CommandPalette from '@/components/CommandPalette'
 import FleetMap from '@/components/FleetMap'
 import Toaster from '@/components/Toaster'
@@ -24,7 +25,7 @@ import { onOpenDealRequest } from '@/lib/nav'
 import { sfx } from '@/lib/sfx'
 import { useIsMobile } from '@/lib/useIsMobile'
 
-export type MainTab = 'dashboard' | 'deals' | 'fleet' | 'admin' | 'equipment' | 'guides' | 'product'
+export type MainTab = 'dashboard' | 'deals' | 'timeline' | 'fleet' | 'admin' | 'equipment' | 'guides' | 'product'
 
 interface MenuItem {
   id: MainTab
@@ -50,6 +51,17 @@ const MENU_ITEMS: MenuItem[] = [
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
         <rect x="2" y="5" width="12" height="9" rx="1" stroke="currentColor" strokeWidth="1.4" />
         <path d="M6 5V3.5a1 1 0 011-1h2a1 1 0 011 1V5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
+    id: 'timeline', label: 'Timeline',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <rect x="2" y="3" width="12" height="11" rx="1.4" stroke="currentColor" strokeWidth="1.4" />
+        <path d="M2 6.5h12M5.5 1.8v2.4M10.5 1.8v2.4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+        <rect x="4" y="8.4" width="4.5" height="1.8" rx="0.9" fill="currentColor" />
+        <rect x="7.5" y="11" width="4.5" height="1.8" rx="0.9" fill="currentColor" />
       </svg>
     ),
   },
@@ -336,6 +348,7 @@ export default function Home() {
         <main style={{ flex: 1, minWidth: 0, width: isMobile ? '100%' : undefined }}>
           {tab === 'dashboard'    && <Dashboard onOpenDeal={openDeal} onSwitchTab={setTab} />}
           {tab === 'deals'        && <ProjectList onSelectProject={openDeal} />}
+          {tab === 'timeline'     && <MasterTimeline onOpenDeal={openDeal} />}
           {tab === 'fleet'        && (
             <div style={{ padding: isMobile ? 12 : 20 }}>
               <FleetMap onOpenDeal={openDeal} />
