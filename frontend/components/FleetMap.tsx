@@ -55,9 +55,9 @@ const CROSSHAIR_CURSOR = `url("data:image/svg+xml;utf8,${encodeURIComponent(
 
 // ── Pin state → color ────────────────────────────────────────────────────────
 function projectColor(p: ProjectSummary): { color: string; label: string } {
-  if (p.steadyState)                  return { color: '#3FB95A', label: 'Steady state' }
+  if (p.steadyState)                  return { color: '#3FB95A', label: 'Active deployment' }
   if (p.faaAuthorizationRequired)     return { color: '#f59e0b', label: 'FAA pending' }
-  return                                     { color: '#D2232A', label: 'Active' }
+  return                                     { color: '#D2232A', label: 'Proposal' }
 }
 
 interface Pin {
@@ -402,9 +402,9 @@ export default function FleetMap({ onOpenDeal, height = 'calc(var(--dxd-vh, 100v
           maxWidth: isMobile ? 200 : 'none',
         }}>
           <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontWeight: 700, fontSize: 11, color: '#e8eaf0', letterSpacing: 1.5, marginBottom: 8 }}>FLEET STATUS</div>
-          <LegendRow color="#D2232A" label={`Active (${counts.active})`} />
+          <LegendRow color="#D2232A" label={`Proposals (${counts.active})`} />
           <LegendRow color="#f59e0b" label={`FAA pending (${counts.faa})`} />
-          <LegendRow color="#3FB95A" label={`Steady state (${counts.steady})`} />
+          <LegendRow color="#3FB95A" label={`Active deployments (${counts.steady})`} />
           {failed > 0 && (
             <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid #252b38', fontSize: 9, color: '#f59e0b' }}>
               {failed} site{failed === 1 ? '' : 's'} couldn't be geocoded

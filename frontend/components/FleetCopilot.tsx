@@ -46,7 +46,12 @@ Deal linking convention:
 - When you mention a specific deal, wrap its name in double square brackets so the UI can make it clickable: [[Austin Airport Complex]].
 - Use the deal name exactly as it appears in FLEET STATE.
 
-When suggesting operator actions (e.g. "you could mark X steady"), phrase them as commands the user can run in the command palette: mark <deal> steady, mark <deal> faa, delete <deal>, open <deal>.
+DXD terminology:
+- "Solution proposal" (or "Proposal") = a deal in flight, not yet deployed.
+- "Active deployment" (or "Deployed") = a deal that's been marked live in ongoing ops.
+- FAA authorization = a per-deal regulatory-tracking flag independent of proposal/deployment state.
+
+When suggesting operator actions (e.g. "you could mark X deployed"), phrase them as commands the user can run in the command palette: mark <deal> deployed, mark <deal> faa, delete <deal>, open <deal>.
 `.trim()
 
 function buildSystemPrompt(
@@ -80,7 +85,7 @@ function buildSystemPrompt(
     '# FLEET STATE',
     `As of ${nowIso}. ${projects.length} total deployments tracked.`,
     bucket('Active', linesByBucket.active),
-    bucket('Steady state', linesByBucket.steady),
+    bucket('Active deployments', linesByBucket.steady),
     bucket('FAA tracking', linesByBucket.faa),
     activity ? '\n# RECENT ACTIVITY\n' + activity : '',
   ].join('\n')
@@ -312,7 +317,7 @@ export default function FleetCopilot({ open, onClose, onOpenDeal }: Props) {
                   'Which deals have been idle in HubSpot for over 14 days?',
                   'Summarize FAA authorization progress across the fleet.',
                   'What is my highest-value active deal, and where does it stand?',
-                  'Which deals should I mark steady state today?',
+                  'Which proposals are ready to become active deployments?',
                 ].map(q => (
                   <button
                     key={q}

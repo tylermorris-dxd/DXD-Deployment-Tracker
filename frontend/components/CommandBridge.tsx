@@ -177,8 +177,8 @@ export default function CommandBridge({ open, onClose, onOpenDeal }: Props) {
         </HudPanel>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 148px)', gap: 8 }}>
-          <HudPanel accent="#D2232A" label="Active"        value={String(activeCount)} />
-          <HudPanel accent="#3FB95A" label="Steady"        value={String(steadyCount)} />
+          <HudPanel accent="#D2232A" label="Proposals"     value={String(activeCount)} />
+          <HudPanel accent="#3FB95A" label="Deployments"   value={String(steadyCount)} />
           <HudPanel accent="#3b82f6" label="FAA Pending"   value={String(faaCount)} />
           <HudPanel accent="#3FB95A" label="Pipeline"      value={fmtMoney(pipeline)} />
         </div>
@@ -235,7 +235,7 @@ export default function CommandBridge({ open, onClose, onOpenDeal }: Props) {
         <div style={{ display: 'flex', gap: 24, whiteSpace: 'nowrap', width: 'fit-content', animation: `dxd-cb-marquee ${Math.max(30, projects.length * 6)}s linear infinite` }}>
           {[...projects, ...projects].map((p, i) => {
             const color = p.steadyState ? '#3FB95A' : p.faaAuthorizationRequired ? '#f59e0b' : '#D2232A'
-            const state = p.steadyState ? 'STEADY' : p.faaAuthorizationRequired ? 'FAA' : 'ACTIVE'
+            const state = p.steadyState ? 'DEPLOYED' : p.faaAuthorizationRequired ? 'FAA' : 'PROPOSAL'
             return (
               <div key={`${p.id}-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#9aa3b8' }}>
                 <span style={{ width: 6, height: 6, borderRadius: '50%', background: color, boxShadow: `0 0 6px ${color}88` }} />

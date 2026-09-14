@@ -23,7 +23,7 @@ const GROUPS: Array<{ title: string; rows: Array<{ keys: string[]; desc: string 
     rows: [
       { keys: ['↑', '↓'],        desc: 'Move selection' },
       { keys: ['↵'],             desc: 'Run selected item' },
-      { keys: ['mark', '<deal>', 'steady'], desc: 'Mark a deal steady state' },
+      { keys: ['mark', '<deal>', 'deployed'], desc: 'Mark a deal as active deployment' },
       { keys: ['mark', '<deal>', 'faa'],    desc: 'Enable FAA tracking on a deal' },
       { keys: ['delete', '<deal>'],         desc: 'Delete a deal (with 7-second undo)' },
       { keys: ['open', '<deal>'],           desc: 'Jump straight into a deal' },

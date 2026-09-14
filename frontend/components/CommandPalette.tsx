@@ -43,7 +43,6 @@ const VIEW_ENTRIES: Array<{ tab: MainTab; title: string; subtitle: string }> = [
   { tab: 'dashboard', title: 'Dashboard',       subtitle: 'Ops overview' },
   { tab: 'deals',     title: 'Deals',           subtitle: 'All pinned deals' },
   { tab: 'fleet',     title: 'Fleet Map',       subtitle: 'Every deal on the map' },
-  { tab: 'constellation', title: 'Constellation', subtitle: 'Deal + client relationship graph' },
   { tab: 'admin',     title: 'Admin',           subtitle: 'Team, HubSpot, catalog' },
   { tab: 'equipment', title: 'Equipment',       subtitle: 'Serialized inventory' },
   { tab: 'cost',      title: 'Cost Estimator',  subtitle: 'Bulk deploy modeling' },
@@ -75,12 +74,18 @@ function parseVerb(q: string): ParsedQuery {
   if (!raw) return { verb: null, needle: '' }
   // Ordered by specificity — longer prefixes first.
   const table: Array<[RegExp, Verb]> = [
-    [/^unmark\s+(.+?)\s+steady\b/, 'unmark-steady'],
-    [/^unmark\s+(.+?)\s+faa\b/,    'unmark-faa'],
-    [/^remove\s+(.+?)\s+steady\b/, 'unmark-steady'],
-    [/^remove\s+(.+?)\s+faa\b/,    'unmark-faa'],
-    [/^mark\s+(.+?)\s+steady\b/,   'mark-steady'],
-    [/^mark\s+(.+?)\s+faa\b/,      'mark-faa'],
+    // Preferred verbs match the new UI language (deployed / active
+    // deployment). "steady" is kept as a legacy alias so anyone with the
+    // old muscle memory doesn't get 404'd.
+    [/^unmark\s+(.+?)\s+deployed\b/, 'unmark-steady'],
+    [/^unmark\s+(.+?)\s+steady\b/,   'unmark-steady'],
+    [/^unmark\s+(.+?)\s+faa\b/,      'unmark-faa'],
+    [/^remove\s+(.+?)\s+deployed\b/, 'unmark-steady'],
+    [/^remove\s+(.+?)\s+steady\b/,   'unmark-steady'],
+    [/^remove\s+(.+?)\s+faa\b/,      'unmark-faa'],
+    [/^mark\s+(.+?)\s+deployed\b/,   'mark-steady'],
+    [/^mark\s+(.+?)\s+steady\b/,     'mark-steady'],
+    [/^mark\s+(.+?)\s+faa\b/,        'mark-faa'],
     [/^delete\s+(.+)$/,            'delete'],
     [/^open\s+(.+)$/,              'open'],
   ]
@@ -185,15 +190,15 @@ export default function CommandPalette({ open, onClose, onOpenDeal, onSwitchTab 
         switch (parsed.verb) {
           case 'mark-steady':
             actionItems.push({
-              ...shared, key: `act:steady-on:${target.id}`, title: `Mark ${dealName} steady state`,
+              ...shared, key: `act:steady-on:${target.id}`, title: `Mark ${dealName} as active deployment`,
               accent: '#3FB95A',
-              onSelect: () => toggleMut.mutate({ id: target.id, patch: { steadyState: true },  label: 'Marked steady state', subject: dealName, kind: 'steady-on'  }),
+              onSelect: () => toggleMut.mutate({ id: target.id, patch: { steadyState: true },  label: 'Marked as active deployment', subject: dealName, kind: 'steady-on'  }),
             }); break
           case 'unmark-steady':
             actionItems.push({
-              ...shared, key: `act:steady-off:${target.id}`, title: `Return ${dealName} to active deployment`,
+              ...shared, key: `act:steady-off:${target.id}`, title: `Return ${dealName} to solution proposal`,
               accent: '#3FB95A',
-              onSelect: () => toggleMut.mutate({ id: target.id, patch: { steadyState: false }, label: 'Returned to active',    subject: dealName, kind: 'steady-off' }),
+              onSelect: () => toggleMut.mutate({ id: target.id, patch: { steadyState: false }, label: 'Returned to proposal',        subject: dealName, kind: 'steady-off' }),
             }); break
           case 'mark-faa':
             actionItems.push({
@@ -326,7 +331,7 @@ export default function CommandPalette({ open, onClose, onOpenDeal, onSwitchTab 
             value={query}
             onChange={e => setQuery(e.target.value)}
             onKeyDown={onKeyDown}
-            placeholder="Search deals, run a command…  e.g. mark austin steady"
+            placeholder="Search deals, run a command…  e.g. mark austin deployed"
             style={{
               flex: 1, background: 'transparent', border: 'none', outline: 'none',
               color: '#e8eaf0', fontFamily: 'Syne, sans-serif', fontSize: 16, letterSpacing: 0.2,
@@ -384,7 +389,7 @@ export default function CommandPalette({ open, onClose, onOpenDeal, onSwitchTab 
           <span><kbd style={kbdSt}>↑</kbd><kbd style={kbdSt}>↓</kbd> navigate</span>
           <span><kbd style={kbdSt}>↵</kbd> select</span>
           <span style={{ opacity: 0.7 }}>try:</span>
-          <span style={{ color: '#9aa3b8' }}>mark ✱ steady</span>
+          <span style={{ color: '#9aa3b8' }}>mark ✱ deployed</span>
           <span style={{ color: '#9aa3b8' }}>mark ✱ faa</span>
           <span style={{ color: '#9aa3b8' }}>delete ✱</span>
           <span style={{ marginLeft: 'auto' }}><kbd style={kbdSt}>?</kbd> shortcuts</span>

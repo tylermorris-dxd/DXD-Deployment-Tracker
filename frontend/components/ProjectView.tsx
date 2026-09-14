@@ -131,7 +131,7 @@ export default function ProjectView({ projectId, onBack }: Props) {
     onSuccess: (_data, val) => {
       invalidate(); qc.invalidateQueries({ queryKey: ['projects'] })
       logActivity({ kind: val ? 'steady-on' : 'steady-off', subject: project?.name || 'deal', projectId })
-      showToast({ title: val ? 'Marked steady state' : 'Returned to active deployment', detail: project?.name, tone: 'success', durationMs: 2500 })
+      showToast({ title: val ? 'Marked as active deployment' : 'Returned to solution proposal', detail: project?.name, tone: 'success', durationMs: 2500 })
     },
   })
 
@@ -213,7 +213,7 @@ export default function ProjectView({ projectId, onBack }: Props) {
               </div>
               {/* Status pills — show only when there's signal */}
               {project.steadyState && (
-                <span title="Deal is in steady state" style={pillSt('#3FB95A')}>STEADY</span>
+                <span title="Deal is an active deployment" style={pillSt('#3FB95A')}>DEPLOYED</span>
               )}
               {project.faaAuthorizationRequired && (
                 <span title="FAA authorization tracking active" style={pillSt('#3b82f6')}>FAA</span>
@@ -457,7 +457,7 @@ function OverflowMenu({
           boxShadow: '0 20px 60px rgba(0,0,0,0.6)', overflow: 'hidden', zIndex: 150,
         }}>
           {row('FAA Auth', '#3b82f6', faaOn, onToggleFaa, faaOn ? 'Stop tracking waiver clock' : 'Track FAA waiver progress')}
-          {row('Steady State', '#3FB95A', steadyOn, onToggleSteady, steadyOn ? 'Return deal to active deployment' : 'Mark deal as deployed + running')}
+          {row('Active Deployment', '#3FB95A', steadyOn, onToggleSteady, steadyOn ? 'Return to solution proposal stage' : 'Mark this deal as deployed and running')}
           <div style={{ height: 1, background: 'rgba(255,255,255,0.06)' }} />
           <button
             onClick={() => { setOpen(false); onDelete() }}

@@ -66,8 +66,8 @@ export function useRecentActivity(limit = 20): ActivityEntry[] {
 // Human-friendly line — used by the activity widget on the dashboard.
 export function activityLabel(e: ActivityEntry): string {
   switch (e.kind) {
-    case 'steady-on':      return `Marked ${e.subject} steady state`
-    case 'steady-off':     return `Returned ${e.subject} to active deployment`
+    case 'steady-on':      return `Marked ${e.subject} as active deployment`
+    case 'steady-off':     return `Returned ${e.subject} to solution proposal`
     case 'faa-on':         return `Started FAA tracking on ${e.subject}`
     case 'faa-off':        return `Stopped FAA tracking on ${e.subject}`
     case 'deal-created':   return `Created ${e.subject}`

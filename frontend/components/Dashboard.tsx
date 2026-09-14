@@ -156,9 +156,9 @@ export default function Dashboard({ onOpenDeal, onSwitchTab }: Props) {
 
             {/* Sub-metrics stacked as three chips */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, flex: 1, minWidth: 260 }}>
-              <SubMetric label="Active"        value={String(activeCount)}   color={C.red}   />
-              <SubMetric label="Steady State"  value={String(steadyCount)}   color={C.green} />
-              <SubMetric label="Steady MRR"    value={fmtMoney(steadyMrr)}   color={C.green} tint sub="from HubSpot amount" />
+              <SubMetric label="Proposals"          value={String(activeCount)}   color={C.red}   />
+              <SubMetric label="Active Deployments" value={String(steadyCount)}   color={C.green} />
+              <SubMetric label="Deployment MRR"     value={fmtMoney(steadyMrr)}   color={C.green} tint sub="from HubSpot amount" />
               <SubMetric label="Pipeline"      value={fmtMoney(pipelineValue)} color={C.green} tint />
               <SubMetric label="FAA Pending"   value={String(faaCount)}      color={C.blue}  />
             </div>
@@ -233,7 +233,7 @@ export default function Dashboard({ onOpenDeal, onSwitchTab }: Props) {
           <WHeader title="Recent Activity" sub={`${activity.length}`} />
           {activity.length === 0 ? (
             <Empty>
-              No activity yet. Toggle FAA or steady state on a deal to start the log.
+              No activity yet. Toggle FAA or deployment status on a deal to start the log.
             </Empty>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 260, overflowY: 'auto' }}>
