@@ -158,6 +158,13 @@ async fn create_project(
         faa_auth_started_at: None,
         steady_state: false,
         steady_state_at: None,
+        // Mirrors the column defaults from migration 020 — a new deal has
+        // nothing scheduled until ops puts it on the timeline.
+        install_date: None,
+        install_end_date: None,
+        install_status: "unscheduled".to_string(),
+        assigned_tech: None,
+        schedule_notes: None,
     };
 
     Ok((StatusCode::CREATED, Json(summary)))
