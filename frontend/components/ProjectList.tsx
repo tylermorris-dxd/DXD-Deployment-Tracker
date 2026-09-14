@@ -177,7 +177,7 @@ export default function ProjectList({ onSelectProject }: { onSelectProject: (id:
           {activeProjects.length > 0 && (
             <>
               <SectionHeader
-                title="ACTIVE DEPLOYMENTS"
+                title="SOLUTION PROPOSALS"
                 count={activeProjects.length}
                 accent="#E53935"
               />
@@ -193,7 +193,7 @@ export default function ProjectList({ onSelectProject }: { onSelectProject: (id:
           {steadyProjects.length > 0 && (
             <>
               <SectionHeader
-                title="STEADY STATE"
+                title="ACTIVE DEPLOYMENTS"
                 count={steadyProjects.length}
                 accent="#3FB95A"
                 spacingTop={activeProjects.length > 0 ? 32 : 0}
