@@ -30,6 +30,7 @@ pub struct UpdateProject {
     pub install_status: Option<String>,
     pub assigned_tech: Option<serde_json::Value>,
     pub schedule_notes: Option<serde_json::Value>,
+    pub rf_cache: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -198,6 +199,7 @@ pub struct ProjectFull {
     pub network_cache: Option<String>,
     pub weather_cache: Option<String>,
     pub pricing_cache: Option<String>,
+    pub rf_cache: Option<String>,
     pub phases: Vec<PhaseFull>,
     pub branch_answers: serde_json::Value,
     pub hubspot_deal_id: Option<String>,

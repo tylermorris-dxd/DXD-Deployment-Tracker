@@ -17,6 +17,7 @@ import PricingView from './PricingView'
 import SummaryView from './SummaryView'
 import CustomerSignoff from './CustomerSignoff'
 import ProjectPhotos from './ProjectPhotos'
+import RfSurveyView from './RfSurveyView'
 import HubSpotEnrichment from './HubSpotEnrichment'
 import { useIsMobile } from '@/lib/useIsMobile'
 import { showUndoableToast, showToast } from '@/lib/toast'
@@ -27,7 +28,7 @@ interface Props {
   onBack: () => void
 }
 
-type ViewMode = 'pricing' | 'wx' | 'airspace' | 'map' | 'network' | 'summary' | 'signoff' | 'photos' | 'stakeholders' | 'settings' | 'ops'
+type ViewMode = 'pricing' | 'wx' | 'airspace' | 'map' | 'network' | 'rf' | 'summary' | 'signoff' | 'photos' | 'stakeholders' | 'settings' | 'ops'
 
 // ── Shared tab-button styles ───────────────────────────────────────────────────
 
@@ -68,6 +69,10 @@ const TABS: Array<{ id: ViewMode; label: string; icon: React.ReactNode }> = [
   {
     id: 'network', label: 'Network',
     icon: <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="6.5" r="2" stroke="currentColor" strokeWidth="1.3"/><path d="M6.5 1v1.5M6.5 10.5V12M1 6.5h1.5M10.5 6.5H12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/><path d="M2.9 2.9l1.1 1.1M9 9l1.1 1.1M9 4L7.9 5.1M4 9L2.9 10.1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>,
+  },
+  {
+    id: 'rf', label: 'RF',
+    icon: <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="1.4" fill="currentColor"/><path d="M3.2 3.2a5.4 5.4 0 000 7.6M5 5a2.9 2.9 0 000 4M10.8 3.2a5.4 5.4 0 010 7.6M9 5a2.9 2.9 0 010 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>,
   },
   {
     id: 'summary', label: 'Summary',
@@ -165,6 +170,13 @@ export default function ProjectView({ projectId, onBack }: Props) {
   const updateWeatherCache = useCallback(async (data: unknown) => {
     try {
       await api.projects.update(projectId, { weatherCache: data ? JSON.stringify(data) : null })
+      invalidate()
+    } catch (_) { /* non-fatal */ }
+  }, [projectId, invalidate])
+
+  const updateRfCache = useCallback(async (data: unknown) => {
+    try {
+      await api.projects.update(projectId, { rfCache: data ? JSON.stringify(data) : null })
       invalidate()
     } catch (_) { /* non-fatal */ }
   }, [projectId, invalidate])
@@ -339,6 +351,9 @@ export default function ProjectView({ projectId, onBack }: Props) {
 
         {/* NETWORK view */}
         {viewMode === 'network' && <ConnectivityView project={project} onCacheUpdate={updateNetworkCache} />}
+
+        {/* RF view — desense risk triage against ingested FCC emitters */}
+        {viewMode === 'rf' && <RfSurveyView project={project} onCacheUpdate={updateRfCache} />}
 
         {/* SUMMARY view — one-page PDF combining airspace + wx + network + map */}
         {viewMode === 'summary' && (

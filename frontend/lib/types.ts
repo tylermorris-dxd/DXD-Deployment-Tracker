@@ -32,6 +32,7 @@ export interface ProjectFull {
   networkCache: string | null
   weatherCache: string | null
   pricingCache: string | null
+  rfCache: string | null
   phases: Phase[]
   branchAnswers: Record<string, boolean>
   hubspotDealId?: string
@@ -273,6 +274,89 @@ export interface UpdateProject {
   installStatus?: InstallStatus
   assignedTech?: string | null
   scheduleNotes?: string | null
+  rfCache?: string | null
+}
+
+// ── RF site survey ──────────────────────────────────────────────────────────
+
+export type BandClass = 'IN' | 'ADJ' | 'DES' | 'CLR'
+export type RiskTier = 'low' | 'elevated' | 'critical'
+export type RfVerdict = 'GO' | 'FIELD_VERIFY' | 'LIKELY_BAD'
+
+export interface RfEmitter {
+  id: string
+  name: string
+  source: string
+  lat: number
+  lon: number
+  freqMhz: number
+  erpDbw: number
+  heightAglM: number
+}
+
+export interface RfDock {
+  lat: number
+  lon: number
+  antennaAglM: number
+}
+
+export interface RfWeights {
+  band: number
+  dist: number
+  erp: number
+  los: number
+}
+
+export interface ScoredEmitter {
+  emitter: RfEmitter
+  bearingDeg: number
+  distanceM: number
+  band: { cls: BandClass; label: string }
+  los: boolean
+  losSource: 'dem' | 'horizon'
+  radioHorizonM: number
+  factors: { band: number; dist: number; erp: number; los: number }
+  score: number
+  tier: RiskTier
+}
+
+export interface RfSurveyResult {
+  dock: RfDock
+  radiusKm: number
+  weights: RfWeights
+  scored: ScoredEmitter[]
+  verdict: RfVerdict
+  worstScore: number
+  flaggedCount: number
+  generatedAt: string
+}
+
+export interface RfSurveyResponse {
+  result: RfSurveyResult
+  checklist: string
+  dbEmitterCount: number
+  manualEmitterCount: number
+  terrainResolved: boolean
+}
+
+export interface RfManualEmitter {
+  name?: string
+  lat?: number
+  lon?: number
+  bearingDeg?: number
+  distanceM?: number
+  freqMhz: number
+  erp?: number
+  erpUnit?: 'W' | 'kW' | 'dBW'
+  heightAglM?: number
+}
+
+export interface RfSurveyRequest {
+  dock: RfDock
+  radiusKm?: number
+  weights?: RfWeights
+  emitters?: RfManualEmitter[]
+  useTerrain?: boolean
 }
 
 export interface UpdatePhase {

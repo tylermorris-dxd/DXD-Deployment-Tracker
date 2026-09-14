@@ -6,6 +6,7 @@ import type {
   EquipmentItem, CreateEquipment, UpdateEquipment, EquipmentSection,
   HubSpotDeal, HubSpotActiveDeal, HubSpotStatus, HubSpotOwner,
   PricingCatalogItem, CreatePricingItem, UpdatePricingItem,
+  RfSurveyRequest, RfSurveyResponse,
 } from './types'
 
 class ApiError extends Error {
@@ -191,6 +192,12 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
+
+  // RF site survey — scores nearby licensed emitters for desense risk against
+  // the dock's control link. Emitters come from the ingested FCC tables plus
+  // anything the tech sighted on site.
+  rfSurvey: (body: RfSurveyRequest) =>
+    apiFetch<RfSurveyResponse>('/rf-survey', { method: 'POST', body: JSON.stringify(body) }),
 
   team: {
     list: () => apiFetch<TeamMember[]>('/team'),

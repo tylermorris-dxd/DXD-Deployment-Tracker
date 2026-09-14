@@ -182,6 +182,15 @@ async fn get_project(
     .await?
     .ok_or(AppError::NotFound)?;
 
+    // Fetched separately rather than added to the macro query above: rf_cache
+    // arrives in migration 021, and the query! macro is checked against
+    // whatever schema the build host can reach.
+    let rf_cache: Option<String> = sqlx::query("SELECT rf_cache FROM projects WHERE id = $1")
+        .bind(&project_id)
+        .fetch_optional(&state.pool)
+        .await?
+        .and_then(|r| r.try_get::<Option<String>, _>("rf_cache").unwrap_or(None));
+
     let phases_raw = sqlx::query!(
         "SELECT id, project_id, phase_number, title, color, description, owner, unlocked, completed_at, sort_order FROM phases WHERE project_id = $1 ORDER BY sort_order",
         project_id
@@ -343,6 +352,7 @@ async fn get_project(
         network_cache: proj.network_cache,
         weather_cache: proj.weather_cache,
         pricing_cache: proj.pricing_cache,
+        rf_cache,
         hubspot_deal_id: proj.hubspot_deal_id,
         branch_answers: serde_json::from_str(&proj.branch_answers)
             .unwrap_or_else(|_| serde_json::json!({})),
@@ -422,6 +432,15 @@ async fn update_project(
             .await?;
         }
     }
+    if let Some(v) = &body.rf_cache {
+        let s = v.as_str().map(|s| s.to_string());
+        sqlx::query("UPDATE projects SET rf_cache = $1 WHERE id = $2")
+            .bind(s)
+            .bind(&project_id)
+            .execute(&state.pool)
+            .await?;
+    }
+
     // Scheduling fields. Each accepts an explicit null to clear the value,
     // which is how ops un-schedules a job without deleting the deal.
     for (col, val) in [
