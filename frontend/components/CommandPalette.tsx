@@ -45,7 +45,7 @@ const VIEW_ENTRIES: Array<{ tab: MainTab; title: string; subtitle: string }> = [
   { tab: 'fleet',     title: 'Fleet Map',       subtitle: 'Every deal on the map' },
   { tab: 'admin',     title: 'Admin',           subtitle: 'Team, HubSpot, catalog' },
   { tab: 'equipment', title: 'Equipment',       subtitle: 'Serialized inventory' },
-  { tab: 'cost',      title: 'Cost Estimator',  subtitle: 'Bulk deploy modeling' },
+  { tab: 'guides',    title: 'Installation Guides', subtitle: 'DJI Dock 3, DroneTag, site assessment' },
   { tab: 'job-est',   title: 'Job Estimator',   subtitle: 'Per-site quote' },
   { tab: 'events',    title: 'Event Pricing',   subtitle: 'One-off event pricing' },
   { tab: 'product',   title: 'Products',        subtitle: 'Drone TEVI matrix' },

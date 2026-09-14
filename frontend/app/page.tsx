@@ -8,7 +8,7 @@ import ProjectList from '@/components/ProjectList'
 import ProjectView from '@/components/ProjectView'
 import AdminPanel from '@/components/AdminPanel'
 import EquipmentTracker from '@/components/EquipmentTracker'
-import CostEstimator from '@/components/CostEstimator'
+import InstallationGuides from '@/components/InstallationGuides'
 import DroneTeviApp from '@/components/DroneTeviApp'
 import EventPricingApp from '@/components/EventPricingApp'
 import JobEstimator from '@/components/JobEstimator'
@@ -26,7 +26,7 @@ import { onOpenDealRequest } from '@/lib/nav'
 import { sfx } from '@/lib/sfx'
 import { useIsMobile } from '@/lib/useIsMobile'
 
-export type MainTab = 'dashboard' | 'deals' | 'fleet' | 'admin' | 'equipment' | 'cost' | 'product' | 'events' | 'job-est'
+export type MainTab = 'dashboard' | 'deals' | 'fleet' | 'admin' | 'equipment' | 'guides' | 'product' | 'events' | 'job-est'
 
 interface MenuItem {
   id: MainTab
@@ -83,17 +83,12 @@ const MENU_ITEMS: MenuItem[] = [
     ),
   },
   {
-    id: 'cost', label: 'Cost Estimator',
+    id: 'guides', label: 'Installation Guides',
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-        <rect x="3" y="2" width="10" height="12" rx="1.2" stroke="currentColor" strokeWidth="1.4" />
-        <rect x="5" y="4" width="6" height="2" rx="0.5" fill="currentColor" />
-        <circle cx="5.6" cy="9" r="0.7" fill="currentColor" />
-        <circle cx="8" cy="9" r="0.7" fill="currentColor" />
-        <circle cx="10.4" cy="9" r="0.7" fill="currentColor" />
-        <circle cx="5.6" cy="11.5" r="0.7" fill="currentColor" />
-        <circle cx="8" cy="11.5" r="0.7" fill="currentColor" />
-        <circle cx="10.4" cy="11.5" r="0.7" fill="currentColor" />
+        <path d="M3 2.5h7l3 3v8a1 1 0 01-1 1H3a1 1 0 01-1-1v-10a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+        <path d="M10 2.5v3h3" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+        <path d="M5 8.5h6M5 10.5h6M5 12.5h3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
       </svg>
     ),
   },
@@ -370,7 +365,7 @@ export default function Home() {
           )}
           {tab === 'admin'        && <AdminPanel />}
           {tab === 'equipment'    && <EquipmentTracker />}
-          {tab === 'cost'         && <CostEstimator />}
+          {tab === 'guides'       && <InstallationGuides />}
           {tab === 'product'      && <DroneTeviApp />}
           {tab === 'job-est' && <JobEstimator />}
           {tab === 'events'       && <EventPricingApp />}
