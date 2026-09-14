@@ -4,9 +4,9 @@
   "private": true,
   "description": "Weekly FCC ASR + ULS ingest into the rf_emitters table",
   "scripts": {
-    "ingest": "tsx fcc-ingest.ts",
-    "ingest:asr": "tsx fcc-ingest.ts asr",
-    "ingest:uls": "tsx fcc-ingest.ts uls"
+    "ingest": "node --max-old-space-size=8192 ./node_modules/tsx/dist/cli.mjs fcc-ingest.ts",
+    "ingest:asr": "node --max-old-space-size=8192 ./node_modules/tsx/dist/cli.mjs fcc-ingest.ts asr",
+    "ingest:uls": "node --max-old-space-size=8192 ./node_modules/tsx/dist/cli.mjs fcc-ingest.ts uls"
   },
   "dependencies": {
     "pg": "^8.13.1",

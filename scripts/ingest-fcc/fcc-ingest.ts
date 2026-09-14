@@ -121,8 +121,16 @@ async function extractDat(zipPath: string, outDir: string, names: string[]): Pro
   }
 }
 
-/** Stream a pipe-delimited .dat, invoking cb(fields) per row of the given record type. */
-async function eachRow(file: string, recordType: string, cb: (f: string[]) => void): Promise<void> {
+/**
+ * Stream a pipe-delimited .dat, invoking cb(fields) per row of the given record
+ * type. The callback may be async — awaiting it is what gives the ULS pass
+ * backpressure while it flushes batches into COPY.
+ */
+async function eachRow(
+  file: string,
+  recordType: string,
+  cb: (f: string[]) => void | Promise<void>,
+): Promise<void> {
   if (!fs.existsSync(file)) return;
   const rl = readline.createInterface({
     input: fs.createReadStream(file, { encoding: 'latin1' }),
@@ -131,7 +139,8 @@ async function eachRow(file: string, recordType: string, cb: (f: string[]) => vo
   const prefix = recordType + '|';
   for await (const line of rl) {
     if (!line.startsWith(prefix)) continue;
-    cb(line.split('|'));
+    const r = cb(line.split('|'));
+    if (r) await r;
   }
 }
 
@@ -148,7 +157,15 @@ interface Row {
 
 // ---- ULS parse -----------------------------------------------------------------------
 
-async function parseUls(dir: string): Promise<Row[]> {
+const ULS_BATCH = 50_000;
+
+// Streams straight into the sink rather than returning an array.
+//
+// The location x frequency cross product for l_LMpriv alone is tens of millions
+// of rows; materialising it exhausted a 4 GB heap before a single row reached
+// the database. Frequencies are read last and emitted as they are encountered,
+// so nothing larger than one batch is ever held. Returns the row count.
+async function streamUls(dir: string, sink: Sink): Promise<number> {
   const active = new Map<string, { call: string; service: string }>();
   await eachRow(path.join(dir, 'HD.DAT'), 'HD', (f) => {
     if ((f[HD.status] || '').toUpperCase() === 'A') {
@@ -172,36 +189,47 @@ async function parseUls(dir: string): Promise<Row[]> {
     arr.push({ lat: lat!, lon: lon!, heightM: sanitizeHeight(h) });
   });
 
-  const freqs = new Map<string, { freq: number; erpDbw: number | null }[]>();
-  await eachRow(path.join(dir, 'FR.DAT'), 'FR', (f) => {
+  let emitted = 0;
+  let frIdx = 0;
+  let batch: Row[] = [];
+
+  await eachRow(path.join(dir, 'FR.DAT'), 'FR', async (f) => {
     const usi = f[FR.usi];
-    if (!active.has(usi)) return;
+    const meta = active.get(usi);
+    if (!meta) return;
+    const ls = locs.get(usi);
+    if (!ls) return;
     const freq = parseFloat(f[FR.freqAssigned]);
     if (!isFinite(freq) || freq <= 0) return;
+
     const erpW = parseFloat(f[FR.powerErp]) || parseFloat(f[FR.powerOutput]) || 0;
-    let arr = freqs.get(usi);
-    if (!arr) { arr = []; freqs.set(usi, arr); }
-    arr.push({ freq, erpDbw: wattsToDbw(erpW) });
+    const erpDbw = wattsToDbw(erpW);
+    const name = `${meta.service} ${meta.call}`.trim() || `ULS ${usi}`;
+    const n = frIdx++;
+
+    for (let li = 0; li < ls.length; li++) {
+      const l = ls[li];
+      batch.push({
+        // frIdx makes the id unique without needing a per-licence counter map.
+        id: `uls:${usi}:${li}:${n}`,
+        source: 'uls',
+        name,
+        lat: l.lat, lon: l.lon,
+        freqMhz: freq, erpDbw, heightM: l.heightM,
+      });
+    }
+    if (batch.length >= ULS_BATCH) {
+      await sink.write(batch);
+      emitted += batch.length;
+      batch = [];
+    }
   });
 
-  const rows: Row[] = [];
-  for (const [usi, meta] of active) {
-    const ls = locs.get(usi);
-    const fq = freqs.get(usi);
-    if (!ls || !fq) continue;
-    ls.forEach((l, li) =>
-      fq.forEach((fr, fi) => {
-        rows.push({
-          id: `uls:${usi}:${li}:${fi}`,
-          source: 'uls',
-          name: `${meta.service} ${meta.call}`.trim() || `ULS ${usi}`,
-          lat: l.lat, lon: l.lon,
-          freqMhz: fr.freq, erpDbw: fr.erpDbw, heightM: l.heightM,
-        });
-      }),
-    );
+  if (batch.length) {
+    await sink.write(batch);
+    emitted += batch.length;
   }
-  return rows;
+  return emitted;
 }
 
 // ---- ASR parse -----------------------------------------------------------------------
@@ -408,9 +436,8 @@ async function main() {
         console.log(`downloading ${file}…`);
         await download(`${ULS_BASE}/${file}`, zip);
         await extractDat(zip, outDir, ['HD.dat', 'LO.dat', 'FR.dat']);
-        const parsed = await parseUls(outDir);
-        console.log(`  ${file}: ${parsed.length.toLocaleString()} emitters`);
-        await sink.write(parsed);
+        const n = await streamUls(outDir, sink);
+        console.log(`  ${file}: ${n.toLocaleString()} emitters`);
         fs.rmSync(zip, { force: true });
         fs.rmSync(outDir, { recursive: true, force: true });
       }
