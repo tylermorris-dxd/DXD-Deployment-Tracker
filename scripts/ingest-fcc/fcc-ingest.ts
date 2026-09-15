@@ -322,6 +322,9 @@ async function makeDbSink(client: Client, source: string): Promise<Sink> {
   const updatedAt = new Date().toISOString();
   let count = 0;
 
+  // No statement timeout: deleting and reloading millions of rows legitimately
+  // runs longer than any server-side default.
+  await client.query('SET statement_timeout = 0');
   await client.query('BEGIN');
   await client.query('DELETE FROM rf_emitters WHERE source = $1', [source]);
 
@@ -362,6 +365,17 @@ async function makeDbSink(client: Client, source: string): Promise<Sink> {
       await done;
       await client.query('COMMIT');
       console.log(`[${source}] loaded ${count.toLocaleString()} rows`);
+
+      // A full reload leaves one dead tuple behind for every row it replaced.
+      // Without this the next run's queries still read the old pages: a single
+      // bad load left the table at 18 GB for 4M live rows, and the survey's
+      // bounding-box lookup slowed to the point of timing out. Plain VACUUM is
+      // right for a weekly reload — the space gets reused by the next load, so
+      // the exclusive lock of VACUUM FULL is not worth paying routinely.
+      process.stdout.write(`[${source}] vacuum… `);
+      const t = Date.now();
+      await client.query('VACUUM (ANALYZE) rf_emitters');
+      console.log(`${Math.round((Date.now() - t) / 1000)}s`);
     },
   };
 }

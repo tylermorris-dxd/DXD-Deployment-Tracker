@@ -34,7 +34,8 @@ DATABASE_URL=...                          npx tsx fcc-ingest.ts asr      # one s
 
 Each source is a full reload inside a transaction, so a failed run leaves the
 previous week's data intact. Rows stream into `COPY` as each archive is parsed;
-they are never all held in memory.
+they are never all held in memory, and a `VACUUM (ANALYZE)` runs after each
+source so the dead tuples a reload leaves behind don't slow the next one.
 
 Expect roughly 700 MB of downloads and a long runtime for a full ULS pull. ASR
 alone is 37 MB and takes about a minute.
@@ -59,7 +60,12 @@ dry run prints the numbers that catch it:
 npx tsx fcc-ingest.ts asr --dry-run
 ```
 
-A healthy ASR run, verified 2026-09-14:
+A healthy full run, verified 2026-09-14, loads 197,456 ASR structures and
+~3.8M ULS emitters. If ULS comes back in the tens of millions, the frequency to
+location join has broken and every frequency is being planted at every site on
+its licence.
+
+A healthy ASR run:
 
 ```
 rows              197,456
