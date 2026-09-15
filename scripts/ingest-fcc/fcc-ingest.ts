@@ -173,10 +173,18 @@ async function streamUls(dir: string, sink: Sink): Promise<number> {
     }
   });
 
-  // usi -> locations. Height comes from the location record, which the previous
-  // version discarded; without it every ULS emitter scored as a zero-height
-  // antenna and the radio-horizon LOS test came out far too pessimistic.
-  const locs = new Map<string, { lat: number; lon: number; heightM: number | null }[]>();
+  // Keyed by licence AND location number, because a frequency authorisation is
+  // granted at a specific location — not at every location on the licence.
+  // Cross-producting the two inflated the load 21x and, worse, placed
+  // transmitters at sites they do not operate from: one paging licence has 140
+  // locations and 141 frequency records, and every frequency was being planted
+  // at every site. Verified against l_paging: 100% of FR records carry a
+  // locNum that matches an LO record on the same licence.
+  //
+  // Height comes from the location record. The pre-port version discarded it,
+  // which made every ULS emitter a zero-height antenna and the radio-horizon
+  // LOS test far too pessimistic.
+  const locs = new Map<string, { lat: number; lon: number; heightM: number | null }>();
   await eachRow(path.join(dir, 'LO.DAT'), 'LO', (f) => {
     const usi = f[LO.usi];
     if (!active.has(usi)) return;
@@ -184,40 +192,35 @@ async function streamUls(dir: string, sink: Sink): Promise<number> {
     const lon = dms(f[LO.lonD], f[LO.lonM], f[LO.lonS], f[LO.lonDir]);
     if (!validCoord(lat, lon)) return;
     const h = parseFloat(f[LO.overallHeightM]) || parseFloat(f[LO.supportHeightM]);
-    let arr = locs.get(usi);
-    if (!arr) { arr = []; locs.set(usi, arr); }
-    arr.push({ lat: lat!, lon: lon!, heightM: sanitizeHeight(h) });
+    locs.set(`${usi}:${f[LO.locNum]}`, { lat: lat!, lon: lon!, heightM: sanitizeHeight(h) });
   });
 
   let emitted = 0;
   let frIdx = 0;
+  let orphaned = 0;
   let batch: Row[] = [];
 
   await eachRow(path.join(dir, 'FR.DAT'), 'FR', async (f) => {
     const usi = f[FR.usi];
     const meta = active.get(usi);
     if (!meta) return;
-    const ls = locs.get(usi);
-    if (!ls) return;
     const freq = parseFloat(f[FR.freqAssigned]);
     if (!isFinite(freq) || freq <= 0) return;
 
-    const erpW = parseFloat(f[FR.powerErp]) || parseFloat(f[FR.powerOutput]) || 0;
-    const erpDbw = wattsToDbw(erpW);
-    const name = `${meta.service} ${meta.call}`.trim() || `ULS ${usi}`;
-    const n = frIdx++;
+    const loc = locs.get(`${usi}:${f[FR.locNum]}`);
+    // No matching location record. Skipped rather than guessed — inventing
+    // coordinates for a transmitter is worse than omitting it.
+    if (!loc) { orphaned++; return; }
 
-    for (let li = 0; li < ls.length; li++) {
-      const l = ls[li];
-      batch.push({
-        // frIdx makes the id unique without needing a per-licence counter map.
-        id: `uls:${usi}:${li}:${n}`,
-        source: 'uls',
-        name,
-        lat: l.lat, lon: l.lon,
-        freqMhz: freq, erpDbw, heightM: l.heightM,
-      });
-    }
+    const erpW = parseFloat(f[FR.powerErp]) || parseFloat(f[FR.powerOutput]) || 0;
+    batch.push({
+      id: `uls:${usi}:${f[FR.locNum]}:${frIdx++}`,
+      source: 'uls',
+      name: `${meta.service} ${meta.call}`.trim() || `ULS ${usi}`,
+      lat: loc.lat, lon: loc.lon,
+      freqMhz: freq, erpDbw: wattsToDbw(erpW), heightM: loc.heightM,
+    });
+
     if (batch.length >= ULS_BATCH) {
       await sink.write(batch);
       emitted += batch.length;
@@ -228,6 +231,9 @@ async function streamUls(dir: string, sink: Sink): Promise<number> {
   if (batch.length) {
     await sink.write(batch);
     emitted += batch.length;
+  }
+  if (orphaned) {
+    console.log(`    (${orphaned.toLocaleString()} frequency records had no matching location)`);
   }
   return emitted;
 }
@@ -420,6 +426,10 @@ async function main() {
   const client = new Client({
     connectionString,
     ssl: connectionString && !connectionString.includes('localhost') ? { rejectUnauthorized: false } : undefined,
+    // Parsing HD.dat and LO.dat for a large archive leaves the socket idle for
+    // minutes between COPY batches, and Azure's gateway drops idle connections.
+    keepAlive: true,
+    keepAliveInitialDelayMillis: 10_000,
   });
   if (!dryRun) await client.connect();
 
@@ -428,7 +438,10 @@ async function main() {
       dryRun ? Promise.resolve(makeDryRunSink(source)) : makeDbSink(client, source);
 
     if (want.has('uls')) {
-      const sink = await openSink('uls');
+      // Two phases on purpose. Fetching ~700 MB takes long enough that a
+      // transaction opened beforehand sits idle and gets dropped by the Azure
+      // gateway, so every archive lands on disk before the database is touched.
+      const staged: Array<{ file: string; dir: string }> = [];
       for (const file of ULS_FILES) {
         const zip = path.join(tmp, file);
         const outDir = path.join(tmp, file.replace('.zip', ''));
@@ -436,10 +449,16 @@ async function main() {
         console.log(`downloading ${file}…`);
         await download(`${ULS_BASE}/${file}`, zip);
         await extractDat(zip, outDir, ['HD.dat', 'LO.dat', 'FR.dat']);
-        const n = await streamUls(outDir, sink);
+        fs.rmSync(zip, { force: true }); // keep only the .dat files
+        staged.push({ file, dir: outDir });
+      }
+
+      console.log('parsing + loading…');
+      const sink = await openSink('uls');
+      for (const { file, dir } of staged) {
+        const n = await streamUls(dir, sink);
         console.log(`  ${file}: ${n.toLocaleString()} emitters`);
-        fs.rmSync(zip, { force: true });
-        fs.rmSync(outDir, { recursive: true, force: true });
+        fs.rmSync(dir, { recursive: true, force: true });
       }
       await sink.finish();
     }
