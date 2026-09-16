@@ -148,7 +148,9 @@ pub struct Emitter {
     pub lat: f64,
     pub lon: f64,
     pub freq_mhz: f64,
-    pub erp_dbw: f64,
+    /// None when the licence record carries no power figure, which is common.
+    /// Distinct from a genuinely low ERP — see `erp_factor`.
+    pub erp_dbw: Option<f64>,
     pub height_agl_m: f64,
 }
 
@@ -201,6 +203,8 @@ pub struct ScoredEmitter {
     pub band: BandMatch,
     pub los: bool,
     pub los_source: String, // "dem" | "horizon"
+    /// False when the ERP factor came from the unknown-power default.
+    pub erp_known: bool,
     pub radio_horizon_m: f64,
     pub factors: Factors,
     pub score: i32,
@@ -247,15 +251,18 @@ pub fn dist_factor(dist_m: f64) -> f64 {
     }
 }
 
-pub fn erp_factor(dbw: f64) -> f64 {
-    if dbw >= 60.0 {
-        1.0
-    } else if dbw >= 40.0 {
-        0.7
-    } else if dbw >= 20.0 {
-        0.4
-    } else {
-        0.2
+/// Unknown power is not low power. Treating a missing ERP as 0 dBW dropped it
+/// to the 0.2 floor, which quietly under-scored every licence that omits the
+/// field — and plenty do. Unknown now takes the moderate-power value, the
+/// reasonable prior for a licensed transmitter, and the result is marked so a
+/// reader can see the figure was assumed rather than measured.
+pub fn erp_factor(dbw: Option<f64>) -> f64 {
+    match dbw {
+        None => 0.4,
+        Some(v) if v >= 60.0 => 1.0,
+        Some(v) if v >= 40.0 => 0.7,
+        Some(v) if v >= 20.0 => 0.4,
+        Some(_) => 0.2,
     }
 }
 
@@ -327,6 +334,7 @@ pub fn score_emitter(
         band,
         los: in_los,
         los_source: los_source.to_string(),
+        erp_known: e.erp_dbw.is_some(),
         radio_horizon_m: horizon,
         factors,
         score,
@@ -510,6 +518,54 @@ fn verdict_text(v: Verdict) -> &'static str {
     }
 }
 
+/// Bearing sectors reported in the checklist, worst-first. A tech will not
+/// work through more than this many headings in a session; the rest stay in
+/// the app's table rather than padding a printout.
+const CHECKLIST_SECTORS: usize = 12;
+/// Matches the ±10° aim tolerance the checklist already instructs.
+const SECTOR_HALF_WIDTH: i64 = 10;
+
+struct Sector<'a> {
+    bearing: i64,
+    worst: &'a ScoredEmitter,
+    count: usize,
+    nearest_m: f64,
+    freq_lo: f64,
+    freq_hi: f64,
+    bands: Vec<String>,
+}
+
+/// Collapse flagged emitters into 20°-wide bearing sectors, worst-first.
+fn group_by_bearing<'a>(flagged: &[&'a ScoredEmitter]) -> Vec<Sector<'a>> {
+    let width = (SECTOR_HALF_WIDTH * 2) as f64;
+    let mut buckets: HashMap<i64, Vec<&'a ScoredEmitter>> = HashMap::new();
+    for s in flagged {
+        let key = ((s.bearing_deg / width).round() as i64 * width as i64).rem_euclid(360);
+        buckets.entry(key).or_default().push(s);
+    }
+
+    let mut out: Vec<Sector<'a>> = buckets
+        .into_iter()
+        .map(|(bearing, members)| {
+            // members inherit the worst-first order of result.scored
+            let worst = members[0];
+            let nearest_m = members.iter().map(|m| m.distance_m).fold(f64::MAX, f64::min);
+            let freq_lo = members.iter().map(|m| m.emitter.freq_mhz).fold(f64::MAX, f64::min);
+            let freq_hi = members.iter().map(|m| m.emitter.freq_mhz).fold(f64::MIN, f64::max);
+            let mut bands: Vec<String> = members
+                .iter()
+                .map(|m| format!("{:?}", m.band.cls).to_uppercase())
+                .collect();
+            bands.sort();
+            bands.dedup();
+            Sector { bearing, worst, count: members.len(), nearest_m, freq_lo, freq_hi, bands }
+        })
+        .collect();
+
+    out.sort_by(|a, b| b.worst.score.cmp(&a.worst.score).then(a.bearing.cmp(&b.bearing)));
+    out
+}
+
 /// The safety and "does not clear the site" language is intentional and
 /// non-optional — this output goes in a tech's hands.
 pub fn build_checklist(result: &SurveyResult) -> String {
@@ -538,27 +594,65 @@ pub fn build_checklist(result: &SurveyResult) -> String {
     let flagged: Vec<&ScoredEmitter> = result.scored.iter().filter(|s| s.score >= 40).collect();
     if flagged.is_empty() {
         l.push("   None flagged. Confirm baseline is clean, then run the link test.".into());
-    }
-    for (i, s) in flagged.iter().enumerate() {
+    } else {
+        // Grouped by bearing, not listed per emitter. A tech sweeps a heading,
+        // and a single tower carries many licensed frequencies — at a dense
+        // site this is the difference between 12 sweeps and 300 line items.
+        let sectors = group_by_bearing(&flagged);
         l.push(format!(
-            "   [{}] {} — risk {} ({})",
-            i + 1,
-            s.emitter.name,
-            s.score,
-            tier_text(s.tier)
+            "   {} emitters at or above risk 40, in {} bearing sector{}. Sweep worst-first;",
+            flagged.len(),
+            sectors.len(),
+            if sectors.len() == 1 { "" } else { "s" }
         ));
-        l.push(format!(
-            "       Aim bearing {}° (±10°). Look for a carrier near {} MHz ({}).",
-            s.bearing_deg.round() as i64,
-            s.emitter.freq_mhz,
-            s.band.label
-        ));
-        l.push(format!(
-            "       Range {} · ERP {} dBW · LOS {}",
-            fmt_dist(s.distance_m),
-            s.emitter.erp_dbw.round() as i64,
-            if s.los { "YES — desense candidate" } else { "no (beyond radio horizon)" }
-        ));
+        l.push("   each entry below is one antenna heading, not one transmitter.".into());
+        l.push(String::new());
+
+        for (i, sec) in sectors.iter().take(CHECKLIST_SECTORS).enumerate() {
+            let w = sec.worst;
+            l.push(format!(
+                "   [{}] Bearing {:03}° (±{}°) — worst risk {} ({}), {} emitter{}",
+                i + 1,
+                sec.bearing,
+                SECTOR_HALF_WIDTH,
+                w.score,
+                tier_text(w.tier),
+                sec.count,
+                if sec.count == 1 { "" } else { "s" }
+            ));
+            l.push(format!(
+                "       Nearest {} · {} · bands {}",
+                fmt_dist(sec.nearest_m),
+                if (sec.freq_lo - sec.freq_hi).abs() < 0.001 {
+                    format!("{:.3} MHz", sec.freq_lo)
+                } else {
+                    format!("{:.3}-{:.3} MHz", sec.freq_lo, sec.freq_hi)
+                },
+                sec.bands.join("/")
+            ));
+            l.push(format!(
+                "       Strongest: {} at {:.3} MHz, ERP {}, LOS {}",
+                w.emitter.name,
+                w.emitter.freq_mhz,
+                match w.emitter.erp_dbw {
+                    Some(v) => format!("{} dBW", v.round() as i64),
+                    None => "unknown (scored as moderate)".to_string(),
+                },
+                if w.los { "yes — desense candidate" } else { "no (beyond radio horizon)" }
+            ));
+        }
+
+        if sectors.len() > CHECKLIST_SECTORS {
+            let rest: usize = sectors.iter().skip(CHECKLIST_SECTORS).map(|s| s.count).sum();
+            l.push(String::new());
+            l.push(format!(
+                "   + {} further sector{} ({} emitters) below risk {}. Full table in the app.",
+                sectors.len() - CHECKLIST_SECTORS,
+                if sectors.len() - CHECKLIST_SECTORS == 1 { "" } else { "s" },
+                rest,
+                sectors[CHECKLIST_SECTORS].worst.score
+            ));
+        }
     }
     l.push(String::new());
 

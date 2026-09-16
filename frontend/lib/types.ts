@@ -290,7 +290,8 @@ export interface RfEmitter {
   lat: number
   lon: number
   freqMhz: number
-  erpDbw: number
+  /** null when the licence record carries no power figure. Not the same as low power. */
+  erpDbw: number | null
   heightAglM: number
 }
 
@@ -314,6 +315,8 @@ export interface ScoredEmitter {
   band: { cls: BandClass; label: string }
   los: boolean
   losSource: 'dem' | 'horizon'
+  /** false when the ERP factor came from the unknown-power default */
+  erpKnown: boolean
   radioHorizonM: number
   factors: { band: number; dist: number; erp: number; los: number }
   score: number

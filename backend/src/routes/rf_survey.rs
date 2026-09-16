@@ -123,7 +123,7 @@ async fn run(
             lat,
             lon,
             freq_mhz: r.try_get::<Option<f64>, _>("freq_mhz").unwrap_or(None).unwrap_or(0.0),
-            erp_dbw: r.try_get::<Option<f64>, _>("erp_dbw").unwrap_or(None).unwrap_or(0.0),
+            erp_dbw: r.try_get::<Option<f64>, _>("erp_dbw").unwrap_or(None),
             height_agl_m: r
                 .try_get::<Option<f64>, _>("height_agl_m")
                 .unwrap_or(None)
@@ -147,9 +147,12 @@ async fn run(
                 }
             },
         };
-        let erp_dbw = match m.erp_dbw {
-            Some(v) => v,
-            None => rf::erp_to_dbw(m.erp.unwrap_or(0.0), m.erp_unit.as_deref().unwrap_or("W")),
+        let erp_dbw = match (m.erp_dbw, m.erp) {
+            (Some(v), _) => Some(v),
+            (None, Some(w)) => Some(rf::erp_to_dbw(w, m.erp_unit.as_deref().unwrap_or("W"))),
+            // Sighted tower with no power estimate — left unknown rather than
+            // recorded as zero, which would score it as the weakest thing in view.
+            (None, None) => None,
         };
         emitters.push(Emitter {
             id: format!("manual-{i}"),

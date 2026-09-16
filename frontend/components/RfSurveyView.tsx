@@ -385,7 +385,7 @@ function EmitterTable({ scored, selected, onSelect }: {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'IBM Plex Mono', monospace", fontSize: 11 }}>
           <thead style={{ position: 'sticky', top: 0, background: '#15161c', zIndex: 1 }}>
             <tr>
-              {['', 'Emitter', 'Freq', 'Band', 'Range', 'Brg', 'LOS', 'Risk'].map((h, i) => (
+              {['', 'Emitter', 'Freq', 'Band', 'Range', 'Brg', 'ERP', 'LOS', 'Risk'].map((h, i) => (
                 <th key={i} style={{ textAlign: i >= 2 ? 'right' : 'left', padding: '9px 10px', fontSize: 9, letterSpacing: 1.2, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,0.08)', whiteSpace: 'nowrap' }}>
                   {h}
                 </th>
@@ -423,6 +423,11 @@ function EmitterTable({ scored, selected, onSelect }: {
                   </td>
                   <td style={{ padding: '8px 10px', textAlign: 'right', color: 'rgba(255,255,255,0.7)', whiteSpace: 'nowrap' }}>
                     {Math.round(s.bearingDeg)}° {compass(s.bearingDeg)}
+                  </td>
+                  <td style={{ padding: '8px 10px', textAlign: 'right', whiteSpace: 'nowrap', fontSize: 10,
+                    color: s.erpKnown ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.32)' }}
+                    title={s.erpKnown ? 'From the licence record' : 'Licence carries no power figure — scored as moderate'}>
+                    {s.erpKnown && s.emitter.erpDbw != null ? `${Math.round(s.emitter.erpDbw)} dBW` : 'unk'}
                   </td>
                   <td style={{ padding: '8px 10px', textAlign: 'right', color: s.los ? '#FFB300' : 'rgba(255,255,255,0.3)', whiteSpace: 'nowrap', fontSize: 10 }}
                     title={s.losSource === 'dem' ? 'Resolved against terrain' : 'Radio-horizon geometry only'}>
