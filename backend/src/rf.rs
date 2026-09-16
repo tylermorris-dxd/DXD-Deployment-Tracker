@@ -449,123 +449,104 @@ pub fn run_survey(
 }
 
 // ── Terrain line of sight ───────────────────────────────────────────────────
+//
+// Split deliberately into geometry and I/O. This module builds the sample
+// points and, given elevations back, decides what is visible; fetching and
+// caching those elevations belongs to the caller, which owns the database and
+// the HTTP client. Keeping the maths pure is what makes it testable without a
+// network.
 
 const K_EARTH: f64 = 4.0 / 3.0;
 
-fn elevation_host() -> String {
-    std::env::var("RF_ELEVATION_HOST").unwrap_or_else(|_| "https://api.opentopodata.org".to_string())
-}
-fn elevation_dataset() -> String {
-    std::env::var("RF_ELEVATION_DATASET").unwrap_or_else(|_| "ned10m".to_string())
-}
-
-/// Ground elevations (m MSL) for each point, in order. Chunked to 100 per
-/// request, which is the public OpenTopoData limit.
-pub async fn fetch_elevations(
-    http: &reqwest::Client,
-    points: &[(f64, f64)],
-) -> anyhow::Result<Vec<f64>> {
-    let host = elevation_host();
-    let dataset = elevation_dataset();
-    let mut out = Vec::with_capacity(points.len());
-
-    for chunk in points.chunks(100) {
-        let locs = chunk
-            .iter()
-            .map(|(la, lo)| format!("{la:.6},{lo:.6}"))
-            .collect::<Vec<_>>()
-            .join("|");
-        let url = format!("{host}/v1/{dataset}");
-        let res = http
-            .get(&url)
-            .query(&[("locations", locs.as_str())])
-            .header("Accept", "application/json")
-            .send()
-            .await?;
-        if !res.status().is_success() {
-            anyhow::bail!("elevation provider {}", res.status());
-        }
-        let body: serde_json::Value = res.json().await?;
-        let results = body
-            .get("results")
-            .and_then(|r| r.as_array())
-            .ok_or_else(|| anyhow::anyhow!("elevation provider returned no results"))?;
-        for r in results {
-            out.push(r.get("elevation").and_then(|e| e.as_f64()).unwrap_or(0.0));
-        }
-    }
-    Ok(out)
+/// Where one emitter's samples sit inside the flat point list.
+#[derive(Debug, Clone)]
+pub struct LosPath {
+    pub emitter_id: String,
+    pub distance_m: f64,
+    pub emitter_height_m: f64,
+    pub offset: usize,
+    pub count: usize,
 }
 
-/// Terrain LOS for every emitter in one batched elevation fetch.
-///
-/// Emitters absent from the returned map had no usable terrain data; callers
-/// fall back to radio-horizon geometry for those rather than over-blocking.
-pub async fn resolve_los_all(
-    http: &reqwest::Client,
+/// Sample points along every dock-to-emitter path, plus an index describing
+/// which slice belongs to which emitter. Points are returned in one flat list
+/// so the caller can deduplicate and batch them however it likes.
+pub fn los_sample_points(
     dock: &Dock,
     emitters: &[Emitter],
     samples: usize,
-) -> HashMap<String, bool> {
-    let mut map = HashMap::new();
-    if emitters.is_empty() {
-        return map;
-    }
+) -> (Vec<(f64, f64)>, Vec<LosPath>) {
     let samples = samples.clamp(8, 64);
-
-    // Build every sample path up front so the whole survey costs one batched
-    // round trip rather than one per emitter.
     let mut points: Vec<(f64, f64)> = Vec::new();
-    let mut spans: Vec<(String, f64, usize)> = Vec::new(); // (id, distance, n points)
+    let mut paths: Vec<LosPath> = Vec::new();
 
     for e in emitters {
         let d = haversine_m(dock.lat, dock.lon, e.lat, e.lon);
+        // Co-located: nothing to occlude.
         if d < 1.0 {
-            map.insert(e.id.clone(), true);
             continue;
         }
         let brg = bearing_deg(dock.lat, dock.lon, e.lat, e.lon);
+        let offset = points.len();
         for i in 0..=samples {
             let along = d * (i as f64) / (samples as f64);
             points.push(dest_point(dock.lat, dock.lon, brg, along));
         }
-        spans.push((e.id.clone(), d, samples + 1));
+        paths.push(LosPath {
+            emitter_id: e.id.clone(),
+            distance_m: d,
+            emitter_height_m: e.height_agl_m,
+            offset,
+            count: samples + 1,
+        });
     }
-    if points.is_empty() {
-        return map;
-    }
+    (points, paths)
+}
 
-    let elev = match fetch_elevations(http, &points).await {
-        Ok(v) if v.len() == points.len() => v,
-        // Provider down or truncated — leave the map empty and let every
-        // emitter fall back to horizon geometry.
-        _ => return map,
-    };
+/// Decide visibility for each path from the elevations of its samples.
+///
+/// An emitter is absent from the result when its terrain is unknown, which the
+/// caller treats as "fall back to radio-horizon geometry" rather than as
+/// blocked — an elevation outage must not silently ground a site.
+pub fn los_from_elevations(
+    dock: &Dock,
+    paths: &[LosPath],
+    elevations: &[Option<f64>],
+) -> HashMap<String, bool> {
+    let mut map = HashMap::new();
 
-    let mut cursor = 0usize;
-    for (id, dist, n) in spans {
-        let seg = &elev[cursor..cursor + n];
-        cursor += n;
+    for p in paths {
+        let end = p.offset + p.count;
+        if end > elevations.len() {
+            continue;
+        }
+        let seg = &elevations[p.offset..end];
+        // Partial terrain means an unreliable profile; skip rather than guess.
+        if seg.iter().any(|e| e.is_none()) {
+            continue;
+        }
+        let seg: Vec<f64> = seg.iter().map(|e| e.unwrap()).collect();
+        let n = seg.len();
+        if n < 3 {
+            continue;
+        }
 
-        let emitter = match emitters.iter().find(|e| e.id == id) {
-            Some(e) => e,
-            None => continue,
-        };
         let h_a = seg[0] + dock.antenna_agl_m;
-        let h_b = seg[n - 1] + emitter.height_agl_m;
+        let h_b = seg[n - 1] + p.emitter_height_m;
 
         let mut clear = true;
         for i in 1..n - 1 {
-            let d1 = dist * (i as f64) / ((n - 1) as f64);
-            let d2 = dist - d1;
-            let line_h = h_a + (h_b - h_a) * (d1 / dist);
+            let d1 = p.distance_m * (i as f64) / ((n - 1) as f64);
+            let d2 = p.distance_m - d1;
+            let line_h = h_a + (h_b - h_a) * (d1 / p.distance_m);
+            // Earth bulge between the endpoints, 4/3-radius.
             let bulge = (d1 * d2) / (2.0 * K_EARTH * EARTH_R);
             if line_h - (seg[i] + bulge) < 0.0 {
                 clear = false;
                 break;
             }
         }
-        map.insert(id, clear);
+        map.insert(p.emitter_id.clone(), clear);
     }
     map
 }

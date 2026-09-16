@@ -13,6 +13,7 @@
 use axum::{extract::State, routing::post, Json, Router};
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
+use std::collections::HashMap;
 
 use crate::{
     error::AppError,
@@ -27,6 +28,160 @@ const LOS_SAMPLES: usize = 48;
 /// Registered structures returned alongside the scored emitters. Ordered
 /// tall-and-close first, so a cap trims the least interesting.
 const MAX_STRUCTURES: i64 = 250;
+
+// USGS 3DEP. Authoritative, no key, and US-only, which matches where docks go.
+const ELEVATION_URL: &str =
+    "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/getSamples";
+// Hard server cap. Sending more does NOT error — it silently returns the first
+// 1000 samples, which would hand back line-of-sight answers computed from
+// terrain that was never fetched. The response count is checked against the
+// request for exactly this reason.
+const ELEVATION_BATCH: usize = 1000;
+// ~33 m at these latitudes, against 3DEP's 10 m native resolution. Coarse
+// enough that near-identical paths to emitters on the same tower collapse onto
+// shared cache rows, fine enough to preserve the terrain profile.
+const ELEVATION_GRID_DEG: f64 = 0.0003;
+// A survey that would need more than this many fresh points is pathological;
+// better to fall back to horizon geometry than to hang for minutes.
+const MAX_ELEVATION_FETCH: usize = 6000;
+
+fn grid_key(lat: f64, lon: f64) -> (i32, i32) {
+    (
+        (lat / ELEVATION_GRID_DEG).round() as i32,
+        (lon / ELEVATION_GRID_DEG).round() as i32,
+    )
+}
+
+/// Resolve elevations for every point, reading the cache first and fetching
+/// only what is missing. Returns None per point where terrain is unknown.
+async fn resolve_elevations(
+    state: &AppState,
+    points: &[(f64, f64)],
+) -> Result<Vec<Option<f64>>, AppError> {
+    // Distinct grid cells, in first-seen order.
+    let mut order: Vec<(i32, i32)> = Vec::new();
+    let mut seen: HashMap<(i32, i32), ()> = HashMap::new();
+    let keys: Vec<(i32, i32)> = points
+        .iter()
+        .map(|(la, lo)| {
+            let k = grid_key(*la, *lo);
+            if seen.insert(k, ()).is_none() {
+                order.push(k);
+            }
+            k
+        })
+        .collect();
+
+    let mut known: HashMap<(i32, i32), f64> = HashMap::new();
+
+    let lat_keys: Vec<i32> = order.iter().map(|k| k.0).collect();
+    let lon_keys: Vec<i32> = order.iter().map(|k| k.1).collect();
+    let cached = sqlx::query(
+        "SELECT lat_key, lon_key, elev_m FROM elevation_cache \
+         WHERE (lat_key, lon_key) IN (SELECT * FROM UNNEST($1::int[], $2::int[]))",
+    )
+    .bind(&lat_keys)
+    .bind(&lon_keys)
+    .fetch_all(&state.pool)
+    .await?;
+    for r in cached.iter() {
+        known.insert((r.get("lat_key"), r.get("lon_key")), r.get("elev_m"));
+    }
+
+    let missing: Vec<(i32, i32)> = order.iter().copied().filter(|k| !known.contains_key(k)).collect();
+
+    if !missing.is_empty() && missing.len() <= MAX_ELEVATION_FETCH {
+        let fetched = fetch_elevations(&state.http, &missing).await.unwrap_or_default();
+        if !fetched.is_empty() {
+            let now = chrono::Utc::now().to_rfc3339();
+            let (mut la, mut lo, mut ev) = (Vec::new(), Vec::new(), Vec::new());
+            for (k, v) in fetched {
+                known.insert(k, v);
+                la.push(k.0);
+                lo.push(k.1);
+                ev.push(v);
+            }
+            // Terrain is immutable, so a conflicting row is already correct.
+            let _ = sqlx::query(
+                "INSERT INTO elevation_cache (lat_key, lon_key, elev_m, fetched_at) \
+                 SELECT * FROM UNNEST($1::int[], $2::int[], $3::float8[]) \
+                 CROSS JOIN (SELECT $4::text) AS t \
+                 ON CONFLICT (lat_key, lon_key) DO NOTHING",
+            )
+            .bind(&la)
+            .bind(&lo)
+            .bind(&ev)
+            .bind(&now)
+            .execute(&state.pool)
+            .await;
+        }
+    }
+
+    Ok(keys.iter().map(|k| known.get(k).copied()).collect())
+}
+
+/// Fetch elevations for grid cells from 3DEP, in batches. A batch that comes
+/// back short is discarded rather than mapped positionally — a truncated
+/// response would otherwise shift every elevation onto the wrong point.
+async fn fetch_elevations(
+    http: &reqwest::Client,
+    cells: &[(i32, i32)],
+) -> anyhow::Result<Vec<((i32, i32), f64)>> {
+    let mut out = Vec::new();
+
+    for chunk in cells.chunks(ELEVATION_BATCH) {
+        let pts: Vec<[f64; 2]> = chunk
+            .iter()
+            .map(|(la, lo)| {
+                [
+                    (*lo as f64) * ELEVATION_GRID_DEG,
+                    (*la as f64) * ELEVATION_GRID_DEG,
+                ]
+            })
+            .collect();
+        let geometry = serde_json::json!({
+            "points": pts,
+            "spatialReference": { "wkid": 4326 }
+        })
+        .to_string();
+
+        let res = http
+            .post(ELEVATION_URL)
+            .form(&[
+                ("geometry", geometry.as_str()),
+                ("geometryType", "esriGeometryMultipoint"),
+                ("returnFirstValueOnly", "true"),
+                ("f", "json"),
+            ])
+            .send()
+            .await?;
+        if !res.status().is_success() {
+            anyhow::bail!("elevation service {}", res.status());
+        }
+        let body: serde_json::Value = res.json().await?;
+        let samples = match body.get("samples").and_then(|s| s.as_array()) {
+            Some(s) => s,
+            None => anyhow::bail!("elevation service returned no samples"),
+        };
+        if samples.len() != chunk.len() {
+            anyhow::bail!(
+                "elevation service returned {} samples for {} points",
+                samples.len(),
+                chunk.len()
+            );
+        }
+        for (cell, sample) in chunk.iter().zip(samples) {
+            // `value` comes back as a string on this service.
+            let v = sample
+                .get("value")
+                .and_then(|v| v.as_str().and_then(|s| s.parse::<f64>().ok()).or_else(|| v.as_f64()));
+            if let Some(v) = v {
+                out.push((*cell, v));
+            }
+        }
+    }
+    Ok(out)
+}
 
 pub fn router() -> Router<AppState> {
     Router::new().route("/rf-survey", post(run))
@@ -207,7 +362,13 @@ async fn run(
     let structures = rf::rank_structures(&dock, &in_radius);
 
     let los_map = if body.use_terrain && !emitters.is_empty() {
-        rf::resolve_los_all(&state.http, &dock, &emitters, LOS_SAMPLES).await
+        let (points, paths) = rf::los_sample_points(&dock, &emitters, LOS_SAMPLES);
+        match resolve_elevations(&state, &points).await {
+            Ok(elev) => rf::los_from_elevations(&dock, &paths, &elev),
+            // Terrain unavailable falls back to horizon geometry rather than
+            // failing the survey; the response says which was used.
+            Err(_) => Default::default(),
+        }
     } else {
         Default::default()
     };
