@@ -237,6 +237,12 @@ async fn run(
     State(state): State<AppState>,
     Json(body): Json<SurveyRequest>,
 ) -> Result<Json<SurveyResponse>, AppError> {
+    survey(&state, &body).await.map(Json)
+}
+
+/// The survey itself, callable without going through HTTP. The copilot's
+/// rf_survey tool uses this rather than re-implementing the emitter query.
+pub async fn survey(state: &AppState, body: &SurveyRequest) -> Result<SurveyResponse, AppError> {
     let dock = body.dock;
     if !dock.lat.is_finite() || !dock.lon.is_finite() {
         return Err(AppError::BadRequest("dock lat/lon required".into()));
@@ -363,7 +369,7 @@ async fn run(
 
     let los_map = if body.use_terrain && !emitters.is_empty() {
         let (points, paths) = rf::los_sample_points(&dock, &emitters, LOS_SAMPLES);
-        match resolve_elevations(&state, &points).await {
+        match resolve_elevations(state, &points).await {
             Ok(elev) => rf::los_from_elevations(&dock, &paths, &elev),
             // Terrain unavailable falls back to horizon geometry rather than
             // failing the survey; the response says which was used.
@@ -377,12 +383,12 @@ async fn run(
     let result = rf::run_survey(&dock, &emitters, radius_km, weights, &los_map, structures);
     let checklist = rf::build_checklist(&result);
 
-    Ok(Json(SurveyResponse {
+    Ok(SurveyResponse {
         result,
         checklist,
         db_emitter_count,
         manual_emitter_count: manual_count,
         emitters_truncated,
         terrain_resolved,
-    }))
+    })
 }

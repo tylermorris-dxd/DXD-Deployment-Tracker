@@ -17,9 +17,9 @@ use crate::{error::AppError, routes::misc::AppState};
 // adopt newer model versions; old IDs stay until the frontend stops
 // using them.
 const ALLOWED_MODELS: &[&str] = &[
-    "claude-sonnet-4-6",
-    "claude-opus-4-7",
-    "claude-haiku-4-5-20251001",
+    "claude-opus-5",
+    "claude-sonnet-5",
+    "claude-haiku-4-5",
 ];
 
 // Hard server-side ceilings — frontend-supplied values are clamped /

@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import type { ProjectSummary, HubSpotActiveDeal } from '@/lib/types'
+import type { ProjectSummary, HubSpotActiveDeal, CopilotToolTrace } from '@/lib/types'
 import { useRecentActivity } from '@/lib/activity'
 import { sfx } from '@/lib/sfx'
 
@@ -29,66 +29,8 @@ interface ChatMsg {
   content: string        // stored full text
   visible: string        // typewriter-animated portion (assistant only)
   ts: number
-}
-
-// ── Prompt scaffolding ───────────────────────────────────────────────────────
-
-const SYSTEM_INSTRUCTIONS = `
-You are DXD Fleet Copilot, an assistant for a drone-security-operations tracker used by DXD (Deus X Defense) operators.
-
-Style:
-- Be concise. 2-4 sentences by default.
-- Prefer bullet lists for 3+ items.
-- Never invent deals, dollar amounts, or dates. Only use what appears in the FLEET STATE.
-- Assume you are talking to a professional drone-ops operator — technical, no fluff.
-
-Deal linking convention:
-- When you mention a specific deal, wrap its name in double square brackets so the UI can make it clickable: [[Austin Airport Complex]].
-- Use the deal name exactly as it appears in FLEET STATE.
-
-DXD terminology:
-- "Solution proposal" (or "Proposal") = a deal in flight, not yet deployed.
-- "Active deployment" (or "Deployed") = a deal that's been marked live in ongoing ops.
-- FAA authorization = a per-deal regulatory-tracking flag independent of proposal/deployment state.
-
-When suggesting operator actions (e.g. "you could mark X deployed"), phrase them as commands the user can run in the command palette: mark <deal> deployed, mark <deal> faa, delete <deal>, open <deal>.
-`.trim()
-
-function buildSystemPrompt(
-  projects: ProjectSummary[],
-  activeDeals: HubSpotActiveDeal[],
-  activity: string,
-): string {
-  const dealMap = new Map(activeDeals.map(a => [a.projectId, a.deal]))
-  const nowIso = new Date().toISOString()
-  const linesByBucket: Record<string, string[]> = { active: [], steady: [], faa: [] }
-  for (const p of projects) {
-    const hs = dealMap.get(p.id)
-    const amountRaw = hs?.properties?.amount ? Number(hs.properties.amount) : null
-    const amount = amountRaw && !isNaN(amountRaw) ? ` · $${Math.round(amountRaw).toLocaleString()}` : ''
-    const stage  = hs?.properties?.dealstage ? ` · ${hs.properties.dealstage}` : ''
-    const modified = hs?.properties?.hs_lastmodifieddate
-      ? ` · last-hs-touch ${new Date(hs.properties.hs_lastmodifieddate).toISOString().slice(0, 10)}`
-      : ''
-    const faaAge = p.faaAuthorizationRequired && p.faaAuthStartedAt
-      ? ` · faa-day-${Math.max(0, Math.round((Date.now() - new Date(p.faaAuthStartedAt).getTime()) / 86_400_000))}`
-      : ''
-    const line = `- [[${p.name}]] · ${p.client || 'no client'} · ${p.site || 'no site'}${stage}${amount}${modified}${faaAge}`
-    if (p.steadyState) linesByBucket.steady.push(line)
-    else if (p.faaAuthorizationRequired) linesByBucket.faa.push(line)
-    else linesByBucket.active.push(line)
-  }
-  const bucket = (title: string, arr: string[]) => arr.length ? `\n## ${title} (${arr.length})\n${arr.join('\n')}` : ''
-  return [
-    SYSTEM_INSTRUCTIONS,
-    '',
-    '# FLEET STATE',
-    `As of ${nowIso}. ${projects.length} total deployments tracked.`,
-    bucket('Active', linesByBucket.active),
-    bucket('Active deployments', linesByBucket.steady),
-    bucket('FAA tracking', linesByBucket.faa),
-    activity ? '\n# RECENT ACTIVITY\n' + activity : '',
-  ].join('\n')
+  /** Tools the server ran to answer this, so a reply is auditable. */
+  tools?: CopilotToolTrace[]
 }
 
 // ── Message rendering with [[Deal]] linkification ────────────────────────────
@@ -198,25 +140,21 @@ export default function FleetCopilot({ open, onClose, onOpenDeal }: Props) {
     setInput('')
     setBusy(true)
 
-    const activityText = activity.map(a => `- ${a.subject} · ${new Date(a.ts).toISOString().slice(0, 10)} · ${a.kind}`).join('\n')
-    const system = buildSystemPrompt(projects, activeDeals, activityText)
+    // Conversation only. The server owns the system prompt and the tools,
+    // and reads live data rather than whatever this page happened to have
+    // loaded - which is what lets it answer questions the old passthrough
+    // could not, like which deals carry a critical RF risk.
     const history: Array<{ role: 'user' | 'assistant'; content: string }> = [
       ...messages.map(m => ({ role: m.role, content: m.content })),
       { role: 'user', content: text },
     ]
 
     try {
-      const resp = await api.claude({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 800,
-        temperature: 0.4,
-        system,
-        messages: history,
-      }) as { content?: Array<{ type: string; text?: string }> }
-      const reply = (resp.content ?? []).filter(b => b.type === 'text').map(b => b.text ?? '').join('\n').trim()
-        || '(no response)'
+      const resp = await api.copilot(history)
+      const reply = resp.reply?.trim() || '(no response)'
       const asstMsg: ChatMsg = {
         id: `a-${Date.now()}`, role: 'assistant', content: reply, visible: '', ts: Date.now(),
+        tools: resp.tools ?? [],
       }
       setMessages(prev => [...prev, asstMsg])
       sfx.ping()

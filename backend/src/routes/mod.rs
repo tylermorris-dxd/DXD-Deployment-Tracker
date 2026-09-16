@@ -2,6 +2,7 @@ use axum::Router;
 
 pub mod attachments;
 pub mod claude;
+pub mod copilot;
 pub mod coverage;
 pub mod equipment;
 pub mod hubspot;
@@ -42,6 +43,7 @@ pub fn api_router(state: AppState) -> Router {
         .merge(tfr::router())
         .merge(rf_survey::router())
         .merge(coverage::router())
+        .merge(copilot::router())
         .merge(misc::router())
         .with_state(state)
 }

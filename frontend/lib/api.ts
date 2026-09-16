@@ -8,6 +8,7 @@ import type {
   PricingCatalogItem, CreatePricingItem, UpdatePricingItem,
   RfSurveyRequest, RfSurveyResponse,
   CoverageRequest, CoverageResult,
+  CopilotResponse,
 } from './types'
 
 class ApiError extends Error {
@@ -199,6 +200,12 @@ export const api = {
   // anything the tech sighted on site.
   rfSurvey: (body: RfSurveyRequest) =>
     apiFetch<RfSurveyResponse>('/rf-survey', { method: 'POST', body: JSON.stringify(body) }),
+
+  // Agentic copilot. Unlike /claude this is not a passthrough — the server
+  // runs a tool loop with real access to deals, the RF engine and the coverage
+  // solver, so it can answer questions the page never loaded data for.
+  copilot: (messages: Array<{ role: 'user' | 'assistant'; content: string }>) =>
+    apiFetch<CopilotResponse>('/copilot', { method: 'POST', body: JSON.stringify({ messages }) }),
 
   // Solves for the fewest dock positions that reach a target share of a
   // service area within the response-time SLA.

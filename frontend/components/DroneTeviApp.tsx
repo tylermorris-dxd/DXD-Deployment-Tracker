@@ -2006,7 +2006,7 @@ function DemoMissions(){
     setLoading(true);setSummaryText("");setOpen(true);
     const allRes=buildAllResultsCtx();
     const prompt="You are a drone procurement analyst. Write a concise ONE-PAGE executive summary on demo readiness.\n\nPlatform: "+(oem.name||"Unknown")+" | Overall test results: "+allRes+"\nDemo missions: First on Scene, License Plate ID, Heat Signature, Eyes On, Crime Scene, The Perimeter.\n\nWrite:\n1. DEMO READINESS OVERVIEW\n2. PLATFORM STRENGTHS PER MISSION\n3. RISKS OR GAPS\n4. RECOMMENDATION — READY / NOT READY / CONDITIONAL\n\nUnder 350 words. Plain text only.";
-    fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1000,messages:[{role:"user",content:prompt}]})})
+    fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-5",max_tokens:1000,messages:[{role:"user",content:prompt}]})})
       .then(async r=>{
         const data=await r.json().catch(()=>({}));
         if(!r.ok) throw new Error((data&&data.error)||("HTTP "+r.status));

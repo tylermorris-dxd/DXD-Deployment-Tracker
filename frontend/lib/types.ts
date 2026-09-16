@@ -369,6 +369,23 @@ export interface RfManualEmitter {
   heightAglM?: number
 }
 
+// ── Fleet Copilot ───────────────────────────────────────────────────────────
+
+/** One tool the copilot ran, so the UI can show its work without the payload. */
+export interface CopilotToolTrace {
+  name: string
+  input: unknown
+  summary: string
+}
+
+export interface CopilotResponse {
+  reply: string
+  tools: CopilotToolTrace[]
+  iterations: number
+  /** Loop stopped on the step cap rather than because it was finished. */
+  truncated: boolean
+}
+
 // ── Coverage optimiser ──────────────────────────────────────────────────────
 
 export interface CoverageLatLon { lat: number; lon: number }
