@@ -1,3 +1,4 @@
+mod coverage;
 mod db;
 mod error;
 mod models;
