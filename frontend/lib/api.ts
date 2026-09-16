@@ -7,6 +7,7 @@ import type {
   HubSpotDeal, HubSpotActiveDeal, HubSpotStatus, HubSpotOwner,
   PricingCatalogItem, CreatePricingItem, UpdatePricingItem,
   RfSurveyRequest, RfSurveyResponse,
+  CoverageRequest, CoverageResult,
 } from './types'
 
 class ApiError extends Error {
@@ -198,6 +199,11 @@ export const api = {
   // anything the tech sighted on site.
   rfSurvey: (body: RfSurveyRequest) =>
     apiFetch<RfSurveyResponse>('/rf-survey', { method: 'POST', body: JSON.stringify(body) }),
+
+  // Solves for the fewest dock positions that reach a target share of a
+  // service area within the response-time SLA.
+  coverageOptimize: (body: CoverageRequest) =>
+    apiFetch<CoverageResult>('/coverage-optimize', { method: 'POST', body: JSON.stringify(body) }),
 
   team: {
     list: () => apiFetch<TeamMember[]>('/team'),

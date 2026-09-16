@@ -5,6 +5,8 @@ import type { ProjectFull } from '@/lib/types'
 import { geocodeAddress as sharedGeocode } from '@/lib/geocode'
 import ARSitePreview from './ARSitePreview'
 import { useIsMobile } from '@/lib/useIsMobile'
+import { api } from '@/lib/api'
+import type { CoverageResult } from '@/lib/types'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -278,6 +280,75 @@ const S = {
   exportBtn: { padding: '5px 13px', borderRadius: 3, border: `1px solid ${TACT_RED}55`, background: `${TACT_RED}0e`, color: TACT_RED, cursor: 'pointer', fontSize: 11, fontFamily: "'Courier New', monospace", letterSpacing: '0.04em', textTransform: 'uppercase' as const, boxShadow: `0 0 6px ${TACT_RED}22` },
 }
 
+// ── Coverage optimiser results ────────────────────────────────────────────────
+
+// The marginal-value curve is the point of this panel. Dock count against
+// coverage is where the real conversation happens: the last few percent of a
+// jurisdiction is usually where the programme cost runs away, and a flat
+// coverage percentage hides that entirely.
+function OptimizerResult({ r }: { r: CoverageResult }) {
+  const W = 460, H = 92, PAD = 26
+  const pts = r.docks.map((d, i) => ({ n: i + 1, pct: d.cumulativePct }))
+  const maxN = Math.max(1, pts.length)
+  const x = (n: number) => PAD + ((n - 1) / Math.max(1, maxN - 1)) * (W - PAD * 2)
+  const y = (p: number) => H - 14 - (p / 100) * (H - 26)
+  const path = pts.map((p, i) => `${i ? 'L' : 'M'}${x(p.n).toFixed(1)},${y(p.pct).toFixed(1)}`).join(' ')
+
+  // Where each 5% band of coverage stops costing sensibly.
+  const knee = (target: number) => pts.find(p => p.pct >= target)?.n
+
+  return (
+    <div style={{ marginTop: 10 }}>
+      <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap', alignItems: 'baseline', marginBottom: 8 }}>
+        <span><b style={{ color: '#00E5FF', fontSize: 17 }}>{r.docks.length}</b> docks</span>
+        <span><b>{r.coveragePct.toFixed(1)}%</b> of {r.demandTotal.toLocaleString()} points</span>
+        <span style={{ color: 'rgba(255,255,255,0.55)' }}>reach {Math.round(r.stillAirReachM)} m @ {r.slaSeconds}s</span>
+        <span style={{ color: 'rgba(255,255,255,0.4)' }}>grid {Math.round(r.demandSpacingM)} m</span>
+        {r.uncoveredTotal > 0 && (
+          <span style={{ color: '#FF6B6B' }}>{r.uncoveredTotal.toLocaleString()} points unreachable</span>
+        )}
+        {r.hitDockLimit && (
+          <span style={{ color: '#FFB300' }}>stopped on the dock budget, not on coverage</span>
+        )}
+      </div>
+
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', maxWidth: W, height: 'auto', display: 'block' }}>
+        {[50, 75, 90, 100].map(g => (
+          <g key={g}>
+            <line x1={PAD} y1={y(g)} x2={W - PAD} y2={y(g)} stroke="rgba(255,255,255,0.10)" strokeWidth="1" />
+            <text x={4} y={y(g) + 3} fill="rgba(255,255,255,0.35)" fontSize="8" fontFamily="'Courier New',monospace">{g}%</text>
+          </g>
+        ))}
+        <path d={path} fill="none" stroke="#00E5FF" strokeWidth="1.8" />
+        {[80, 90, 95, 99].map(t => {
+          const n = knee(t)
+          if (!n) return null
+          return (
+            <g key={t}>
+              <circle cx={x(n)} cy={y(t)} r="2.5" fill="#fff" />
+              <text x={x(n)} y={y(t) - 6} textAnchor="middle" fill="rgba(255,255,255,0.75)"
+                fontSize="8" fontFamily="'Courier New',monospace">{t}%={n}</text>
+            </g>
+          )
+        })}
+        <text x={PAD} y={H - 3} fill="rgba(255,255,255,0.35)" fontSize="8" fontFamily="'Courier New',monospace">1 dock</text>
+        <text x={W - PAD} y={H - 3} textAnchor="end" fill="rgba(255,255,255,0.35)" fontSize="8" fontFamily="'Courier New',monospace">{maxN} docks</text>
+      </svg>
+
+      {(() => {
+        const n95 = knee(95), n100 = pts.length
+        if (!n95 || n100 <= n95) return null
+        return (
+          <div style={{ marginTop: 6, color: 'rgba(255,255,255,0.6)', lineHeight: 1.5 }}>
+            {n100 - n95} of these {n100} docks exist only to take 95% up to {r.coveragePct.toFixed(1)}%.
+            Worth confirming the customer actually needs the last few percent before pricing it.
+          </div>
+        )
+      })()}
+    </div>
+  )
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function SiteMapper({ project, onCacheUpdate, fitToContentOnLoad }: Props) {
@@ -342,6 +413,17 @@ export default function SiteMapper({ project, onCacheUpdate, fitToContentOnLoad 
   const windLayerRef      = useRef<any>(null)
   // Lets a dock drag trigger an isochrone redraw without re-creating placeDock.
   const windRedrawRef     = useRef<() => void>(() => {})
+
+  // ── Coverage optimiser ──────────────────────────────────────────────
+  const [optOpen,    setOptOpen]    = useState(false)
+  const [optSla,     setOptSla]     = useState(120)
+  const [optTarget,  setOptTarget]  = useState(95)
+  const [optUseWind, setOptUseWind] = useState(false)
+  const [optResult,  setOptResult]  = useState<CoverageResult | null>(null)
+  const [optBusy,    setOptBusy]    = useState(false)
+  const [optError,   setOptError]   = useState<string | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const optLayerRef = useRef<any>(null)
 
   // ── AR site preview (mobile only) ───────────────────────────────────
   const isMobile = useIsMobile()
@@ -900,6 +982,80 @@ export default function SiteMapper({ project, onCacheUpdate, fitToContentOnLoad 
     return () => { cancelled = true; clearInterval(iv) }
   }, [windMode, dockCount])
 
+  // ── Coverage optimiser ──────────────────────────────────────────────────────
+  // Reuses the boundary already drawn with the BOUNDARY tool as the service
+  // area, so there is no second polygon tool to learn.
+  const runOptimizer = useCallback(async () => {
+    const lr = layersRef.current
+    if (!lr.boundaryPoly) {
+      setOptError('Draw a closed boundary first — that is the service area.')
+      return
+    }
+    const ring = lr.boundaryPoly.getLatLngs()[0] as Array<{ lat: number; lng: number }>
+    const area = ring.map((p) => ({ lat: p.lat, lon: p.lng }))
+    const model = DRONE_MODELS[selectedDroneRef.current] || DRONE_MODELS['dji-dock-3']
+
+    setOptBusy(true); setOptError(null)
+    try {
+      const res = await api.coverageOptimize({
+        area,
+        slaSeconds: optSla,
+        aircraft: { launchDelaySec: model.launchDelaySec, cruiseMph: model.speedMph },
+        wind: optUseWind && wind ? { speedMs: wind.speedMs, dirFromDeg: wind.dirFromDeg } : null,
+        targetPct: optTarget,
+        maxDocks: 200,
+      })
+      setOptResult(res)
+    } catch (e: unknown) {
+      setOptError(e instanceof Error ? e.message : String(e))
+      setOptResult(null)
+    } finally {
+      setOptBusy(false)
+    }
+  }, [optSla, optTarget, optUseWind, wind])
+
+  // Draw proposed docks and the ground they miss.
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const L = (window as any).L
+    const map = mapRef.current
+    if (!map || !L) return
+    if (!optLayerRef.current) optLayerRef.current = L.layerGroup().addTo(map)
+    optLayerRef.current.clearLayers()
+    if (!optResult) return
+
+    // Uncovered ground first, so dock markers sit above it.
+    for (const p of optResult.uncovered) {
+      L.circleMarker([p.lat, p.lon], {
+        radius: 2, color: '#FF2020', weight: 0, fillColor: '#FF2020',
+        fillOpacity: 0.5, interactive: false,
+      }).addTo(optLayerRef.current)
+    }
+
+    optResult.docks.forEach((d, i) => {
+      const n = i + 1
+      L.circle([d.lat, d.lon], {
+        radius: optResult.stillAirReachM, color: '#00E5FF', weight: 1,
+        opacity: 0.5, fillColor: '#00E5FF', fillOpacity: 0.05, interactive: false,
+      }).addTo(optLayerRef.current)
+      const icon = L.divIcon({
+        html: `<div style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:rgba(0,229,255,0.9);color:#04242a;font:700 11px 'Courier New',monospace;border:1.5px solid #fff;box-shadow:0 0 8px rgba(0,229,255,0.8)">${n}</div>`,
+        className: '', iconSize: [22, 22], iconAnchor: [11, 11],
+      })
+      L.marker([d.lat, d.lon], { icon }).addTo(optLayerRef.current).bindPopup(
+        `<div style="font-family:'Courier New',monospace;font-size:12px;color:#eee;background:#04242a;padding:7px 12px;border:1px solid #00E5FF66;border-radius:3px">
+           <b style="color:#00E5FF">PROPOSED DOCK ${n}</b><br/>
+           <span style="color:rgba(255,255,255,0.7)">
+             ${d.lat.toFixed(5)}, ${d.lon.toFixed(5)}<br/>
+             Adds ${d.adds} demand points<br/>
+             Cumulative ${d.cumulativePct.toFixed(1)}%
+           </span>
+         </div>`,
+        { className: 'tact-popup' },
+      )
+    })
+  }, [optResult])
+
   // ── Cursor + dblclick per tool ──────────────────────────────────────────────
   useEffect(() => {
     if (!mapRef.current) return
@@ -1295,6 +1451,21 @@ export default function SiteMapper({ project, onCacheUpdate, fitToContentOnLoad 
         >
           🌬 WIND REACH
         </button>
+        <button
+          onClick={() => setOptOpen(o => !o)}
+          title="Solve for the fewest docks that cover the drawn boundary within a response-time SLA"
+          style={{
+            padding: '4px 9px', borderRadius: 3, cursor: 'pointer', fontSize: 10, fontWeight: 700,
+            letterSpacing: '0.04em', fontFamily: "'Courier New', monospace", textTransform: 'uppercase',
+            transition: 'all 0.12s',
+            border: optOpen ? '1px solid #00E5FF' : '1px solid rgba(0,229,255,0.35)',
+            background: optOpen ? 'rgba(0,229,255,0.18)' : 'transparent',
+            color: optOpen ? '#00E5FF' : 'rgba(0,229,255,0.55)',
+            boxShadow: optOpen ? '0 0 6px rgba(0,229,255,0.45)' : 'none',
+          }}
+        >
+          ◎ OPTIMIZE {optResult ? `· ${optResult.docks.length}` : ''}
+        </button>
         <div style={S.divider} />
         <button style={S.clearBtn}  onClick={clearAll}>CLEAR ALL</button>
         <button style={S.exportBtn} onClick={handleExport}>EXPORT / PRINT</button>
@@ -1364,6 +1535,83 @@ export default function SiteMapper({ project, onCacheUpdate, fitToContentOnLoad 
               Breaks the standard 400 ft ceiling — plan around it
             </span>
           )}
+        </div>
+      )}
+
+      {/* Coverage optimiser panel */}
+      {optOpen && (
+        <div style={{
+          padding: '12px 16px', background: 'rgba(0,229,255,0.06)',
+          borderBottom: '1px solid rgba(0,229,255,0.25)',
+          fontFamily: "'Courier New', monospace", fontSize: 11, color: '#cfefff',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+            <span style={{ fontWeight: 700, letterSpacing: '0.06em', color: '#00E5FF', textTransform: 'uppercase' }}>
+              ◎ Coverage optimiser
+            </span>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              SLA
+              <input type="range" min={45} max={600} step={15} value={optSla}
+                onChange={e => setOptSla(Number(e.target.value))}
+                style={{ width: 130, accentColor: '#00E5FF' }} />
+              <b style={{ minWidth: 42 }}>{optSla}s</b>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              Target
+              <input type="range" min={50} max={100} step={1} value={optTarget}
+                onChange={e => setOptTarget(Number(e.target.value))}
+                style={{ width: 110, accentColor: '#00E5FF' }} />
+              <b style={{ minWidth: 38 }}>{optTarget}%</b>
+            </label>
+            <button
+              onClick={() => setOptUseWind(v => !v)}
+              disabled={!wind}
+              title={wind ? 'Account for current wind' : 'Turn on WIND REACH first to load current wind'}
+              style={{
+                padding: '4px 9px', borderRadius: 3, cursor: wind ? 'pointer' : 'not-allowed',
+                fontSize: 10, fontWeight: 700, fontFamily: "'Courier New', monospace",
+                textTransform: 'uppercase', letterSpacing: '0.04em',
+                border: `1px solid ${optUseWind && wind ? '#00E5FF' : 'rgba(255,255,255,0.2)'}`,
+                background: optUseWind && wind ? 'rgba(0,229,255,0.2)' : 'transparent',
+                color: wind ? (optUseWind ? '#00E5FF' : 'rgba(255,255,255,0.5)') : 'rgba(255,255,255,0.25)',
+              }}
+            >
+              {optUseWind && wind ? '◈' : '◇'} Wind
+            </button>
+            <button
+              onClick={runOptimizer}
+              disabled={optBusy}
+              style={{
+                padding: '5px 16px', borderRadius: 3, border: 'none',
+                background: optBusy ? 'rgba(0,229,255,0.3)' : '#00E5FF',
+                color: '#04242a', cursor: optBusy ? 'wait' : 'pointer',
+                fontSize: 11, fontWeight: 700, fontFamily: "'Courier New', monospace",
+                textTransform: 'uppercase', letterSpacing: '0.06em',
+              }}
+            >
+              {optBusy ? 'Solving…' : 'Solve'}
+            </button>
+            {optResult && (
+              <button onClick={() => { setOptResult(null); setOptError(null) }}
+                style={{ padding: '5px 12px', borderRadius: 3, border: '1px solid rgba(255,255,255,0.2)', background: 'transparent', color: 'rgba(255,255,255,0.55)', cursor: 'pointer', fontSize: 10, fontFamily: "'Courier New', monospace", textTransform: 'uppercase' }}>
+                Clear
+              </button>
+            )}
+          </div>
+
+          {!optResult && !optError && (
+            <div style={{ marginTop: 8, color: 'rgba(255,255,255,0.45)', lineHeight: 1.5 }}>
+              Draw a closed boundary with the BOUNDARY tool — that is the service area — then solve.
+              Reach is cruise speed over the SLA <i>minus</i> the launch delay, so a Dock 3 at 90 s
+              covers 885 m, not 1,475 m.
+            </div>
+          )}
+
+          {optError && (
+            <div style={{ marginTop: 8, color: '#FF6B6B' }}>{optError}</div>
+          )}
+
+          {optResult && <OptimizerResult r={optResult} />}
         </div>
       )}
 

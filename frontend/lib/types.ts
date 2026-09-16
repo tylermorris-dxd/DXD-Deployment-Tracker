@@ -369,6 +369,57 @@ export interface RfManualEmitter {
   heightAglM?: number
 }
 
+// ── Coverage optimiser ──────────────────────────────────────────────────────
+
+export interface CoverageLatLon { lat: number; lon: number }
+
+export interface CoverageAircraft {
+  launchDelaySec: number
+  cruiseMph: number
+}
+
+export interface CoverageWind {
+  speedMs: number
+  /** Meteorological: the direction the wind blows FROM. */
+  dirFromDeg: number
+}
+
+export interface PlacedDock {
+  lat: number
+  lon: number
+  /** Demand points this dock reaches, shared or not. */
+  covers: number
+  /** Demand points this dock was the first to reach — its marginal value. */
+  adds: number
+  cumulativePct: number
+}
+
+export interface CoverageResult {
+  docks: PlacedDock[]
+  demandTotal: number
+  coveredTotal: number
+  coveragePct: number
+  uncovered: CoverageLatLon[]
+  uncoveredTotal: number
+  slaSeconds: number
+  stillAirReachM: number
+  demandSpacingM: number
+  candidateSpacingM: number
+  /** Search stopped on the dock budget rather than on reaching the target. */
+  hitDockLimit: boolean
+}
+
+export interface CoverageRequest {
+  area: CoverageLatLon[]
+  slaSeconds: number
+  aircraft?: CoverageAircraft
+  wind?: CoverageWind | null
+  maxDocks?: number
+  targetPct?: number
+  demandSpacingM?: number
+  candidateSpacingM?: number
+}
+
 export interface RfSurveyRequest {
   dock: RfDock
   radiusKm?: number
