@@ -42,6 +42,11 @@ pub const BANDS: &[BandDef] = &[
 pub const DESENSE: &[BandDef] = &[
     BandDef { name: "C-band 5G", lo: 3700.0, hi: 3980.0 },
     BandDef { name: "FM broadcast", lo: 88.0, hi: 108.0 },
+    // TV carries far more power than FM — a full-power UHF station runs to
+    // 1000 kW ERP — and UHF sits closer to the 902-928 band than FM does.
+    BandDef { name: "TV VHF-lo", lo: 54.0, hi: 88.0 },
+    BandDef { name: "TV VHF-hi", lo: 174.0, hi: 216.0 },
+    BandDef { name: "TV UHF", lo: 470.0, hi: 608.0 },
 ];
 
 /// Adjacent-band guard window (MHz) each side of an in-use band.

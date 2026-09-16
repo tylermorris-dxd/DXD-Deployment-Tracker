@@ -84,6 +84,40 @@ const FM_ENG = {
   channel: 62,
 };
 
+// CDBS TV engineering indices. Validated the same way FM was, not inferred:
+//
+//   erpKw [15]  Confirmed by regulatory cap, not by looking plausible. Low-power
+//               digital (LD) has a p90 of exactly 15.00 kW, which is the LPTV
+//               limit. The rival candidate [17] shows a 929 kW median for the
+//               same low-power stations — impossible — so it is a height field.
+//   haat  [40]  Full-power DT gives p10/median/p90 of 219/377/583 m, right for
+//               TV. [44] yields sub-metre values; [56] is RCAMSL.
+const TV_ENG = {
+  facilityId: 21, status: 51, erpKw: 15, haat: [40],
+  latD: 28, latDir: 29, latM: 30, latS: 31,
+  lonD: 32, lonDir: 33, lonM: 34, lonS: 35,
+  channel: 66,
+};
+
+// US TV occupies channels 2-36 today. Records still on 37-83 are pre-repack
+// leftovers whose frequencies now belong to cellular and radio astronomy —
+// carrying them would place TV emitters in the 700/800 MHz bands, where they
+// have not transmitted in years.
+const TV_CHANNEL_MAX = 36;
+
+/// Channel centre frequency in MHz, or null for a channel outside the plan.
+function tvChannelFreq(ch: number): number | null {
+  if (!isFinite(ch)) return null;
+  const c = Math.round(ch);
+  let lo: number;
+  if (c >= 2 && c <= 4) lo = 54 + (c - 2) * 6;
+  else if (c >= 5 && c <= 6) lo = 76 + (c - 5) * 6;
+  else if (c >= 7 && c <= 13) lo = 174 + (c - 7) * 6;
+  else if (c >= 14 && c <= TV_CHANNEL_MAX) lo = 470 + (c - 14) * 6;
+  else return null;
+  return lo + 3;
+}
+
 // CDBS facility indices. [14] is the facility_id and is populated on every row.
 // Note [0]/[1] are the community of licence; [7]/[11] are the licensee's
 // mailing address, which for a chain owner is a different city entirely.
@@ -323,12 +357,7 @@ async function parseAsr(dir: string): Promise<Row[]> {
   return rows;
 }
 
-// ---- Broadcast parse (FM) ------------------------------------------------------------
-//
-// FM only. TV lives in tv_eng_data.dat with a different layout whose ERP column
-// is ambiguous between two candidates on profiling alone; shipping a guessed
-// power field is exactly the mistake the ASR indices already taught here, so TV
-// stays out until its columns are confirmed the same way FM's were.
+// ---- Broadcast parse (FM + TV) --------------------------------------------------------
 
 async function parseBroadcast(dir: string): Promise<Row[]> {
   // facility_id -> callsign / frequency / community
@@ -394,7 +423,51 @@ async function parseBroadcast(dir: string): Promise<Row[]> {
     });
   });
 
-  return [...best.values()];
+  // TV, same shape, different file and layout.
+  const tv = new Map<string, Row>();
+  let staleChannel = 0;
+  await eachRow(path.join(dir, 'TV_ENG_DATA.DAT'), '', (f) => {
+    if (f.length <= TV_ENG.channel) return;
+    if ((f[TV_ENG.status] || '').trim().toUpperCase() !== 'LIC') return;
+
+    const id = (f[TV_ENG.facilityId] || '').trim();
+    const meta = fac.get(id);
+    if (!meta) return;
+
+    const lat = dms(f[TV_ENG.latD], f[TV_ENG.latM], f[TV_ENG.latS], f[TV_ENG.latDir]);
+    const lon = dms(f[TV_ENG.lonD], f[TV_ENG.lonM], f[TV_ENG.lonS], f[TV_ENG.lonDir]);
+    if (!validCoord(lat, lon)) return;
+
+    const ch = parseFloat(f[TV_ENG.channel]);
+    const freq = tvChannelFreq(ch);
+    if (freq == null) { if (isFinite(ch) && ch > TV_CHANNEL_MAX) staleChannel++; return; }
+
+    const erpKw = parseFloat(f[TV_ENG.erpKw]);
+    const erpDbw = isFinite(erpKw) && erpKw > 0 ? wattsToDbw(erpKw * 1000) : null;
+
+    let heightM: number | null = null;
+    for (const idx of TV_ENG.haat) {
+      const h = sanitizeHeight(parseFloat(f[idx]));
+      if (h != null) { heightM = h; break; }
+    }
+
+    const prev = tv.get(id);
+    if (prev && (prev.erpDbw ?? -999) >= (erpDbw ?? -999)) return;
+
+    const where = meta.city && meta.state ? ` · ${meta.city}, ${meta.state}` : '';
+    tv.set(id, {
+      id: `tv:${id}`,
+      source: 'broadcast',
+      name: `TV ${meta.call || id} ch${Math.round(ch)}${where}`,
+      lat: lat!, lon: lon!,
+      freqMhz: freq, erpDbw, heightM,
+    });
+  });
+  if (staleChannel) {
+    console.log(`    (${staleChannel.toLocaleString()} TV records on pre-repack channels above ${TV_CHANNEL_MAX}, skipped)`);
+  }
+
+  return [...best.values(), ...tv.values()];
 }
 
 // ---- DB load -------------------------------------------------------------------------
@@ -604,7 +677,7 @@ async function main() {
     if (want.has('broadcast')) {
       const outDir = path.join(tmp, 'cdbs');
       fs.mkdirSync(outDir, { recursive: true });
-      for (const file of ['fm_eng_data.zip', 'facility.zip']) {
+      for (const file of ['fm_eng_data.zip', 'tv_eng_data.zip', 'facility.zip']) {
         const zip = path.join(tmp, file);
         console.log(`downloading ${file}…`);
         await download(`${CDBS_BASE}/${file}`, zip);
