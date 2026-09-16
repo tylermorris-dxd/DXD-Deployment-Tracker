@@ -139,23 +139,77 @@ Then add a `DATABASE_URL` repository secret. A narrower custom role limited to
 `Microsoft.DBforPostgreSQL/flexibleServers/firewallRules/*` is worth preferring
 over Contributor.
 
-### Option B — Azure Container Apps Job (`Dockerfile`, already written)
+### Option B — Azure Container Apps Job (deployed)
 
-Runs inside Azure, so "Allow Azure services" covers it and no firewall rule is
-ever opened. Memory is sized per job rather than shared with the web app.
+Runs inside Azure, so the server's "Allow Azure services" rule covers it and no
+firewall rule is ever opened for it. Memory is sized per job rather than shared
+with the web app, which matters because the ULS pass needs several GB and the
+app's plan is B1 with 1.75 GB.
 
-Costs more setup: a container registry, a Container Apps environment, and the
-job itself are new billable resources.
+Deployed as an ARM template (`infra/fcc-ingest-job.json`) rather than with
+`az containerapp`, because that extension cannot install against a 32-bit
+Azure CLI Python — its `cryptography` dependency has no 32-bit Windows wheel and
+the source build fails. Core `az deployment group create` sidesteps it, and a
+template is reproducible in a way shell history is not.
+
+Resources: `dxdtrackeracr` (registry), `dxd-jobs-env` (Container Apps
+environment), `dxd-jobs-logs` (Log Analytics), `dxd-fcc-ingest` (the job).
+
+**Rebuild the image after changing the ingest.** No local Docker needed — ACR
+builds it server-side:
 
 ```bash
-az containerapp job create   --name dxd-fcc-ingest --resource-group rg-deusxdefense-ops-dev   --environment <your-container-apps-env>   --trigger-type Schedule --cron-expression "0 8 * * 2"   --image <registry>/dxd-fcc-ingest:latest   --cpu 2 --memory 8Gi --replica-timeout 5400   --secrets "dburl=<connection string>"   --env-vars "DATABASE_URL=secretref:dburl"
+az acr build --registry dxdtrackeracr --image dxd-fcc-ingest:latest \
+  --file Dockerfile scripts/ingest-fcc
 ```
+
+The job pulls `:latest` on each run, so a rebuild is all that is required.
+
+**Redeploy the job** (schedule, resources, secrets):
+
+```bash
+ACR_USER=$(az acr credential show -n dxdtrackeracr --query username -o tsv)
+ACR_PASS=$(az acr credential show -n dxdtrackeracr --query "passwords[0].value" -o tsv)
+
+az deployment group create -g rg-deusxdefense-ops-dev -n fcc-ingest-job \
+  --template-file infra/fcc-ingest-job.json \
+  --parameters image=dxdtrackeracr.azurecr.io/dxd-fcc-ingest:latest \
+    registryServer=dxdtrackeracr.azurecr.io \
+    registryUser="$ACR_USER" registryPassword="$ACR_PASS" \
+    databaseUrl="<connection string>"
+```
+
+**Run it now, off schedule:**
+
+```bash
+az rest --method post --url \
+  "https://management.azure.com/subscriptions/0c87fd02-06f5-49e3-bf68-5c1c83ea24bc/resourceGroups/rg-deusxdefense-ops-dev/providers/Microsoft.App/jobs/dxd-fcc-ingest/start?api-version=2024-03-01"
+```
+
+**Check executions:**
+
+```bash
+az rest --method get --url \
+  "https://management.azure.com/subscriptions/0c87fd02-06f5-49e3-bf68-5c1c83ea24bc/resourceGroups/rg-deusxdefense-ops-dev/providers/Microsoft.App/jobs/dxd-fcc-ingest/executions?api-version=2024-03-01" \
+  --query "value[].{name:name, status:properties.status, start:properties.startTime}" -o table
+```
+
+Container logs land in the `dxd-jobs-logs` workspace.
+
+### Cost
+
+The job runs ~30 minutes a week at 4 vCPU / 8 GiB, which is roughly 31,000
+vCPU-seconds and 62,000 GiB-seconds a month against Container Apps consumption
+free grants of about 180,000 and 360,000. The compute is therefore free, and
+the recurring cost is the Basic registry at roughly $5/month plus negligible log
+ingestion. Verify against current pricing before relying on those grant figures.
 
 ### Which
 
-Option B is the better end state — nothing outside Azure ever touches the
-database. Option A is running today with no new resources, needs one role
-assignment, and can be swapped later.
+Option B is deployed and is the one to use. Option A remains in the repository
+as a fallback; it is inert because the federated identity lacks the firewall
+permission it would need, and it can be deleted once B has run a few cycles
+cleanly.
 
-Either way the firewall rule pinned to a personal workstation should be removed
-once this is automated.
+The firewall rule pinned to a personal workstation should now be removed — the
+job reaches the database from inside Azure and does not need it.

@@ -1,0 +1,106 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "comments": "Weekly FCC ingest as an Azure Container Apps Job. Sized at 2 vCPU / 4 GiB because that is the ceiling of the Consumption workload profile; the heap is capped below the container limit to leave room for the process itself. The ingest streams rows into COPY rather than materialising them, so its peak is the active-licence and location maps for l_LMpriv, not the row set. Deployed with core az (az deployment group create) rather than the containerapp extension, which cannot install against this workstation's 32-bit Azure CLI Python. Being a template also means the job is reproducible rather than a pile of shell history."
+  },
+  "parameters": {
+    "location":       { "type": "string",       "defaultValue": "centralus" },
+    "jobName":        { "type": "string",       "defaultValue": "dxd-fcc-ingest" },
+    "envName":        { "type": "string",       "defaultValue": "dxd-jobs-env" },
+    "workspaceName":  { "type": "string",       "defaultValue": "dxd-jobs-logs" },
+    "image":          { "type": "string" },
+    "registryServer": { "type": "string" },
+    "registryUser":   { "type": "string" },
+    "registryPassword": { "type": "securestring" },
+    "databaseUrl":    { "type": "securestring" },
+    "cronExpression": {
+      "type": "string",
+      "defaultValue": "0 8 * * 2",
+      "metadata": { "description": "Tuesdays 08:00 UTC. The FCC posts the weekly complete files over the weekend, so this lands after they settle." }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.OperationalInsights/workspaces",
+      "apiVersion": "2022-10-01",
+      "name": "[parameters('workspaceName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "sku": { "name": "PerGB2018" },
+        "retentionInDays": 30
+      }
+    },
+    {
+      "type": "Microsoft.App/managedEnvironments",
+      "apiVersion": "2024-03-01",
+      "name": "[parameters('envName')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('workspaceName'))]"
+      ],
+      "properties": {
+        "appLogsConfiguration": {
+          "destination": "log-analytics",
+          "logAnalyticsConfiguration": {
+            "customerId": "[reference(resourceId('Microsoft.OperationalInsights/workspaces', parameters('workspaceName')), '2022-10-01').customerId]",
+            "sharedKey": "[listKeys(resourceId('Microsoft.OperationalInsights/workspaces', parameters('workspaceName')), '2022-10-01').primarySharedKey]"
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.App/jobs",
+      "apiVersion": "2024-03-01",
+      "name": "[parameters('jobName')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.App/managedEnvironments', parameters('envName'))]"
+      ],
+      "properties": {
+        "environmentId": "[resourceId('Microsoft.App/managedEnvironments', parameters('envName'))]",
+        "configuration": {
+          "triggerType": "Schedule",
+          "scheduleTriggerConfig": {
+            "cronExpression": "[parameters('cronExpression')]",
+            "parallelism": 1,
+            "replicaCompletionCount": 1
+          },
+          "replicaTimeout": 5400,
+          "replicaRetryLimit": 1,
+          "secrets": [
+            { "name": "database-url",      "value": "[parameters('databaseUrl')]" },
+            { "name": "registry-password", "value": "[parameters('registryPassword')]" }
+          ],
+          "registries": [
+            {
+              "server": "[parameters('registryServer')]",
+              "username": "[parameters('registryUser')]",
+              "passwordSecretRef": "registry-password"
+            }
+          ]
+        },
+        "template": {
+          "containers": [
+            {
+              "name": "ingest",
+              "image": "[parameters('image')]",
+              "resources": {
+                "cpu": 2,
+                "memory": "4Gi"
+              },
+              "env": [
+                { "name": "DATABASE_URL", "secretRef": "database-url" },
+                { "name": "NODE_OPTIONS", "value": "--max-old-space-size=3072" }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "jobName":     { "type": "string", "value": "[parameters('jobName')]" },
+    "environment": { "type": "string", "value": "[parameters('envName')]" }
+  }
+}

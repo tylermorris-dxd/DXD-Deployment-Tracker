@@ -1,0 +1,6 @@
+# The image runs `npm ci` from the lockfile, so a host node_modules is both
+# useless and the wrong platform — it only bloats the upload to ACR.
+node_modules
+README.md
+Dockerfile
+.dockerignore
