@@ -226,6 +226,29 @@ pub struct ScoredEmitter {
     pub tier: RiskTier,
 }
 
+/// A registered antenna structure whose transmitters are unknown.
+///
+/// ASR registrations carry height and position but no frequency, so these are
+/// deliberately NOT scored — inventing a risk number for an unknown emitter
+/// would be worse than saying nothing. They are reported because cellular is
+/// licensed by market rather than by point, which makes the structure register
+/// the only positional record of a cell site that exists.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NearbyStructure {
+    pub id: String,
+    pub name: String,
+    pub lat: f64,
+    pub lon: f64,
+    pub height_agl_m: Option<f64>,
+    pub distance_m: f64,
+    pub bearing_deg: f64,
+    /// Angle from the dock antenna up to the top of the structure. Ordering by
+    /// this puts "tall and close" first, which is what dominates the near
+    /// field. It is a geometry figure, not a risk score.
+    pub elevation_deg: f64,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SurveyResult {
@@ -236,6 +259,8 @@ pub struct SurveyResult {
     pub verdict: Verdict,
     pub worst_score: i32,
     pub flagged_count: usize,
+    /// Registered structures in radius with no known frequency. Unscored.
+    pub structures: Vec<NearbyStructure>,
     pub generated_at: String,
 }
 
@@ -357,12 +382,49 @@ pub fn score_emitter(
     }
 }
 
+/// Structures in radius, ordered by how much of the sky they occupy from the
+/// dock. Capped by the caller.
+pub fn rank_structures(
+    dock: &Dock,
+    rows: &[(String, String, f64, f64, Option<f64>)], // id, name, lat, lon, height
+) -> Vec<NearbyStructure> {
+    let mut out: Vec<NearbyStructure> = rows
+        .iter()
+        .map(|(id, name, lat, lon, h)| {
+            let distance_m = haversine_m(dock.lat, dock.lon, *lat, *lon);
+            let rise = h.unwrap_or(0.0) - dock.antenna_agl_m;
+            let elevation_deg = if distance_m > 0.5 {
+                (rise / distance_m).atan().to_degrees()
+            } else {
+                90.0
+            };
+            NearbyStructure {
+                id: id.clone(),
+                name: name.clone(),
+                lat: *lat,
+                lon: *lon,
+                height_agl_m: *h,
+                distance_m,
+                bearing_deg: bearing_deg(dock.lat, dock.lon, *lat, *lon),
+                elevation_deg,
+            }
+        })
+        .collect();
+    out.sort_by(|a, b| {
+        b.elevation_deg
+            .partial_cmp(&a.elevation_deg)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+    out
+}
+
 pub fn run_survey(
     dock: &Dock,
     emitters: &[Emitter],
     radius_km: f64,
     weights: Weights,
     los_map: &HashMap<String, bool>,
+    structures: Vec<NearbyStructure>,
 ) -> SurveyResult {
     let mut scored: Vec<ScoredEmitter> = emitters
         .iter()
@@ -381,6 +443,7 @@ pub fn run_survey(
         verdict: verdict_of(worst_score),
         worst_score,
         flagged_count,
+        structures,
         generated_at: chrono::Utc::now().to_rfc3339(),
     }
 }
@@ -539,6 +602,8 @@ fn verdict_text(v: Verdict) -> &'static str {
 const CHECKLIST_SECTORS: usize = 12;
 /// Matches the ±10° aim tolerance the checklist already instructs.
 const SECTOR_HALF_WIDTH: i64 = 10;
+/// Structures listed in the checklist. Ordered tall-and-close first.
+const CHECKLIST_STRUCTURES: usize = 10;
 
 struct Sector<'a> {
     bearing: i64,
@@ -671,7 +736,43 @@ pub fn build_checklist(result: &SurveyResult) -> String {
     }
     l.push(String::new());
 
-    l.push("# 3 — Confirm the mechanism".into());
+    l.push("# 3 — Structures with unknown emitters".into());
+    if result.structures.is_empty() {
+        l.push("   No registered structures in radius.".into());
+    } else {
+        l.push(format!(
+            "   {} registered structure{} in radius. The register records height and",
+            result.structures.len(),
+            if result.structures.len() == 1 { "" } else { "s" }
+        ));
+        l.push("   position but not what transmits from them, so these carry no risk score.".into());
+        l.push("   Cellular is licensed by market rather than by point, so a tower here is".into());
+        l.push("   often the only record that a cell site exists at all. Eyeball the closest".into());
+        l.push("   on arrival and note anything mounted on them.".into());
+        l.push(String::new());
+        for st in result.structures.iter().take(CHECKLIST_STRUCTURES) {
+            l.push(format!(
+                "   · {} at {} on bearing {:03}° — {}, {:.0}° above the horizon",
+                st.name,
+                fmt_dist(st.distance_m),
+                st.bearing_deg.round() as i64,
+                match st.height_agl_m {
+                    Some(h) => format!("{} m tall", h.round() as i64),
+                    None => "height unrecorded".to_string(),
+                },
+                st.elevation_deg.max(0.0)
+            ));
+        }
+        if result.structures.len() > CHECKLIST_STRUCTURES {
+            l.push(format!(
+                "   + {} more, furthest or lowest first omitted. Full list in the app.",
+                result.structures.len() - CHECKLIST_STRUCTURES
+            ));
+        }
+    }
+    l.push(String::new());
+
+    l.push("# 4 — Confirm the mechanism".into());
     l.push("   · Band-lock test: fly the suspect bearing on 2.4 GHz only, then 5.8 GHz only. Same drop distance on both = LOS/link-budget, not interference.".into());
     l.push("   · Watch SNR on approach. Sharp collapse + rising noise floor = interference. Gradual decay = range/obstruction.".into());
     l.push(String::new());

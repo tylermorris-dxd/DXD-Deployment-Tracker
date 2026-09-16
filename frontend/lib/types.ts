@@ -323,6 +323,19 @@ export interface ScoredEmitter {
   tier: RiskTier
 }
 
+/** A registered structure with no known transmitters. Deliberately unscored. */
+export interface NearbyStructure {
+  id: string
+  name: string
+  lat: number
+  lon: number
+  heightAglM: number | null
+  distanceM: number
+  bearingDeg: number
+  /** Angle up to the top of the structure. Geometry, not a risk score. */
+  elevationDeg: number
+}
+
 export interface RfSurveyResult {
   dock: RfDock
   radiusKm: number
@@ -331,6 +344,7 @@ export interface RfSurveyResult {
   verdict: RfVerdict
   worstScore: number
   flaggedCount: number
+  structures: NearbyStructure[]
   generatedAt: string
 }
 
@@ -339,6 +353,7 @@ export interface RfSurveyResponse {
   checklist: string
   dbEmitterCount: number
   manualEmitterCount: number
+  emittersTruncated: boolean
   terrainResolved: boolean
 }
 

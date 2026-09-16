@@ -4,6 +4,7 @@ import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { api } from '@/lib/api'
 import type {
   ProjectFull, RfSurveyResponse, ScoredEmitter, RfManualEmitter, RiskTier, RfVerdict,
+  NearbyStructure,
 } from '@/lib/types'
 import { resolveSites } from '@/lib/siteCoords'
 import { showToast } from '@/lib/toast'
@@ -221,17 +222,38 @@ export default function RfSurveyView({ project, onCacheUpdate }: Props) {
         </div>
       )}
 
+      {resp?.emittersTruncated && (
+        <div style={{
+          background: 'rgba(255,179,0,0.1)', border: '1px solid rgba(255,179,0,0.4)',
+          borderRadius: 8, padding: '10px 14px', marginBottom: 16,
+          fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#FFB300', lineHeight: 1.5,
+        }}>
+          Emitter limit reached — this survey analysed only part of what is in radius.
+          Reduce the radius for a complete picture of the area closest to the dock.
+        </div>
+      )}
+
       {/* Scope + table */}
       {resp && (
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 420px) 1fr', gap: 16, marginBottom: 16, alignItems: 'start' }}>
           <PpiScope
             scored={scored}
+            structures={resp.result.structures ?? []}
             radiusKm={resp.result.radiusKm}
             selected={selected}
             onSelect={setSelected}
           />
           <EmitterTable scored={scored} selected={selected} onSelect={setSelected} />
         </div>
+      )}
+
+      {/* Registered structures */}
+      {resp && (resp.result.structures?.length ?? 0) > 0 && (
+        <StructurePanel
+          structures={resp.result.structures}
+          selected={selected}
+          onSelect={setSelected}
+        />
       )}
 
       {/* Checklist */}
@@ -258,8 +280,9 @@ export default function RfSurveyView({ project, onCacheUpdate }: Props) {
 
 // ── PPI scope ───────────────────────────────────────────────────────────────
 
-function PpiScope({ scored, radiusKm, selected, onSelect }: {
+function PpiScope({ scored, structures, radiusKm, selected, onSelect }: {
   scored: ScoredEmitter[]
+  structures: NearbyStructure[]
   radiusKm: number
   selected: string | null
   onSelect: (id: string | null) => void
@@ -320,6 +343,28 @@ function PpiScope({ scored, radiusKm, selected, onSelect }: {
           )
         })}
 
+        {/* Registered structures. Hollow squares so they can never be mistaken
+            for a scored emitter — nobody knows what transmits from these. */}
+        {structures.map(st => {
+          const rad = (st.bearingDeg - 90) * Math.PI / 180
+          const rr = Math.min(1, st.distanceM / maxM) * MAX_R
+          const x = C + Math.cos(rad) * rr
+          const y = C + Math.sin(rad) * rr
+          const isSel = selected === st.id
+          return (
+            <g key={st.id} onClick={() => onSelect(isSel ? null : st.id)} style={{ cursor: 'pointer' }}>
+              <rect x={x - 4} y={y - 4} width={8} height={8}
+                fill="none" stroke={isSel ? '#fff' : 'rgba(255,255,255,0.5)'} strokeWidth={isSel ? 1.8 : 1.1} />
+              {isSel && (
+                <text x={x} y={y - 9} textAnchor="middle" fill="#fff" fontSize="9"
+                  fontFamily="'IBM Plex Mono', monospace" style={{ paintOrder: 'stroke' }} stroke="#000" strokeWidth="3">
+                  {st.heightAglM != null ? Math.round(st.heightAglM) + 'm' : 'structure'} · {fmtDist(st.distanceM)}
+                </text>
+              )}
+            </g>
+          )
+        })}
+
         {/* Emitters */}
         {scored.map(s => {
           const rad = (s.bearingDeg - 90) * Math.PI / 180
@@ -357,6 +402,11 @@ function PpiScope({ scored, radiusKm, selected, onSelect }: {
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: TIER_COLOR[t] }} />{t}
           </span>
         ))}
+        {structures.length > 0 && (
+          <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: 1 }}>
+            <span style={{ width: 8, height: 8, border: '1.2px solid rgba(255,255,255,0.6)' }} />structure
+          </span>
+        )}
       </div>
     </div>
   )
@@ -442,6 +492,62 @@ function EmitterTable({ scored, selected, onSelect }: {
           </tbody>
         </table>
       </div>
+    </div>
+  )
+}
+
+// ── Registered structures ───────────────────────────────────────────────────
+
+function StructurePanel({ structures, selected, onSelect }: {
+  structures: NearbyStructure[]
+  selected: string | null
+  onSelect: (id: string | null) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const shown = open ? structures : structures.slice(0, 6)
+  return (
+    <div style={{ background: 'rgba(30,30,34,0.7)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, marginBottom: 16, overflow: 'hidden' }}>
+      <div style={{ padding: '11px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: 'rgba(255,255,255,0.4)', letterSpacing: 1.5, textTransform: 'uppercase' }}>
+          Registered structures · {structures.length} in radius · not scored
+        </div>
+        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: 'rgba(255,255,255,0.3)', marginTop: 5, lineHeight: 1.55 }}>
+          The FCC structure register records height and position but not what transmits from them, so
+          these carry no risk score. Cellular is licensed by market rather than by point, which makes
+          this often the only record that a cell site exists at all. Ordered tall-and-close first.
+        </div>
+      </div>
+      <div style={{ display: 'grid', gap: 1, background: 'rgba(255,255,255,0.04)' }}>
+        {shown.map(st => {
+          const isSel = selected === st.id
+          return (
+            <button key={st.id} onClick={() => onSelect(isSel ? null : st.id)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left',
+                background: isSel ? 'rgba(255,255,255,0.07)' : 'rgba(30,30,34,0.95)',
+                border: 'none', padding: '9px 16px', cursor: 'pointer',
+                fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: 'rgba(255,255,255,0.72)',
+              }}>
+              <span style={{ width: 9, height: 9, border: '1.2px solid rgba(255,255,255,0.55)', flexShrink: 0 }} />
+              <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#e8eaf0' }}>
+                {st.name}
+              </span>
+              <span style={{ flexShrink: 0, color: 'rgba(255,255,255,0.5)' }}>
+                {st.heightAglM != null ? Math.round(st.heightAglM) + ' m' : 'height —'}
+              </span>
+              <span style={{ flexShrink: 0, width: 72, textAlign: 'right' }}>{fmtDist(st.distanceM)}</span>
+              <span style={{ flexShrink: 0, width: 66, textAlign: 'right', color: 'rgba(255,255,255,0.5)' }}>
+                {Math.round(st.bearingDeg)}° {compass(st.bearingDeg)}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+      {structures.length > 6 && (
+        <button onClick={() => setOpen(o => !o)} style={{ ...ghostBtn, margin: 10, border: 'none', background: 'transparent' }}>
+          {open ? 'Show fewer' : 'Show all ' + structures.length}
+        </button>
+      )}
     </div>
   )
 }

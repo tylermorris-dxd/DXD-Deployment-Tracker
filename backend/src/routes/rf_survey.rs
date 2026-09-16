@@ -24,6 +24,9 @@ use crate::{
 // the cap keeps one bad request from dragging the whole table into memory.
 const MAX_EMITTERS: i64 = 2000;
 const LOS_SAMPLES: usize = 48;
+/// Registered structures returned alongside the scored emitters. Ordered
+/// tall-and-close first, so a cap trims the least interesting.
+const MAX_STRUCTURES: i64 = 250;
 
 pub fn router() -> Router<AppState> {
     Router::new().route("/rf-survey", post(run))
@@ -67,6 +70,10 @@ pub struct SurveyResponse {
     pub checklist: String,
     pub db_emitter_count: usize,
     pub manual_emitter_count: usize,
+    /// True when the emitter query hit its cap, meaning the survey saw only
+    /// part of what is in radius. Silently analysing a subset would be worse
+    /// than saying so.
+    pub emitters_truncated: bool,
     /// True when terrain was requested and the DEM actually answered.
     pub terrain_resolved: bool,
 }
@@ -106,6 +113,7 @@ async fn run(
     .fetch_all(&state.pool)
     .await?;
 
+    let emitters_truncated = rows.len() as i64 >= MAX_EMITTERS;
     let radius_m = radius_km * 1000.0;
     let mut emitters: Vec<Emitter> = Vec::new();
 
@@ -167,6 +175,37 @@ async fn run(
         manual_count += 1;
     }
 
+    // Registered structures with no frequency. Not scored — see NearbyStructure.
+    let struct_rows = sqlx::query(
+        "SELECT id, name, lat, lon, height_agl_m          FROM rf_emitters          WHERE lat BETWEEN $1 AND $2 AND lon BETWEEN $3 AND $4            AND freq_mhz IS NULL          LIMIT $5",
+    )
+    .bind(dock.lat - d_lat)
+    .bind(dock.lat + d_lat)
+    .bind(dock.lon - d_lon)
+    .bind(dock.lon + d_lon)
+    .bind(MAX_STRUCTURES)
+    .fetch_all(&state.pool)
+    .await?;
+
+    let in_radius: Vec<(String, String, f64, f64, Option<f64>)> = struct_rows
+        .iter()
+        .filter_map(|r| {
+            let lat: f64 = r.get("lat");
+            let lon: f64 = r.get("lon");
+            if rf::haversine_m(dock.lat, dock.lon, lat, lon) > radius_m {
+                return None;
+            }
+            Some((
+                r.get("id"),
+                r.get("name"),
+                lat,
+                lon,
+                r.try_get::<Option<f64>, _>("height_agl_m").unwrap_or(None),
+            ))
+        })
+        .collect();
+    let structures = rf::rank_structures(&dock, &in_radius);
+
     let los_map = if body.use_terrain && !emitters.is_empty() {
         rf::resolve_los_all(&state.http, &dock, &emitters, LOS_SAMPLES).await
     } else {
@@ -174,7 +213,7 @@ async fn run(
     };
     let terrain_resolved = !los_map.is_empty();
 
-    let result = rf::run_survey(&dock, &emitters, radius_km, weights, &los_map);
+    let result = rf::run_survey(&dock, &emitters, radius_km, weights, &los_map, structures);
     let checklist = rf::build_checklist(&result);
 
     Ok(Json(SurveyResponse {
@@ -182,6 +221,7 @@ async fn run(
         checklist,
         db_emitter_count,
         manual_emitter_count: manual_count,
+        emitters_truncated,
         terrain_resolved,
     }))
 }
