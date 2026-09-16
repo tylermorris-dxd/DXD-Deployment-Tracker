@@ -31,8 +31,18 @@ pub const BANDS: &[BandDef] = &[
 ];
 
 /// Out-of-band ranges that can still desense the receiver front end at high
-/// power and short range.
-pub const DESENSE: &[BandDef] = &[BandDef { name: "C-band 5G", lo: 3700.0, hi: 3980.0 }];
+/// power and short range. Frequency separation does not protect a receiver
+/// from a transmitter parked on the same rooftop — broadcast is here because
+/// of field strength, not proximity in spectrum.
+///
+/// The 0.70 weight was calibrated on C-band against RCSO ground truth. It is
+/// reused for broadcast on the argument that the mechanism is the same
+/// (front-end overload), but that has NOT been validated against a site where
+/// broadcast is the known culprit. Revisit once one is measured.
+pub const DESENSE: &[BandDef] = &[
+    BandDef { name: "C-band 5G", lo: 3700.0, hi: 3980.0 },
+    BandDef { name: "FM broadcast", lo: 88.0, hi: 108.0 },
+];
 
 /// Adjacent-band guard window (MHz) each side of an in-use band.
 pub const GUARD_MHZ: f64 = 100.0;

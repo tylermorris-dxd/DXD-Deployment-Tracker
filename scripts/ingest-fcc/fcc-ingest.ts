@@ -50,6 +50,13 @@ const ULS_FILES = (process.env.FCC_ULS_FILES ?? 'l_LMpriv.zip,l_LMcomm.zip,l_pag
   .filter(Boolean);
 const ASR_URL = process.env.FCC_ASR_URL ?? `${ULS_BASE}/r_tower.zip`;
 
+// Broadcast lives in the Media Bureau's CDBS, not ULS — a different system with
+// a different layout and a different host.
+//
+// Note the path has no /ftp segment. The /ftp form 301-redirects to plain http,
+// which the server then answers with 403, so following that redirect fails.
+const CDBS_BASE = process.env.FCC_CDBS_BASE ?? 'https://transition.fcc.gov/Bureaus/MB/Databases/cdbs';
+
 // ULS record field indices (0-based). Verified correct as written.
 const HD = { usi: 1, callSign: 4, status: 5, service: 6 }; // status 'A' = active
 const LO = {
@@ -60,6 +67,27 @@ const LO = {
   supportHeightM: 38, overallHeightM: 39,
 };
 const FR = { usi: 1, locNum: 6, freqAssigned: 10, powerOutput: 15, powerErp: 16 };
+
+// CDBS FM engineering indices (0-based). Derived by column profiling over the
+// live fm_eng_data.dat, then confirmed end-to-end: the resulting frequencies
+// land entirely within 87.9-107.9 MHz, which is exactly the FM band, and the
+// callsigns resolve to the right stations at known coordinates.
+const FM_ENG = {
+  facilityId: 20, status: 21, erpKw: 29,
+  latD: 30, latDir: 31, latM: 32, latS: 33,
+  lonD: 34, lonDir: 35, lonM: 36, lonS: 37,
+  // Height above average terrain, in preference order. HAAT is the right
+  // proxy for the radio-horizon test: it measures how far the antenna clears
+  // its surroundings, which is what determines whether it can illuminate the
+  // dock. RCAMSL would wildly overstate a mountaintop site.
+  haat: [40, 23, 24],
+  channel: 62,
+};
+
+// CDBS facility indices. [14] is the facility_id and is populated on every row.
+// Note [0]/[1] are the community of licence; [7]/[11] are the licensee's
+// mailing address, which for a chain owner is a different city entirely.
+const FACILITY = { facilityId: 14, callSign: 5, freqMhz: 9, service: 10, city: 0, state: 1 };
 
 // ASR record field indices (0-based). CORRECTED — see the block above.
 // Join key is the Unique System Identifier at [3]; [2] is the human-facing
@@ -105,8 +133,15 @@ function validCoord(lat: number | null, lon: number | null): boolean {
 }
 
 // Streamed to disk — l_LMpriv is over 400 MB and must not be buffered in memory.
+//
+// The User-Agent is not optional: transition.fcc.gov, which serves the CDBS
+// broadcast archives, returns 403 to Node's default agent. The FCC asks bulk
+// consumers to identify themselves regardless.
+const USER_AGENT =
+  process.env.FCC_USER_AGENT ?? 'DXD-Tracker RF ingest (tyler.morris@deusxdefense.com)';
+
 async function download(url: string, dest: string): Promise<void> {
-  const r = await fetch(url);
+  const r = await fetch(url, { headers: { 'User-Agent': USER_AGENT } });
   if (!r.ok || !r.body) throw new Error(`download ${url} -> ${r.status}`);
   await pipe(Readable.fromWeb(r.body as any), fs.createWriteStream(dest));
 }
@@ -136,9 +171,12 @@ async function eachRow(
     input: fs.createReadStream(file, { encoding: 'latin1' }),
     crlfDelay: Infinity,
   });
-  const prefix = recordType + '|';
+  // ULS and ASR rows lead with a record-type token; CDBS rows do not, so an
+  // empty recordType means "every line".
+  const prefix = recordType ? recordType + '|' : '';
   for await (const line of rl) {
-    if (!line.startsWith(prefix)) continue;
+    if (prefix && !line.startsWith(prefix)) continue;
+    if (!line.trim()) continue;
     const r = cb(line.split('|'));
     if (r) await r;
   }
@@ -285,12 +323,78 @@ async function parseAsr(dir: string): Promise<Row[]> {
   return rows;
 }
 
-// ---- Broadcast parse (FM/TV) ---------------------------------------------------------
-// Broadcast is NOT in ULS. It comes from the FCC Media Bureau (CDBS engineering files or
-// the current LMS extract). Left as a documented seam: implement fetch+map here and it
-// flows through the same loader. FM/TV matter mainly as high-power out-of-band desense.
-async function parseBroadcast(_dir: string): Promise<Row[]> {
-  return [];
+// ---- Broadcast parse (FM) ------------------------------------------------------------
+//
+// FM only. TV lives in tv_eng_data.dat with a different layout whose ERP column
+// is ambiguous between two candidates on profiling alone; shipping a guessed
+// power field is exactly the mistake the ASR indices already taught here, so TV
+// stays out until its columns are confirmed the same way FM's were.
+
+async function parseBroadcast(dir: string): Promise<Row[]> {
+  // facility_id -> callsign / frequency / community
+  const fac = new Map<string, { call: string; freq: number | null; svc: string; city: string; state: string }>();
+  await eachRow(path.join(dir, 'FACILITY.DAT'), '', (f) => {
+    if (f.length <= FACILITY.service) return;
+    const id = (f[FACILITY.facilityId] || '').trim();
+    if (!/^\d+$/.test(id)) return;
+    const freq = parseFloat(f[FACILITY.freqMhz]);
+    fac.set(id, {
+      call: (f[FACILITY.callSign] || '').trim(),
+      freq: isFinite(freq) && freq > 0 ? freq : null,
+      svc: (f[FACILITY.service] || '').trim().toUpperCase(),
+      city: (f[FACILITY.city] || '').trim(),
+      state: (f[FACILITY.state] || '').trim(),
+    });
+  });
+
+  // One row per facility: the licensed record with the highest ERP. The file
+  // carries applications and construction permits alongside licences, plus the
+  // full amendment history for each.
+  const best = new Map<string, Row>();
+  await eachRow(path.join(dir, 'FM_ENG_DATA.DAT'), '', (f) => {
+    if (f.length <= FM_ENG.channel) return;
+    if ((f[FM_ENG.status] || '').trim().toUpperCase() !== 'LIC') return;
+
+    const id = (f[FM_ENG.facilityId] || '').trim();
+    const meta = fac.get(id);
+    if (!meta) return;
+
+    const lat = dms(f[FM_ENG.latD], f[FM_ENG.latM], f[FM_ENG.latS], f[FM_ENG.latDir]);
+    const lon = dms(f[FM_ENG.lonD], f[FM_ENG.lonM], f[FM_ENG.lonS], f[FM_ENG.lonDir]);
+    if (!validCoord(lat, lon)) return;
+
+    // Frequency from the facility record; otherwise derived from the FM channel
+    // number, where channel 200 is 87.9 MHz in 200 kHz steps.
+    let freq = meta.freq;
+    if (freq == null) {
+      const ch = parseFloat(f[FM_ENG.channel]);
+      if (isFinite(ch) && ch >= 200 && ch <= 300) freq = 87.9 + (ch - 200) * 0.2;
+    }
+    if (freq == null || freq <= 0) return;
+
+    const erpKw = parseFloat(f[FM_ENG.erpKw]);
+    const erpDbw = isFinite(erpKw) && erpKw > 0 ? wattsToDbw(erpKw * 1000) : null;
+
+    let heightM: number | null = null;
+    for (const idx of FM_ENG.haat) {
+      const h = sanitizeHeight(parseFloat(f[idx]));
+      if (h != null) { heightM = h; break; }
+    }
+
+    const prev = best.get(id);
+    if (prev && (prev.erpDbw ?? -999) >= (erpDbw ?? -999)) return;
+
+    const where = meta.city && meta.state ? ` · ${meta.city}, ${meta.state}` : '';
+    best.set(id, {
+      id: `fm:${id}`,
+      source: 'broadcast',
+      name: `FM ${meta.call || id} ${freq.toFixed(1)}${where}`,
+      lat: lat!, lon: lon!,
+      freqMhz: freq, erpDbw, heightM,
+    });
+  });
+
+  return [...best.values()];
 }
 
 // ---- DB load -------------------------------------------------------------------------
@@ -431,7 +535,7 @@ async function main() {
   const args = process.argv.slice(2);
   const dryRun = args.includes('--dry-run');
   const sources = args.filter((a) => !a.startsWith('--'));
-  const want = new Set(sources.length ? sources : ['uls', 'asr']);
+  const want = new Set(sources.length ? sources : ['uls', 'asr', 'broadcast']);
 
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString && !dryRun) throw new Error('DATABASE_URL is required (or pass --dry-run)');
@@ -498,8 +602,17 @@ async function main() {
     }
 
     if (want.has('broadcast')) {
+      const outDir = path.join(tmp, 'cdbs');
+      fs.mkdirSync(outDir, { recursive: true });
+      for (const file of ['fm_eng_data.zip', 'facility.zip']) {
+        const zip = path.join(tmp, file);
+        console.log(`downloading ${file}…`);
+        await download(`${CDBS_BASE}/${file}`, zip);
+        await extractDat(zip, outDir, [file.replace('.zip', '.dat')]);
+        fs.rmSync(zip, { force: true });
+      }
       const sink = await openSink('broadcast');
-      await sink.write(await parseBroadcast(tmp));
+      await sink.write(await parseBroadcast(outDir));
       await sink.finish();
     }
   } finally {

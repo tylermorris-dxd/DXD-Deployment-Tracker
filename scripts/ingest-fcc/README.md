@@ -7,7 +7,13 @@ emitters the tool found rather than emitters someone typed in.
 |--------|---------------|------------|
 | `uls`  | Licensed transmitters — frequency, ERP, location, antenna height | Yes |
 | `asr`  | Registered antenna structures — location, height, owner. No frequency. | No, carried as context |
-| `broadcast` | FM/TV from the Media Bureau | Not implemented — documented seam |
+| `broadcast` | FM from the Media Bureau's CDBS — callsign, frequency, ERP, HAAT | Yes |
+
+Broadcast is a separate FCC system (CDBS) from ULS, with its own host, layout
+and join key. **TV is deliberately not ingested**: its ERP column is ambiguous
+between two candidates on profiling alone, and shipping a guessed power field is
+the same mistake the ASR indices already caused here. It needs the same
+end-to-end validation FM got before it goes in.
 
 Survey scoring skips rows with no frequency, so ASR rows never produce a risk
 score. They are still worth loading: a 60 m tower 400 m off the dock is
@@ -49,6 +55,8 @@ alone is 37 MB and takes about a minute.
 | `FCC_ULS_FILES` | Comma-separated subset of ULS archives. Handy for a fast dry run. |
 | `FCC_ASR_URL` | Override the ASR archive URL. |
 | `FCC_ASR_LOCAL` | Path to an already-downloaded `r_tower.zip`, to skip re-downloading while tuning. |
+| `FCC_CDBS_BASE` | Override the broadcast host. Note the working path has **no** `/ftp` segment — the `/ftp` form 301s to plain http and is then refused. |
+| `FCC_USER_AGENT` | Identifies the ingest. Required: `transition.fcc.gov` returns 403 to Node's default agent. |
 
 ## Sanity check after any FCC layout change
 
@@ -60,8 +68,8 @@ dry run prints the numbers that catch it:
 npx tsx fcc-ingest.ts asr --dry-run
 ```
 
-A healthy full run, verified 2026-09-14, loads 197,456 ASR structures and
-~3.8M ULS emitters. If ULS comes back in the tens of millions, the frequency to
+A healthy full run loads roughly 197,456 ASR structures, 3.8M ULS emitters and
+23,240 FM stations. If ULS comes back in the tens of millions, the frequency to
 location join has broken and every frequency is being planted at every site on
 its licence.
 
@@ -81,3 +89,18 @@ of `fcc-ingest.ts` so a correction is a one-line edit.
 The ULS maps (`HD` / `LO` / `FR`) were verified correct as originally written.
 The ASR maps (`CO` / `RA` / `EN`) were **not** and have been corrected — see the
 comment block in the script for what was wrong and why.
+
+## FM sanity figures
+
+```
+rows              23,240
+inside CONUS      22,490 (96.8%)
+with frequency    23,240
+height m min/med/max  0.2 / 148.0 / 700.0
+```
+
+Frequencies must fall entirely within 87.9-107.9 MHz. Anything outside that
+means the channel or frequency column has moved. Height is HAAT — height above
+average terrain — which is the right input to the radio-horizon test because it
+measures how far the antenna clears its surroundings. RCAMSL would wildly
+overstate a mountaintop station.
