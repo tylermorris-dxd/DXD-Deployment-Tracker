@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO drone_tevi_state (id, state, updated_at) VALUES (1, $1, $2) ON CONFLICT (id) DO UPDATE SET state = EXCLUDED.state, updated_at = EXCLUDED.updated_at",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "41e452a619e703f40a9fd71ef8e03443f4b0c1059343b4f3a2fc2b8edefed42a"
+}

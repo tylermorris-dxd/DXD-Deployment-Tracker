@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE projects SET faa_authorization_required = FALSE, faa_auth_started_at = NULL WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "da9bf310ae93e3afc6acee2e189e956c308aa2d72075d0f0284e7a784b81a128"
+}

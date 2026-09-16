@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE projects SET site = $1 WHERE hubspot_deal_id = $2 AND (site IS NULL OR site = '')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "44139b6cb00e6bf34f80617a88d19d8c3d0eaf4b43476fb8b543f6ce00fa6c52"
+}

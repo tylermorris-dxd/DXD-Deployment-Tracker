@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, project_id, phase_number, title, color, description, owner, unlocked, completed_at, sort_order FROM phases WHERE project_id = $1 ORDER BY sort_order",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "project_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "phase_number",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "color",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "owner",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "unlocked",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 8,
+        "name": "completed_at",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "sort_order",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "2aee18ddb397cbc85b9af8ad96e152c510c8b15f3e61b5ef6816f80a15f32638"
+}

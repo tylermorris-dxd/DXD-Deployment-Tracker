@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE subtasks SET ot_delivered = $1 WHERE id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "945657a8dbdf0586cdf07f7b634a8b34be1bd2c0a31a9a3901f95621b1b251ad"
+}

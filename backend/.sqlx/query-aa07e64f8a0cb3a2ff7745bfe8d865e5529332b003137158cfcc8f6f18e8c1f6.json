@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE stakeholder_contacts SET name = $1 WHERE task_id = $2 AND slot_index = $3",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "aa07e64f8a0cb3a2ff7745bfe8d865e5529332b003137158cfcc8f6f18e8c1f6"
+}

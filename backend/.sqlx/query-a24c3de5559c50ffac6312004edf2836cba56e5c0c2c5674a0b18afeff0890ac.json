@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE projects SET steady_state = FALSE, steady_state_at = NULL WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a24c3de5559c50ffac6312004edf2836cba56e5c0c2c5674a0b18afeff0890ac"
+}

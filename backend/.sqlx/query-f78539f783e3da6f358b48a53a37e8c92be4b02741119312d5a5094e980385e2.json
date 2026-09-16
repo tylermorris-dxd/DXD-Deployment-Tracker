@@ -1,0 +1,94 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, task_id, sort_index, text, is_done, note, ot_ordered, ot_shipped, ot_eta, ot_delivered, ot_received_by, priority, condition_key FROM subtasks WHERE project_id = $1 ORDER BY task_id, sort_index",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "task_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "sort_index",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "text",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "is_done",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 5,
+        "name": "note",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "ot_ordered",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "ot_shipped",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "ot_eta",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "ot_delivered",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "ot_received_by",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "priority",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 12,
+        "name": "condition_key",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "f78539f783e3da6f358b48a53a37e8c92be4b02741119312d5a5094e980385e2"
+}

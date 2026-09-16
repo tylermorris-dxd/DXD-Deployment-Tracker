@@ -1,0 +1,112 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, phase_id, project_id, title, completed, notes, due_date, assignee,\n                      is_gate, is_custom, track_dates, has_stakeholders, has_equipment_picker, sort_order,\n                      role_tag, stage_number\n               FROM tasks WHERE project_id = $1 ORDER BY phase_id, sort_order",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "phase_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "project_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "completed",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 5,
+        "name": "notes",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "due_date",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "assignee",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "is_gate",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 9,
+        "name": "is_custom",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 10,
+        "name": "track_dates",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 11,
+        "name": "has_stakeholders",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 12,
+        "name": "has_equipment_picker",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 13,
+        "name": "sort_order",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 14,
+        "name": "role_tag",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 15,
+        "name": "stage_number",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "8875d67cc9d1db7d3237b6e7048548f557437cef365eb7f745b36dd5fbe162ba"
+}

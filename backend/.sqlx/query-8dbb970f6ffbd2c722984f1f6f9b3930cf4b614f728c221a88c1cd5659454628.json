@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE projects SET faa_authorization_required = TRUE, faa_auth_started_at = COALESCE(faa_auth_started_at, $1) WHERE id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8dbb970f6ffbd2c722984f1f6f9b3930cf4b614f728c221a88c1cd5659454628"
+}

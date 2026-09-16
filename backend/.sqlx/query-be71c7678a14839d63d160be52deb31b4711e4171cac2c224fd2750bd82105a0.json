@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE projects SET steady_state = TRUE, steady_state_at = COALESCE(steady_state_at, $1) WHERE id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "be71c7678a14839d63d160be52deb31b4711e4171cac2c224fd2750bd82105a0"
+}

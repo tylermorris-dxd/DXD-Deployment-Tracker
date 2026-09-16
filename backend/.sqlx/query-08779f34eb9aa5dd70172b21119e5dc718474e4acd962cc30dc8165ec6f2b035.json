@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO pricing_catalog (id, name, cost, category, manual_price, sort_order, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $7)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Float8",
+        "Text",
+        "Bool",
+        "Int4",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "08779f34eb9aa5dd70172b21119e5dc718474e4acd962cc30dc8165ec6f2b035"
+}

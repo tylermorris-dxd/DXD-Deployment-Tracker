@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO stakeholder_contacts (task_id, project_id, slot_index, name, email, phone) VALUES ($1, $2, $3, '', '', '') ON CONFLICT(task_id, slot_index) DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "dc75a86a72d6b85a8460a1ad5107b521d5972aabebcf12911754f997a5f54aa4"
+}
