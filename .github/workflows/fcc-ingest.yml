@@ -1,0 +1,105 @@
+name: FCC ingest (weekly)
+
+# Refreshes rf_emitters from the FCC bulk files.
+#
+# Runs on a GitHub runner rather than in Azure because the ingest needs ~8 GB of
+# heap for the ULS pass, and the app's B1 App Service plan has 1.75 GB — running
+# it there would take the app down with it. Runners have 16 GB.
+#
+# The cost of running outside Azure is that the runner's IP is not covered by
+# the server's "Allow Azure services" rule, so this opens a firewall rule for
+# its own address and closes it again on the way out, including on failure.
+#
+# REQUIRES, before this can work:
+#   1. The federated identity needs permission to manage firewall rules on
+#      dxd-tracker-pg. Website Contributor on the App Service is not enough.
+#   2. A DATABASE_URL repository secret.
+# Until both exist this workflow will fail at the login or firewall step. It is
+# scheduled but harmless until then.
+
+on:
+  schedule:
+    # Tuesdays 08:00 UTC. The FCC posts the weekly complete files over the
+    # weekend, so this lands well after they settle.
+    - cron: '0 8 * * 2'
+  workflow_dispatch:
+    inputs:
+      sources:
+        description: 'Sources to load (space separated: uls asr broadcast)'
+        required: false
+        default: 'uls asr broadcast'
+      dry_run:
+        description: 'Parse and report without writing'
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  id-token: write   # OIDC federation to Azure
+  contents: read
+
+jobs:
+  ingest:
+    # OIDC is federated for the DXD-Finance repo only, so the mirror would fail
+    # the login step. Skip rather than fail noisily every week.
+    if: github.repository == 'DXD-Finance/DXD-Deployment-Tracker'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    env:
+      PG_RG: rg-deusxdefense-ops-dev
+      PG_SERVER: dxd-tracker-pg
+      RULE_NAME: gha-ingest-${{ github.run_id }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install ingest deps
+        run: npm ci
+        working-directory: scripts/ingest-fcc
+
+      # A dry run needs no database, so skip Azure entirely for it.
+      - name: Azure login
+        if: ${{ !inputs.dry_run }}
+        uses: azure/login@v2
+        with:
+          client-id: cfd78019-8801-4d22-9141-c413aeb3e06d
+          tenant-id: 22aa607f-edea-4d7a-9d84-0add96bdeed3
+          subscription-id: 0c87fd02-06f5-49e3-bf68-5c1c83ea24bc
+
+      - name: Open firewall for this runner
+        if: ${{ !inputs.dry_run }}
+        run: |
+          IP=$(curl -s --max-time 20 https://api.ipify.org)
+          echo "runner IP: $IP"
+          az postgres flexible-server firewall-rule create \
+            --resource-group "$PG_RG" --name "$PG_SERVER" \
+            --rule-name "$RULE_NAME" \
+            --start-ip-address "$IP" --end-ip-address "$IP" \
+            --output none
+          # The rule takes a moment to propagate.
+          sleep 30
+
+      - name: Run ingest
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NODE_OPTIONS: --max-old-space-size=8192
+        run: |
+          ARGS="${{ inputs.sources || 'uls asr broadcast' }}"
+          if [ "${{ inputs.dry_run }}" = "true" ]; then ARGS="$ARGS --dry-run"; fi
+          echo "running: $ARGS"
+          npx tsx fcc-ingest.ts $ARGS
+        working-directory: scripts/ingest-fcc
+
+      # Always, so a failed ingest never leaves the database reachable from a
+      # stale runner address.
+      - name: Close firewall
+        if: ${{ always() && !inputs.dry_run }}
+        run: |
+          az postgres flexible-server firewall-rule delete \
+            --resource-group "$PG_RG" --name "$PG_SERVER" \
+            --rule-name "$RULE_NAME" --yes --output none || true

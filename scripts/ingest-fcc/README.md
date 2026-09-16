@@ -108,3 +108,54 @@ means the channel or frequency column has moved. Height is HAAT — height above
 average terrain — which is the right input to the radio-horizon test because it
 measures how far the antenna clears its surroundings. RCAMSL would wildly
 overstate a mountaintop station.
+
+## Scheduling it
+
+The ingest is manual today. Two ways to automate it, and both need one decision
+from you first.
+
+It **cannot** run on the app's App Service. That plan is B1 — 1.75 GB of RAM and
+one core — and the ULS pass needs an 8 GB heap. It would exhaust the instance
+serving the ops team.
+
+### Option A — GitHub Actions (`.github/workflows/fcc-ingest.yml`, already written)
+
+Runners have 16 GB, so the ULS pass fits. OIDC federation to Azure already
+exists for the `DXD-Finance` repo, so no long-lived credential is needed.
+
+The catch is the database firewall. A runner is not an Azure service, so the
+server's "Allow Azure services" rule does not cover it. The workflow opens a
+rule for its own address and deletes it on the way out, including on failure —
+but the federated identity currently holds only **Website Contributor on the App
+Service**, which cannot touch Postgres firewall rules.
+
+To enable, grant the identity permission on the server and add the secret:
+
+```bash
+az role assignment create   --assignee ff7c8350-942d-44a1-99ae-aa44d914756a   --role Contributor   --scope /subscriptions/0c87fd02-06f5-49e3-bf68-5c1c83ea24bc/resourceGroups/rg-deusxdefense-ops-dev/providers/Microsoft.DBforPostgreSQL/flexibleServers/dxd-tracker-pg
+```
+
+Then add a `DATABASE_URL` repository secret. A narrower custom role limited to
+`Microsoft.DBforPostgreSQL/flexibleServers/firewallRules/*` is worth preferring
+over Contributor.
+
+### Option B — Azure Container Apps Job (`Dockerfile`, already written)
+
+Runs inside Azure, so "Allow Azure services" covers it and no firewall rule is
+ever opened. Memory is sized per job rather than shared with the web app.
+
+Costs more setup: a container registry, a Container Apps environment, and the
+job itself are new billable resources.
+
+```bash
+az containerapp job create   --name dxd-fcc-ingest --resource-group rg-deusxdefense-ops-dev   --environment <your-container-apps-env>   --trigger-type Schedule --cron-expression "0 8 * * 2"   --image <registry>/dxd-fcc-ingest:latest   --cpu 2 --memory 8Gi --replica-timeout 5400   --secrets "dburl=<connection string>"   --env-vars "DATABASE_URL=secretref:dburl"
+```
+
+### Which
+
+Option B is the better end state — nothing outside Azure ever touches the
+database. Option A is running today with no new resources, needs one role
+assignment, and can be swapped later.
+
+Either way the firewall rule pinned to a personal workstation should be removed
+once this is automated.
