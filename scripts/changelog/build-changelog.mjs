@@ -29,12 +29,30 @@ function git(args) {
   return execFileSync('git', args, { cwd: REPO, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
 }
 
+/** Commits that only regenerate the changelog. Excluded, because a file cannot
+ *  describe the commit that contains it: including them would leave CHANGELOG.md
+ *  permanently one commit stale and --check permanently red. The rule this
+ *  implies is in CLAUDE.md — regenerate as its own commit, never alongside code. */
+function changelogOnlyCommits() {
+  const raw = git(['log', `--pretty=format:${RS}%H`, '--name-only']);
+  const skip = new Set();
+  for (const chunk of raw.split(RS)) {
+    const lines = chunk.split('\n').map((l) => l.trim()).filter(Boolean);
+    if (lines.length < 2) continue;
+    const [hash, ...files] = lines;
+    if (files.every((f) => f === 'CHANGELOG.md')) skip.add(hash);
+  }
+  return skip;
+}
+
 /** hash, ISO date, author, subject, body — one record per commit. */
 function readCommits() {
+  const skip = changelogOnlyCommits();
   const raw = git(['log', `--pretty=format:${RS}%H${FS}%aI${FS}%an${FS}%s${FS}%b`]);
   return raw
     .split(RS)
     .filter((c) => c.trim())
+    .filter((c) => !skip.has(c.split(FS)[0]))
     .map((chunk) => {
       const [hash, iso, author, subject, ...rest] = chunk.split(FS);
       const body = rest.join(FS);

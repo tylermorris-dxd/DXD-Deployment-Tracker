@@ -28,6 +28,11 @@ node scripts/changelog/build-changelog.mjs
 It is derived from git — never edit `CHANGELOG.md` by hand. `--check` fails if
 it is stale, which is suitable for CI.
 
+**Commit the regenerated changelog on its own, never alongside code.** A file
+cannot describe the commit that contains it, so a changelog committed with other
+changes is stale the moment it lands. Changelog-only commits are excluded from
+the changelog itself, which is what keeps `--check` green.
+
 Write commit messages that explain *why*, not what. The first paragraph becomes
 the changelog entry, so lead with the problem being solved.
 
