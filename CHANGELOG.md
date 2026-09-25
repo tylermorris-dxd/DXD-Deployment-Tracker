@@ -6,19 +6,24 @@ Generated from git history — **do not edit by hand.** Regenerate with:
 node scripts/changelog/build-changelog.mjs
 ```
 
-253 commits from 2026-03-24 to 2026-09-25. Each entry records when the change landed, which model wrote it, and what it touched.
+254 commits from 2026-03-24 to 2026-09-25. Each entry records when the change landed, which model wrote it, and what it touched.
 
 | Model | Commits |
 |---|---:|
 | Claude Sonnet 4.6 | 158 |
 | Claude Opus 4.7 | 46 |
 | unattributed | 34 |
-| Claude Opus 5 (1M context) | 13 |
+| Claude Opus 5 (1M context) | 14 |
 | Claude Sonnet 4.5 | 2 |
 
 Attribution comes from each commit's `Co-Authored-By` trailer. Commits marked *unattributed* predate the convention or were written by hand.
 
 ## 2026-09-25
+
+### Make the optimiser solve for a ring that is actually on the map
+`01c43083` · 15:43 · Claude Opus 5 (1M context) · 1 file, +51 −14
+
+The SLA was a free 45-600s slider, so the solver sized its circles to a reach the map never drew - you could ask for 435s against a Dock 3 whose rings stop at 248s, and the proposed docks then looked wrong next to the placement rings sitting right beside them. They were arithmetically right and visually unrecognisable, which is worse.
 
 ### Stop the changelog invalidating itself on every commit
 `d1a48b59` · 15:39 · Claude Opus 5 (1M context) · 2 files, +23 −0
