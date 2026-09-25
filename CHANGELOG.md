@@ -6,22 +6,27 @@ Generated from git history — **do not edit by hand.** Regenerate with:
 node scripts/changelog/build-changelog.mjs
 ```
 
-252 commits from 2026-03-24 to 2026-09-25. Each entry records when the change landed, which model wrote it, and what it touched.
+253 commits from 2026-03-24 to 2026-09-25. Each entry records when the change landed, which model wrote it, and what it touched.
 
 | Model | Commits |
 |---|---:|
 | Claude Sonnet 4.6 | 158 |
 | Claude Opus 4.7 | 46 |
 | unattributed | 34 |
-| Claude Opus 5 (1M context) | 12 |
+| Claude Opus 5 (1M context) | 13 |
 | Claude Sonnet 4.5 | 2 |
 
 Attribution comes from each commit's `Co-Authored-By` trailer. Commits marked *unattributed* predate the convention or were written by hand.
 
 ## 2026-09-25
 
+### Stop the changelog invalidating itself on every commit
+`d1a48b59` · 15:39 · Claude Opus 5 (1M context) · 2 files, +23 −0
+
+A generated changelog that is committed alongside the code it describes is stale the instant it lands: the file cannot contain the hash of the commit that contains the file, so --check went red immediately after the first real use. Exclude commits that touch nothing but CHANGELOG.md, and document the matching rule - regenerate as its own commit - so the exclusion is never a surprise to whoever reads the script next.
+
 ### Generate a changelog from git, with model attribution
-`3979f3d5` · 15:35 · Claude Opus 5 (1M context) · 3 files, +1537 −0
+`e6ada6b8` · 15:35 · Claude Opus 5 (1M context) · 3 files, +1544 −0
 
 There was no record of which model made which change, and no changelog at all. Both now exist, and neither depends on anyone remembering.
 
