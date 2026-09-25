@@ -99,11 +99,13 @@ function flightTimeToRadiusM(model: typeof DRONE_MODELS[string], totalSec: numbe
 
 // ── Wind-adjusted reach ───────────────────────────────────────────────────────
 //
-// A still-air circle overstates reach upwind and understates it downwind. With
-// any real wind the reachable envelope is an egg, offset downwind — which is
-// exactly the direction an operator needs to know about before promising a
-// response time. Wind is sampled at 80 m (~260 ft), the DFR cruise band,
-// rather than the 10 m surface reading.
+// A still-air circle overstates reach upwind and understates it downwind.
+// Solving the wind triangle on every course gives, exactly, the still-air
+// circle translated downwind by the drift distance — same radius, same area,
+// moved. So wind does not shrink total coverage; it moves which addresses are
+// inside it, which is the part an operator needs before promising a response
+// time. Wind is sampled at 80 m (~260 ft), the DFR cruise band, rather than
+// the 10 m surface reading.
 
 interface WindState {
   speedMs: number
@@ -437,6 +439,18 @@ export default function SiteMapper({ project, onCacheUpdate, fitToContentOnLoad 
   useEffect(() => { toolRef.current          = tool          }, [tool])
   useEffect(() => { dockCountRef.current     = dockCount     }, [dockCount])
   useEffect(() => { selectedDroneRef.current = selectedDrone }, [selectedDrone])
+
+  // The optimiser's SLA has to be one of the rings this model draws, or it
+  // sizes its circles to a reach the map never shows and the result looks
+  // wrong even when it is arithmetically right. Models carry different ring
+  // sets — Sunflower stops at 210 s where a Dock 3 goes to 248 — so on a model
+  // change, snap to the nearest ring the new one has.
+  useEffect(() => {
+    const rings = (DRONE_MODELS[selectedDrone] || DRONE_MODELS['dji-dock-3']).ringsSec
+    setOptSla(prev => rings.includes(prev)
+      ? prev
+      : rings.reduce((best, r) => (Math.abs(r - prev) < Math.abs(best - prev) ? r : best), rings[0]))
+  }, [selectedDrone])
   useEffect(() => { sitesListRef.current     = sitesList     }, [sitesList])
 
   // ── Load Leaflet ────────────────────────────────────────────────────────────
@@ -985,6 +999,11 @@ export default function SiteMapper({ project, onCacheUpdate, fitToContentOnLoad 
   // ── Coverage optimiser ──────────────────────────────────────────────────────
   // Reuses the boundary already drawn with the BOUNDARY tool as the service
   // area, so there is no second polygon tool to learn.
+  // The same model and the same radius the rings on the map are drawn from —
+  // the optimiser must not define reach a second time.
+  const optModel  = DRONE_MODELS[selectedDrone] || DRONE_MODELS['dji-dock-3']
+  const optReachM = flightTimeToRadiusM(optModel, optSla)
+
   const runOptimizer = useCallback(async () => {
     const lr = layersRef.current
     if (!lr.boundaryPoly) {
@@ -993,14 +1012,13 @@ export default function SiteMapper({ project, onCacheUpdate, fitToContentOnLoad 
     }
     const ring = lr.boundaryPoly.getLatLngs()[0] as Array<{ lat: number; lng: number }>
     const area = ring.map((p) => ({ lat: p.lat, lon: p.lng }))
-    const model = DRONE_MODELS[selectedDroneRef.current] || DRONE_MODELS['dji-dock-3']
 
     setOptBusy(true); setOptError(null)
     try {
       const res = await api.coverageOptimize({
         area,
         slaSeconds: optSla,
-        aircraft: { launchDelaySec: model.launchDelaySec, cruiseMph: model.speedMph },
+        aircraft: { launchDelaySec: optModel.launchDelaySec, cruiseMph: optModel.speedMph },
         wind: optUseWind && wind ? { speedMs: wind.speedMs, dirFromDeg: wind.dirFromDeg } : null,
         targetPct: optTarget,
         maxDocks: 200,
@@ -1012,7 +1030,7 @@ export default function SiteMapper({ project, onCacheUpdate, fitToContentOnLoad 
     } finally {
       setOptBusy(false)
     }
-  }, [optSla, optTarget, optUseWind, wind])
+  }, [optSla, optTarget, optUseWind, wind, optModel])
 
   // Draw proposed docks and the ground they miss.
   useEffect(() => {
@@ -1551,11 +1569,28 @@ export default function SiteMapper({ project, onCacheUpdate, fitToContentOnLoad 
             </span>
             <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               SLA
-              <input type="range" min={45} max={600} step={15} value={optSla}
-                onChange={e => setOptSla(Number(e.target.value))}
-                style={{ width: 130, accentColor: '#00E5FF' }} />
-              <b style={{ minWidth: 42 }}>{optSla}s</b>
+              <span style={{ display: 'flex', gap: 3 }}>
+                {optModel.ringsSec.map(sec => (
+                  <button
+                    key={sec}
+                    onClick={() => setOptSla(sec)}
+                    title={`${sec}s — ${Math.round(flightTimeToRadiusM(optModel, sec)).toLocaleString()} m`}
+                    style={{
+                      padding: '3px 7px', borderRadius: 3, cursor: 'pointer',
+                      fontSize: 10, fontWeight: 700, fontFamily: "'Courier New', monospace",
+                      border: `1px solid ${sec === optSla ? '#00E5FF' : 'rgba(255,255,255,0.18)'}`,
+                      background: sec === optSla ? 'rgba(0,229,255,0.22)' : 'transparent',
+                      color: sec === optSla ? '#00E5FF' : 'rgba(255,255,255,0.5)',
+                    }}
+                  >
+                    {fmtTime(sec)}
+                  </button>
+                ))}
+              </span>
             </label>
+            <span style={{ color: 'rgba(255,255,255,0.5)' }}>
+              {optModel.label} · <b style={{ color: '#00E5FF' }}>{Math.round(optReachM).toLocaleString()} m</b>
+            </span>
             <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               Target
               <input type="range" min={50} max={100} step={1} value={optTarget}
@@ -1602,8 +1637,10 @@ export default function SiteMapper({ project, onCacheUpdate, fitToContentOnLoad 
           {!optResult && !optError && (
             <div style={{ marginTop: 8, color: 'rgba(255,255,255,0.45)', lineHeight: 1.5 }}>
               Draw a closed boundary with the BOUNDARY tool — that is the service area — then solve.
-              Reach is cruise speed over the SLA <i>minus</i> the launch delay, so a Dock 3 at 90 s
-              covers 885 m, not 1,475 m.
+              The SLA options are the rings already drawn for the {optModel.label}, so each proposed
+              dock&apos;s circle is the ring you picked. At {optSla}s that is{' '}
+              {Math.round(optReachM).toLocaleString()} m — cruise speed over the SLA{' '}
+              <i>minus</i> the {optModel.launchDelaySec}s launch delay, not over the whole SLA.
             </div>
           )}
 
